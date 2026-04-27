@@ -1,0 +1,178 @@
+# HomeVault - Project TODO
+
+## Phase 1: Core Foundation & Database
+
+### Architecture & Planning
+- [x] Initialize web project with tRPC + React + Express + Database
+- [ ] Design database schema for all entities
+- [ ] Create Drizzle ORM models and migrations
+- [ ] Implement tRPC procedures for core operations
+
+### Database Schema
+- [ ] Users table with profiles and roles
+- [ ] Properties table with address, purchase details, and settings
+- [ ] Expenses table with categories and recurring support
+- [ ] Repairs table with priority and contractor tracking
+- [ ] Upgrades table with budget vs. spent tracking
+- [ ] Loans table with repayment history
+- [ ] WishlistItems table with priority and cost estimates
+- [ ] PurchaseCosts table for acquisition expenses
+- [ ] CalendarEvents table for event management
+- [ ] Property settings configuration
+
+### Backend Setup
+- [ ] tRPC router for expenses (create, read, update, delete, list)
+- [ ] tRPC router for repairs (create, read, update, delete, list)
+- [ ] tRPC router for upgrades (create, read, update, delete, list)
+- [ ] tRPC router for loans (create, read, update, delete, list, add repayment)
+- [ ] tRPC router for wishlist (create, read, update, delete, list)
+- [ ] tRPC router for purchase costs (create, read, update, delete, list)
+- [ ] tRPC router for calendar events (create, read, update, delete, list)
+- [ ] tRPC router for properties (get, update settings)
+- [ ] tRPC router for profiles (list, switch, get current)
+- [ ] Dashboard stats calculation procedure
+- [ ] File upload support for attachments
+
+## Phase 2: Frontend UI & Dashboard
+
+### Layout & Navigation
+- [ ] Implement DashboardLayout with sidebar navigation
+- [ ] Design color scheme and typography for home management tool
+- [ ] Create navigation menu with all modules
+- [ ] Implement profile switcher in header
+- [ ] Add logout functionality
+
+### Dashboard Overview
+- [ ] Create KPI grid showing purchase total, monthly recurring, YTD expenses, pending repairs, upgrades spent, wishlist total
+- [ ] Display upcoming events section (next 30 days)
+- [ ] Show household members and their activity
+- [ ] Implement Google Map showing property location
+- [ ] Add quick action buttons for common tasks
+
+### Expense Tracking Module
+- [ ] Create expense list view with filters by category and date range
+- [ ] Implement add expense form with category selection
+- [ ] Add recurring expense toggle and frequency options
+- [ ] Implement mark-as-paid action with date tracking
+- [ ] Create expense detail view with edit/delete options
+- [ ] Add file attachment support for receipts
+- [ ] Display monthly expense summary and trends
+- [ ] Export expense data to CSV
+
+### Repair Log Module
+- [ ] Create repair list view with status and priority filters
+- [ ] Implement add repair form with priority selection
+- [ ] Add contractor assignment functionality
+- [ ] Create repair status workflow (Pending → In Progress → Resolved)
+- [ ] Implement repair detail view with edit/delete options
+- [ ] Add file attachment support for photos/quotes
+- [ ] Display repair timeline and history
+- [ ] Add cost tracking for repairs
+
+### Upgrade Project Tracking
+- [ ] Create upgrade list view with status filters
+- [ ] Implement add upgrade form with budget input
+- [ ] Add spent amount tracking with visual progress
+- [ ] Create upgrade detail view with edit/delete options
+- [ ] Implement status workflow (Planned → In Progress → Done)
+- [ ] Add file attachment support for plans/quotes
+- [ ] Display budget vs. spent comparison
+- [ ] Add cost breakdown by upgrade
+
+### Family Loan Tracking
+- [ ] Create loan list view with outstanding balance display
+- [ ] Implement add loan form with lender and amount
+- [ ] Add repayment logging functionality
+- [ ] Create loan detail view with repayment history
+- [ ] Display total borrowed, total repaid, and outstanding balance
+- [ ] Implement repayment schedule visualization
+- [ ] Add edit/delete functionality for loans
+
+### Wishlist Module
+- [ ] Create wishlist view with priority sorting
+- [ ] Implement add wishlist item form with cost and priority
+- [ ] Create wishlist item detail view with edit/delete options
+- [ ] Display total wishlist value and priority breakdown
+- [ ] Add ability to convert wishlist items to upgrade projects
+- [ ] Implement wishlist filtering by priority
+
+### Purchase Cost Tracker
+- [ ] Create purchase cost list view
+- [ ] Implement add purchase cost form with date and amount
+- [ ] Create purchase cost detail view with edit/delete options
+- [ ] Display total purchase costs and breakdown by category
+- [ ] Add file attachment support for invoices
+- [ ] Display purchase cost timeline
+
+### Calendar View
+- [ ] Create calendar component showing all events
+- [ ] Implement event filtering by type (expense, repair, loan, etc.)
+- [ ] Add event detail modal with linked entity information
+- [ ] Implement event creation from calendar view
+- [ ] Add upcoming events sidebar
+- [ ] Display event reminders (configurable days before)
+
+### Property Settings & Map
+- [ ] Create property settings form with address, purchase price, details
+- [ ] Implement Google Map integration for property location
+- [ ] Add address search and geocoding
+- [ ] Display property details (square meters, rooms, year built, etc.)
+- [ ] Add currency and timezone configuration
+- [ ] Implement settings save and validation
+
+### Multi-Profile Support
+- [ ] Implement profile switcher in sidebar
+- [ ] Add profile menu with list of household members
+- [ ] Create profile management interface
+- [ ] Implement per-entry ownership attribution
+- [ ] Display profile info on all records
+- [ ] Add profile-based filtering and views
+
+## Phase 3: Advanced Features & Polish
+
+### Data Management
+- [ ] Implement data export functionality (CSV, JSON)
+- [ ] Add data import for bulk operations
+- [ ] Create backup and restore functionality
+- [ ] Implement data validation and error handling
+
+### Analytics & Reporting
+- [ ] Create expense analytics dashboard
+- [ ] Add spending trends visualization
+- [ ] Implement budget vs. actual comparison
+- [ ] Create maintenance cost analysis
+- [ ] Add property value tracking
+
+### Notifications & Reminders
+- [ ] Implement reminder notifications for upcoming events
+- [ ] Add expense due date reminders
+- [ ] Create repair follow-up reminders
+- [ ] Implement loan repayment reminders
+
+### Mobile Optimization
+- [ ] Ensure responsive design for all modules
+- [ ] Optimize touch interactions for mobile
+- [ ] Implement mobile-friendly forms
+- [ ] Add mobile-specific navigation
+
+### Testing & Quality
+- [ ] Write unit tests for backend procedures
+- [ ] Write integration tests for critical flows
+- [ ] Perform end-to-end testing
+- [ ] Conduct accessibility audit
+- [ ] Performance optimization and monitoring
+
+## Deferred Features (Post-Launch)
+
+- [ ] AI-powered expense categorization
+- [ ] Predictive maintenance scheduling
+- [ ] Property value estimation
+- [ ] Integration with calendar apps (Google Calendar, Outlook)
+- [ ] Mobile native apps (iOS/Android)
+- [ ] Real estate market insights
+- [ ] Contractor marketplace integration
+- [ ] Insurance claim documentation
+- [ ] Multi-property portfolio management
+- [ ] Collaborative household notes
+- [ ] Document storage and organization
+- [ ] Property inspection checklists
