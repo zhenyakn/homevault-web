@@ -45,7 +45,7 @@
 ### Dashboard Overview
 - [x] Create KPI grid showing purchase total, monthly recurring, YTD expenses, pending repairs, upgrades spent, wishlist total
 - [x] Display upcoming events section (next 30 days)
-- [ ] Show household members and their activity
+- [x] Show household members and their activity
 - [x] Implement Google Map showing property location
 - [x] Add quick action buttons for common tasks
 

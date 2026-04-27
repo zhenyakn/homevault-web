@@ -1,12 +1,81 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, AlertCircle, Home, DollarSign, Zap, ShoppingCart, Heart, Loader2, CalendarDays, MapPin } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { TrendingUp, AlertCircle, Home, DollarSign, Zap, ShoppingCart, Heart, Loader2, CalendarDays, MapPin, Users, Receipt, Wrench } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { MapView } from "@/components/Map";
 import { useRef, useCallback } from "react";
 import { format } from "date-fns";
+
+const ACTIVITY_ICONS: Record<string, any> = {
+  expense: Receipt,
+  repair: Wrench,
+  upgrade: ShoppingCart,
+};
+
+const ACTIVITY_COLORS: Record<string, string> = {
+  expense: "bg-blue-100 text-blue-600",
+  repair: "bg-orange-100 text-orange-600",
+  upgrade: "bg-green-100 text-green-600",
+};
+
+function getInitials(name: string | null | undefined) {
+  if (!name) return "?";
+  return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function RecentActivitySection() {
+  const { data: activity, isLoading } = trpc.dashboard.recentActivity.useQuery();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="animate-spin w-5 h-5" />
+      </div>
+    );
+  }
+
+  if (!activity || activity.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <Users className="w-10 h-10 mx-auto mb-3 opacity-50" />
+        <p>No recent activity yet. Start adding expenses, repairs, or upgrades.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {activity.map((item: any) => {
+        const Icon = ACTIVITY_ICONS[item.type] || Receipt;
+        const colorClass = ACTIVITY_COLORS[item.type] || "bg-gray-100 text-gray-600";
+        return (
+          <div key={`${item.type}-${item.id}`} className="flex items-center gap-3 p-3 rounded-lg border">
+            <div className={`p-2 rounded-lg ${colorClass}`}>
+              <Icon className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium truncate">{item.label}</p>
+              <p className="text-sm text-muted-foreground capitalize">{item.type}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Avatar className="h-6 w-6">
+                <AvatarFallback className="text-[9px]">
+                  {getInitials(item.ownerName)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs text-muted-foreground">
+                {item.createdAt ? format(new Date(item.createdAt), "MMM d") : ""}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -244,6 +313,19 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Household Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Recent Household Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RecentActivitySection />
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card>

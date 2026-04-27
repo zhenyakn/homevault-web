@@ -329,6 +329,51 @@ export async function deleteCalendarEvent(id: string) {
   return true;
 }
 
+export async function getRecentActivity() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  // Get recent items across all modules with owner info
+  const recentExpenses = await db.select({
+    id: expenses.id,
+    label: expenses.label,
+    ownerId: expenses.ownerId,
+    createdAt: expenses.createdAt,
+    ownerName: users.name,
+  }).from(expenses).leftJoin(users, eq(expenses.ownerId, users.id)).orderBy(desc(expenses.createdAt)).limit(5);
+  
+  const recentRepairs = await db.select({
+    id: repairs.id,
+    label: repairs.label,
+    ownerId: repairs.ownerId,
+    createdAt: repairs.createdAt,
+    ownerName: users.name,
+  }).from(repairs).leftJoin(users, eq(repairs.ownerId, users.id)).orderBy(desc(repairs.createdAt)).limit(5);
+  
+  const recentUpgrades = await db.select({
+    id: upgrades.id,
+    label: upgrades.label,
+    ownerId: upgrades.ownerId,
+    createdAt: upgrades.createdAt,
+    ownerName: users.name,
+  }).from(upgrades).leftJoin(users, eq(upgrades.ownerId, users.id)).orderBy(desc(upgrades.createdAt)).limit(5);
+  
+  const all = [
+    ...recentExpenses.map(e => ({ ...e, type: 'expense' as const })),
+    ...recentRepairs.map(r => ({ ...r, type: 'repair' as const })),
+    ...recentUpgrades.map(u => ({ ...u, type: 'upgrade' as const })),
+  ];
+  
+  // Sort by createdAt descending and take top 10
+  all.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
+  });
+  
+  return all.slice(0, 10);
+}
+
 export async function getDashboardStats(userId: number) {
   const db = await getDb();
   if (!db) return null;

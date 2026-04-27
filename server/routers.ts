@@ -108,6 +108,9 @@ export const appRouter = router({
     stats: protectedProcedure.query(async ({ ctx }) => {
       return await db.getDashboardStats(ctx.user.id);
     }),
+    recentActivity: protectedProcedure.query(async () => {
+      return await db.getRecentActivity();
+    }),
   }),
 
   expenses: router({
