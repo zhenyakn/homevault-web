@@ -44,9 +44,9 @@
 
 ### Dashboard Overview
 - [x] Create KPI grid showing purchase total, monthly recurring, YTD expenses, pending repairs, upgrades spent, wishlist total
-- [ ] Display upcoming events section (next 30 days)
+- [x] Display upcoming events section (next 30 days)
 - [ ] Show household members and their activity
-- [ ] Implement Google Map showing property location
+- [x] Implement Google Map showing property location
 - [x] Add quick action buttons for common tasks
 
 ### Expense Tracking Module
@@ -114,17 +114,17 @@
 
 ### Property Settings & Map
 - [x] Create property settings form with address, purchase price, details
-- [ ] Implement Google Map integration for property location
-- [ ] Add address search and geocoding
+- [x] Implement Google Map integration for property location
+- [x] Add address search and geocoding
 - [x] Display property details (square meters, rooms, year built, etc.)
 - [x] Add currency and timezone configuration
 - [x] Implement settings save and validation
 
 ### Multi-Profile Support
-- [ ] Implement profile switcher in sidebar
-- [ ] Add profile menu with list of household members
+- [x] Implement profile list in sidebar
+- [x] Add profile menu with list of household members
 - [ ] Create profile management interface
-- [ ] Implement per-entry ownership attribution
+- [ ] Implement per-entry ownership attribution with owner display on records
 - [ ] Display profile info on all records
 - [ ] Add profile-based filtering and views
 

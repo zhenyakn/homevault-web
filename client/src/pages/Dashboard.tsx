@@ -1,14 +1,38 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, AlertCircle, Home, DollarSign, Zap, ShoppingCart, Heart, Loader2 } from "lucide-react";
+import { TrendingUp, AlertCircle, Home, DollarSign, Zap, ShoppingCart, Heart, Loader2, CalendarDays, MapPin } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { MapView } from "@/components/Map";
+import { useRef, useCallback } from "react";
+import { format } from "date-fns";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
   const { data: property } = trpc.property.get.useQuery();
+  const { data: events } = trpc.calendar.list.useQuery({});
+  const mapRef = useRef<google.maps.Map | null>(null);
+
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    // If property has an address, geocode it
+    if (property?.address) {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ address: property.address }, (results, status) => {
+        if (status === "OK" && results && results[0]) {
+          map.setCenter(results[0].geometry.location);
+          map.setZoom(16);
+          new google.maps.marker.AdvancedMarkerElement({
+            map,
+            position: results[0].geometry.location,
+            title: property.houseName || "My Home",
+          });
+        }
+      });
+    }
+  }, [property?.address, property?.houseName]);
 
   if (isLoading) {
     return (
@@ -27,6 +51,17 @@ export default function Dashboard() {
     wishlistTotal: 0,
   };
   const prop = property || { houseName: "My Home", address: "", purchasePrice: 0 };
+
+  // Get upcoming events (next 30 days)
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const upcomingEvents = (events || [])
+    .filter((e: any) => {
+      const eventDate = new Date(e.date);
+      return eventDate >= now && eventDate <= thirtyDaysFromNow;
+    })
+    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 5);
 
   return (
     <div className="space-y-8">
@@ -136,6 +171,76 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(s.wishlistTotal)}</div>
             <p className="text-xs text-muted-foreground mt-1">Dream improvements</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Two-column layout: Upcoming Events + Map */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Upcoming Events */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarDays className="w-5 h-5" />
+              Upcoming Events
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {upcomingEvents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <CalendarDays className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                <p>No upcoming events in the next 30 days.</p>
+                <Button variant="outline" className="mt-3" onClick={() => setLocation("/calendar")}>
+                  View Calendar
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {upcomingEvents.map((event: any) => (
+                  <div key={event.id} className="flex items-center gap-3 p-3 rounded-lg border">
+                    <div className="text-center min-w-[50px]">
+                      <p className="text-xs text-muted-foreground">{format(new Date(event.date), "MMM")}</p>
+                      <p className="text-lg font-bold">{format(new Date(event.date), "dd")}</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{event.title}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{event.type}</p>
+                    </div>
+                  </div>
+                ))}
+                <Button variant="outline" className="w-full mt-2" onClick={() => setLocation("/calendar")}>
+                  View All Events
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Google Map */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Property Location
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {prop.address ? (
+              <MapView
+                className="h-[300px] rounded-lg overflow-hidden"
+                initialCenter={{ lat: 32.0853, lng: 34.7818 }}
+                initialZoom={14}
+                onMapReady={handleMapReady}
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground h-[300px] flex flex-col items-center justify-center border rounded-lg">
+                <MapPin className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                <p>Set your property address in Settings to see it on the map.</p>
+                <Button variant="outline" className="mt-3" onClick={() => setLocation("/property-settings")}>
+                  Go to Settings
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

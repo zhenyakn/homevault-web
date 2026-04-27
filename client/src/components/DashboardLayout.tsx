@@ -4,6 +4,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -21,11 +22,12 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
-import { LayoutDashboard, LogOut, PanelLeft, Users } from "lucide-react";
+import { LayoutDashboard, LogOut, PanelLeft, Users, Check } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
+import { trpc } from "@/lib/trpc";
 
 import { Home, Receipt, Wrench, TrendingUp, DollarSign, Heart, ShoppingCart, Calendar, Settings } from 'lucide-react';
 
@@ -45,6 +47,21 @@ const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 280;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
+
+// Color palette for household member avatars
+const AVATAR_COLORS = [
+  "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
+  "bg-pink-500", "bg-teal-500", "bg-indigo-500", "bg-red-500",
+];
+
+function getAvatarColor(index: number) {
+  return AVATAR_COLORS[index % AVATAR_COLORS.length];
+}
+
+function getInitials(name: string | null | undefined) {
+  if (!name) return "?";
+  return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+}
 
 export default function DashboardLayout({
   children,
@@ -124,6 +141,9 @@ function DashboardLayoutContent({
   const activeMenuItem = menuItems.find(item => item.path === location);
   const isMobile = useIsMobile();
 
+  // Fetch all household members for profile switcher
+  const { data: profiles } = trpc.profiles.list.useQuery();
+
   useEffect(() => {
     if (isCollapsed) {
       setIsResizing(false);
@@ -180,7 +200,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    Navigation
+                    HomeVault
                   </span>
                 </div>
               ) : null}
@@ -208,6 +228,37 @@ function DashboardLayoutContent({
                 );
               })}
             </SidebarMenu>
+
+            {/* Household Members Section */}
+            {!isCollapsed && profiles && profiles.length > 1 && (
+              <div className="px-4 pt-6 pb-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                  Household Members
+                </p>
+                <div className="space-y-1">
+                  {profiles.map((profile: any, index: number) => (
+                    <div
+                      key={profile.id}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
+                        profile.id === user?.id
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className={`text-[10px] text-white ${getAvatarColor(index)}`}>
+                          {getInitials(profile.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="truncate">{profile.name || "Unknown"}</span>
+                      {profile.id === user?.id && (
+                        <Check className="h-3 w-3 ml-auto shrink-0" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </SidebarContent>
 
           <SidebarFooter className="p-3">
@@ -216,7 +267,7 @@ function DashboardLayoutContent({
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Avatar className="h-9 w-9 border shrink-0">
                     <AvatarFallback className="text-xs font-medium">
-                      {user?.name?.charAt(0).toUpperCase()}
+                      {getInitials(user?.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
@@ -229,7 +280,31 @@ function DashboardLayoutContent({
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-56">
+                {profiles && profiles.length > 1 && (
+                  <>
+                    <div className="px-2 py-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">Household</p>
+                    </div>
+                    {profiles.map((profile: any, index: number) => (
+                      <DropdownMenuItem
+                        key={profile.id}
+                        className="cursor-pointer"
+                      >
+                        <Avatar className="h-5 w-5 mr-2">
+                          <AvatarFallback className={`text-[9px] text-white ${getAvatarColor(index)}`}>
+                            {getInitials(profile.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="truncate">{profile.name || "Unknown"}</span>
+                        {profile.id === user?.id && (
+                          <Check className="h-3 w-3 ml-auto" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem
                   onClick={logout}
                   className="cursor-pointer text-destructive focus:text-destructive"

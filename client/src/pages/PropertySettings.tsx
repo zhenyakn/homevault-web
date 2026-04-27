@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,17 +9,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Save, Home, Settings, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { MapView } from "@/components/Map";
 
 export default function PropertySettings() {
+  const utils = trpc.useUtils();
   const { data: property, isLoading } = trpc.property.get.useQuery();
   const updateProperty = trpc.property.update.useMutation({
     onSuccess: () => {
       toast.success("Property settings updated successfully");
+      utils.property.get.invalidate();
     },
     onError: (error) => {
       toast.error(`Failed to update property: ${error.message}`);
     },
   });
+
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
 
   const [formData, setFormData] = useState({
     houseName: "",
@@ -58,6 +64,34 @@ export default function PropertySettings() {
       });
     }
   }, [property]);
+
+  const geocodeAddress = useCallback(() => {
+    if (!mapRef.current || !formData.address) return;
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: formData.address }, (results, status) => {
+      if (status === "OK" && results && results[0] && mapRef.current) {
+        const location = results[0].geometry.location;
+        mapRef.current.setCenter(location);
+        mapRef.current.setZoom(16);
+        if (markerRef.current) {
+          markerRef.current.position = location;
+        } else {
+          markerRef.current = new google.maps.marker.AdvancedMarkerElement({
+            map: mapRef.current,
+            position: location,
+            title: formData.houseName || "My Home",
+          });
+        }
+      }
+    });
+  }, [formData.address, formData.houseName]);
+
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    if (formData.address) {
+      geocodeAddress();
+    }
+  }, [formData.address, geocodeAddress]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -136,14 +170,26 @@ export default function PropertySettings() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
-                <Textarea
-                  id="address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  placeholder="Full address"
-                  rows={3}
-                />
+                <div className="flex gap-2">
+                  <Textarea
+                    id="address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    placeholder="Full address"
+                    rows={2}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={geocodeAddress}
+                    className="self-end"
+                  >
+                    <MapPin className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -248,6 +294,27 @@ export default function PropertySettings() {
                   Has Storage Unit
                 </Label>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Google Map */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Property Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MapView
+                className="h-[350px] rounded-lg overflow-hidden"
+                initialCenter={{ lat: 32.0853, lng: 34.7818 }}
+                initialZoom={12}
+                onMapReady={handleMapReady}
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Enter your address above and click the pin icon to locate your property on the map.
+              </p>
             </CardContent>
           </Card>
 
