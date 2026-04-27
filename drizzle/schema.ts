@@ -24,8 +24,6 @@ export const users = mysqlTable(
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
     role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-    profileColor: varchar("profileColor", { length: 20 }).default("#4a7fa5"),
-    profileInitials: varchar("profileInitials", { length: 5 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
     lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),

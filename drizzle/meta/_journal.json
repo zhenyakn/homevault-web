@@ -15,6 +15,13 @@
       "when": 1777285100234,
       "tag": "0001_foamy_onslaught",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1777286514496,
+      "tag": "0002_known_agent_brand",
+      "breakpoints": true
     }
   ]
 }
