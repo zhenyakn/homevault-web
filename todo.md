@@ -31,7 +31,7 @@
 - [x] tRPC router for properties (get, update settings)
 - [x] tRPC router for profiles (list, switch, get current)
 - [x] Dashboard stats calculation procedure
-- [ ] File upload support for attachments
+- [x] File upload support for attachments
 
 ## Phase 2: Frontend UI & Dashboard
 
@@ -55,7 +55,7 @@
 - [x] Add recurring expense toggle and frequency options
 - [x] Implement mark-as-paid action with date tracking
 - [x] Create expense detail view with edit/delete options
-- [ ] Add file attachment support for receipts
+- [x] Add file attachment support for receipts
 - [ ] Display monthly expense summary and trends
 - [x] Export expense data to CSV
 
@@ -65,7 +65,7 @@
 - [x] Add contractor assignment functionality
 - [x] Create repair status workflow (Pending → In Progress → Resolved)
 - [x] Implement repair detail view with edit/delete options
-- [ ] Add file attachment support for photos/quotes
+- [x] Add file attachment support for photos/quotes
 - [ ] Display repair timeline and history
 - [x] Add cost tracking for repairs
 

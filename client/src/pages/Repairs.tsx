@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Loader2, Plus, Trash2, Pencil, Wrench } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import { FileUpload } from "@/components/FileUpload";
 
 const PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
 const STATUSES = ["Pending", "In Progress", "Resolved"] as const;
@@ -25,17 +26,19 @@ export default function Repairs() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ label: "", description: "", priority: "Medium" as typeof PRIORITIES[number], status: "Pending" as typeof STATUSES[number], dateLogged: new Date().toISOString().split("T")[0], contractor: "", contractorPhone: "", estimatedCost: "", actualCost: "", notes: "" });
-  const resetForm = () => { setFormData({ label: "", description: "", priority: "Medium", status: "Pending", dateLogged: new Date().toISOString().split("T")[0], contractor: "", contractorPhone: "", estimatedCost: "", actualCost: "", notes: "" }); setEditingId(null); };
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const resetForm = () => { setFormData({ label: "", description: "", priority: "Medium", status: "Pending", dateLogged: new Date().toISOString().split("T")[0], contractor: "", contractorPhone: "", estimatedCost: "", actualCost: "", notes: "" }); setAttachments([]); setEditingId(null); };
   const handleSubmit = async () => {
     if (!formData.label) { toast.error("Please enter a description"); return; }
     try {
-      const payload = { label: formData.label, description: formData.description || undefined, priority: formData.priority, status: formData.status, dateLogged: formData.dateLogged, contractor: formData.contractor || undefined, contractorPhone: formData.contractorPhone || undefined, estimatedCost: formData.estimatedCost ? parseInt(formData.estimatedCost) * 100 : undefined, actualCost: formData.actualCost ? parseInt(formData.actualCost) * 100 : undefined, notes: formData.notes || undefined };
+      const attachmentUrls = attachments.map((a: any) => a.url);
+      const payload = { label: formData.label, description: formData.description || undefined, priority: formData.priority, status: formData.status, dateLogged: formData.dateLogged, contractor: formData.contractor || undefined, contractorPhone: formData.contractorPhone || undefined, estimatedCost: formData.estimatedCost ? parseInt(formData.estimatedCost) * 100 : undefined, actualCost: formData.actualCost ? parseInt(formData.actualCost) * 100 : undefined, notes: formData.notes || undefined, attachments: attachmentUrls };
       if (editingId) { await updateMutation.mutateAsync({ id: editingId, data: payload }); toast.success("Repair updated"); }
       else { await createMutation.mutateAsync(payload); toast.success("Repair logged"); }
       setOpen(false); resetForm(); refetch();
     } catch { toast.error("Failed to save repair"); }
   };
-  const handleEdit = (repair: any) => { setEditingId(repair.id); setFormData({ label: repair.label, description: repair.description || "", priority: repair.priority, status: repair.status, dateLogged: repair.dateLogged, contractor: repair.contractor || "", contractorPhone: repair.contractorPhone || "", estimatedCost: repair.estimatedCost ? String(repair.estimatedCost / 100) : "", actualCost: repair.actualCost ? String(repair.actualCost / 100) : "", notes: repair.notes || "" }); setOpen(true); };
+  const handleEdit = (repair: any) => { setEditingId(repair.id); setFormData({ label: repair.label, description: repair.description || "", priority: repair.priority, status: repair.status, dateLogged: repair.dateLogged, contractor: repair.contractor || "", contractorPhone: repair.contractorPhone || "", estimatedCost: repair.estimatedCost ? String(repair.estimatedCost / 100) : "", actualCost: repair.actualCost ? String(repair.actualCost / 100) : "", notes: repair.notes || "" }); setAttachments((repair.attachments || []).map((url: string) => ({ url, filename: url.split('/').pop() || 'file', mimeType: 'application/octet-stream', size: 0 }))); setOpen(true); };
   const handleDelete = async (id: string) => { try { await deleteMutation.mutateAsync({ id }); toast.success("Repair deleted"); refetch(); } catch { toast.error("Failed to delete"); } };
   if (isLoading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="animate-spin w-8 h-8" /></div>;
   const pending = repairs?.filter(r => r.status === "Pending").length || 0;
@@ -66,6 +69,7 @@ export default function Repairs() {
                 <div><Label>Actual Cost</Label><Input type="number" value={formData.actualCost} onChange={e => setFormData({...formData, actualCost: e.target.value})} placeholder="0" /></div>
               </div>
               <div><Label>Notes</Label><Input value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="Optional notes" /></div>
+              <div><Label>Attachments</Label><FileUpload onUpload={(file) => setAttachments([...attachments, file])} existingFiles={attachments} onRemove={(i) => setAttachments(attachments.filter((_, idx) => idx !== i))} accept="image/*,.pdf" /></div>
               <Button onClick={handleSubmit} className="w-full">{editingId ? "Update" : "Log Repair"}</Button>
             </div>
           </DialogContent>

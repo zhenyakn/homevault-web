@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Plus, Trash2, Check, Pencil, Download, Filter } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import { FileUpload } from "@/components/FileUpload";
 
 const CATEGORIES = ["Mortgage", "Utility", "Insurance", "Tax", "Maintenance", "Other"] as const;
 const FREQUENCIES = ["Monthly", "Quarterly", "Annual"] as const;
@@ -45,6 +46,7 @@ export default function Expenses() {
     recurringFrequency: "Monthly" as typeof FREQUENCIES[number],
     notes: "",
   });
+  const [attachments, setAttachments] = useState<any[]>([]);
 
   const resetForm = () => {
     setFormData({
@@ -56,6 +58,7 @@ export default function Expenses() {
       recurringFrequency: "Monthly",
       notes: "",
     });
+    setAttachments([]);
     setEditingId(null);
   };
 
@@ -70,6 +73,7 @@ export default function Expenses() {
       recurringFrequency: expense.recurringFrequency || "Monthly",
       notes: expense.notes || "",
     });
+    setAttachments((expense.attachments || []).map((url: string) => ({ url, filename: url.split('/').pop() || 'file', mimeType: 'application/octet-stream', size: 0 })));
     setOpen(true);
   };
 
@@ -79,6 +83,8 @@ export default function Expenses() {
       return;
     }
 
+    const attachmentUrls = attachments.map(a => a.url);
+
     try {
       if (editingId) {
         await updateMutation.mutateAsync({
@@ -86,6 +92,7 @@ export default function Expenses() {
           data: {
             ...formData,
             amount: Math.round(parseFloat(formData.amount) * 100),
+            attachments: attachmentUrls,
           },
         });
         toast.success("Expense updated");
@@ -93,6 +100,7 @@ export default function Expenses() {
         await createMutation.mutateAsync({
           ...formData,
           amount: Math.round(parseFloat(formData.amount) * 100),
+          attachments: attachmentUrls,
         });
         toast.success("Expense created");
       }
@@ -275,6 +283,15 @@ export default function Expenses() {
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Optional notes"
+                  />
+                </div>
+                <div>
+                  <Label>Attachments</Label>
+                  <FileUpload
+                    onUpload={(file) => setAttachments([...attachments, file])}
+                    existingFiles={attachments}
+                    onRemove={(i) => setAttachments(attachments.filter((_, idx) => idx !== i))}
+                    accept="image/*,.pdf,.doc,.docx"
                   />
                 </div>
                 <Button onClick={handleSubmit} className="w-full">

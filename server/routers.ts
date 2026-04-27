@@ -6,6 +6,8 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import * as db from "./db";
 
+const attachmentSchema = z.array(z.string()).optional();
+
 const expenseSchema = z.object({
   label: z.string().min(1),
   amount: z.number().int().positive(),
@@ -14,6 +16,7 @@ const expenseSchema = z.object({
   isRecurring: z.boolean().optional(),
   recurringFrequency: z.enum(["Monthly", "Quarterly", "Annual"]).optional(),
   notes: z.string().optional(),
+  attachments: attachmentSchema,
 });
 
 const repairSchema = z.object({
@@ -27,6 +30,7 @@ const repairSchema = z.object({
   estimatedCost: z.number().int().optional(),
   actualCost: z.number().int().optional(),
   notes: z.string().optional(),
+  attachments: attachmentSchema,
 });
 
 const upgradeSchema = z.object({
