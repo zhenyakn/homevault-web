@@ -57,7 +57,7 @@
 - [x] Create expense detail view with edit/delete options
 - [ ] Add file attachment support for receipts
 - [ ] Display monthly expense summary and trends
-- [ ] Export expense data to CSV
+- [x] Export expense data to CSV
 
 ### Repair Log Module
 - [x] Create repair list view with status and priority filters
@@ -150,10 +150,10 @@
 - [ ] Implement loan repayment reminders
 
 ### Mobile Optimization
-- [ ] Ensure responsive design for all modules
-- [ ] Optimize touch interactions for mobile
-- [ ] Implement mobile-friendly forms
-- [ ] Add mobile-specific navigation
+- [x] Ensure responsive design for all modules
+- [x] Optimize touch interactions for mobile
+- [x] Implement mobile-friendly forms
+- [x] Add mobile-specific navigation
 
 ### Testing & Quality
 - [x] Write unit tests for backend procedures
