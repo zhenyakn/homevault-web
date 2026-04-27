@@ -97,7 +97,7 @@ export const expenses = mysqlTable(
     ]),
     isPaid: boolean("isPaid").default(false),
     paidDate: varchar("paidDate", { length: 20 }),
-    attachments: json("attachments").$type<string[]>().default([]),
+    attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -134,7 +134,7 @@ export const repairs = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    attachments: json("attachments").$type<string[]>().default([]),
+    attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -165,7 +165,7 @@ export const upgrades = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    attachments: json("attachments").$type<string[]>().default([]),
+    attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -205,7 +205,7 @@ export const loans = mysqlTable(
       .references(() => users.id),
     repayments: json("repayments").$type<
       Array<{ date: string; amount: number; ownerId: number }>
-    >().default([]),
+    >(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -259,7 +259,7 @@ export const purchaseCosts = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    attachments: json("attachments").$type<string[]>().default([]),
+    attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

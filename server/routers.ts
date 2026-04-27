@@ -277,6 +277,28 @@ export const appRouter = router({
       .query(async ({ input }) => {
         return await db.getCalendarEvents(input.startDate, input.endDate);
       }),
+    create: protectedProcedure
+      .input(
+        z.object({
+          title: z.string().min(1),
+          date: z.string(),
+          time: z.string().optional(),
+          eventType: z.enum(["Expense", "Repair", "Upgrade", "Loan", "Other"]),
+          notes: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        return await db.createCalendarEvent({
+          id: nanoid(),
+          ...input,
+          createdById: ctx.user.id,
+        });
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ input }) => {
+        return await db.deleteCalendarEvent(input.id);
+      }),
   }),
 
   property: router({

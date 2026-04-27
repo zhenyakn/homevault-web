@@ -1,16 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, TrendingUp, AlertCircle, Home, DollarSign, Zap, Heart, ShoppingCart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TrendingUp, AlertCircle, Home, DollarSign, Zap, ShoppingCart, Heart, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 
 export default function Dashboard() {
-  const { data: stats, isLoading, error } = trpc.dashboard.stats.useQuery();
+  const [, setLocation] = useLocation();
+  const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
+  const { data: property } = trpc.property.get.useQuery();
 
-  // Fallback data for display
-  const displayStats = stats || {
-    propertyName: "My Home",
-    propertyAddress: "Loading...",
-    propertyPrice: 0,
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="animate-spin w-8 h-8" />
+      </div>
+    );
+  }
+
+  const s = stats || {
     purchaseTotal: 0,
     monthlyRecurring: 0,
     ytdExpenses: 0,
@@ -18,28 +26,7 @@ export default function Dashboard() {
     upgradesSpent: 0,
     wishlistTotal: 0,
   };
-
-  if (error) {
-    return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-2">Welcome to HomeVault. Here's your property overview.</p>
-        </div>
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-red-900">Error loading dashboard</p>
-                <p className="text-sm text-red-700 mt-1">{error.message}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const prop = property || { houseName: "My Home", address: "", purchasePrice: 0 };
 
   return (
     <div className="space-y-8">
@@ -59,15 +46,15 @@ export default function Dashboard() {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Property Name</p>
-            <p className="text-lg font-semibold">{isLoading ? "Loading..." : displayStats.propertyName}</p>
+            <p className="text-lg font-semibold">{prop.houseName || "My Home"}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Address</p>
-            <p className="text-lg font-semibold">{isLoading ? "Loading..." : displayStats.propertyAddress || "Not set"}</p>
+            <p className="text-lg font-semibold">{prop.address || "Not set"}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Purchase Price</p>
-            <p className="text-lg font-semibold">{isLoading ? "Loading..." : displayStats.propertyPrice ? formatCurrency(displayStats.propertyPrice) : "Not set"}</p>
+            <p className="text-lg font-semibold">{prop.purchasePrice ? formatCurrency(prop.purchasePrice) : "Not set"}</p>
           </div>
         </CardContent>
       </Card>
@@ -82,9 +69,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.purchaseTotal)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(s.purchaseTotal)}</div>
             <p className="text-xs text-muted-foreground mt-1">Acquisition costs</p>
           </CardContent>
         </Card>
@@ -97,9 +82,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.monthlyRecurring)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(s.monthlyRecurring)}</div>
             <p className="text-xs text-muted-foreground mt-1">Regular expenses</p>
           </CardContent>
         </Card>
@@ -112,9 +95,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.ytdExpenses)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(s.ytdExpenses)}</div>
             <p className="text-xs text-muted-foreground mt-1">Year to date</p>
           </CardContent>
         </Card>
@@ -127,9 +108,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : displayStats.pendingRepairs}
-            </div>
+            <div className="text-2xl font-bold">{s.pendingRepairs}</div>
             <p className="text-xs text-muted-foreground mt-1">Items</p>
           </CardContent>
         </Card>
@@ -142,9 +121,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.upgradesSpent)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(s.upgradesSpent)}</div>
             <p className="text-xs text-muted-foreground mt-1">In progress</p>
           </CardContent>
         </Card>
@@ -157,9 +134,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.wishlistTotal)}
-            </div>
+            <div className="text-2xl font-bold">{formatCurrency(s.wishlistTotal)}</div>
             <p className="text-xs text-muted-foreground mt-1">Dream improvements</p>
           </CardContent>
         </Card>
@@ -170,8 +145,31 @@ export default function Dashboard() {
         <CardHeader>
           <CardTitle>Quick Start</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Get started by adding your first expense, repair, or upgrade from the navigation menu.</p>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">Get started by managing your home finances:</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setLocation("/expenses")}
+              className="w-full"
+            >
+              Add Expense
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setLocation("/repairs")}
+              className="w-full"
+            >
+              Log Repair
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => setLocation("/upgrades")}
+              className="w-full"
+            >
+              Plan Upgrade
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

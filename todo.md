@@ -47,78 +47,78 @@
 - [ ] Display upcoming events section (next 30 days)
 - [ ] Show household members and their activity
 - [ ] Implement Google Map showing property location
-- [ ] Add quick action buttons for common tasks
+- [x] Add quick action buttons for common tasks
 
 ### Expense Tracking Module
-- [ ] Create expense list view with filters by category and date range
-- [ ] Implement add expense form with category selection
-- [ ] Add recurring expense toggle and frequency options
-- [ ] Implement mark-as-paid action with date tracking
-- [ ] Create expense detail view with edit/delete options
+- [x] Create expense list view with filters by category and date range
+- [x] Implement add expense form with category selection
+- [x] Add recurring expense toggle and frequency options
+- [x] Implement mark-as-paid action with date tracking
+- [x] Create expense detail view with edit/delete options
 - [ ] Add file attachment support for receipts
 - [ ] Display monthly expense summary and trends
 - [ ] Export expense data to CSV
 
 ### Repair Log Module
-- [ ] Create repair list view with status and priority filters
-- [ ] Implement add repair form with priority selection
-- [ ] Add contractor assignment functionality
-- [ ] Create repair status workflow (Pending → In Progress → Resolved)
-- [ ] Implement repair detail view with edit/delete options
+- [x] Create repair list view with status and priority filters
+- [x] Implement add repair form with priority selection
+- [x] Add contractor assignment functionality
+- [x] Create repair status workflow (Pending → In Progress → Resolved)
+- [x] Implement repair detail view with edit/delete options
 - [ ] Add file attachment support for photos/quotes
 - [ ] Display repair timeline and history
-- [ ] Add cost tracking for repairs
+- [x] Add cost tracking for repairs
 
 ### Upgrade Project Tracking
-- [ ] Create upgrade list view with status filters
-- [ ] Implement add upgrade form with budget input
-- [ ] Add spent amount tracking with visual progress
-- [ ] Create upgrade detail view with edit/delete options
-- [ ] Implement status workflow (Planned → In Progress → Done)
+- [x] Create upgrade list view with status filters
+- [x] Implement add upgrade form with budget input
+- [x] Add spent amount tracking with visual progress
+- [x] Create upgrade detail view with edit/delete options
+- [x] Implement status workflow (Planned → In Progress → Done)
 - [ ] Add file attachment support for plans/quotes
-- [ ] Display budget vs. spent comparison
+- [x] Display budget vs. spent comparison
 - [ ] Add cost breakdown by upgrade
 
 ### Family Loan Tracking
-- [ ] Create loan list view with outstanding balance display
-- [ ] Implement add loan form with lender and amount
-- [ ] Add repayment logging functionality
-- [ ] Create loan detail view with repayment history
-- [ ] Display total borrowed, total repaid, and outstanding balance
+- [x] Create loan list view with outstanding balance display
+- [x] Implement add loan form with lender and amount
+- [x] Add repayment logging functionality
+- [x] Create loan detail view with repayment history
+- [x] Display total borrowed, total repaid, and outstanding balance
 - [ ] Implement repayment schedule visualization
-- [ ] Add edit/delete functionality for loans
+- [x] Add edit/delete functionality for loans
 
 ### Wishlist Module
-- [ ] Create wishlist view with priority sorting
-- [ ] Implement add wishlist item form with cost and priority
-- [ ] Create wishlist item detail view with edit/delete options
-- [ ] Display total wishlist value and priority breakdown
+- [x] Create wishlist view with priority sorting
+- [x] Implement add wishlist item form with cost and priority
+- [x] Create wishlist item detail view with edit/delete options
+- [x] Display total wishlist value and priority breakdown
 - [ ] Add ability to convert wishlist items to upgrade projects
-- [ ] Implement wishlist filtering by priority
+- [x] Implement wishlist filtering by priority
 
 ### Purchase Cost Tracker
-- [ ] Create purchase cost list view
-- [ ] Implement add purchase cost form with date and amount
-- [ ] Create purchase cost detail view with edit/delete options
-- [ ] Display total purchase costs and breakdown by category
+- [x] Create purchase cost list view
+- [x] Implement add purchase cost form with date and amount
+- [x] Create purchase cost detail view with edit/delete options
+- [x] Display total purchase costs and breakdown by category
 - [ ] Add file attachment support for invoices
 - [ ] Display purchase cost timeline
 
 ### Calendar View
-- [ ] Create calendar component showing all events
-- [ ] Implement event filtering by type (expense, repair, loan, etc.)
-- [ ] Add event detail modal with linked entity information
-- [ ] Implement event creation from calendar view
+- [x] Create calendar component showing all events
+- [x] Implement event filtering by type (expense, repair, loan, etc.)
+- [x] Add event detail modal with linked entity information
+- [x] Implement event creation from calendar view
 - [ ] Add upcoming events sidebar
 - [ ] Display event reminders (configurable days before)
 
 ### Property Settings & Map
-- [ ] Create property settings form with address, purchase price, details
+- [x] Create property settings form with address, purchase price, details
 - [ ] Implement Google Map integration for property location
 - [ ] Add address search and geocoding
-- [ ] Display property details (square meters, rooms, year built, etc.)
-- [ ] Add currency and timezone configuration
-- [ ] Implement settings save and validation
+- [x] Display property details (square meters, rooms, year built, etc.)
+- [x] Add currency and timezone configuration
+- [x] Implement settings save and validation
 
 ### Multi-Profile Support
 - [ ] Implement profile switcher in sidebar
@@ -156,7 +156,7 @@
 - [ ] Add mobile-specific navigation
 
 ### Testing & Quality
-- [ ] Write unit tests for backend procedures
+- [x] Write unit tests for backend procedures
 - [ ] Write integration tests for critical flows
 - [ ] Perform end-to-end testing
 - [ ] Conduct accessibility audit
@@ -176,3 +176,11 @@
 - [ ] Collaborative household notes
 - [ ] Document storage and organization
 - [ ] Property inspection checklists
+
+## Bug Fixes (Critical)
+- [x] Fix data not loading across entire app (dashboard, expenses, all modules)
+- [x] Fix database query errors (profileColor column, ownerId type mismatch)
+- [x] Ensure all tRPC procedures return data correctly
+- [x] Fix missing database tables (migration not applied)
+- [x] Fix TiDB JSON default incompatibility
+- [x] Fix DashboardLayout showing placeholder Page 1/Page 2 instead of real navigation
