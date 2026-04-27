@@ -27,9 +27,18 @@ import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
+import { Home, Receipt, Wrench, TrendingUp, DollarSign, Heart, ShoppingCart, Calendar, Settings } from 'lucide-react';
+
 const menuItems = [
-  { icon: LayoutDashboard, label: "Page 1", path: "/" },
-  { icon: Users, label: "Page 2", path: "/some-path" },
+  { icon: Home, label: "Dashboard", path: "/" },
+  { icon: Receipt, label: "Expenses", path: "/expenses" },
+  { icon: Wrench, label: "Repairs", path: "/repairs" },
+  { icon: TrendingUp, label: "Upgrades", path: "/upgrades" },
+  { icon: DollarSign, label: "Loans", path: "/loans" },
+  { icon: Heart, label: "Wishlist", path: "/wishlist" },
+  { icon: ShoppingCart, label: "Purchase Costs", path: "/purchase-costs" },
+  { icon: Calendar, label: "Calendar", path: "/calendar" },
+  { icon: Settings, label: "Settings", path: "/property-settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

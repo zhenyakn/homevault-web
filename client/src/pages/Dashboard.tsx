@@ -1,21 +1,44 @@
-import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, TrendingUp, AlertCircle, Home, DollarSign } from "lucide-react";
+import { Loader2, TrendingUp, AlertCircle, Home, DollarSign, Zap, Heart, ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
 
 export default function Dashboard() {
-  const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
+  const { data: stats, isLoading, error } = trpc.dashboard.stats.useQuery();
 
-  if (isLoading) {
+  // Fallback data for display
+  const displayStats = stats || {
+    propertyName: "My Home",
+    propertyAddress: "Loading...",
+    propertyPrice: 0,
+    purchaseTotal: 0,
+    monthlyRecurring: 0,
+    ytdExpenses: 0,
+    pendingRepairs: 0,
+    upgradesSpent: 0,
+    wishlistTotal: 0,
+  };
+
+  if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin w-8 h-8" />
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground mt-2">Welcome to HomeVault. Here's your property overview.</p>
+        </div>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium text-red-900">Error loading dashboard</p>
+                <p className="text-sm text-red-700 mt-1">{error.message}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
-  }
-
-  if (!stats) {
-    return <div>No data available</div>;
   }
 
   return (
@@ -36,15 +59,15 @@ export default function Dashboard() {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Property Name</p>
-            <p className="text-lg font-semibold">{stats.propertyName}</p>
+            <p className="text-lg font-semibold">{isLoading ? "Loading..." : displayStats.propertyName}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Address</p>
-            <p className="text-lg font-semibold">{stats.propertyAddress || "Not set"}</p>
+            <p className="text-lg font-semibold">{isLoading ? "Loading..." : displayStats.propertyAddress || "Not set"}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Purchase Price</p>
-            <p className="text-lg font-semibold">{stats.propertyPrice ? formatCurrency(stats.propertyPrice) : "Not set"}</p>
+            <p className="text-lg font-semibold">{isLoading ? "Loading..." : displayStats.propertyPrice ? formatCurrency(displayStats.propertyPrice) : "Not set"}</p>
           </div>
         </CardContent>
       </Card>
@@ -53,97 +76,104 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Purchase Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              Purchase Total
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.purchaseTotal)}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.purchaseTotal)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Acquisition costs</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Recurring</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Zap className="w-4 h-4" />
+              Monthly Recurring
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.monthlyRecurring)}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.monthlyRecurring)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Regular expenses</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">YTD Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
+              YTD Expenses
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.ytdExpenses)}</div>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.ytdExpenses)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Year to date</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Upgrades Spent</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              Pending Repairs
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.upgradesSpent)}</div>
-            <p className="text-xs text-muted-foreground mt-1">Improvements</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Financial Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
-              Financial Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Invested</span>
-              <span className="font-semibold">{formatCurrency(stats.totalInvested)}</span>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : displayStats.pendingRepairs}
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Borrowed</span>
-              <span className="font-semibold">{formatCurrency(stats.totalBorrowed)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Repaid</span>
-              <span className="font-semibold">{formatCurrency(stats.totalRepaid)}</span>
-            </div>
-            <div className="border-t pt-4 flex justify-between">
-              <span className="font-semibold">Outstanding Balance</span>
-              <span className="font-bold text-lg">{formatCurrency(stats.totalOwed)}</span>
-            </div>
+            <p className="text-xs text-muted-foreground mt-1">Items</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
-              Quick Stats
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <ShoppingCart className="w-4 h-4" />
+              Upgrades Spent
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Pending Repairs</span>
-              <span className="font-semibold text-orange-600">{stats.pendingRepairs}</span>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.upgradesSpent)}
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Wishlist Items</span>
-              <span className="font-semibold">{stats.wishlistTotal ? `${formatCurrency(stats.wishlistTotal)}` : "0"}</span>
+            <p className="text-xs text-muted-foreground mt-1">In progress</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Heart className="w-4 h-4" />
+              Wishlist Total
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : formatCurrency(displayStats.wishlistTotal)}
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Monthly Obligation</span>
-              <span className="font-semibold">{formatCurrency(stats.monthlyRecurring)}</span>
-            </div>
+            <p className="text-xs text-muted-foreground mt-1">Dream improvements</p>
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Start</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">Get started by adding your first expense, repair, or upgrade from the navigation menu.</p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -72,7 +72,7 @@ function Router() {
         <Route path="/wishlist" component={Wishlist} />
         <Route path="/purchase-costs" component={PurchaseCosts} />
         <Route path="/calendar" component={Calendar} />
-        <Route path="/settings" component={PropertySettings} />
+        <Route path="/property-settings" component={PropertySettings} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
