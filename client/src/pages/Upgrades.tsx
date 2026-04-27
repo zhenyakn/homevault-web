@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Pencil, Trash2, Wallet, TrendingUp, Activity } from "lucide-react";
 import { toast } from "sonner";
+import { FileUpload } from "@/components/FileUpload";
 
 type UpgradeStatus = "Planned" | "In Progress" | "Done";
 
@@ -53,6 +54,7 @@ export default function Upgrades() {
     spent: "",
     notes: "",
   });
+  const [attachments, setAttachments] = useState<any[]>([]);
 
   const resetForm = () => {
     setEditingId(null);
@@ -64,6 +66,7 @@ export default function Upgrades() {
       spent: "",
       notes: "",
     });
+    setAttachments([]);
   };
 
   const handleEdit = (upgrade: any) => {
@@ -76,6 +79,7 @@ export default function Upgrades() {
       spent: (upgrade.spent / 100).toString(),
       notes: upgrade.notes || "",
     });
+    setAttachments((upgrade.attachments || []).map((url: string) => ({ url, filename: url.split('/').pop() || 'file', mimeType: 'application/octet-stream', size: 0 })));
     setIsDialogOpen(true);
   };
 
@@ -90,6 +94,7 @@ export default function Upgrades() {
     const budgetCents = Math.round(parseFloat(formData.budget) * 100);
     const spentCents = formData.spent ? Math.round(parseFloat(formData.spent) * 100) : 0;
 
+    const attachmentUrls = attachments.map((a: any) => a.url);
     if (editingId) {
       updateMutation.mutate({
         id: editingId,
@@ -100,6 +105,7 @@ export default function Upgrades() {
           budget: budgetCents,
           spent: spentCents,
           notes: formData.notes,
+          attachments: attachmentUrls,
         },
       });
     } else {
@@ -110,6 +116,7 @@ export default function Upgrades() {
         budget: budgetCents,
         spent: spentCents,
         notes: formData.notes,
+        attachments: attachmentUrls,
       });
     }
   };
@@ -221,6 +228,10 @@ export default function Upgrades() {
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label>Attachments</Label>
+                <FileUpload onUpload={(file) => setAttachments([...attachments, file])} existingFiles={attachments} onRemove={(i) => setAttachments(attachments.filter((_, idx) => idx !== i))} accept="image/*,.pdf" />
               </div>
               <Button type="submit" className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
                 {createMutation.isPending || updateMutation.isPending ? (

@@ -40,6 +40,7 @@ const upgradeSchema = z.object({
   budget: z.number().int().positive(),
   spent: z.number().int().optional(),
   notes: z.string().optional(),
+  attachments: attachmentSchema,
 });
 
 const loanSchema = z.object({
@@ -50,6 +51,7 @@ const loanSchema = z.object({
   startDate: z.string(),
   dueDate: z.string().optional(),
   notes: z.string().optional(),
+  attachments: attachmentSchema,
 });
 
 const wishlistSchema = z.object({
@@ -57,6 +59,7 @@ const wishlistSchema = z.object({
   description: z.string().optional(),
   estimatedCost: z.number().int().positive(),
   priority: z.enum(["Low", "Medium", "High"]),
+  attachments: attachmentSchema,
 });
 
 const purchaseCostSchema = z.object({
@@ -65,6 +68,7 @@ const purchaseCostSchema = z.object({
   date: z.string(),
   category: z.string().optional(),
   notes: z.string().optional(),
+  attachments: attachmentSchema,
 });
 
 const propertySchema = z.object({

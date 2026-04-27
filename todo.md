@@ -75,7 +75,7 @@
 - [x] Add spent amount tracking with visual progress
 - [x] Create upgrade detail view with edit/delete options
 - [x] Implement status workflow (Planned → In Progress → Done)
-- [ ] Add file attachment support for plans/quotes
+- [x] Add file attachment support for plans/quotes
 - [x] Display budget vs. spent comparison
 - [ ] Add cost breakdown by upgrade
 
@@ -101,7 +101,7 @@
 - [x] Implement add purchase cost form with date and amount
 - [x] Create purchase cost detail view with edit/delete options
 - [x] Display total purchase costs and breakdown by category
-- [ ] Add file attachment support for invoices
+- [x] Add file attachment support for invoices
 - [ ] Display purchase cost timeline
 
 ### Calendar View
