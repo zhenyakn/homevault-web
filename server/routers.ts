@@ -91,13 +91,10 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return {
-        success: true,
-      } as const;
+      return { success: true } as const;
     }),
   }),
 
-  // Profiles
   profiles: router({
     list: protectedProcedure.query(async () => {
       return await db.getAllUsers();
@@ -107,14 +104,12 @@ export const appRouter = router({
     }),
   }),
 
-  // Dashboard
   dashboard: router({
     stats: protectedProcedure.query(async ({ ctx }) => {
       return await db.getDashboardStats(ctx.user.id);
     }),
   }),
 
-  // Expenses
   expenses: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.getExpenses(ctx.user.id);
@@ -144,7 +139,6 @@ export const appRouter = router({
       }),
   }),
 
-  // Repairs
   repairs: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.getRepairs(ctx.user.id);
@@ -166,7 +160,6 @@ export const appRouter = router({
     }),
   }),
 
-  // Upgrades
   upgrades: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.getUpgrades(ctx.user.id);
@@ -188,7 +181,6 @@ export const appRouter = router({
     }),
   }),
 
-  // Loans
   loans: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.getLoans(ctx.user.id);
@@ -217,8 +209,8 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const loan = await db.getLoans(ctx.user.id);
-        const targetLoan = loan.find((l) => l.id === input.loanId);
+        const loans = await db.getLoans(ctx.user.id);
+        const targetLoan = loans.find((l) => l.id === input.loanId);
         if (!targetLoan) throw new Error("Loan not found");
 
         const updatedRepayments = [
@@ -232,7 +224,6 @@ export const appRouter = router({
       }),
   }),
 
-  // Wishlist
   wishlist: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.getWishlistItems(ctx.user.id);
@@ -254,7 +245,6 @@ export const appRouter = router({
     }),
   }),
 
-  // Purchase Costs
   purchaseCosts: router({
     list: protectedProcedure.query(async ({ ctx }) => {
       return await db.getPurchaseCosts(ctx.user.id);
@@ -276,7 +266,6 @@ export const appRouter = router({
     }),
   }),
 
-  // Calendar
   calendar: router({
     list: protectedProcedure
       .input(
@@ -290,7 +279,6 @@ export const appRouter = router({
       }),
   }),
 
-  // Property
   property: router({
     get: protectedProcedure.query(async () => {
       return await db.getProperty();

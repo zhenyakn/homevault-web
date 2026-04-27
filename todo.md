@@ -4,46 +4,46 @@
 
 ### Architecture & Planning
 - [x] Initialize web project with tRPC + React + Express + Database
-- [ ] Design database schema for all entities
-- [ ] Create Drizzle ORM models and migrations
-- [ ] Implement tRPC procedures for core operations
+- [x] Design database schema for all entities
+- [x] Create Drizzle ORM models and migrations
+- [x] Implement tRPC procedures for core operations
 
 ### Database Schema
-- [ ] Users table with profiles and roles
-- [ ] Properties table with address, purchase details, and settings
-- [ ] Expenses table with categories and recurring support
-- [ ] Repairs table with priority and contractor tracking
-- [ ] Upgrades table with budget vs. spent tracking
-- [ ] Loans table with repayment history
-- [ ] WishlistItems table with priority and cost estimates
-- [ ] PurchaseCosts table for acquisition expenses
-- [ ] CalendarEvents table for event management
-- [ ] Property settings configuration
+- [x] Users table with profiles and roles
+- [x] Properties table with address, purchase details, and settings
+- [x] Expenses table with categories and recurring support
+- [x] Repairs table with priority and contractor tracking
+- [x] Upgrades table with budget vs. spent tracking
+- [x] Loans table with repayment history
+- [x] WishlistItems table with priority and cost estimates
+- [x] PurchaseCosts table for acquisition expenses
+- [x] CalendarEvents table for event management
+- [x] Property settings configuration
 
 ### Backend Setup
-- [ ] tRPC router for expenses (create, read, update, delete, list)
-- [ ] tRPC router for repairs (create, read, update, delete, list)
-- [ ] tRPC router for upgrades (create, read, update, delete, list)
-- [ ] tRPC router for loans (create, read, update, delete, list, add repayment)
-- [ ] tRPC router for wishlist (create, read, update, delete, list)
-- [ ] tRPC router for purchase costs (create, read, update, delete, list)
-- [ ] tRPC router for calendar events (create, read, update, delete, list)
-- [ ] tRPC router for properties (get, update settings)
-- [ ] tRPC router for profiles (list, switch, get current)
-- [ ] Dashboard stats calculation procedure
+- [x] tRPC router for expenses (create, read, update, delete, list)
+- [x] tRPC router for repairs (create, read, update, delete, list)
+- [x] tRPC router for upgrades (create, read, update, delete, list)
+- [x] tRPC router for loans (create, read, update, delete, list, add repayment)
+- [x] tRPC router for wishlist (create, read, update, delete, list)
+- [x] tRPC router for purchase costs (create, read, update, delete, list)
+- [x] tRPC router for calendar events (create, read, update, delete, list)
+- [x] tRPC router for properties (get, update settings)
+- [x] tRPC router for profiles (list, switch, get current)
+- [x] Dashboard stats calculation procedure
 - [ ] File upload support for attachments
 
 ## Phase 2: Frontend UI & Dashboard
 
 ### Layout & Navigation
-- [ ] Implement DashboardLayout with sidebar navigation
-- [ ] Design color scheme and typography for home management tool
-- [ ] Create navigation menu with all modules
-- [ ] Implement profile switcher in header
-- [ ] Add logout functionality
+- [x] Implement DashboardLayout with sidebar navigation
+- [x] Design color scheme and typography for home management tool
+- [x] Create navigation menu with all modules
+- [x] Implement profile switcher in header
+- [x] Add logout functionality
 
 ### Dashboard Overview
-- [ ] Create KPI grid showing purchase total, monthly recurring, YTD expenses, pending repairs, upgrades spent, wishlist total
+- [x] Create KPI grid showing purchase total, monthly recurring, YTD expenses, pending repairs, upgrades spent, wishlist total
 - [ ] Display upcoming events section (next 30 days)
 - [ ] Show household members and their activity
 - [ ] Implement Google Map showing property location
