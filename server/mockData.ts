@@ -387,7 +387,7 @@ export const mockLoans = [
     lender: "Abba & Ima (Parents)",
     totalAmount: ils(150_000),               // 150,000 ₪ total
     loanType: "Family" as const,
-    interestRate: "0%",
+    interestRate: "0",
     startDate: "2022-02-01",
     dueDate: "2027-02-01",
     notes: "Down-payment supplement. Informal agreement — repay when possible. No fixed schedule.",
