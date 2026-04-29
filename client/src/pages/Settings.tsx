@@ -17,6 +17,7 @@ import {
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useProperty } from "@/contexts/PropertyContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -38,7 +39,7 @@ import {
 } from "@/components/ui/select";
 import {
   Loader2, Check, ChevronsUpDown, AlertTriangle,
-  Download, Sun, Moon, Monitor, ChevronRight,
+  Download, Sun, Moon, Monitor, ChevronRight, Trash2,
 } from "lucide-react";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
@@ -626,15 +627,34 @@ function AppearanceSection() {
   );
 }
 
-function DataSection({ p }: { p: any }) {
+function DataSection({
+  p, canDeleteProperty, activePropertyId, switchProperty,
+}: {
+  p: any;
+  canDeleteProperty: boolean;
+  activePropertyId: number;
+  switchProperty: (id: number) => void;
+}) {
+  const u = trpc.useUtils();
   const { refetch, isFetching } = trpc.data.exportAll.useQuery(undefined, { enabled: false });
   const del = trpc.data.deleteAll.useMutation({
     onSuccess: () => { toast.success("All records deleted"); setPhrase(""); setDanger(false); },
     onError: e => toast.error(e.message),
   });
+  const delProp = trpc.property.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Property deleted");
+      u.property.list.invalidate();
+      switchProperty(1);
+    },
+    onError: e => toast.error(e.message),
+  });
   const [danger, setDanger] = useState(false);
   const [phrase, setPhrase] = useState("");
+  const [propDanger, setPropDanger] = useState(false);
+  const [propPhrase, setPropPhrase] = useState("");
   const expected = p?.houseName ?? "My Home";
+  const propExpected = p?.houseName ?? "My Home";
 
   const exportAll = async () => {
     const r = await refetch();
@@ -710,6 +730,56 @@ function DataSection({ p }: { p: any }) {
             </div>
           </div>
         )}
+
+        {canDeleteProperty && (
+          <>
+            {!propDanger ? (
+              <Row
+                label="Delete this property"
+                hint="Permanently removes the property and all its data."
+              >
+                <Button
+                  variant="outline" size="sm"
+                  className="h-7 text-xs text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
+                  onClick={() => setPropDanger(true)}
+                >
+                  <Trash2 className="h-3 w-3 mr-1.5" />Delete property…
+                </Button>
+              </Row>
+            ) : (
+              <div className="px-4 py-4 space-y-3">
+                <p className="text-sm font-medium text-destructive flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />This will delete the property and all its data
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Type <strong className="text-foreground font-medium">{propExpected}</strong> to confirm.
+                </p>
+                <Input
+                  value={propPhrase}
+                  placeholder={propExpected}
+                  className="h-8 text-sm"
+                  onChange={e => setPropPhrase(e.target.value)}
+                  onKeyDown={e => e.key === "Escape" && setPropDanger(false)}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive" size="sm" className="h-7 text-xs"
+                    disabled={propPhrase !== propExpected || delProp.isPending}
+                    onClick={() => delProp.mutate({ propertyId: activePropertyId })}
+                  >
+                    {delProp.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                    Delete property
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs"
+                    onClick={() => { setPropDanger(false); setPropPhrase(""); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </Group>
     </div>
   );
@@ -720,6 +790,9 @@ function DataSection({ p }: { p: any }) {
 export default function Settings() {
   const [active, setActive] = useState<SID>("property");
   const { data: property, isLoading } = trpc.property.get.useQuery();
+  const { data: allProperties } = trpc.property.list.useQuery();
+  const { activePropertyId, switchProperty } = useProperty();
+  const canDeleteProperty = (allProperties?.length ?? 0) > 1 && activePropertyId !== 1;
 
   useEffect(() => {
     const hash = window.location.hash.replace("#", "") as SID;
@@ -748,6 +821,14 @@ export default function Settings() {
         <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
           Settings
         </p>
+        {(property?.houseNickname || property?.houseName) && (
+          <p className="mb-3 px-2 text-[11px] text-muted-foreground truncate">
+            Editing:{" "}
+            <span className="text-foreground font-medium">
+              {property.houseNickname || property.houseName}
+            </span>
+          </p>
+        )}
         {NAV.map(({ id, label }) => (
           <button
             key={id}
@@ -793,7 +874,7 @@ export default function Settings() {
         {active === "notifications" && <NotificationsSection p={property} />}
         {active === "integrations"  && <IntegrationsSection  p={property} />}
         {active === "appearance"    && <AppearanceSection />}
-        {active === "data"          && <DataSection          p={property} />}
+        {active === "data"          && <DataSection          p={property} canDeleteProperty={canDeleteProperty} activePropertyId={activePropertyId} switchProperty={switchProperty} />}
       </div>
     </div>
   );
