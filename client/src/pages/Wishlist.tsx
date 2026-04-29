@@ -2,7 +2,6 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -248,43 +247,15 @@ export default function Wishlist() {
       </div>
 
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-            <ListTodo className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalItems}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Estimated Cost</CardTitle>
-            <CircleDollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalEstimatedCost)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">High Priority</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{highPriorityCount}</div>
-          </CardContent>
-        </Card>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Total items</p><p className="text-xl font-semibold tabular-nums mt-1">{totalItems}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Estimated total</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalEstimatedCost)}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">High priority</p><p className="text-xl font-semibold tabular-nums mt-1">{highPriorityCount}</p></div>
       </div>
 
       {sortedItems.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-12">
-          <ListTodo className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No wishlist items</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add items to your wishlist to keep track of future plans.
-          </p>
-        </Card>
+        <div className="border border-border rounded-lg px-4 py-12 text-center">
+          <p className="text-sm text-muted-foreground">No wishlist items yet</p>
+        </div>
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
           {sortedItems.map((item) => (

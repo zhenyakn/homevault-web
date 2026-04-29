@@ -354,53 +354,87 @@ export async function getRecentActivity() {
 export async function getDashboardStats(userId: number) {
   const db = await getDb();
 
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear  = now.getFullYear();
+  const monthStart   = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-01`;
+  const monthEnd     = new Date(currentYear, currentMonth + 1, 0).toISOString().split("T")[0];
+  const today        = now.toISOString().split("T")[0];
+  const staleCutoff  = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
   const [
-    allExpenses,
-    allRepairs,
-    allUpgrades,
-    allLoans,
-    allWishlist,
-    allPurchaseCosts,
-    prop,
+    allExpenses, allRepairs, allUpgrades, allLoans, allPurchaseCosts, prop,
   ] = await Promise.all([
     db.select().from(expenses).where(eq(expenses.ownerId, userId)),
     db.select().from(repairs).where(eq(repairs.ownerId, userId)),
     db.select().from(upgrades).where(eq(upgrades.ownerId, userId)),
     db.select().from(loans).where(eq(loans.ownerId, userId)),
-    db.select().from(wishlistItems).where(eq(wishlistItems.ownerId, userId)),
     db.select().from(purchaseCosts).where(eq(purchaseCosts.ownerId, userId)),
     getProperty(),
   ]);
 
-  const currentYear = new Date().getFullYear();
+  // ── This month ─────────────────────────────────────────────────────────────
+  const thisMonthExp  = allExpenses.filter(e => e.date >= monthStart && e.date <= monthEnd);
+  const monthSpent    = thisMonthExp.reduce((s, e) => s + e.amount, 0);
+  const monthlyRecurring = allExpenses
+    .filter(e => e.isRecurring && e.recurringFrequency === "Monthly")
+    .reduce((s, e) => s + e.amount, 0);
+  const monthCats: Record<string, number> = {};
+  for (const e of thisMonthExp) monthCats[e.category] = (monthCats[e.category] || 0) + e.amount;
 
-  const purchaseTotal = allPurchaseCosts.reduce((sum, pc) => sum + pc.amount, 0);
-  const monthlyRecurring = allExpenses.filter((e) => e.isRecurring).reduce((sum, e) => sum + e.amount, 0);
-  const ytdExpenses = allExpenses
-    .filter((e) => new Date(e.date).getFullYear() === currentYear)
-    .reduce((sum, e) => sum + e.amount, 0);
-  const upgradesSpent = allUpgrades.reduce((sum, u) => sum + (u.spent || 0), 0);
-  const pendingRepairs = allRepairs.filter((r) => r.status !== "Resolved").length;
-  const wishlistTotal = allWishlist.reduce((sum, w) => sum + w.estimatedCost, 0);
-  const totalBorrowed = allLoans.reduce((sum, l) => sum + l.totalAmount, 0);
-  const totalRepaid = allLoans.reduce((sum, l) => {
-    return sum + (l.repayments?.reduce((s: number, r: any) => s + r.amount, 0) || 0);
-  }, 0);
+  // ── Attention ───────────────────────────────────────────────────────────────
+  const overdueExpenses = allExpenses
+    .filter(e => e.isRecurring && !e.isPaid && e.date <= today)
+    .map(e => ({ id: e.id, label: e.label, amount: e.amount, date: e.date }));
+
+  const staleRepairs = allRepairs
+    .filter(r => r.status !== "Resolved" &&
+      (r.priority === "Critical" || r.priority === "High") &&
+      (r.updatedAt
+        ? new Date(r.updatedAt).toISOString().split("T")[0] <= staleCutoff
+        : r.dateLogged <= staleCutoff))
+    .map(r => ({ id: r.id, label: r.label, priority: r.priority, status: r.status, contractor: r.contractor }));
+
+  // ── Open repairs ────────────────────────────────────────────────────────────
+  const priOrder: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+  const openRepairs = allRepairs
+    .filter(r => r.status !== "Resolved")
+    .sort((a, b) => (priOrder[a.priority] ?? 3) - (priOrder[b.priority] ?? 3))
+    .slice(0, 5)
+    .map(r => ({ id: r.id, label: r.label, priority: r.priority, status: r.status, contractor: r.contractor }));
+
+  // ── Active upgrades ─────────────────────────────────────────────────────────
+  const activeUpgrades = allUpgrades
+    .filter(u => u.status === "In Progress")
+    .map(u => ({
+      id: u.id, label: u.label, budget: u.budget, spent: u.spent || 0,
+      pct: u.budget > 0 ? Math.round(((u.spent || 0) / u.budget) * 100) : 0,
+    }));
+
+  // ── Loan paydown ────────────────────────────────────────────────────────────
+  const loanSummary = allLoans.map(l => {
+    const repaid = ((l.repayments as any[]) || []).reduce((s: number, r: any) => s + r.amount, 0);
+    return {
+      id: l.id, lender: l.lender, loanType: l.loanType,
+      totalAmount: l.totalAmount, repaid,
+      pct: l.totalAmount > 0 ? Math.round((repaid / l.totalAmount) * 100) : 0,
+      paidOff: repaid >= l.totalAmount,
+    };
+  });
 
   return {
-    purchaseTotal,
-    monthlyRecurring,
-    ytdExpenses,
-    upgradesSpent,
-    pendingRepairs,
-    wishlistTotal,
-    totalInvested: purchaseTotal + upgradesSpent,
-    totalBorrowed,
-    totalRepaid,
-    totalOwed: totalBorrowed - totalRepaid,
-    propertyName: prop?.houseName || "My Home",
+    monthSpent, monthlyRecurring,
+    monthPct:       monthlyRecurring > 0 ? Math.round((monthSpent / monthlyRecurring) * 100) : 0,
+    monthRemaining: Math.max(0, monthlyRecurring - monthSpent),
+    monthCats,
+    overdueExpenses, staleRepairs,
+    openRepairs,
+    openRepairsCount: allRepairs.filter(r => r.status !== "Resolved").length,
+    activeUpgrades,
+    loanSummary,
+    currency:        prop?.currency || "₪",
+    propertyName:    prop?.houseName || "My Home",
     propertyAddress: prop?.address,
-    propertyPrice: prop?.purchasePrice,
   };
 }
 

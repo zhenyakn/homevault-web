@@ -2,7 +2,6 @@ import React, { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -203,44 +202,32 @@ export default function Calendar() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{events.length}</div>
-            <p className="text-xs text-muted-foreground">This month</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{upcomingEvents.length}</div>
-            <p className="text-xs text-muted-foreground">Next 30 days</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 border border-border rounded-lg divide-x divide-border overflow-hidden">
+        <div className="px-4 py-3.5">
+          <p className="text-xs text-muted-foreground">This month</p>
+          <p className="text-xl font-semibold tabular-nums mt-1">{events.length}</p>
+        </div>
+        <div className="px-4 py-3.5">
+          <p className="text-xs text-muted-foreground">Upcoming · 30 days</p>
+          <p className="text-xl font-semibold tabular-nums mt-1">{upcomingEvents.length}</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>
+      <div className="border border-border rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <p className="text-sm font-medium">
             {currentDate.toLocaleString("default", { month: "long" })} {year}
-          </CardTitle>
-          <div className="flex space-x-2">
-            <Button variant="outline" size="icon" onClick={prevMonth}>
-              <ChevronLeft className="h-4 w-4" />
+          </p>
+          <div className="flex gap-1.5">
+            <Button variant="outline" size="icon" className="h-7 w-7" onClick={prevMonth}>
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="outline" size="icon" onClick={nextMonth}>
-              <ChevronRight className="h-4 w-4" />
+            <Button variant="outline" size="icon" className="h-7 w-7" onClick={nextMonth}>
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-3">
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -286,8 +273,8 @@ export default function Calendar() {
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <div>
         <p className="text-sm font-medium mb-3">Upcoming Events</p>

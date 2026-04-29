@@ -2,7 +2,6 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -238,43 +237,15 @@ export default function PurchaseCosts() {
       </div>
 
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Purchase Costs</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-semibold tabular-nums">{formatCurrency(totalCosts)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Number of Items</CardTitle>
-            <Hash className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-semibold tabular-nums">{numItems}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Largest Single Cost</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-semibold tabular-nums">{formatCurrency(largestCost)}</div>
-          </CardContent>
-        </Card>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Total costs</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalCosts)}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Entries</p><p className="text-xl font-semibold tabular-nums mt-1">{numItems}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Largest item</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(largestCost)}</p></div>
       </div>
 
       {costs?.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-10">
-            <Receipt className="h-10 w-10 text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">No purchase costs found</p>
-            <p className="text-sm text-muted-foreground">Add your first purchase cost to get started.</p>
-          </CardContent>
-        </Card>
+        <div className="border border-border rounded-lg px-4 py-12 text-center">
+          <p className="text-sm text-muted-foreground">No purchase costs yet</p>
+        </div>
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
           {costs?.map((cost) => (
