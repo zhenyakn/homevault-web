@@ -1,5 +1,9 @@
 import { eq, desc, gte, lte, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import {
+  MOCK_PROPERTY_NAME, mockProperty, mockExpenses, mockRepairs,
+  mockUpgrades, mockLoans, mockWishlist, mockPurchaseCosts, mockCalendarEvents,
+} from "./mockData.js";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -528,11 +532,6 @@ export async function deleteAllUserData(userId: number) {
 // ─── Mock / Demo Seed ─────────────────────────────────────────────────────────
 
 export async function seedMockProperty(userId: number): Promise<number> {
-  const {
-    MOCK_PROPERTY_NAME, mockProperty, mockExpenses, mockRepairs,
-    mockUpgrades, mockLoans, mockWishlist, mockPurchaseCosts, mockCalendarEvents,
-  } = await import("./mockData.js");
-
   const db = await getDb();
 
   // Find or create the demo property
