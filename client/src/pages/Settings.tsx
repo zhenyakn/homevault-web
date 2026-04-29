@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/select";
 import {
   Loader2, Check, ChevronsUpDown, AlertTriangle,
-  Download, Sun, Moon, Monitor, ChevronRight, Trash2,
+  Download, Sun, Moon, Monitor, ChevronRight, Trash2, RefreshCw,
 } from "lucide-react";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
@@ -651,6 +651,14 @@ function DataSection({
   });
   const [danger, setDanger] = useState(false);
   const [phrase, setPhrase] = useState("");
+  const seed = trpc.data.seedMock.useMutation({
+    onSuccess: ({ propertyId }) => {
+      toast.success("Demo property restored");
+      u.property.list.invalidate();
+      switchProperty(propertyId);
+    },
+    onError: e => toast.error(e.message),
+  });
   const [propDanger, setPropDanger] = useState(false);
   const [propPhrase, setPropPhrase] = useState("");
   const expected = p?.houseName ?? "My Home";
@@ -671,6 +679,24 @@ function DataSection({
   return (
     <div className="space-y-5">
       <h2 className="text-sm font-semibold">Data</h2>
+
+      <Group label="Demo data">
+        <Row
+          label="Restore demo property"
+          hint="Creates (or resets) the 'Florentin Apartment' demo with realistic Israeli data."
+        >
+          <Button
+            variant="outline" size="sm" className="h-7 text-xs"
+            onClick={() => seed.mutate()}
+            disabled={seed.isPending}
+          >
+            {seed.isPending
+              ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+              : <RefreshCw className="mr-1.5 h-3 w-3" />}
+            {seed.isPending ? "Restoring…" : "Restore demo"}
+          </Button>
+        </Row>
+      </Group>
 
       <Group label="Export">
         <Row label="All data" hint="Expenses, repairs, upgrades, loans, wishlist, calendar">

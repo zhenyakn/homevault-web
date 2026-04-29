@@ -1,4 +1,5 @@
 import { eq, desc, gte, lte, and } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -522,4 +523,88 @@ export async function deleteAllUserData(userId: number) {
   // Calendar events by createdById
   await db.delete(calendarEvents).where(eq(calendarEvents.createdById, userId));
   return true;
+}
+
+// ─── Mock / Demo Seed ─────────────────────────────────────────────────────────
+
+export async function seedMockProperty(userId: number): Promise<number> {
+  const {
+    MOCK_PROPERTY_NAME, mockProperty, mockExpenses, mockRepairs,
+    mockUpgrades, mockLoans, mockWishlist, mockPurchaseCosts, mockCalendarEvents,
+  } = await import("./mockData.js");
+
+  const db = await getDb();
+
+  // Find or create the demo property
+  const existing = await db.select({ id: properties.id })
+    .from(properties)
+    .where(and(eq(properties.userId, userId), eq(properties.houseName, MOCK_PROPERTY_NAME)))
+    .limit(1);
+
+  let propertyId: number;
+
+  if (existing.length > 0) {
+    propertyId = existing[0].id;
+    await db.update(properties).set(mockProperty).where(eq(properties.id, propertyId));
+  } else {
+    const [res] = await db.insert(properties).values({ userId, ...mockProperty });
+    propertyId = (res as any).insertId as number;
+  }
+
+  // Wipe existing data for this property (idempotent restore)
+  await Promise.all([
+    db.delete(expenses).where(eq(expenses.propertyId, propertyId)),
+    db.delete(repairs).where(eq(repairs.propertyId, propertyId)),
+    db.delete(upgrades).where(eq(upgrades.propertyId, propertyId)),
+    db.delete(loans).where(eq(loans.propertyId, propertyId)),
+    db.delete(wishlistItems).where(eq(wishlistItems.propertyId, propertyId)),
+    db.delete(purchaseCosts).where(eq(purchaseCosts.propertyId, propertyId)),
+    db.delete(calendarEvents).where(eq(calendarEvents.propertyId, propertyId)),
+  ]);
+
+  const oid = userId;
+  const pid = propertyId;
+
+  // Seed expenses
+  await db.insert(expenses).values(
+    mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid }))
+  );
+
+  // Seed repairs
+  await db.insert(repairs).values(
+    mockRepairs.map(r => ({ id: nanoid(), ...r, ownerId: oid, propertyId: pid }))
+  );
+
+  // Seed upgrades
+  await db.insert(upgrades).values(
+    mockUpgrades.map(u => ({ id: nanoid(), ...u, ownerId: oid, propertyId: pid }))
+  );
+
+  // Seed loans — attach ownerId to each repayment entry
+  await db.insert(loans).values(
+    mockLoans.map(l => ({
+      id: nanoid(),
+      ...l,
+      repayments: l.repayments.map(r => ({ ...r, ownerId: oid })),
+      ownerId: oid,
+      propertyId: pid,
+    }))
+  );
+
+  // Seed wishlist
+  await db.insert(wishlistItems).values(
+    mockWishlist.map(w => ({ id: nanoid(), ...w, ownerId: oid, propertyId: pid }))
+  );
+
+  // Seed purchase costs
+  await db.insert(purchaseCosts).values(
+    mockPurchaseCosts.map(c => ({ id: nanoid(), ...c, ownerId: oid, propertyId: pid }))
+  );
+
+  // Seed calendar events
+  await db.insert(calendarEvents).values(
+    mockCalendarEvents.map(e => ({ id: nanoid(), ...e, createdById: oid, propertyId: pid }))
+  );
+
+  return propertyId;
 }

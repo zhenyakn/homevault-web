@@ -142,6 +142,10 @@ export const appRouter = router({
         ]);
       return { expenses: expensesData, repairs: repairsData, upgrades: upgradesData, loans: loansData, wishlist, purchaseCosts: purchaseCostsData, calendarEvents: events, property, exportedAt: new Date().toISOString() };
     }),
+    seedMock: protectedProcedure.mutation(async ({ ctx }) => {
+      const propertyId = await db.seedMockProperty(ctx.user.id);
+      return { propertyId };
+    }),
     deleteAll: protectedProcedure
       .input(z.object({ confirmationPhrase: z.string() }))
       .mutation(async ({ ctx, input }) => {
