@@ -27,7 +27,7 @@ HomeVault is a full-stack property management app for homeowners and small inves
 | Frontend | React 19, Vite, Tailwind v4, shadcn/ui, Radix UI |
 | Backend | Node.js, Express, tRPC |
 | Database | MySQL 8 / TiDB Cloud via Drizzle ORM |
-| Auth | Manus OAuth (self-hosted option planned) |
+| Auth | OAuth / JWT (self-hosted) |
 | File storage | Cloudflare R2 / AWS S3 / any S3-compatible |
 | Language | TypeScript throughout |
 
@@ -57,7 +57,7 @@ cp .env.example .env
 
 Edit `.env` and fill in at minimum:
 - `DATABASE_URL` — your MySQL connection string
-- Auth vars (`OAUTH_SERVER_URL`, `OWNER_OPEN_ID`) if running on Manus platform
+- Auth vars (`OAUTH_SERVER_URL`, `OWNER_OPEN_ID`) if using OAuth
 - Storage vars (`STORAGE_ENDPOINT`, `STORAGE_BUCKET`, etc.) for file uploads
 
 See `.env.example` for full documentation of every variable.

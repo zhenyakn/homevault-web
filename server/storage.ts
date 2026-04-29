@@ -1,8 +1,7 @@
 /**
  * Unified storage layer — works with two backends:
  *
- *  1. Manus Forge  (when BUILT_IN_FORGE_API_URL + BUILT_IN_FORGE_API_KEY are set)
- *     Used automatically when running on the Manus platform.
+ *  1. Built-in Forge  (when BUILT_IN_FORGE_API_URL + BUILT_IN_FORGE_API_KEY are set)
  *
  *  2. Any S3-compatible provider  (when STORAGE_ENDPOINT + credentials are set)
  *     Cloudflare R2 free tier recommended for independent deploys:
@@ -25,7 +24,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 // ─── Backend detection ────────────────────────────────────────────────────────
 
-function useManus(): boolean {
+function useForgeBackend(): boolean {
   return !!(process.env.BUILT_IN_FORGE_API_URL && process.env.BUILT_IN_FORGE_API_KEY);
 }
 
@@ -38,7 +37,7 @@ function getS3Client(): S3Client {
   if (!endpoint || !accessKeyId || !secretAccessKey) {
     throw new Error(
       "[Storage] No storage backend configured.\n" +
-      "  Option A (Manus): set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY\n" +
+      "  Option A (Forge): set BUILT_IN_FORGE_API_URL and BUILT_IN_FORGE_API_KEY\n" +
       "  Option B (S3/R2): set STORAGE_ENDPOINT, STORAGE_BUCKET, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY\n" +
       "  See .env.example for details."
     );
@@ -77,9 +76,9 @@ function getPublicUrl(key: string): string {
   return `${base}/${key}`;
 }
 
-// ─── Manus Forge backend ──────────────────────────────────────────────────────
+// ─── Forge backend ────────────────────────────────────────────────────────────
 
-async function manusStoragePut(
+async function forgeStoragePut(
   key: string,
   data: Buffer | Uint8Array | string,
   contentType: string,
@@ -96,11 +95,11 @@ async function manusStoragePut(
 
   if (!presignResp.ok) {
     const msg = await presignResp.text().catch(() => presignResp.statusText);
-    throw new Error(`[Storage] Manus presign failed (${presignResp.status}): ${msg}`);
+    throw new Error(`[Storage] Forge presign failed (${presignResp.status}): ${msg}`);
   }
 
   const { url: s3Url } = (await presignResp.json()) as { url: string };
-  if (!s3Url) throw new Error("[Storage] Manus returned empty presign URL");
+  if (!s3Url) throw new Error("[Storage] Forge returned empty presign URL");
 
   const blob =
     typeof data === "string"
@@ -114,13 +113,13 @@ async function manusStoragePut(
   });
 
   if (!uploadResp.ok) {
-    throw new Error(`[Storage] Manus upload failed (${uploadResp.status})`);
+    throw new Error(`[Storage] Forge upload failed (${uploadResp.status})`);
   }
 
-  return { key, url: `/manus-storage/${key}` };
+  return { key, url: `/forge-storage/${key}` };
 }
 
-async function manusStorageGetSignedUrl(key: string): Promise<string> {
+async function forgeStorageGetSignedUrl(key: string): Promise<string> {
   const forgeUrl = process.env.BUILT_IN_FORGE_API_URL!.replace(/\/+$/, "");
   const forgeKey = process.env.BUILT_IN_FORGE_API_KEY!;
 
@@ -133,7 +132,7 @@ async function manusStorageGetSignedUrl(key: string): Promise<string> {
 
   if (!resp.ok) {
     const msg = await resp.text().catch(() => resp.statusText);
-    throw new Error(`[Storage] Manus signed URL failed (${resp.status}): ${msg}`);
+    throw new Error(`[Storage] Forge signed URL failed (${resp.status}): ${msg}`);
   }
 
   const { url } = (await resp.json()) as { url: string };
@@ -195,7 +194,7 @@ export async function storagePut(
   contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
   const key = appendHashSuffix(normalizeKey(relKey));
-  if (useManus()) return manusStoragePut(key, data, contentType);
+  if (useForgeBackend()) return forgeStoragePut(key, data, contentType);
   return s3StoragePut(key, data, contentType);
 }
 
@@ -204,7 +203,7 @@ export async function storagePut(
  */
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
-  if (useManus()) return { key, url: `/manus-storage/${key}` };
+  if (useForgeBackend()) return { key, url: `/forge-storage/${key}` };
   return { key, url: getPublicUrl(key) };
 }
 
@@ -216,7 +215,7 @@ export async function storageGetSignedUrl(
   expiresInSeconds = 3600,
 ): Promise<string> {
   const key = normalizeKey(relKey);
-  if (useManus()) return manusStorageGetSignedUrl(key);
+  if (useForgeBackend()) return forgeStorageGetSignedUrl(key);
   return s3StorageGetSignedUrl(key, expiresInSeconds);
 }
 
@@ -225,9 +224,9 @@ export async function storageGetSignedUrl(
  */
 export async function storageDelete(relKey: string): Promise<void> {
   const key = normalizeKey(relKey);
-  if (useManus()) {
-    // Manus Forge doesn't expose a delete API — log and skip
-    console.warn(`[Storage] Manus backend does not support delete. Key: ${key}`);
+  if (useForgeBackend()) {
+    // Forge backend doesn't expose a delete API — log and skip
+    console.warn(`[Storage] Forge backend does not support delete. Key: ${key}`);
     return;
   }
   await s3StorageDelete(key);

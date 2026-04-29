@@ -201,7 +201,7 @@ export default function Dashboard() {
       </div>
 
       {/* 1. Attention */}
-      {s && <AttentionZone overdue={s.overdueExpenses} stale={s.staleRepairs} cur={cur} />}
+      {s && <AttentionZone overdue={s.overdueExpenses ?? []} stale={s.staleRepairs ?? []} cur={cur} />}
 
       {/* 2. This month */}
       {s && <ThisMonth spent={s.monthSpent} baseline={s.monthlyRecurring} pct={s.monthPct} remaining={s.monthRemaining} cats={s.monthCats} cur={cur} />}

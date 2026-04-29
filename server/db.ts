@@ -432,7 +432,7 @@ export async function getDashboardStats(userId: number) {
     openRepairsCount: allRepairs.filter(r => r.status !== "Resolved").length,
     activeUpgrades,
     loanSummary,
-    currency:        prop?.currency || "₪",
+    currency:        prop?.currencyCode || "ILS",
     propertyName:    prop?.houseName || "My Home",
     propertyAddress: prop?.address,
   };

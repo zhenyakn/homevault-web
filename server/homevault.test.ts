@@ -8,7 +8,7 @@ function createTestContext(): TrpcContext {
     openId: "test-user",
     email: "test@example.com",
     name: "Test User",
-    loginMethod: "manus",
+    loginMethod: "oauth",
     role: "admin" as const,
     createdAt: new Date(),
     updatedAt: new Date(),

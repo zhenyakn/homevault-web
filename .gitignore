@@ -109,8 +109,8 @@ temp/
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 
-# Manus version file (auto-generated, not part of source)
-client/public/__manus__/version.json
+# Platform-injected files
+client/public/__manus__/
 
 # Claude Code local settings (machine-specific)
 .claude/settings.local.json

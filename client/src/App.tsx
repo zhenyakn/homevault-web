@@ -102,7 +102,6 @@ OAUTH_SERVER_URL=https://your-oauth-server
 OWNER_OPEN_ID=your-open-id`}
               </pre>
               <p className="text-xs text-muted-foreground text-center">
-                Running on Manus? These are set automatically.{" "}
                 <a
                   href="https://github.com/zhenyakn/homevault-web#quick-start"
                   target="_blank"
