@@ -12,6 +12,8 @@ import {
   expenses,
   repairs,
   upgrades,
+  upgradeOptions,
+  upgradeItems,
   loans,
   wishlistItems,
   purchaseCosts,
@@ -19,6 +21,8 @@ import {
   type Expense,
   type Repair,
   type Upgrade,
+  type UpgradeOption,
+  type UpgradeItem,
   type Loan,
   type WishlistItem,
   type PurchaseCost,
@@ -462,6 +466,70 @@ export async function getDashboardStats(userId: number, propertyId: number) {
     propertyName:    prop?.houseName || "My Home",
     propertyAddress: prop?.address,
   };
+}
+
+// ─── Upgrade Options ──────────────────────────────────────────────────────────
+
+export async function getUpgradeOptions(upgradeId: string) {
+  const db = await getDb();
+  return await db.select().from(upgradeOptions).where(eq(upgradeOptions.upgradeId, upgradeId)).orderBy(upgradeOptions.createdAt);
+}
+
+export async function createUpgradeOption(data: typeof upgradeOptions.$inferInsert) {
+  const db = await getDb();
+  await db.insert(upgradeOptions).values(data);
+  return data;
+}
+
+export async function updateUpgradeOption(id: string, data: Partial<UpgradeOption>) {
+  const db = await getDb();
+  await db.update(upgradeOptions).set(data).where(eq(upgradeOptions.id, id));
+  return data;
+}
+
+export async function selectUpgradeOption(upgradeId: string, optionId: string) {
+  const db = await getDb();
+  await db.update(upgradeOptions).set({ isSelected: false }).where(eq(upgradeOptions.upgradeId, upgradeId));
+  await db.update(upgradeOptions).set({ isSelected: true }).where(eq(upgradeOptions.id, optionId));
+}
+
+export async function logUpgradeOptionPayment(optionId: string, payment: { date: string; amount: number; notes?: string }) {
+  const db = await getDb();
+  const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
+  if (!existing) throw new Error("Option not found");
+  const payments = [...((existing.payments as any[]) || []), payment];
+  await db.update(upgradeOptions).set({ payments }).where(eq(upgradeOptions.id, optionId));
+}
+
+export async function deleteUpgradeOption(id: string) {
+  const db = await getDb();
+  await db.delete(upgradeOptions).where(eq(upgradeOptions.id, id));
+  return true;
+}
+
+// ─── Upgrade Items ────────────────────────────────────────────────────────────
+
+export async function getUpgradeItems(upgradeId: string) {
+  const db = await getDb();
+  return await db.select().from(upgradeItems).where(eq(upgradeItems.upgradeId, upgradeId)).orderBy(upgradeItems.createdAt);
+}
+
+export async function createUpgradeItem(data: typeof upgradeItems.$inferInsert) {
+  const db = await getDb();
+  await db.insert(upgradeItems).values(data);
+  return data;
+}
+
+export async function updateUpgradeItem(id: string, data: Partial<UpgradeItem>) {
+  const db = await getDb();
+  await db.update(upgradeItems).set(data).where(eq(upgradeItems.id, id));
+  return data;
+}
+
+export async function deleteUpgradeItem(id: string) {
+  const db = await getDb();
+  await db.delete(upgradeItems).where(eq(upgradeItems.id, id));
+  return true;
 }
 
 // ─── Portfolio ────────────────────────────────────────────────────────────────

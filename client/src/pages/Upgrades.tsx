@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { FileUpload } from "@/components/FileUpload";
 type UpgradeStatus = "Planned" | "In Progress" | "Done";
 
 export default function Upgrades() {
+  const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const { data: upgrades, isLoading } = trpc.upgrades.list.useQuery();
   const createMutation = trpc.upgrades.create.useMutation({
@@ -209,7 +211,7 @@ export default function Upgrades() {
           {upgrades.map((upgrade) => {
             const progress = upgrade.budget > 0 ? Math.min(100, ((upgrade.spent || 0) / upgrade.budget) * 100) : 0;
             return (
-              <div key={upgrade.id} className="flex items-start gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors">
+              <div key={upgrade.id} className="flex items-start gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate(`/upgrades/${upgrade.id}`)}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium">{upgrade.label}</p>
@@ -226,7 +228,7 @@ export default function Upgrades() {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                   <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleEdit(upgrade)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>

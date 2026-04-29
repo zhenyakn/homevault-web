@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Upgrade Detail — Approach C Mock</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f4; color: #1c1917; font-size: 14px; }
+
+  .page { max-width: 480px; margin: 0 auto; background: #fff; min-height: 100vh; }
+
+  /* Header */
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #e7e5e4; background: #fff; position: sticky; top: 0; z-index: 10; }
+  .back { color: #78716c; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .back::before { content: '←'; font-size: 16px; }
+  .topbar-actions { display: flex; gap: 8px; }
+  .btn-ghost { background: none; border: 1px solid #e7e5e4; padding: 5px 12px; border-radius: 6px; font-size: 12px; color: #78716c; cursor: pointer; }
+
+  /* Hero */
+  .hero { padding: 20px 16px 0; }
+  .hero-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .hero-desc { color: #78716c; font-size: 13px; margin-top: 4px; line-height: 1.5; }
+  .status-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .badge-orange { background: #fff7ed; color: #c2410c; }
+  .badge-green  { background: #f0fdf4; color: #15803d; }
+  .badge-blue   { background: #eff6ff; color: #1d4ed8; }
+  .badge-gray   { background: #f5f5f4; color: #78716c; }
+
+  /* Phase stepper */
+  .phases { display: flex; align-items: center; padding: 16px 16px 0; gap: 0; }
+  .phase { flex: 1; text-align: center; position: relative; }
+  .phase-dot { width: 10px; height: 10px; border-radius: 50%; margin: 0 auto 5px; }
+  .phase-dot.done  { background: #f97316; }
+  .phase-dot.active{ background: #f97316; box-shadow: 0 0 0 3px #fed7aa; }
+  .phase-dot.todo  { background: #e7e5e4; }
+  .phase-label { font-size: 10px; color: #a8a29e; font-weight: 500; }
+  .phase-label.active { color: #f97316; font-weight: 700; }
+  .phase-label.done   { color: #78716c; }
+  .phase-line { position: absolute; top: 4px; left: 50%; right: -50%; height: 2px; background: #e7e5e4; z-index: -1; }
+  .phase-line.done { background: #f97316; }
+  .phase:last-child .phase-line { display: none; }
+
+  /* Sections */
+  .section { margin: 16px 0 0; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; padding: 0 16px 8px; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #a8a29e; }
+  .section-action { font-size: 12px; color: #f97316; cursor: pointer; font-weight: 600; }
+  .divider { height: 1px; background: #f5f5f4; margin: 0 16px; }
+
+  /* Budget card */
+  .budget-card { margin: 16px; background: #fafaf9; border: 1px solid #e7e5e4; border-radius: 12px; padding: 14px; }
+  .budget-nums { display: flex; gap: 0; margin-bottom: 10px; }
+  .budget-col { flex: 1; }
+  .budget-col + .budget-col { border-left: 1px solid #e7e5e4; padding-left: 12px; }
+  .budget-col:first-child { padding-right: 12px; }
+  .bnum { font-size: 15px; font-weight: 700; }
+  .blabel { font-size: 10px; color: #a8a29e; margin-top: 1px; text-transform: uppercase; letter-spacing: .04em; }
+  .bsub { font-size: 11px; color: #78716c; margin-top: 2px; }
+  .progress-bar { height: 6px; background: #e7e5e4; border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #f97316, #fb923c); }
+  .progress-label { display: flex; justify-content: space-between; margin-top: 5px; font-size: 10px; color: #a8a29e; }
+
+  /* Option cards */
+  .options-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+  .option-card { border: 1px solid #e7e5e4; border-radius: 10px; overflow: hidden; cursor: pointer; }
+  .option-card.selected { border-color: #f97316; }
+  .option-header { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px; }
+  .option-name { font-weight: 600; font-size: 13px; }
+  .option-price { font-weight: 700; font-size: 13px; }
+  .option-meta { font-size: 11px; color: #78716c; margin-top: 1px; }
+  .option-selected-bar { background: #fff7ed; border-top: 1px solid #fed7aa; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .option-selected-bar .phone { font-size: 12px; color: #f97316; font-weight: 600; }
+  .option-body { padding: 0 12px 10px; }
+  .option-scope { font-size: 11px; color: #78716c; margin-top: 6px; line-height: 1.5; }
+  .option-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .btn-sm { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid #e7e5e4; background: #fff; color: #57534e; }
+  .btn-sm.primary { background: #f97316; border-color: #f97316; color: #fff; }
+  .collapsed { background: #fafaf9; }
+  .collapsed .option-header { padding: 9px 12px; }
+
+  /* Items */
+  .items-list { padding: 0 16px; display: flex; flex-direction: column; }
+  .item-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #a8a29e; padding: 10px 0 5px; }
+  .item-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #f5f5f4; }
+  .item-row:last-child { border-bottom: none; }
+  .item-check { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #e7e5e4; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .item-check.done   { background: #f97316; border-color: #f97316; color: #fff; font-size: 10px; }
+  .item-check.urgent { border-color: #fbbf24; }
+  .item-check.ordered{ border-color: #60a5fa; }
+  .item-info { flex: 1; min-width: 0; }
+  .item-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-name.done { color: #a8a29e; text-decoration: line-through; }
+  .item-sub  { font-size: 11px; color: #a8a29e; margin-top: 1px; }
+  .item-right{ text-align: right; flex-shrink: 0; }
+  .item-cost { font-size: 12px; font-weight: 600; }
+  .item-status { margin-top: 2px; }
+
+  /* Add button */
+  .add-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; color: #f97316; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .add-row::before { content: '+'; font-size: 16px; width: 18px; text-align: center; }
+
+  /* Notes */
+  .notes-card { margin: 0 16px 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px; }
+  .notes-text { font-size: 13px; color: #78716c; line-height: 1.6; }
+  .notes-edit { font-size: 11px; color: #f97316; font-weight: 600; float: right; cursor: pointer; }
+
+  /* Bottom spacer */
+  .spacer { height: 32px; }
+
+  /* Chevron */
+  .chevron { font-size: 10px; color: #a8a29e; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Top bar -->
+  <div class="topbar">
+    <span class="back">Upgrades</span>
+    <div class="topbar-actions">
+      <button class="btn-ghost">Edit</button>
+      <button class="btn-ghost">···</button>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-title">Kitchen Renovation</div>
+    <div class="hero-desc">Full gut: cabinets, countertop, sink, backsplash, appliances</div>
+    <div class="status-row">
+      <span class="badge badge-orange">In Progress</span>
+      <span class="badge badge-gray">Sourcing</span>
+    </div>
+  </div>
+
+  <!-- Phase stepper -->
+  <div class="phases">
+    <div class="phase">
+      <div class="phase-dot done"></div>
+      <div class="phase-label done">Planning</div>
+      <div class="phase-line done"></div>
+    </div>
+    <div class="phase">
+      <div class="phase-dot active"></div>
+      <div class="phase-label active">Sourcing</div>
+      <div class="phase-line"></div>
+    </div>
+    <div class="phase">
+      <div class="phase-dot todo"></div>
+      <div class="phase-label">Building</div>
+      <div class="phase-line"></div>
+    </div>
+    <div class="phase">
+      <div class="phase-dot todo"></div>
+      <div class="phase-label">Done</div>
+    </div>
+  </div>
+
+  <!-- Budget -->
+  <div class="budget-card">
+    <div class="budget-nums">
+      <div class="budget-col">
+        <div class="bnum">₪17,100</div>
+        <div class="blabel">Committed</div>
+        <div class="bsub">IKEA + Rami</div>
+      </div>
+      <div class="budget-col">
+        <div class="bnum">₪11,900</div>
+        <div class="blabel">Paid so far</div>
+        <div class="bsub">of committed</div>
+      </div>
+      <div class="budget-col">
+        <div class="bnum" style="color:#a8a29e">₪48,000</div>
+        <div class="blabel">Total budget</div>
+        <div class="bsub">₪30,900 left</div>
+      </div>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" style="width:25%"></div>
+    </div>
+    <div class="progress-label">
+      <span>25% of budget used</span>
+      <span>₪30,900 remaining</span>
+    </div>
+  </div>
+
+  <!-- Options -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Options &amp; Quotes</span>
+      <span class="section-action">+ Add quote</span>
+    </div>
+    <div class="options-list">
+
+      <!-- Selected option — expanded -->
+      <div class="option-card selected">
+        <div class="option-header">
+          <div>
+            <div class="option-name">IKEA + Rami Installation</div>
+            <div class="option-meta">8 weeks · 1-year warranty</div>
+          </div>
+          <div style="text-align:right">
+            <div class="option-price">₪17,100</div>
+            <span class="badge badge-green" style="margin-top:3px">Selected ✓</span>
+          </div>
+        </div>
+        <div class="option-selected-bar">
+          <span style="font-size:12px;color:#57534e">📞 Rami: <b>052-344-1188</b></span>
+          <span class="phone">Call</span>
+        </div>
+        <div class="option-body">
+          <div class="option-scope">Scope: cabinets supply + installation, worktop, handles, delivery</div>
+          <div class="option-actions">
+            <button class="btn-sm">View quote</button>
+            <button class="btn-sm primary">Log payment</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Collapsed options -->
+      <div class="option-card collapsed">
+        <div class="option-header">
+          <div>
+            <div class="option-name" style="color:#78716c">Yossi Cabinets</div>
+            <div class="option-meta">8 weeks</div>
+          </div>
+          <div style="text-align:right">
+            <div class="option-price" style="color:#a8a29e">₪16,200</div>
+            <div style="font-size:11px;color:#a8a29e">not selected</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="option-card collapsed">
+        <div class="option-header">
+          <div>
+            <div class="option-name" style="color:#78716c">Local Carpenter (Shlomo)</div>
+            <div class="option-meta">6 weeks · 2-year warranty</div>
+          </div>
+          <div style="text-align:right">
+            <div class="option-price" style="color:#a8a29e">₪19,800</div>
+            <div style="font-size:11px;color:#a8a29e">not selected</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Items -->
+  <div class="section" style="margin-top:20px">
+    <div class="section-header">
+      <span class="section-title">Items to get <span style="color:#e7e5e4;font-weight:400">·</span> 4 done, 10 left</span>
+      <span class="section-action">+ Add item</span>
+    </div>
+    <div class="items-list">
+
+      <!-- Urgent -->
+      <div class="item-group-label" style="color:#f59e0b">⚠ Needs action</div>
+
+      <div class="item-row">
+        <div class="item-check urgent"></div>
+        <div class="item-info">
+          <div class="item-name">Undermount sink (Franke MRG)</div>
+          <div class="item-sub">No vendor yet · must decide before May 12</div>
+        </div>
+        <div class="item-right">
+          <div class="item-cost">₪1,100</div>
+          <div class="item-status"><span class="badge badge-gray">Researching</span></div>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-check urgent"></div>
+        <div class="item-info">
+          <div class="item-name">Kitchen faucet</div>
+          <div class="item-sub">No vendor yet</div>
+        </div>
+        <div class="item-right">
+          <div class="item-cost">₪600</div>
+          <div class="item-status"><span class="badge badge-gray">Need to find</span></div>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-check urgent"></div>
+        <div class="item-info">
+          <div class="item-name">Built-in oven</div>
+          <div class="item-sub">Needs 32A circuit — call electrician</div>
+        </div>
+        <div class="item-right">
+          <div class="item-cost">₪3,200</div>
+          <div class="item-status"><span class="badge badge-gray">Researching</span></div>
+        </div>
+      </div>
+
+      <!-- Ordered -->
+      <div class="item-group-label" style="color:#3b82f6">⏳ Ordered / in transit</div>
+
+      <div class="item-row">
+        <div class="item-check ordered"></div>
+        <div class="item-info">
+          <div class="item-name">Countertop — Caesarstone Statuario</div>
+          <div class="item-sub">ETA May 8 · Caesarstone showroom</div>
+        </div>
+        <div class="item-right">
+          <div class="item-cost">₪4,200</div>
+          <div class="item-status"><span class="badge badge-blue">ETA May 8</span></div>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-check ordered"></div>
+        <div class="item-info">
+          <div class="item-name">LED strip under cabinets</div>
+          <div class="item-sub">ETA Apr 30 · Amazon</div>
+        </div>
+        <div class="item-right">
+          <div class="item-cost">₪280</div>
+          <div class="item-status"><span class="badge badge-blue">ETA Apr 30</span></div>
+        </div>
+      </div>
+
+      <!-- Done -->
+      <div class="item-group-label">✓ Done</div>
+
+      <div class="item-row">
+        <div class="item-check done">✓</div>
+        <div class="item-info">
+          <div class="item-name done">Kitchen cabinets (IKEA Metod)</div>
+          <div class="item-sub">IKEA · Installed by Rami</div>
+        </div>
+        <div class="item-right">
+          <div class="item-cost" style="color:#a8a29e">₪8,100</div>
+          <div class="item-status"><span class="badge" style="background:#f0fdf4;color:#15803d">Installed</span></div>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-check done">✓</div>
+        <div class="item-info">
+          <div class="item-name done">Backsplash tiles (Porcelanosa)</div>
+          <div class="item-sub">Porcelanosa · Delivered</div>
+        </div>
+        <div class="item-right">
+          <div class="item-cost" style="color:#a8a29e">₪3,400</div>
+          <div class="item-status"><span class="badge" style="background:#f0fdf4;color:#15803d">Delivered</span></div>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-check done">✓</div>
+        <div class="item-info">
+          <div class="item-name done">Cabinet handles ×24</div>
+          <div class="item-sub">IKEA</div>
+        </div>
+        <div class="item-right">
+          <div class="item-cost" style="color:#a8a29e">₪380</div>
+          <div class="item-status"><span class="badge" style="background:#f0fdf4;color:#15803d">Installed</span></div>
+        </div>
+      </div>
+
+      <div class="item-row">
+        <div class="item-check done">✓</div>
+        <div class="item-info">
+          <div class="item-name done">Plumber — pipe relocation</div>
+          <div class="item-sub">Avi Plumbing</div>
+        </div>
+        <div class="item-right">
+          <div class="item-cost" style="color:#a8a29e">₪1,800</div>
+          <div class="item-status"><span class="badge" style="background:#f0fdf4;color:#15803d">Done</span></div>
+        </div>
+      </div>
+
+      <div class="add-row">Add item</div>
+
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Notes</span>
+    </div>
+    <div class="notes-card">
+      <span class="notes-edit">Edit</span>
+      <div class="notes-text">
+        Rami starts week of May 12 — countertop <b>must</b> arrive by then.<br><br>
+        Oven needs a 32A dedicated circuit — call electrician before ordering.
+      </div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+</div>
+</body>
+</html>

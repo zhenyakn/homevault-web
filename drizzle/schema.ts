@@ -170,6 +170,7 @@ export const upgrades = mysqlTable(
     label: varchar("label", { length: 200 }).notNull(),
     description: text("description"),
     status: mysqlEnum("status", ["Planned", "In Progress", "Done"]).notNull(),
+    phase: mysqlEnum("phase", ["Planning", "Sourcing", "Building", "Done"]).default("Planning"),
     budget: int("budget").notNull(), // In cents
     spent: int("spent").default(0), // In cents
     ownerId: int("ownerId")
@@ -330,3 +331,62 @@ export const calendarEvents = mysqlTable(
 
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
+
+/**
+ * Vendor quotes / options per upgrade project
+ */
+export const upgradeOptions = mysqlTable(
+  "upgradeOptions",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    upgradeId: varchar("upgradeId", { length: 36 }).notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    vendorPhone: varchar("vendorPhone", { length: 30 }),
+    totalPrice: int("totalPrice"),   // In cents
+    timeline: varchar("timeline", { length: 100 }),
+    warranty: varchar("warranty", { length: 100 }),
+    scope: text("scope"),
+    isSelected: boolean("isSelected").default(false),
+    notes: text("notes"),
+    payments: json("payments").$type<Array<{ date: string; amount: number; notes?: string }>>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    upgradeIdx: index("upgradeOption_upgradeId_idx").on(table.upgradeId),
+  })
+);
+
+export type UpgradeOption = typeof upgradeOptions.$inferSelect;
+export type InsertUpgradeOption = typeof upgradeOptions.$inferInsert;
+
+/**
+ * Individual items / products / tasks within an upgrade project
+ */
+export const upgradeItems = mysqlTable(
+  "upgradeItems",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    upgradeId: varchar("upgradeId", { length: 36 }).notNull(),
+    propertyId: int("propertyId").notNull().default(1),
+    ownerId: int("ownerId").notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    vendorName: varchar("vendorName", { length: 200 }),
+    estimatedCost: int("estimatedCost"),  // In cents
+    actualCost: int("actualCost"),        // In cents
+    status: mysqlEnum("status", [
+      "Need to find", "Researching", "Quoted", "Ordered", "Delivered", "Installed",
+    ]).default("Need to find"),
+    eta: varchar("eta", { length: 20 }),  // YYYY-MM-DD
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    upgradeIdx: index("upgradeItem_upgradeId_idx").on(table.upgradeId),
+    propertyIdx: index("upgradeItem_propertyId_idx").on(table.propertyId),
+  })
+);
+
+export type UpgradeItem = typeof upgradeItems.$inferSelect;
+export type InsertUpgradeItem = typeof upgradeItems.$inferInsert;

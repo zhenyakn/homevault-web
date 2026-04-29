@@ -18,6 +18,7 @@ import Calendar from "./pages/Calendar";
 import PropertySettings from "./pages/PropertySettings";
 import Settings from "./pages/Settings";
 import Portfolio from "./pages/Portfolio";
+import UpgradeDetail from "./pages/UpgradeDetail";
 import { Home, Loader2, LogIn, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -148,6 +149,7 @@ function Router() {
         <Route path="/expenses" component={Expenses} />
         <Route path="/repairs" component={Repairs} />
         <Route path="/upgrades" component={Upgrades} />
+        <Route path="/upgrades/:id" component={UpgradeDetail} />
         <Route path="/loans" component={Loans} />
         <Route path="/wishlist" component={Wishlist} />
         <Route path="/purchase-costs" component={PurchaseCosts} />

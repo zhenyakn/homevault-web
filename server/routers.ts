@@ -37,6 +37,7 @@ const upgradeSchema = z.object({
   label: z.string().min(1),
   description: z.string().optional(),
   status: z.enum(["Planned", "In Progress", "Done"]),
+  phase: z.enum(["Planning", "Sourcing", "Building", "Done"]).optional(),
   budget: z.number().int().positive(),
   spent: z.number().int().optional(),
   notes: z.string().optional(),
@@ -207,6 +208,83 @@ export const appRouter = router({
       }),
     delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
       return await db.deleteRepair(input.id);
+    }),
+  }),
+
+  upgradeOptions: router({
+    list: protectedProcedure.input(z.object({ upgradeId: z.string() })).query(async ({ input }) => {
+      return await db.getUpgradeOptions(input.upgradeId);
+    }),
+    create: protectedProcedure.input(z.object({
+      upgradeId: z.string(),
+      name: z.string().min(1),
+      vendorPhone: z.string().optional(),
+      totalPrice: z.number().int().optional(),
+      timeline: z.string().optional(),
+      warranty: z.string().optional(),
+      scope: z.string().optional(),
+      notes: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      return await db.createUpgradeOption({ id: nanoid(), payments: [], ...input });
+    }),
+    update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
+      name: z.string().optional(),
+      vendorPhone: z.string().optional(),
+      totalPrice: z.number().int().optional(),
+      timeline: z.string().optional(),
+      warranty: z.string().optional(),
+      scope: z.string().optional(),
+      notes: z.string().optional(),
+    }) })).mutation(async ({ input }) => {
+      return await db.updateUpgradeOption(input.id, input.data);
+    }),
+    select: protectedProcedure.input(z.object({ upgradeId: z.string(), optionId: z.string() })).mutation(async ({ input }) => {
+      await db.selectUpgradeOption(input.upgradeId, input.optionId);
+      return { success: true };
+    }),
+    logPayment: protectedProcedure.input(z.object({
+      optionId: z.string(),
+      amount: z.number().int().positive(),
+      date: z.string(),
+      notes: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      await db.logUpgradeOptionPayment(input.optionId, { date: input.date, amount: input.amount, notes: input.notes });
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+      return await db.deleteUpgradeOption(input.id);
+    }),
+  }),
+
+  upgradeItems: router({
+    list: protectedProcedure.input(z.object({ upgradeId: z.string() })).query(async ({ input }) => {
+      return await db.getUpgradeItems(input.upgradeId);
+    }),
+    create: protectedProcedure.input(z.object({
+      upgradeId: z.string(),
+      name: z.string().min(1),
+      vendorName: z.string().optional(),
+      estimatedCost: z.number().int().optional(),
+      actualCost: z.number().int().optional(),
+      status: z.enum(["Need to find", "Researching", "Quoted", "Ordered", "Delivered", "Installed"]).optional(),
+      eta: z.string().optional(),
+      notes: z.string().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      return await db.createUpgradeItem({ id: nanoid(), ownerId: ctx.user.id, propertyId: ctx.propertyId, ...input });
+    }),
+    update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
+      name: z.string().optional(),
+      vendorName: z.string().optional(),
+      estimatedCost: z.number().int().optional(),
+      actualCost: z.number().int().optional(),
+      status: z.enum(["Need to find", "Researching", "Quoted", "Ordered", "Delivered", "Installed"]).optional(),
+      eta: z.string().optional(),
+      notes: z.string().optional(),
+    }) })).mutation(async ({ input }) => {
+      return await db.updateUpgradeItem(input.id, input.data);
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+      return await db.deleteUpgradeItem(input.id);
     }),
   }),
 
