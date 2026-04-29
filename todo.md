@@ -13,7 +13,12 @@
 - [x] Properties table with address, purchase details, and settings
 - [x] Expenses table with categories and recurring support
 - [x] Repairs table with priority and contractor tracking
+- [x] Repairs `phase` column (Assessment → Quoting → Scheduled → In Progress → Resolved)
+- [x] RepairQuotes table (contractor quotes with payments and receipts per repair)
 - [x] Upgrades table with budget vs. spent tracking
+- [x] Upgrades `phase` column (Planning → Sourcing → Building → Done)
+- [x] UpgradeOptions table (vendor quotes with payments and receipts per upgrade)
+- [x] UpgradeItems table (item/product tracking per upgrade project)
 - [x] Loans table with repayment history
 - [x] WishlistItems table with priority and cost estimates
 - [x] PurchaseCosts table for acquisition expenses
@@ -23,7 +28,10 @@
 ### Backend Setup
 - [x] tRPC router for expenses (create, read, update, delete, list)
 - [x] tRPC router for repairs (create, read, update, delete, list)
+- [x] tRPC router for repairQuotes (list, create, update, select, logPayment, deletePayment, delete, countByRepair)
 - [x] tRPC router for upgrades (create, read, update, delete, list)
+- [x] tRPC router for upgradeOptions (list, create, update, select, logPayment, deletePayment, delete)
+- [x] tRPC router for upgradeItems (list, create, update, delete, countByUpgrade)
 - [x] tRPC router for loans (create, read, update, delete, list, add repayment)
 - [x] tRPC router for wishlist (create, read, update, delete, list)
 - [x] tRPC router for purchase costs (create, read, update, delete, list)
@@ -41,12 +49,17 @@
 - [x] Create navigation menu with all modules
 - [x] Implement profile switcher in header
 - [x] Add logout functionality
+- [x] Refine sidebar with indigo/violet Linear-style accent and CSS variable theming
 
 ### Dashboard Overview
-- [x] Create KPI grid showing purchase total, monthly recurring, YTD expenses, pending repairs, upgrades spent, wishlist total
-- [x] Display upcoming events section (next 30 days)
-- [x] Show household members and their activity
-- [x] Implement Google Map showing property location
+- [x] Three-layer dashboard layout: Attention / This Month / Running Context
+- [x] Attention zone: unpaid expenses, critical repairs, upgrades needing quote decision
+- [x] Mark-as-paid action directly from dashboard attention cards
+- [x] Spend card: monthly total, category breakdown with colored mini-bars
+- [x] Calendar card: 7-day strip + upcoming events list
+- [x] Upgrades panel: active projects with phase dots and budget bars
+- [x] Loans panel: per-loan repayment progress bars
+- [x] Display upcoming events section
 - [x] Add quick action buttons for common tasks
 
 ### Expense Tracking Module
@@ -56,28 +69,36 @@
 - [x] Implement mark-as-paid action with date tracking
 - [x] Create expense detail view with edit/delete options
 - [x] Add file attachment support for receipts
-- [ ] Display monthly expense summary and trends
+- [ ] Display monthly expense summary and trends (summary done; multi-month trend chart not yet built)
 - [x] Export expense data to CSV
 
 ### Repair Log Module
-- [x] Create repair list view with status and priority filters
+- [x] Create repair list view — sectioned by Open / Resolved with priority-accent borders
+- [x] Phase-based workflow stepper (Assessment → Quoting → Scheduled → In Progress → Resolved)
+- [x] Contractor quote tracking per repair: add/edit/select quotes, log payments with receipts
+- [x] Quote count chip on list rows (shows selected state vs. unresolved)
+- [x] Repair detail page (RepairDetail.tsx): phase stepper, quote cards, edit dialog
 - [x] Implement add repair form with priority selection
 - [x] Add contractor assignment functionality
-- [x] Create repair status workflow (Pending → In Progress → Resolved)
-- [x] Implement repair detail view with edit/delete options
+- [x] Create repair status workflow (derived from phase)
 - [x] Add file attachment support for photos/quotes
-- [ ] Display repair timeline and history
-- [x] Add cost tracking for repairs
+- [x] Display repair payment history per contractor quote
+- [x] Add cost tracking for repairs (actualCost auto-synced from selected quote payments)
+- [ ] Display repair timeline and history (phase history / audit log not yet implemented)
+- [x] Export repair data to CSV
 
 ### Upgrade Project Tracking
-- [x] Create upgrade list view with status filters
+- [x] Create upgrade list view — sectioned by In Progress / Planned / Done
+- [x] Phase-based workflow stepper (Planning → Sourcing → Building → Done)
+- [x] Vendor option tracking per upgrade: add/edit/select options, log payments with receipts
+- [x] Item/product tracking per upgrade project (upgradeItems with status, ETA, costs)
+- [x] Upgrade detail page (UpgradeDetail.tsx): phase stepper, options, items, edit dialog
 - [x] Implement add upgrade form with budget input
 - [x] Add spent amount tracking with visual progress
-- [x] Create upgrade detail view with edit/delete options
 - [x] Implement status workflow (Planned → In Progress → Done)
 - [x] Add file attachment support for plans/quotes
 - [x] Display budget vs. spent comparison
-- [ ] Add cost breakdown by upgrade
+- [x] Add cost breakdown by upgrade (per-item actual costs + option payments)
 
 ### Family Loan Tracking
 - [x] Create loan list view with outstanding balance display
@@ -185,4 +206,7 @@
 - [x] **profileColor column error** → column removed from schema in updated migration 0001
 - [x] **DashboardLayout placeholder navigation** → real module routes already implemented
 - [x] **Empty relations.ts** → `drizzle/relations.ts` now has proper one/many definitions
+- [x] **Dashboard NaN values** → added `?? 0` guards for `remaining`, `pct`, `repaid` fields on new server fields
+- [x] **Dashboard not full-screen** → removed `max-w-5xl` constraint; layout now fills `SidebarInset`
+- [x] **Sidebar active color hardcoded** → removed `text-primary` from active icon, now inherits from CSS vars
 - [ ] **QA pass**: verify all tRPC procedures return real data with live `DATABASE_URL` after running `apply-migration-v3.mjs`
