@@ -17,6 +17,7 @@ import PurchaseCosts from "./pages/PurchaseCosts";
 import Calendar from "./pages/Calendar";
 import PropertySettings from "./pages/PropertySettings";
 import Settings from "./pages/Settings";
+import Portfolio from "./pages/Portfolio";
 import { Home, Loader2, LogIn, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -151,6 +152,7 @@ function Router() {
         <Route path="/wishlist" component={Wishlist} />
         <Route path="/purchase-costs" component={PurchaseCosts} />
         <Route path="/calendar" component={Calendar} />
+        <Route path="/portfolio" component={Portfolio} />
         <Route path="/settings" component={Settings} />
         <Route path="/settings/:section" component={Settings} />
         <Route path="/property-settings" component={Settings} />

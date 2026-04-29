@@ -459,6 +459,53 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   };
 }
 
+// ─── Portfolio ────────────────────────────────────────────────────────────────
+
+export async function getPortfolioSummary(userId: number) {
+  const props = await getPropertiesByUser(userId);
+  if (props.length === 0) return [];
+
+  const db = await getDb();
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+
+  return await Promise.all(props.map(async (prop) => {
+    const pid = prop.id;
+    const pf = (col: any) => and(eq(col.ownerId, userId), eq(col.propertyId, pid));
+
+    const [allExpenses, allRepairs, allLoans] = await Promise.all([
+      db.select({ amount: expenses.amount, date: expenses.date }).from(expenses).where(pf(expenses)),
+      db.select({ status: repairs.status }).from(repairs).where(pf(repairs)),
+      db.select({ totalAmount: loans.totalAmount, repayments: loans.repayments }).from(loans).where(pf(loans)),
+    ]);
+
+    const monthSpent = allExpenses
+      .filter(e => e.date >= monthStart && e.date <= monthEnd)
+      .reduce((s, e) => s + e.amount, 0);
+
+    const openRepairsCount = allRepairs.filter(r => r.status !== "Resolved").length;
+
+    const outstandingLoanBalance = allLoans.reduce((sum, l) => {
+      const repaid = ((l.repayments as any[]) || []).reduce((s: number, r: any) => s + r.amount, 0);
+      return sum + Math.max(0, l.totalAmount - repaid);
+    }, 0);
+
+    return {
+      id: prop.id,
+      houseName: prop.houseName,
+      houseNickname: prop.houseNickname,
+      address: prop.address,
+      propertyType: prop.propertyType,
+      purchasePrice: prop.purchasePrice,
+      currencyCode: prop.currencyCode || "ILS",
+      monthSpent,
+      openRepairsCount,
+      outstandingLoanBalance,
+    };
+  }));
+}
+
 // ─── Data Management ──────────────────────────────────────────────────────────
 
 export async function deleteAllUserData(userId: number) {

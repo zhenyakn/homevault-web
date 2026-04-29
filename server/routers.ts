@@ -162,6 +162,9 @@ export const appRouter = router({
     recentActivity: protectedProcedure.query(async ({ ctx }) => {
       return await db.getRecentActivity(ctx.propertyId);
     }),
+    portfolio: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getPortfolioSummary(ctx.user.id);
+    }),
   }),
 
   expenses: router({
