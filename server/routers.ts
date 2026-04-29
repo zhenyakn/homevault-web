@@ -24,6 +24,7 @@ const repairSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(["Low", "Medium", "High", "Critical"]),
   status: z.enum(["Pending", "In Progress", "Resolved"]),
+  phase: z.enum(["Assessment", "Quoting", "Scheduled", "In Progress", "Resolved"]).optional(),
   dateLogged: z.string(),
   contractor: z.string().optional(),
   contractorPhone: z.string().optional(),
@@ -208,6 +209,62 @@ export const appRouter = router({
       }),
     delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
       return await db.deleteRepair(input.id);
+    }),
+  }),
+
+  repairQuotes: router({
+    list: protectedProcedure.input(z.object({ repairId: z.string() })).query(async ({ input }) => {
+      return await db.getRepairQuotes(input.repairId);
+    }),
+    countByRepair: protectedProcedure.input(z.object({ repairIds: z.array(z.string()) })).query(async ({ input }) => {
+      return await db.getRepairQuoteCounts(input.repairIds);
+    }),
+    create: protectedProcedure.input(z.object({
+      repairId: z.string(),
+      contractorName: z.string().min(1),
+      contractorPhone: z.string().optional(),
+      quotedPrice: z.number().int().optional(),
+      timeline: z.string().optional(),
+      guarantee: z.string().optional(),
+      scope: z.string().optional(),
+      notes: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      return await db.createRepairQuote({ id: nanoid(), payments: [], ...input });
+    }),
+    update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
+      contractorName: z.string().optional(),
+      contractorPhone: z.string().optional(),
+      quotedPrice: z.number().int().optional(),
+      timeline: z.string().optional(),
+      guarantee: z.string().optional(),
+      scope: z.string().optional(),
+      notes: z.string().optional(),
+    }) })).mutation(async ({ input }) => {
+      return await db.updateRepairQuote(input.id, input.data);
+    }),
+    select: protectedProcedure.input(z.object({ repairId: z.string(), quoteId: z.string() })).mutation(async ({ input }) => {
+      await db.selectRepairQuote(input.repairId, input.quoteId);
+      return { success: true };
+    }),
+    logPayment: protectedProcedure.input(z.object({
+      quoteId: z.string(),
+      amount: z.number().int().positive(),
+      date: z.string(),
+      notes: z.string().optional(),
+      receipt: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      await db.logRepairQuotePayment(input.quoteId, { date: input.date, amount: input.amount, notes: input.notes, receipt: input.receipt });
+      return { success: true };
+    }),
+    deletePayment: protectedProcedure.input(z.object({
+      quoteId: z.string(),
+      paymentIndex: z.number().int().min(0),
+    })).mutation(async ({ input }) => {
+      await db.deleteRepairQuotePayment(input.quoteId, input.paymentIndex);
+      return { success: true };
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+      return await db.deleteRepairQuote(input.id);
     }),
   }),
 

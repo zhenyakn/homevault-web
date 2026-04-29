@@ -114,8 +114,8 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
 
   if (isCollapsed) {
     return (
-      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10 mx-auto">
-        <Home className="h-4 w-4 text-primary" />
+      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 mx-auto shadow-sm">
+        <Home className="h-4 w-4 text-white" />
       </div>
     );
   }
@@ -124,21 +124,18 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2.5 w-full px-2 py-2 rounded-lg hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring text-left">
-            <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-              <Home className="h-3.5 w-3.5 text-primary" />
-            </div>
+          <button className="flex items-center gap-1.5 w-full px-1 py-1 rounded-md hover:bg-sidebar-accent transition-colors focus:outline-none text-left">
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate leading-tight">
+              <p className="text-[13px] font-semibold truncate leading-tight text-sidebar-foreground">
                 {activeProperty?.houseName ?? "My Home"}
               </p>
               {activeProperty?.address && (
-                <p className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
+                <p className="text-[11px] text-muted-foreground truncate leading-tight">
                   {activeProperty.address}
                 </p>
               )}
             </div>
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
@@ -344,22 +341,28 @@ function DashboardLayoutContent({
   return (
     <>
       <div className="relative" ref={sidebarRef}>
-        <Sidebar collapsible="icon" className="border-r-0" disableTransition={isResizing}>
-          <SidebarHeader className="h-16 justify-center">
+        <Sidebar collapsible="icon" className="border-r" disableTransition={isResizing}>
+          <SidebarHeader className="h-14 justify-center">
             <div className="flex items-center gap-2 px-2 w-full">
-              <button
-                onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-accent rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring shrink-0"
-                aria-label="Toggle navigation"
-              >
-                <PanelLeft className="h-4 w-4 text-muted-foreground" />
-              </button>
-              {!isCollapsed && (
-                <div className="flex-1 min-w-0">
-                  <PropertySwitcher isCollapsed={false} />
-                </div>
+                  {isCollapsed ? (
+                <PropertySwitcher isCollapsed={true} />
+              ) : (
+                <>
+                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 shrink-0 shadow-sm">
+                    <Home className="h-4 w-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <PropertySwitcher isCollapsed={false} />
+                  </div>
+                  <button
+                    onClick={toggleSidebar}
+                    className="h-7 w-7 flex items-center justify-center hover:bg-sidebar-accent rounded-md transition-colors focus:outline-none shrink-0"
+                    aria-label="Collapse sidebar"
+                  >
+                    <PanelLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                  </button>
+                </>
               )}
-              {isCollapsed && <PropertySwitcher isCollapsed={true} />}
             </div>
           </SidebarHeader>
 
@@ -377,9 +380,9 @@ function DashboardLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className="h-10 font-normal"
+                      className="h-9 text-[13px]"
                     >
-                      <item.icon className={`h-4 w-4 ${isActive ? "text-primary" : ""}`} />
+                      <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

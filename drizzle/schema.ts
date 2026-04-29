@@ -136,6 +136,7 @@ export const repairs = mysqlTable(
     status: mysqlEnum("status", ["Pending", "In Progress", "Resolved"])
       .notNull(),
     dateLogged: varchar("dateLogged", { length: 20 }).notNull(), // YYYY-MM-DD
+    phase: mysqlEnum("phase", ["Assessment", "Quoting", "Scheduled", "In Progress", "Resolved"]).default("Assessment"),
     contractor: varchar("contractor", { length: 200 }),
     contractorPhone: varchar("contractorPhone", { length: 20 }),
     estimatedCost: int("estimatedCost"), // In cents
@@ -359,6 +360,34 @@ export const upgradeOptions = mysqlTable(
 
 export type UpgradeOption = typeof upgradeOptions.$inferSelect;
 export type InsertUpgradeOption = typeof upgradeOptions.$inferInsert;
+
+/**
+ * Contractor quotes per repair
+ */
+export const repairQuotes = mysqlTable(
+  "repairQuotes",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    repairId: varchar("repairId", { length: 36 }).notNull(),
+    contractorName: varchar("contractorName", { length: 200 }).notNull(),
+    contractorPhone: varchar("contractorPhone", { length: 30 }),
+    quotedPrice: int("quotedPrice"),      // In cents
+    timeline: varchar("timeline", { length: 100 }),
+    guarantee: varchar("guarantee", { length: 100 }),
+    scope: text("scope"),
+    isSelected: boolean("isSelected").default(false),
+    notes: text("notes"),
+    payments: json("payments").$type<Array<{ date: string; amount: number; notes?: string; receipt?: string }>>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    repairIdx: index("repairQuote_repairId_idx").on(table.repairId),
+  })
+);
+
+export type RepairQuote = typeof repairQuotes.$inferSelect;
+export type InsertRepairQuote = typeof repairQuotes.$inferInsert;
 
 /**
  * Individual items / products / tasks within an upgrade project

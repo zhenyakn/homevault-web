@@ -19,6 +19,7 @@ import PropertySettings from "./pages/PropertySettings";
 import Settings from "./pages/Settings";
 import Portfolio from "./pages/Portfolio";
 import UpgradeDetail from "./pages/UpgradeDetail";
+import RepairDetail from "./pages/RepairDetail";
 import { Home, Loader2, LogIn, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -148,6 +149,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/expenses" component={Expenses} />
         <Route path="/repairs" component={Repairs} />
+        <Route path="/repairs/:id" component={RepairDetail} />
         <Route path="/upgrades" component={Upgrades} />
         <Route path="/upgrades/:id" component={UpgradeDetail} />
         <Route path="/loans" component={Loans} />
