@@ -247,8 +247,16 @@ export const appRouter = router({
       amount: z.number().int().positive(),
       date: z.string(),
       notes: z.string().optional(),
+      receipt: z.string().optional(),
     })).mutation(async ({ input }) => {
-      await db.logUpgradeOptionPayment(input.optionId, { date: input.date, amount: input.amount, notes: input.notes });
+      await db.logUpgradeOptionPayment(input.optionId, { date: input.date, amount: input.amount, notes: input.notes, receipt: input.receipt });
+      return { success: true };
+    }),
+    deletePayment: protectedProcedure.input(z.object({
+      optionId: z.string(),
+      paymentIndex: z.number().int().min(0),
+    })).mutation(async ({ input }) => {
+      await db.deleteUpgradeOptionPayment(input.optionId, input.paymentIndex);
       return { success: true };
     }),
     delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
@@ -259,6 +267,9 @@ export const appRouter = router({
   upgradeItems: router({
     list: protectedProcedure.input(z.object({ upgradeId: z.string() })).query(async ({ input }) => {
       return await db.getUpgradeItems(input.upgradeId);
+    }),
+    countByUpgrade: protectedProcedure.input(z.object({ upgradeIds: z.array(z.string()) })).query(async ({ input }) => {
+      return await db.getUpgradeItemCounts(input.upgradeIds);
     }),
     create: protectedProcedure.input(z.object({
       upgradeId: z.string(),

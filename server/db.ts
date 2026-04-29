@@ -1,4 +1,4 @@
-import { eq, desc, gte, lte, and } from "drizzle-orm";
+import { eq, desc, gte, lte, and, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
   MOCK_PROPERTY_NAME, mockProperty, mockExpenses, mockRepairs,
@@ -493,12 +493,28 @@ export async function selectUpgradeOption(upgradeId: string, optionId: string) {
   await db.update(upgradeOptions).set({ isSelected: true }).where(eq(upgradeOptions.id, optionId));
 }
 
-export async function logUpgradeOptionPayment(optionId: string, payment: { date: string; amount: number; notes?: string }) {
+export async function logUpgradeOptionPayment(optionId: string, payment: { date: string; amount: number; notes?: string; receipt?: string }) {
   const db = await getDb();
   const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
   if (!existing) throw new Error("Option not found");
   const payments = [...((existing.payments as any[]) || []), payment];
   await db.update(upgradeOptions).set({ payments }).where(eq(upgradeOptions.id, optionId));
+  if (existing.isSelected) {
+    const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
+    await db.update(upgrades).set({ spent: totalPaid }).where(eq(upgrades.id, existing.upgradeId));
+  }
+}
+
+export async function deleteUpgradeOptionPayment(optionId: string, paymentIndex: number) {
+  const db = await getDb();
+  const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
+  if (!existing) throw new Error("Option not found");
+  const payments = ((existing.payments as any[]) || []).filter((_: any, i: number) => i !== paymentIndex);
+  await db.update(upgradeOptions).set({ payments }).where(eq(upgradeOptions.id, optionId));
+  if (existing.isSelected) {
+    const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
+    await db.update(upgrades).set({ spent: totalPaid }).where(eq(upgrades.id, existing.upgradeId));
+  }
 }
 
 export async function deleteUpgradeOption(id: string) {
@@ -512,6 +528,24 @@ export async function deleteUpgradeOption(id: string) {
 export async function getUpgradeItems(upgradeId: string) {
   const db = await getDb();
   return await db.select().from(upgradeItems).where(eq(upgradeItems.upgradeId, upgradeId)).orderBy(upgradeItems.createdAt);
+}
+
+export async function getUpgradeItemCounts(upgradeIds: string[]) {
+  if (upgradeIds.length === 0) return [];
+  const db = await getDb();
+  const rows = await db
+    .select({ upgradeId: upgradeItems.upgradeId, status: upgradeItems.status })
+    .from(upgradeItems)
+    .where(inArray(upgradeItems.upgradeId, upgradeIds));
+
+  const map: Record<string, { total: number; done: number; needsAction: number }> = {};
+  for (const row of rows) {
+    if (!map[row.upgradeId]) map[row.upgradeId] = { total: 0, done: 0, needsAction: 0 };
+    map[row.upgradeId].total++;
+    if (["Delivered", "Installed"].includes(row.status)) map[row.upgradeId].done++;
+    if (["Need to find", "Researching"].includes(row.status)) map[row.upgradeId].needsAction++;
+  }
+  return Object.entries(map).map(([upgradeId, c]) => ({ upgradeId, ...c }));
 }
 
 export async function createUpgradeItem(data: typeof upgradeItems.$inferInsert) {
@@ -618,6 +652,18 @@ export async function seedMockProperty(userId: number): Promise<number> {
     propertyId = (res as any).insertId as number;
   }
 
+  // Delete upgradeOptions and upgradeItems before wiping upgrades (FK-safe)
+  const existingUpgradeIds = (
+    await db.select({ id: upgrades.id }).from(upgrades).where(eq(upgrades.propertyId, propertyId))
+  ).map(u => u.id);
+
+  if (existingUpgradeIds.length > 0) {
+    await Promise.all([
+      db.delete(upgradeOptions).where(inArray(upgradeOptions.upgradeId, existingUpgradeIds)),
+      db.delete(upgradeItems).where(inArray(upgradeItems.upgradeId, existingUpgradeIds)),
+    ]);
+  }
+
   // Wipe existing data for this property (idempotent restore)
   await Promise.all([
     db.delete(expenses).where(eq(expenses.propertyId, propertyId)),
@@ -642,10 +688,22 @@ export async function seedMockProperty(userId: number): Promise<number> {
     mockRepairs.map(r => ({ id: nanoid(), ...r, ownerId: oid, propertyId: pid }))
   );
 
-  // Seed upgrades
-  await db.insert(upgrades).values(
-    mockUpgrades.map(u => ({ id: nanoid(), ...u, ownerId: oid, propertyId: pid }))
-  );
+  // Seed upgrades with nested options and items
+  for (const u of mockUpgrades) {
+    const { options, items, ...upgradeCore } = u as any;
+    const upgradeId = nanoid();
+    await db.insert(upgrades).values({ id: upgradeId, ...upgradeCore, ownerId: oid, propertyId: pid });
+    if (options?.length) {
+      await db.insert(upgradeOptions).values(
+        options.map((opt: any) => ({ id: nanoid(), upgradeId, ...opt, payments: opt.payments ?? [] }))
+      );
+    }
+    if (items?.length) {
+      await db.insert(upgradeItems).values(
+        items.map((item: any) => ({ id: nanoid(), upgradeId, ownerId: oid, propertyId: pid, ...item }))
+      );
+    }
+  }
 
   // Seed loans — attach ownerId to each repayment entry
   await db.insert(loans).values(

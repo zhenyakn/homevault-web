@@ -345,38 +345,184 @@ export const mockRepairs = [
   },
 ];
 
-// ─── Upgrades ─────────────────────────────────────────────────────────────────
+// ─── Upgrades (with embedded options & items) ─────────────────────────────────
+//
+// Each upgrade has:
+//   options[] — vendor quotes. Set isSelected: true on the chosen one.
+//               payments[] logs actual transfers to that vendor.
+//   items[]   — individual products / tasks. Status advances left → right:
+//               "Need to find" → "Researching" → "Quoted" → "Ordered" → "Delivered" → "Installed"
+//
+// phase: "Planning" | "Sourcing" | "Building" | "Done"
 
 export const mockUpgrades = [
+  // ── 1. Kitchen renovation ─────────────────────────────────────────────────
   {
     label: "Kitchen renovation",
     description: "Full gut-and-replace: new cabinets (Egger board), quartz countertop (Caesarstone Statuario), undermount sink, and backsplash tiles. Existing layout kept.",
     status: "In Progress" as const,
+    phase: "Building" as const,
     budget: ils(48_000),
     spent: ils(29_500),
-    notes: "Cabinets installed ✓ · Countertop delivery delayed (ETA May 8) · Electrician phase after countertop",
+    notes: "Countertop delivery ETA May 8 — Rami can only start installation after it arrives. Electrician phase follows.",
+
+    options: [
+      {
+        name: "IKEA + Rami Installation",
+        vendorPhone: "052-344-1188",
+        totalPrice: ils(17_100),           // cabinets + installation
+        timeline: "8 weeks",
+        warranty: "1 year (installation)",
+        scope: "IKEA Metod cabinets supply, handles, full installation by Rami. Countertop and sink ordered separately.",
+        isSelected: true,
+        notes: "Very professional. Rami does IKEA kitchen installs full-time.",
+        payments: [
+          { date: "2026-02-10", amount: ils(5_000), notes: "Deposit" },
+          { date: "2026-03-20", amount: ils(6_900), notes: "Cabinets delivery + start" },
+        ],
+      },
+      {
+        name: "Yossi Cabinets",
+        vendorPhone: "054-221-8800",
+        totalPrice: ils(16_200),
+        timeline: "8 weeks",
+        warranty: "1 year",
+        scope: "Custom cabinets + installation. Countertop and handles excluded.",
+        isSelected: false,
+        notes: "Cheaper but slower communication. Didn't include handles in quote.",
+      },
+      {
+        name: "Local Carpenter (Shlomo)",
+        vendorPhone: "050-987-6543",
+        totalPrice: ils(19_800),
+        timeline: "6 weeks",
+        warranty: "2 years",
+        scope: "All-inclusive: custom cabinets, countertop, handles, installation, cleanup.",
+        isSelected: false,
+        notes: "Most expensive but best warranty and fastest timeline. Good reviews from neighbour.",
+      },
+    ],
+
+    items: [
+      { name: "Kitchen cabinets (IKEA Metod)", vendorName: "IKEA", estimatedCost: ils(8_400), actualCost: ils(8_100), status: "Installed" as const },
+      { name: "Backsplash tiles (Porcelanosa, 30×60)", vendorName: "Porcelanosa", estimatedCost: ils(3_600), actualCost: ils(3_400), status: "Installed" as const },
+      { name: "Cabinet handles ×24 (IKEA Eneryda)", vendorName: "IKEA", estimatedCost: ils(400), actualCost: ils(380), status: "Installed" as const },
+      { name: "Plumber — pipe relocation", vendorName: "Avi Plumbing", estimatedCost: ils(1_800), actualCost: ils(1_800), status: "Installed" as const },
+      { name: "Countertop — Caesarstone Statuario", vendorName: "Caesarstone", estimatedCost: ils(4_200), status: "Ordered" as const, eta: "2026-05-08", notes: "Must arrive before Rami starts installation" },
+      { name: "LED strip under cabinets (5m)", vendorName: "Amazon", estimatedCost: ils(280), status: "Ordered" as const, eta: "2026-04-30" },
+      { name: "Undermount sink (Franke MRG 110-52)", estimatedCost: ils(1_100), status: "Researching" as const, notes: "Must fit 60cm cabinet. Check Hashkiya and Rami's supplier." },
+      { name: "Kitchen faucet (pull-out spray)", estimatedCost: ils(600), status: "Need to find" as const, notes: "Coordinate finish colour with handles (brushed nickel)" },
+      { name: "Built-in oven (60cm)", estimatedCost: ils(3_200), status: "Researching" as const, notes: "Needs dedicated 32A circuit — confirm with electrician first" },
+    ],
   },
+
+  // ── 2. Main bathroom retiling ─────────────────────────────────────────────
   {
     label: "Main bathroom retiling",
     description: "Remove all existing wall + floor tiles. Lay 60×60 large-format porcelain (Atlas Concorde). Include new vanity unit (IKEA Godmorgon).",
     status: "Planned" as const,
+    phase: "Sourcing" as const,
     budget: ils(22_000),
-    notes: "Starting after kitchen done. 2 quotes received: ₪20,000 and ₪24,500. Will decide in May.",
+    spent: 0,
+    notes: "Starting after kitchen is fully done. Need to choose tile colour and vanity finish before deciding on contractor.",
+
+    options: [
+      {
+        name: "Roni Tiling Works",
+        vendorPhone: "052-771-4490",
+        totalPrice: ils(20_000),
+        timeline: "3 weeks",
+        warranty: "1 year",
+        scope: "Full demo, waterproofing membrane, wall + floor tiles (supply & lay). Vanity installation excluded.",
+        isSelected: false,
+        notes: "Did the balcony waterproofing — reliable. Will give discount as repeat customer.",
+      },
+      {
+        name: "Dan Renovations",
+        vendorPhone: "054-882-3311",
+        totalPrice: ils(24_500),
+        timeline: "2.5 weeks",
+        warranty: "2 years",
+        scope: "Full demo, waterproofing, wall + floor tiles, vanity + mirror installation included.",
+        isSelected: false,
+        notes: "More expensive but includes vanity install and shorter timeline.",
+      },
+    ],
+
+    items: [
+      { name: "Floor tiles — Atlas Concorde 60×60 (7 sqm)", vendorName: "Porcelanosa", estimatedCost: ils(3_200), status: "Quoted" as const, notes: "Grey marble-look. Got price from Porcelanosa — comparing online." },
+      { name: "Wall tiles — Atlas Concorde 30×60 (18 sqm)", vendorName: "Porcelanosa", estimatedCost: ils(2_800), status: "Quoted" as const },
+      { name: "IKEA Godmorgon vanity 80cm (white)", vendorName: "IKEA", estimatedCost: ils(2_400), status: "Need to find" as const, notes: "Check if 80cm fits. Measure again before ordering." },
+      { name: "Shower mixer (Grohe Euphoria)", estimatedCost: ils(1_800), status: "Researching" as const },
+      { name: "Toilet (Roca Meridian)", estimatedCost: ils(1_600), status: "Need to find" as const },
+      { name: "Towel rail — heated electric", estimatedCost: ils(900), status: "Need to find" as const },
+    ],
   },
+
+  // ── 3. Smart lighting — Shelly relays ────────────────────────────────────
   {
     label: "Smart lighting — Shelly relays",
-    description: "Replace all switches with Shelly 1PM relays (behind existing switches, no rewiring). All rooms + kitchen + hallway. Google Home integration.",
-    status: "Planned" as const,
+    description: "Replace all switches with Shelly 1PM relays (behind existing switches, no rewiring needed). All rooms + kitchen + hallway. Google Home integration.",
+    status: "In Progress" as const,
+    phase: "Building" as const,
     budget: ils(4_500),
-    notes: "Ordered 8x Shelly 1PM. Electrician will install when doing kitchen phase.",
+    spent: ils(1_120),
+    notes: "Shelly relays delivered. Electrician booked for May 15 to install during kitchen electrician phase.",
+
+    options: [
+      {
+        name: "DIY + Electrician (Eli)",
+        vendorPhone: "053-600-1234",
+        totalPrice: ils(1_800),           // labour only — parts bought separately
+        timeline: "1 day",
+        scope: "Eli installs 8x Shelly relays + wires to existing switches. We supply parts.",
+        isSelected: true,
+        notes: "Eli is licensed and familiar with Shelly. Half-day job.",
+        payments: [
+          { date: "2026-04-01", amount: ils(500), notes: "Deposit" },
+        ],
+      },
+    ],
+
+    items: [
+      { name: "Shelly 1PM relays ×8", vendorName: "AliExpress", estimatedCost: ils(1_120), actualCost: ils(1_120), status: "Delivered" as const, notes: "Arrived. Tested 1 unit — works with Google Home." },
+      { name: "Electrician labour (Eli)", vendorName: "Eli Electric", estimatedCost: ils(1_800), status: "Quoted" as const, notes: "Booked May 15 during kitchen phase" },
+      { name: "Switch cover plates ×8 (white)", estimatedCost: ils(240), status: "Need to find" as const, notes: "Current covers may not refit after relay — measure first" },
+    ],
   },
+
+  // ── 4. Hallway built-in storage ───────────────────────────────────────────
   {
     label: "Hallway built-in storage",
     description: "Custom floor-to-ceiling wardrobe in entrance hallway (2.4m wide). Melamine board, push-to-open hinges.",
     status: "Done" as const,
+    phase: "Done" as const,
     budget: ils(8_500),
     spent: ils(8_200),
-    notes: "Completed April 2025. Carpenter: Yossi Amsalem 050-432-1188. Very satisfied.",
+    notes: "Completed April 2025. Very satisfied with result. Small scratch on top shelf was repaired on-site.",
+
+    options: [
+      {
+        name: "Yossi Amsalem Carpentry",
+        vendorPhone: "050-432-1188",
+        totalPrice: ils(8_200),
+        timeline: "2 weeks",
+        warranty: "1 year",
+        scope: "Custom melamine wardrobe, push-to-open hinges, internal shelving, full installation.",
+        isSelected: true,
+        notes: "Excellent work. Would use again. Finished 3 days ahead of schedule.",
+        payments: [
+          { date: "2025-03-15", amount: ils(4_000), notes: "Deposit 50%" },
+          { date: "2025-04-10", amount: ils(4_200), notes: "Final payment on completion" },
+        ],
+      },
+    ],
+
+    items: [
+      { name: "Custom wardrobe unit (2.4m)", vendorName: "Yossi Amsalem", estimatedCost: ils(7_800), actualCost: ils(7_800), status: "Installed" as const },
+      { name: "Push-to-open hinges ×6 (Blum)", estimatedCost: ils(280), actualCost: ils(280), status: "Installed" as const },
+      { name: "Internal shelving hardware", estimatedCost: ils(120), actualCost: ils(120), status: "Installed" as const },
+    ],
   },
 ];
 
