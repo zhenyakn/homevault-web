@@ -91,10 +91,8 @@ const propertySchema = z.object({
   timezone: z.string().optional(),
   startOfWeek: z.string().optional(),
   reminderDaysBefore: z.number().int().min(1).max(30).optional(),
-  // Previously missing — now wired:
   calendarSyncEnabled: z.boolean().optional(),
   mapsProvider: z.enum(["google", "osm"]).optional(),
-  // Notification triggers
   remindExpenses: z.boolean().optional(),
   remindLoans: z.boolean().optional(),
   remindRepairs: z.boolean().optional(),
@@ -129,23 +127,25 @@ export const appRouter = router({
 
   data: router({
     exportAll: protectedProcedure.query(async ({ ctx }) => {
-      const [expenses, repairs, upgrades, loans, wishlist, purchaseCosts, events, property] =
+      const pid = ctx.propertyId;
+      const uid = ctx.user.id;
+      const [expensesData, repairsData, upgradesData, loansData, wishlist, purchaseCostsData, events, property] =
         await Promise.all([
-          db.getExpenses(ctx.user.id),
-          db.getRepairs(ctx.user.id),
-          db.getUpgrades(ctx.user.id),
-          db.getLoans(ctx.user.id),
-          db.getWishlistItems(ctx.user.id),
-          db.getPurchaseCosts(ctx.user.id),
-          db.getCalendarEvents(),
-          db.getProperty(),
+          db.getExpenses(uid, pid),
+          db.getRepairs(uid, pid),
+          db.getUpgrades(uid, pid),
+          db.getLoans(uid, pid),
+          db.getWishlistItems(uid, pid),
+          db.getPurchaseCosts(uid, pid),
+          db.getCalendarEvents(pid),
+          db.getProperty(pid),
         ]);
-      return { expenses, repairs, upgrades, loans, wishlist, purchaseCosts, calendarEvents: events, property, exportedAt: new Date().toISOString() };
+      return { expenses: expensesData, repairs: repairsData, upgrades: upgradesData, loans: loansData, wishlist, purchaseCosts: purchaseCostsData, calendarEvents: events, property, exportedAt: new Date().toISOString() };
     }),
     deleteAll: protectedProcedure
       .input(z.object({ confirmationPhrase: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const property = await db.getProperty();
+        const property = await db.getProperty(ctx.propertyId);
         const expected = property?.houseName ?? "My Home";
         if (input.confirmationPhrase !== expected) {
           throw new Error(`Type "${expected}" to confirm deletion`);
@@ -157,23 +157,19 @@ export const appRouter = router({
 
   dashboard: router({
     stats: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getDashboardStats(ctx.user.id);
+      return await db.getDashboardStats(ctx.user.id, ctx.propertyId);
     }),
-    recentActivity: protectedProcedure.query(async () => {
-      return await db.getRecentActivity();
+    recentActivity: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getRecentActivity(ctx.propertyId);
     }),
   }),
 
   expenses: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getExpenses(ctx.user.id);
+      return await db.getExpenses(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(expenseSchema).mutation(async ({ ctx, input }) => {
-      return await db.createExpense({
-        id: nanoid(),
-        ...input,
-        ownerId: ctx.user.id,
-      });
+      return await db.createExpense({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: expenseSchema.partial() }))
@@ -186,23 +182,16 @@ export const appRouter = router({
     markAsPaid: protectedProcedure
       .input(z.object({ id: z.string(), paidDate: z.string() }))
       .mutation(async ({ input }) => {
-        return await db.updateExpense(input.id, {
-          isPaid: true,
-          paidDate: input.paidDate,
-        });
+        return await db.updateExpense(input.id, { isPaid: true, paidDate: input.paidDate });
       }),
   }),
 
   repairs: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getRepairs(ctx.user.id);
+      return await db.getRepairs(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(repairSchema).mutation(async ({ ctx, input }) => {
-      return await db.createRepair({
-        id: nanoid(),
-        ...input,
-        ownerId: ctx.user.id,
-      });
+      return await db.createRepair({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: repairSchema.partial() }))
@@ -216,14 +205,10 @@ export const appRouter = router({
 
   upgrades: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getUpgrades(ctx.user.id);
+      return await db.getUpgrades(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(upgradeSchema).mutation(async ({ ctx, input }) => {
-      return await db.createUpgrade({
-        id: nanoid(),
-        ...input,
-        ownerId: ctx.user.id,
-      });
+      return await db.createUpgrade({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: upgradeSchema.partial() }))
@@ -237,14 +222,10 @@ export const appRouter = router({
 
   loans: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getLoans(ctx.user.id);
+      return await db.getLoans(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(loanSchema).mutation(async ({ ctx, input }) => {
-      return await db.createLoan({
-        id: nanoid(),
-        ...input,
-        ownerId: ctx.user.id,
-      });
+      return await db.createLoan({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: loanSchema.partial() }))
@@ -255,39 +236,25 @@ export const appRouter = router({
       return await db.deleteLoan(input.id);
     }),
     addRepayment: protectedProcedure
-      .input(
-        z.object({
-          loanId: z.string(),
-          amount: z.number().int().positive(),
-          date: z.string(),
-        })
-      )
+      .input(z.object({ loanId: z.string(), amount: z.number().int().positive(), date: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const loans = await db.getLoans(ctx.user.id);
-        const targetLoan = loans.find((l) => l.id === input.loanId);
+        const allLoans = await db.getLoans(ctx.user.id, ctx.propertyId);
+        const targetLoan = allLoans.find((l) => l.id === input.loanId);
         if (!targetLoan) throw new Error("Loan not found");
-
         const updatedRepayments = [
           ...(targetLoan.repayments || []),
           { date: input.date, amount: input.amount, ownerId: ctx.user.id },
         ];
-
-        return await db.updateLoan(input.loanId, {
-          repayments: updatedRepayments,
-        });
+        return await db.updateLoan(input.loanId, { repayments: updatedRepayments });
       }),
   }),
 
   wishlist: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getWishlistItems(ctx.user.id);
+      return await db.getWishlistItems(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(wishlistSchema).mutation(async ({ ctx, input }) => {
-      return await db.createWishlistItem({
-        id: nanoid(),
-        ...input,
-        ownerId: ctx.user.id,
-      });
+      return await db.createWishlistItem({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: wishlistSchema.partial() }))
@@ -301,14 +268,10 @@ export const appRouter = router({
 
   purchaseCosts: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getPurchaseCosts(ctx.user.id);
+      return await db.getPurchaseCosts(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(purchaseCostSchema).mutation(async ({ ctx, input }) => {
-      return await db.createPurchaseCost({
-        id: nanoid(),
-        ...input,
-        ownerId: ctx.user.id,
-      });
+      return await db.createPurchaseCost({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: purchaseCostSchema.partial() }))
@@ -322,31 +285,20 @@ export const appRouter = router({
 
   calendar: router({
     list: protectedProcedure
-      .input(
-        z.object({
-          startDate: z.string().optional(),
-          endDate: z.string().optional(),
-        })
-      )
-      .query(async ({ input }) => {
-        return await db.getCalendarEvents(input.startDate, input.endDate);
+      .input(z.object({ startDate: z.string().optional(), endDate: z.string().optional() }))
+      .query(async ({ ctx, input }) => {
+        return await db.getCalendarEvents(ctx.propertyId, input.startDate, input.endDate);
       }),
     create: protectedProcedure
-      .input(
-        z.object({
-          title: z.string().min(1),
-          date: z.string(),
-          time: z.string().optional(),
-          eventType: z.enum(["Expense", "Repair", "Upgrade", "Loan", "Other"]),
-          notes: z.string().optional(),
-        })
-      )
+      .input(z.object({
+        title: z.string().min(1),
+        date: z.string(),
+        time: z.string().optional(),
+        eventType: z.enum(["Expense", "Repair", "Upgrade", "Loan", "Other"]),
+        notes: z.string().optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
-        return await db.createCalendarEvent({
-          id: nanoid(),
-          ...input,
-          createdById: ctx.user.id,
-        });
+        return await db.createCalendarEvent({ id: nanoid(), ...input, createdById: ctx.user.id, propertyId: ctx.propertyId });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
@@ -356,12 +308,28 @@ export const appRouter = router({
   }),
 
   property: router({
-    get: protectedProcedure.query(async () => {
-      return await db.getProperty();
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getPropertiesByUser(ctx.user.id);
     }),
-    update: protectedProcedure.input(propertySchema).mutation(async ({ input }) => {
-      return await db.updateProperty(input);
+    get: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getProperty(ctx.propertyId);
     }),
+    create: protectedProcedure
+      .input(z.object({ houseName: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.createProperty(ctx.user.id, input);
+      }),
+    update: protectedProcedure.input(propertySchema).mutation(async ({ ctx, input }) => {
+      return await db.updateProperty(ctx.propertyId, input);
+    }),
+    delete: protectedProcedure
+      .input(z.object({ propertyId: z.number().int() }))
+      .mutation(async ({ ctx, input }) => {
+        if (input.propertyId === 1) throw new Error("Cannot delete the primary property");
+        const props = await db.getPropertiesByUser(ctx.user.id);
+        if (!props.find(p => p.id === input.propertyId)) throw new Error("Property not found");
+        return await db.deleteProperty(input.propertyId);
+      }),
   }),
 });
 

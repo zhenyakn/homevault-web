@@ -40,7 +40,8 @@ export type InsertUser = typeof users.$inferInsert;
  * Property settings and metadata
  */
 export const properties = mysqlTable("properties", {
-  id: int("id").primaryKey().default(1), // Single property per household
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().default(1),
   houseName: varchar("houseName", { length: 200 }).default("My Home"),
   houseNickname: varchar("houseNickname", { length: 200 }),
   address: text("address"),
@@ -96,6 +97,7 @@ export const expenses = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
+    propertyId: int("propertyId").notNull().default(1),
     isRecurring: boolean("isRecurring").default(false),
     recurringFrequency: mysqlEnum("recurringFrequency", [
       "Monthly",
@@ -141,6 +143,7 @@ export const repairs = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
+    propertyId: int("propertyId").notNull().default(1),
     attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
@@ -172,6 +175,7 @@ export const upgrades = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
+    propertyId: int("propertyId").notNull().default(1),
     attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
@@ -210,6 +214,7 @@ export const loans = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
+    propertyId: int("propertyId").notNull().default(1),
     repayments: json("repayments").$type<
       Array<{ date: string; amount: number; ownerId: number }>
     >(),
@@ -240,6 +245,7 @@ export const wishlistItems = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
+    propertyId: int("propertyId").notNull().default(1),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -266,6 +272,7 @@ export const purchaseCosts = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
+    propertyId: int("propertyId").notNull().default(1),
     attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
@@ -301,6 +308,7 @@ export const calendarEvents = mysqlTable(
     createdById: int("createdById")
       .notNull()
       .references(() => users.id),
+    propertyId: int("propertyId").notNull().default(1),
     linkedEntityId: varchar("linkedEntityId", { length: 36 }),
     linkedEntityType: mysqlEnum("linkedEntityType", [
       "Expense",

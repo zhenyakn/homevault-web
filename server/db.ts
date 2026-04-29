@@ -93,25 +93,42 @@ export async function getAllUsers() {
 
 // ─── Property ─────────────────────────────────────────────────────────────────
 
-export async function getProperty() {
+export async function getProperty(propertyId: number = 1) {
   const db = await getDb();
-  const result = await db.select().from(properties).limit(1);
+  const result = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
-export async function updateProperty(data: Partial<Property>) {
+export async function getPropertiesByUser(userId: number) {
   const db = await getDb();
-  await db.update(properties).set(data).where(eq(properties.id, 1));
-  return await getProperty();
+  return await db.select().from(properties).where(eq(properties.userId, userId));
+}
+
+export async function createProperty(userId: number, data: Partial<typeof properties.$inferInsert> = {}) {
+  const db = await getDb();
+  const result = await db.insert(properties).values({ userId, houseName: "New Property", ...data });
+  return result[0];
+}
+
+export async function updateProperty(propertyId: number, data: Partial<Property>) {
+  const db = await getDb();
+  await db.update(properties).set(data).where(eq(properties.id, propertyId));
+  return await getProperty(propertyId);
+}
+
+export async function deleteProperty(propertyId: number) {
+  const db = await getDb();
+  await db.delete(properties).where(eq(properties.id, propertyId));
+  return true;
 }
 
 // ─── Expenses ─────────────────────────────────────────────────────────────────
 
-export async function getExpenses(userId?: number) {
+export async function getExpenses(userId: number, propertyId: number) {
   const db = await getDb();
-  const query = db.select().from(expenses);
-  const filtered = userId ? query.where(eq(expenses.ownerId, userId)) : query;
-  return await filtered.orderBy(desc(expenses.date));
+  return await db.select().from(expenses)
+    .where(and(eq(expenses.ownerId, userId), eq(expenses.propertyId, propertyId)))
+    .orderBy(desc(expenses.date));
 }
 
 export async function createExpense(data: typeof expenses.$inferInsert) {
@@ -134,11 +151,11 @@ export async function deleteExpense(id: string) {
 
 // ─── Repairs ──────────────────────────────────────────────────────────────────
 
-export async function getRepairs(userId?: number) {
+export async function getRepairs(userId: number, propertyId: number) {
   const db = await getDb();
-  const query = db.select().from(repairs);
-  const filtered = userId ? query.where(eq(repairs.ownerId, userId)) : query;
-  return await filtered.orderBy(desc(repairs.dateLogged));
+  return await db.select().from(repairs)
+    .where(and(eq(repairs.ownerId, userId), eq(repairs.propertyId, propertyId)))
+    .orderBy(desc(repairs.dateLogged));
 }
 
 export async function createRepair(data: typeof repairs.$inferInsert) {
@@ -161,11 +178,11 @@ export async function deleteRepair(id: string) {
 
 // ─── Upgrades ─────────────────────────────────────────────────────────────────
 
-export async function getUpgrades(userId?: number) {
+export async function getUpgrades(userId: number, propertyId: number) {
   const db = await getDb();
-  const query = db.select().from(upgrades);
-  const filtered = userId ? query.where(eq(upgrades.ownerId, userId)) : query;
-  return await filtered.orderBy(desc(upgrades.createdAt));
+  return await db.select().from(upgrades)
+    .where(and(eq(upgrades.ownerId, userId), eq(upgrades.propertyId, propertyId)))
+    .orderBy(desc(upgrades.createdAt));
 }
 
 export async function createUpgrade(data: typeof upgrades.$inferInsert) {
@@ -188,11 +205,11 @@ export async function deleteUpgrade(id: string) {
 
 // ─── Loans ────────────────────────────────────────────────────────────────────
 
-export async function getLoans(userId?: number) {
+export async function getLoans(userId: number, propertyId: number) {
   const db = await getDb();
-  const query = db.select().from(loans);
-  const filtered = userId ? query.where(eq(loans.ownerId, userId)) : query;
-  return await filtered.orderBy(desc(loans.createdAt));
+  return await db.select().from(loans)
+    .where(and(eq(loans.ownerId, userId), eq(loans.propertyId, propertyId)))
+    .orderBy(desc(loans.createdAt));
 }
 
 export async function createLoan(data: typeof loans.$inferInsert) {
@@ -215,11 +232,11 @@ export async function deleteLoan(id: string) {
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────
 
-export async function getWishlistItems(userId?: number) {
+export async function getWishlistItems(userId: number, propertyId: number) {
   const db = await getDb();
-  const query = db.select().from(wishlistItems);
-  const filtered = userId ? query.where(eq(wishlistItems.ownerId, userId)) : query;
-  return await filtered.orderBy(desc(wishlistItems.createdAt));
+  return await db.select().from(wishlistItems)
+    .where(and(eq(wishlistItems.ownerId, userId), eq(wishlistItems.propertyId, propertyId)))
+    .orderBy(desc(wishlistItems.createdAt));
 }
 
 export async function createWishlistItem(data: typeof wishlistItems.$inferInsert) {
@@ -242,11 +259,11 @@ export async function deleteWishlistItem(id: string) {
 
 // ─── Purchase Costs ───────────────────────────────────────────────────────────
 
-export async function getPurchaseCosts(userId?: number) {
+export async function getPurchaseCosts(userId: number, propertyId: number) {
   const db = await getDb();
-  const query = db.select().from(purchaseCosts);
-  const filtered = userId ? query.where(eq(purchaseCosts.ownerId, userId)) : query;
-  return await filtered.orderBy(desc(purchaseCosts.date));
+  return await db.select().from(purchaseCosts)
+    .where(and(eq(purchaseCosts.ownerId, userId), eq(purchaseCosts.propertyId, propertyId)))
+    .orderBy(desc(purchaseCosts.date));
 }
 
 export async function createPurchaseCost(data: typeof purchaseCosts.$inferInsert) {
@@ -269,27 +286,26 @@ export async function deletePurchaseCost(id: string) {
 
 // ─── Calendar Events ──────────────────────────────────────────────────────────
 
-export async function getCalendarEvents(startDate?: string, endDate?: string) {
+export async function getCalendarEvents(propertyId: number, startDate?: string, endDate?: string) {
   const db = await getDb();
-  const query = db.select().from(calendarEvents);
+  const propFilter = eq(calendarEvents.propertyId, propertyId);
 
   if (startDate && endDate) {
-    // Both bounds — return only events within the range (used by Calendar month view)
-    return await query
-      .where(and(gte(calendarEvents.date, startDate), lte(calendarEvents.date, endDate)))
+    return await db.select().from(calendarEvents)
+      .where(and(propFilter, gte(calendarEvents.date, startDate), lte(calendarEvents.date, endDate)))
       .orderBy(calendarEvents.date);
   }
   if (startDate) {
-    return await query
-      .where(gte(calendarEvents.date, startDate))
+    return await db.select().from(calendarEvents)
+      .where(and(propFilter, gte(calendarEvents.date, startDate)))
       .orderBy(calendarEvents.date);
   }
   if (endDate) {
-    return await query
-      .where(lte(calendarEvents.date, endDate))
+    return await db.select().from(calendarEvents)
+      .where(and(propFilter, lte(calendarEvents.date, endDate)))
       .orderBy(calendarEvents.date);
   }
-  return await query.orderBy(calendarEvents.date);
+  return await db.select().from(calendarEvents).where(propFilter).orderBy(calendarEvents.date);
 }
 
 export async function createCalendarEvent(data: typeof calendarEvents.$inferInsert) {
@@ -312,7 +328,7 @@ export async function deleteCalendarEvent(id: string) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-export async function getRecentActivity() {
+export async function getRecentActivity(propertyId: number) {
   const db = await getDb();
 
   const [recentExpenses, recentRepairs, recentUpgrades] = await Promise.all([
@@ -320,18 +336,21 @@ export async function getRecentActivity() {
       .select({ id: expenses.id, label: expenses.label, ownerId: expenses.ownerId, createdAt: expenses.createdAt, ownerName: users.name })
       .from(expenses)
       .leftJoin(users, eq(expenses.ownerId, users.id))
+      .where(eq(expenses.propertyId, propertyId))
       .orderBy(desc(expenses.createdAt))
       .limit(5),
     db
       .select({ id: repairs.id, label: repairs.label, ownerId: repairs.ownerId, createdAt: repairs.createdAt, ownerName: users.name })
       .from(repairs)
       .leftJoin(users, eq(repairs.ownerId, users.id))
+      .where(eq(repairs.propertyId, propertyId))
       .orderBy(desc(repairs.createdAt))
       .limit(5),
     db
       .select({ id: upgrades.id, label: upgrades.label, ownerId: upgrades.ownerId, createdAt: upgrades.createdAt, ownerName: users.name })
       .from(upgrades)
       .leftJoin(users, eq(upgrades.ownerId, users.id))
+      .where(eq(upgrades.propertyId, propertyId))
       .orderBy(desc(upgrades.createdAt))
       .limit(5),
   ]);
@@ -351,7 +370,7 @@ export async function getRecentActivity() {
   return all.slice(0, 10);
 }
 
-export async function getDashboardStats(userId: number) {
+export async function getDashboardStats(userId: number, propertyId: number) {
   const db = await getDb();
 
   const now = new Date();
@@ -362,15 +381,17 @@ export async function getDashboardStats(userId: number) {
   const today        = now.toISOString().split("T")[0];
   const staleCutoff  = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
+  const pf = (col: any) => and(eq(col.ownerId, userId), eq(col.propertyId, propertyId));
+
   const [
     allExpenses, allRepairs, allUpgrades, allLoans, allPurchaseCosts, prop,
   ] = await Promise.all([
-    db.select().from(expenses).where(eq(expenses.ownerId, userId)),
-    db.select().from(repairs).where(eq(repairs.ownerId, userId)),
-    db.select().from(upgrades).where(eq(upgrades.ownerId, userId)),
-    db.select().from(loans).where(eq(loans.ownerId, userId)),
-    db.select().from(purchaseCosts).where(eq(purchaseCosts.ownerId, userId)),
-    getProperty(),
+    db.select().from(expenses).where(pf(expenses)),
+    db.select().from(repairs).where(pf(repairs)),
+    db.select().from(upgrades).where(pf(upgrades)),
+    db.select().from(loans).where(pf(loans)),
+    db.select().from(purchaseCosts).where(pf(purchaseCosts)),
+    getProperty(propertyId),
   ]);
 
   // ── This month ─────────────────────────────────────────────────────────────

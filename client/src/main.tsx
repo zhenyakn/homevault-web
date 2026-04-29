@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
+import { PropertyProvider, getStoredPropertyId } from "./contexts/PropertyContext";
 import "./index.css";
 
 const queryClient = new QueryClient();
@@ -13,27 +14,20 @@ const queryClient = new QueryClient();
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
-
-  const isUnauthorized = error.message === UNAUTHED_ERR_MSG;
-
-  if (!isUnauthorized) return;
-
-  window.location.href = getLoginUrl();
+  if (error.message === UNAUTHED_ERR_MSG) window.location.href = getLoginUrl();
 };
 
 queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
-    const error = event.query.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Query Error]", error);
+    redirectToLoginIfUnauthorized(event.query.state.error);
+    console.error("[API Query Error]", event.query.state.error);
   }
 });
 
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
-    const error = event.mutation.state.error;
-    redirectToLoginIfUnauthorized(error);
-    console.error("[API Mutation Error]", error);
+    redirectToLoginIfUnauthorized(event.mutation.state.error);
+    console.error("[API Mutation Error]", event.mutation.state.error);
   }
 });
 
@@ -46,6 +40,10 @@ const trpcClient = trpc.createClient({
         return globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
+          headers: {
+            ...(init?.headers ?? {}),
+            "x-property-id": String(getStoredPropertyId()),
+          },
         });
       },
     }),
@@ -55,7 +53,9 @@ const trpcClient = trpc.createClient({
 createRoot(document.getElementById("root")!).render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
-      <App />
+      <PropertyProvider>
+        <App />
+      </PropertyProvider>
     </QueryClientProvider>
   </trpc.Provider>
 );

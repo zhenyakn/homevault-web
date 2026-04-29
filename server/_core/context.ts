@@ -6,6 +6,7 @@ export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
   user: User | null;
+  propertyId: number;
 };
 
 export async function createContext(
@@ -15,14 +16,17 @@ export async function createContext(
 
   try {
     user = await sdk.authenticateRequest(opts.req);
-  } catch (error) {
-    // Authentication is optional for public procedures.
+  } catch {
     user = null;
   }
+
+  const rawPropertyId = opts.req.headers["x-property-id"];
+  const propertyId = rawPropertyId ? parseInt(rawPropertyId as string, 10) || 1 : 1;
 
   return {
     req: opts.req,
     res: opts.res,
     user,
+    propertyId,
   };
 }
