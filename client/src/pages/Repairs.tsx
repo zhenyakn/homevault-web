@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -39,15 +40,16 @@ const PHASE_BADGE: Record<Phase, string> = {
 };
 
 const PRIORITY_ACCENT: Record<Priority, string> = {
-  Low:      "border-l-zinc-300 dark:border-l-zinc-600",
-  Medium:   "border-l-yellow-400",
-  High:     "border-l-orange-400",
-  Critical: "border-l-red-500",
+  Low:      "ltr:border-l-zinc-300 rtl:border-r-zinc-300 dark:ltr:border-l-zinc-600 dark:rtl:border-r-zinc-600",
+  Medium:   "ltr:border-l-yellow-400 rtl:border-r-yellow-400",
+  High:     "ltr:border-l-orange-400 rtl:border-r-orange-400",
+  Critical: "ltr:border-l-red-500 rtl:border-r-red-500",
 };
 
 // ─── Add repair dialog ────────────────────────────────────────────────────────
 
 function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const createMutation = trpc.repairs.create.useMutation({
     onSuccess: () => {
@@ -84,11 +86,11 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Log repair</DialogTitle>
+          <DialogTitle>{t("repairs.logRepair")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="label">Description *</Label>
+            <Label htmlFor="label">{t("repairs.description")} *</Label>
             <Input
               id="label"
               required
@@ -98,7 +100,7 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Details</Label>
+            <Label htmlFor="description">{t("repairs.details")}</Label>
             <Textarea
               id="description"
               rows={2}
@@ -109,7 +111,7 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Priority *</Label>
+              <Label>{t("repairs.priority")} *</Label>
               <Select value={f.priority} onValueChange={(v: any) => setF({ ...f, priority: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -120,7 +122,7 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Date logged</Label>
+              <Label>{t("repairs.dateLogged")}</Label>
               <Input
                 type="date"
                 value={f.dateLogged}
@@ -129,11 +131,11 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            Add contractor quotes, photos, and track payments inside the repair.
+            {t("repairs.addContext")}
           </p>
           <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-            {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Log repair
+            {createMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+            {t("repairs.logRepair")}
           </Button>
         </form>
       </DialogContent>
@@ -156,13 +158,14 @@ function RepairRow({
   onDelete: () => void;
   onClick: () => void;
 }) {
+  const { t } = useTranslation();
   const phase: Phase = (repair.phase as Phase) || "Assessment";
   const priority: Priority = (repair.priority as Priority) || "Medium";
 
   return (
     <div
       className={cn(
-        "flex items-start gap-4 pl-3 pr-4 py-3.5 border-l-2 hover:bg-muted/30 transition-colors cursor-pointer",
+        "flex items-start gap-4 ltr:pl-3 ltr:pr-4 rtl:pr-3 rtl:pl-4 py-3.5 ltr:border-l-2 rtl:border-r-2 hover:bg-muted/30 transition-colors cursor-pointer",
         PRIORITY_ACCENT[priority],
         isDone && "opacity-70",
       )}
@@ -197,11 +200,11 @@ function RepairRow({
               {quoteCounts.hasSelected
                 ? <CheckCircle2 className="h-3 w-3" />
                 : <AlertTriangle className="h-3 w-3" />}
-              {quoteCounts.total} quote{quoteCounts.total !== 1 ? "s" : ""}
-              {quoteCounts.hasSelected ? " · selected" : " · none selected"}
+              {quoteCounts.total} {quoteCounts.total !== 1 ? t("repairs.quotes") : t("repairs.quote")}
+              {quoteCounts.hasSelected ? ` ${t("repairs.quotesSelected")}` : ` ${t("repairs.quotesNone")}`}
             </span>
           ) : (
-            <span className="text-xs text-muted-foreground/60">No quotes yet</span>
+            <span className="text-xs text-muted-foreground/60">{t("repairs.noQuotes")}</span>
           )}
         </div>
 
@@ -262,6 +265,7 @@ function Section({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Repairs() {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const { data: repairs = [], isLoading } = trpc.repairs.list.useQuery();
@@ -338,13 +342,13 @@ export default function Repairs() {
             <Wrench className="h-10 w-10" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-medium">Track repairs end-to-end</p>
+            <p className="text-sm font-medium">{t("repairs.emptyTitle")}</p>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Log an issue, collect contractor quotes, track payments and photos — all linked to your property.
+              {t("repairs.emptyDesc")}
             </p>
           </div>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />Log first repair
+            <Plus className="h-3.5 w-3.5 me-1.5" />{t("repairs.logFirst")}
           </Button>
         </div>
 
@@ -358,13 +362,13 @@ export default function Repairs() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Repairs</h1>
+        <h1 className="text-xl font-semibold">{t("repairs.title")}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={handleExportCSV} title="Export CSV">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={handleExportCSV} title={t("common.exportCsv")}>
             <Download className="h-4 w-4" />
           </Button>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />Log repair
+            <Plus className="h-3.5 w-3.5 me-1.5" />{t("repairs.logRepair")}
           </Button>
         </div>
       </div>
@@ -372,20 +376,20 @@ export default function Repairs() {
       {/* Stats strip */}
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">Open</p>
+          <p className="text-xs text-muted-foreground">{t("repairs.statOpen")}</p>
           <p className="text-xl font-semibold tabular-nums mt-1">{open.length}</p>
           {criticalCount > 0 && (
             <p className="text-xs text-red-500 font-medium mt-0.5">{criticalCount} critical</p>
           )}
         </div>
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">In progress</p>
+          <p className="text-xs text-muted-foreground">{t("repairs.statInProgress")}</p>
           <p className="text-xl font-semibold tabular-nums mt-1">
             {open.filter(r => r.phase === "In Progress" || r.phase === "Scheduled").length}
           </p>
         </div>
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">Resolved</p>
+          <p className="text-xs text-muted-foreground">{t("repairs.statResolved")}</p>
           <p className="text-xl font-semibold tabular-nums mt-1">{resolved.length}</p>
           {totalCost > 0 && (
             <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{formatCurrency(totalCost)} spent</p>
@@ -395,7 +399,7 @@ export default function Repairs() {
 
       {/* Open */}
       {open.length > 0 && (
-        <Section title="Open" count={open.length}>
+        <Section title={t("repairs.open")} count={open.length}>
           {open.map(r => (
             <RepairRow
               key={r.id}
@@ -422,7 +426,7 @@ export default function Repairs() {
       {/* Resolved */}
       {resolved.length > 0 && (
         <Section
-          title="Resolved"
+          title={t("repairs.resolved")}
           count={resolved.length}
           extra={
             totalCost > 0

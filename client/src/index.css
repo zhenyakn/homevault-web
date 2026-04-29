@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -174,4 +175,20 @@
       max-width: 1280px; /* Standard content width */
     }
   }
+}
+
+/* ── RTL / Hebrew ─────────────────────────────────────────────────────────── */
+:root[lang="he"] {
+  font-family: "Heebo", system-ui, sans-serif;
+}
+
+/* Flip physical-direction borders used as priority accents */
+[dir="rtl"] .ltr\:border-l-2 {
+  border-left-width: 0;
+  border-right-width: 2px;
+}
+
+/* Mobile nav sits on the correct side in RTL */
+[dir="rtl"] .md\:hidden.fixed {
+  direction: rtl;
 }

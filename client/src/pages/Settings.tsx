@@ -15,8 +15,10 @@ import {
   useState, useEffect, useRef, useCallback, type ReactNode,
 } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { useProperty } from "@/contexts/PropertyContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -44,17 +46,11 @@ import {
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
-const NAV = [
-  { id: "property",      label: "Property"      },
-  { id: "purchase",      label: "Purchase"      },
-  { id: "household",     label: "Household"     },
-  { id: "regional",      label: "Regional"      },
-  { id: "notifications", label: "Notifications" },
-  { id: "integrations",  label: "Integrations"  },
-  { id: "appearance",    label: "Appearance"    },
-  { id: "data",          label: "Data"          },
+const NAV_IDS = [
+  "property", "purchase", "household", "regional",
+  "notifications", "integrations", "appearance", "data",
 ] as const;
-type SID = typeof NAV[number]["id"];
+type SID = typeof NAV_IDS[number];
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -602,23 +598,36 @@ function IntegrationsSection({ p }: { p: any }) {
 
 function AppearanceSection() {
   const { theme, setTheme } = useTheme();
+  const { language, setLanguage } = useLanguage();
+  const { t } = useTranslation();
 
   return (
     <div className="space-y-5">
-      <h2 className="text-sm font-semibold">Appearance</h2>
+      <h2 className="text-sm font-semibold">{t("settings.appearance")}</h2>
 
       <Group>
-        <Row label="Theme" hint="Saved in your browser, applies immediately">
+        <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
           <ToggleGroup type="single" value={theme} className="h-8"
             onValueChange={v => v && setTheme(v as any)}>
             <ToggleGroupItem value="light"  className="h-8 px-3 text-xs gap-1.5">
-              <Sun className="h-3.5 w-3.5" />Light
+              <Sun className="h-3.5 w-3.5" />{t("settings.themeLight")}
             </ToggleGroupItem>
             <ToggleGroupItem value="dark"   className="h-8 px-3 text-xs gap-1.5">
-              <Moon className="h-3.5 w-3.5" />Dark
+              <Moon className="h-3.5 w-3.5" />{t("settings.themeDark")}
             </ToggleGroupItem>
             <ToggleGroupItem value="system" className="h-8 px-3 text-xs gap-1.5">
-              <Monitor className="h-3.5 w-3.5" />System
+              <Monitor className="h-3.5 w-3.5" />{t("settings.themeSystem")}
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </Row>
+        <Row label={t("settings.language")} hint={t("settings.languageHint")}>
+          <ToggleGroup type="single" value={language} className="h-8"
+            onValueChange={v => v && setLanguage(v as any)}>
+            <ToggleGroupItem value="en" className="h-8 px-3 text-xs">
+              English
+            </ToggleGroupItem>
+            <ToggleGroupItem value="he" className="h-8 px-3 text-xs" dir="rtl">
+              עברית
             </ToggleGroupItem>
           </ToggleGroup>
         </Row>
@@ -814,15 +823,18 @@ function DataSection({
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
 export default function Settings() {
+  const { t } = useTranslation();
   const [active, setActive] = useState<SID>("property");
   const { data: property, isLoading } = trpc.property.get.useQuery();
   const { data: allProperties } = trpc.property.list.useQuery();
   const { activePropertyId, switchProperty } = useProperty();
   const canDeleteProperty = (allProperties?.length ?? 0) > 1 && activePropertyId !== 1;
 
+  const NAV = NAV_IDS.map(id => ({ id, label: t(`settings.${id}`) }));
+
   useEffect(() => {
     const hash = window.location.hash.replace("#", "") as SID;
-    if (hash && NAV.find(n => n.id === hash)) setActive(hash);
+    if (hash && NAV_IDS.includes(hash as any)) setActive(hash);
   }, []);
 
   const go = (id: SID) => {
@@ -845,7 +857,7 @@ export default function Settings() {
       {/* Desktop left nav — text only */}
       <nav className="hidden md:block w-36 shrink-0 sticky top-4 self-start">
         <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          Settings
+          {t("settings.title")}
         </p>
         {(property?.houseNickname || property?.houseName) && (
           <p className="mb-3 px-2 text-[11px] text-muted-foreground truncate">

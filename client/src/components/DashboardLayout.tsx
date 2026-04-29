@@ -32,6 +32,8 @@ import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useTranslation } from "react-i18next";
 import {
   Check,
   ChevronDown,
@@ -56,16 +58,16 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 
-const coreMenuItems = [
-  { icon: Home,         label: "Dashboard",      path: "/" },
-  { icon: Receipt,      label: "Expenses",        path: "/expenses" },
-  { icon: Wrench,       label: "Repairs",         path: "/repairs" },
-  { icon: TrendingUp,   label: "Upgrades",        path: "/upgrades" },
-  { icon: DollarSign,   label: "Loans",           path: "/loans" },
-  { icon: Heart,        label: "Wishlist",         path: "/wishlist" },
-  { icon: ShoppingCart, label: "Purchase Costs",  path: "/purchase-costs" },
-  { icon: Calendar,     label: "Calendar",         path: "/calendar" },
-  { icon: Settings,     label: "Settings",         path: "/settings" },
+const coreMenuPaths = [
+  { icon: Home,         key: "nav.dashboard",     path: "/" },
+  { icon: Receipt,      key: "nav.expenses",       path: "/expenses" },
+  { icon: Wrench,       key: "nav.repairs",        path: "/repairs" },
+  { icon: TrendingUp,   key: "nav.upgrades",       path: "/upgrades" },
+  { icon: DollarSign,   key: "nav.loans",          path: "/loans" },
+  { icon: Heart,        key: "nav.wishlist",        path: "/wishlist" },
+  { icon: ShoppingCart, key: "nav.purchaseCosts",  path: "/purchase-costs" },
+  { icon: Calendar,     key: "nav.calendar",        path: "/calendar" },
+  { icon: Settings,     key: "nav.settings",        path: "/settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -90,6 +92,7 @@ function getInitials(name: string | null | undefined) {
 // ── Property Switcher ─────────────────────────────────────────────────────────
 
 function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
+  const { t } = useTranslation();
   const { activePropertyId, switchProperty } = useProperty();
   const { data: properties } = trpc.property.list.useQuery();
   const utils = trpc.useUtils();
@@ -154,8 +157,8 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => setShowAdd(true)} className="cursor-pointer">
-            <Plus className="h-4 w-4 mr-2" />
-            Add property
+            <Plus className="h-4 w-4 me-2" />
+            {t("common.addProperty")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -169,15 +172,15 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
             <input
               autoFocus
               className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="Property name"
+              placeholder={t("common.propertyName")}
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleAdd()}
             />
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowAdd(false)}>Cancel</Button>
+              <Button variant="outline" size="sm" onClick={() => setShowAdd(false)}>{t("common.cancel")}</Button>
               <Button size="sm" onClick={handleAdd} disabled={!newName.trim() || createMutation.isPending}>
-                {createMutation.isPending ? "Adding…" : "Add"}
+                {createMutation.isPending ? t("common.adding") : t("common.add")}
               </Button>
             </div>
           </div>
@@ -280,6 +283,8 @@ function DashboardLayoutContent({
   setSidebarWidth: (width: number) => void;
 }) {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
+  const { isRTL } = useLanguage();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -291,18 +296,13 @@ function DashboardLayoutContent({
   const { data: properties } = trpc.property.list.useQuery();
   const hasMultipleProperties = (properties?.length ?? 0) > 1;
 
-  const menuItems = [
-    ...coreMenuItems,
-    ...(hasMultipleProperties
-      ? [{ icon: LayoutGrid, label: "Portfolio", path: "/portfolio" }]
-      : []),
-  ];
+  const coreMenuItems = coreMenuPaths.map(item => ({ ...item, label: t(item.key) }));
 
   // Insert Portfolio before Settings
   const orderedItems = hasMultipleProperties
     ? [
         ...coreMenuItems.slice(0, -1),
-        { icon: LayoutGrid, label: "Portfolio", path: "/portfolio" },
+        { icon: LayoutGrid, key: "nav.portfolio", label: t("nav.portfolio"), path: "/portfolio" },
         coreMenuItems[coreMenuItems.length - 1],
       ]
     : coreMenuItems;
@@ -341,7 +341,7 @@ function DashboardLayoutContent({
   return (
     <>
       <div className="relative" ref={sidebarRef}>
-        <Sidebar collapsible="icon" className="border-r" disableTransition={isResizing}>
+        <Sidebar collapsible="icon" side={isRTL ? "right" : "left"} className={isRTL ? "border-l" : "border-r"} disableTransition={isResizing}>
           <SidebarHeader className="h-14 justify-center">
             <div className="flex items-center gap-2 px-2 w-full">
                   {isCollapsed ? (
@@ -393,7 +393,7 @@ function DashboardLayoutContent({
             {!isCollapsed && profiles && profiles.length > 1 && (
               <div className="px-4 pt-6 pb-2">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                  Household
+                  {t("common.household")}
                 </p>
                 <div className="space-y-1">
                   {profiles.map((profile: any, index: number) => (
@@ -454,19 +454,21 @@ function DashboardLayoutContent({
                   </>
                 )}
                 <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
+                  <LogOut className="me-2 h-4 w-4" />
+                  {t("common.signOut")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
 
-        <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
-          onMouseDown={() => { if (!isCollapsed) setIsResizing(true); }}
-          style={{ zIndex: 50 }}
-        />
+        {!isRTL && (
+          <div
+            className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+            onMouseDown={() => { if (!isCollapsed) setIsResizing(true); }}
+            style={{ zIndex: 50 }}
+          />
+        )}
       </div>
 
       <SidebarInset>

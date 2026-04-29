@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -252,6 +253,7 @@ function Section({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Upgrades() {
+  const { t } = useTranslation();
   const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const { data: upgrades = [], isLoading } = trpc.upgrades.list.useQuery();
@@ -318,9 +320,9 @@ export default function Upgrades() {
     return (
       <div className="space-y-5">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Upgrades</h1>
+          <h1 className="text-xl font-semibold">{t("upgrades.title")}</h1>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />New project
+            <Plus className="h-3.5 w-3.5 me-1.5" />{t("upgrades.newProject")}
           </Button>
         </div>
 
@@ -331,14 +333,13 @@ export default function Upgrades() {
             <FolderOpen className="h-8 w-8" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-medium">Track your home improvement projects</p>
+            <p className="text-sm font-medium">{t("upgrades.emptyTitle")}</p>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Add vendor quotes, track item-by-item progress, log payments and receipts — all in one place.
-              Your investment history stays with the property.
+              {t("upgrades.emptyDesc")}
             </p>
           </div>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />Start your first project
+            <Plus className="h-3.5 w-3.5 me-1.5" />{t("upgrades.startFirst")}
           </Button>
         </div>
 
@@ -352,13 +353,13 @@ export default function Upgrades() {
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Upgrades</h1>
+        <h1 className="text-xl font-semibold">{t("upgrades.title")}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={handleExportCSV} title="Export CSV">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={handleExportCSV} title={t("common.exportCsv")}>
             <Download className="h-4 w-4" />
           </Button>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />New project
+            <Plus className="h-3.5 w-3.5 me-1.5" />{t("upgrades.newProject")}
           </Button>
         </div>
       </div>
@@ -366,31 +367,31 @@ export default function Upgrades() {
       {/* Stats strip */}
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">Active budget</p>
+          <p className="text-xs text-muted-foreground">{t("upgrades.activeBudget")}</p>
           <p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(activeBudget)}</p>
           {activePaid > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{formatCurrency(activePaid)} paid so far</p>
+            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{formatCurrency(activePaid)} {t("upgrades.paidSoFar")}</p>
           )}
         </div>
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">Active projects</p>
+          <p className="text-xs text-muted-foreground">{t("upgrades.activeProjects")}</p>
           <p className="text-xl font-semibold tabular-nums mt-1">{inProgress.length}</p>
           {planned.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">{planned.length} planned</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{planned.length} {t("upgrades.planned")}</p>
           )}
         </div>
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">Invested in home</p>
+          <p className="text-xs text-muted-foreground">{t("upgrades.invested")}</p>
           <p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(investedTotal)}</p>
           {done.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">{done.length} project{done.length !== 1 ? "s" : ""} complete</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{done.length} {t("upgrades.done")}</p>
           )}
         </div>
       </div>
 
       {/* In Progress */}
       {inProgress.length > 0 && (
-        <Section title="In Progress" count={inProgress.length}>
+        <Section title={t("upgrades.inProgress")} count={inProgress.length}>
           {inProgress.map(u => (
             <UpgradeRow
               key={u.id}
@@ -407,11 +408,11 @@ export default function Upgrades() {
       {/* Planned */}
       {planned.length > 0 && (
         <Section
-          title="Planned"
+          title={t("upgrades.planned")}
           count={planned.length}
           extra={
             <p className="text-xs text-muted-foreground tabular-nums">
-              {formatCurrency(planned.reduce((s, u) => s + u.budget, 0))} budgeted
+              {formatCurrency(planned.reduce((s, u) => s + u.budget, 0))} {t("upgrades.activeBudget").toLowerCase()}
             </p>
           }
         >
@@ -431,11 +432,11 @@ export default function Upgrades() {
       {/* Done */}
       {done.length > 0 && (
         <Section
-          title="Done"
+          title={t("upgrades.done")}
           count={done.length}
           extra={
             doneTotalInvestment > 0
-              ? <p className="text-xs text-muted-foreground tabular-nums">{formatCurrency(doneTotalInvestment)} invested</p>
+              ? <p className="text-xs text-muted-foreground tabular-nums">{formatCurrency(doneTotalInvestment)} {t("upgrades.invested")}</p>
               : undefined
           }
           empty={null}
@@ -456,9 +457,9 @@ export default function Upgrades() {
       {/* Show "no active projects" only when there are some upgrades but none active */}
       {inProgress.length === 0 && planned.length === 0 && (
         <div className="border border-dashed border-border rounded-lg px-4 py-8 text-center space-y-2">
-          <p className="text-sm text-muted-foreground">No active projects</p>
+          <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
           <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />New project
+            <Plus className="h-3.5 w-3.5 me-1.5" />{t("upgrades.newProject")}
           </Button>
         </div>
       )}

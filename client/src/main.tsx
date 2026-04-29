@@ -8,6 +8,7 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import { PropertyProvider, getStoredPropertyId } from "./contexts/PropertyContext";
 import "./index.css";
+import "./lib/i18n";
 
 const queryClient = new QueryClient();
 
