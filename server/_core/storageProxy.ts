@@ -1,5 +1,12 @@
 import type { Express } from "express";
 import { ENV } from "./env";
+import { sdk } from "./sdk";
+
+const KEY_RE = /^[a-zA-Z0-9/_\-.]+$/;
+
+function isSafeKey(key: string) {
+  return key.length <= 512 && !key.includes("..") && !key.startsWith("/") && KEY_RE.test(key);
+}
 
 export function registerStorageProxy(app: Express) {
   app.get("/forge-storage/*", async (req, res) => {
@@ -11,6 +18,17 @@ export function registerStorageProxy(app: Express) {
 
     if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
       res.status(500).send("Storage proxy not configured");
+      return;
+    }
+
+    if (!isSafeKey(key)) {
+      res.status(400).send("Invalid storage key");
+      return;
+    }
+
+    const user = await sdk.authenticateRequest(req).catch(() => null);
+    if (!user) {
+      res.status(401).send("Unauthorized");
       return;
     }
 
