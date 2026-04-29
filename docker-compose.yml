@@ -1,0 +1,72 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=mysql://homevault:${MYSQL_PASSWORD:-changeme}@db:3306/homevault
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: homevault
+      MYSQL_USER: homevault
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-changeme}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootchangeme}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"      # remove this line if you don't need direct DB access
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "homevault", "-p${MYSQL_PASSWORD:-changeme}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # Run database migration once at startup
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: node apply-migration-v3.mjs
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=mysql://homevault:${MYSQL_PASSWORD:-changeme}@db:3306/homevault
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+volumes:
+  mysql_data:
+    driver: local
+
+# ── Usage ──────────────────────────────────────────────────────────────────────
+# First run:
+#   cp .env.example .env          # fill in your values
+#   echo "MYSQL_PASSWORD=yourpass" >> .env
+#   docker compose up -d
+#
+# After code changes:
+#   docker compose build app && docker compose up -d app
+#
+# View logs:
+#   docker compose logs -f app
+#
+# Stop everything:
+#   docker compose down
+#
+# Stop + remove all data (caution!):
+#   docker compose down -v

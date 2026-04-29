@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1777284519215,
+      "tag": "0000_windy_norrin_radd",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1777285100234,
+      "tag": "0001_foamy_onslaught",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1777286514496,
+      "tag": "0002_known_agent_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1777288222167,
+      "tag": "0003_ambitious_wallflower",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1777441952575,
+      "tag": "0004_slimy_bloodscream",
+      "breakpoints": true
+    }
+  ]
+}
