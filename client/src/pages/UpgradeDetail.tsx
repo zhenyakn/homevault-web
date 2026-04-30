@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
@@ -55,6 +56,7 @@ function EditUpgradeDialog({
 }: {
   upgrade: any; open: boolean; onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const mut = trpc.upgrades.update.useMutation({
     onSuccess: () => { u.upgrades.list.invalidate(); onClose(); toast.success("Project updated"); },
@@ -77,29 +79,29 @@ function EditUpgradeDialog({
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>Edit project</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("upgradeDetail.editProject")}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-1">
           <div className="space-y-1">
-            <Label>Project name *</Label>
+            <Label>{t("upgradeDetail.projectName")}</Label>
             <Input value={f.label} onChange={e => setF({ ...f, label: e.target.value })} />
           </div>
           <div className="space-y-1">
-            <Label>Description</Label>
+            <Label>{t("common.description")}</Label>
             <Textarea rows={2} value={f.description} onChange={e => setF({ ...f, description: e.target.value })} placeholder="Short description of what this project covers" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label>Budget (₪)</Label>
+              <Label>{t("upgradeDetail.budgetField")}</Label>
               <Input type="number" value={f.budget} onChange={e => setF({ ...f, budget: e.target.value })} placeholder="0" />
             </div>
             <div className="space-y-1">
-              <Label>Status</Label>
+              <Label>{t("common.status")}</Label>
               <Select value={f.status} onValueChange={v => setF({ ...f, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Planned">Planned</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Done">Done</SelectItem>
+                  <SelectItem value="Planned">{t("status.Planned")}</SelectItem>
+                  <SelectItem value="In Progress">{t("status.In Progress")}</SelectItem>
+                  <SelectItem value="Done">{t("status.Done")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -117,7 +119,7 @@ function EditUpgradeDialog({
               },
             })}
           >
-            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save changes
+            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t("upgradeDetail.saveChanges")}
           </Button>
         </div>
       </DialogContent>
@@ -130,6 +132,7 @@ function OptionDialog({
 }: {
   upgradeId: string; open: boolean; onClose: () => void; editOption?: any;
 }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const createMut = trpc.upgradeOptions.create.useMutation({
     onSuccess: () => { u.upgradeOptions.list.invalidate({ upgradeId }); onClose(); toast.success("Option added"); },
@@ -177,36 +180,36 @@ function OptionDialog({
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>{editOption ? "Edit option" : "Add option / quote"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editOption ? t("upgradeDetail.editOption") : t("upgradeDetail.addOption")}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-1">
-          <div className="space-y-1"><Label>Vendor / option name *</Label>
+          <div className="space-y-1"><Label>{t("upgradeDetail.vendorName")}</Label>
             <Input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="e.g. IKEA + Rami Installation" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Total price (₪)</Label>
+            <div className="space-y-1"><Label>{t("upgradeDetail.totalPrice")}</Label>
               <Input type="number" value={f.totalPrice} onChange={e => setF({ ...f, totalPrice: e.target.value })} placeholder="0" />
             </div>
-            <div className="space-y-1"><Label>Phone</Label>
+            <div className="space-y-1"><Label>{t("common.phone")}</Label>
               <Input value={f.vendorPhone} onChange={e => setF({ ...f, vendorPhone: e.target.value })} placeholder="05x-xxx-xxxx" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Timeline</Label>
+            <div className="space-y-1"><Label>{t("common.timeline")}</Label>
               <Input value={f.timeline} onChange={e => setF({ ...f, timeline: e.target.value })} placeholder="e.g. 8 weeks" />
             </div>
-            <div className="space-y-1"><Label>Warranty</Label>
+            <div className="space-y-1"><Label>{t("common.warranty")}</Label>
               <Input value={f.warranty} onChange={e => setF({ ...f, warranty: e.target.value })} placeholder="e.g. 1 year" />
             </div>
           </div>
-          <div className="space-y-1"><Label>What's included</Label>
+          <div className="space-y-1"><Label>{t("upgradeDetail.whatIncluded")}</Label>
             <Textarea rows={2} value={f.scope} onChange={e => setF({ ...f, scope: e.target.value })} placeholder="Cabinets, installation, countertop…" />
           </div>
-          <div className="space-y-1"><Label>Notes</Label>
+          <div className="space-y-1"><Label>{t("common.notes")}</Label>
             <Textarea rows={2} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} />
           </div>
           <Button className="w-full" disabled={!f.name || isPending} onClick={submit}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {editOption ? "Save changes" : "Add option"}
+            {editOption ? t("upgradeDetail.saveChanges") : t("upgradeDetail.addOptionBtn")}
           </Button>
         </div>
       </DialogContent>
@@ -215,6 +218,7 @@ function OptionDialog({
 }
 
 function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: string; open: boolean; onClose: () => void; editItem?: any }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const create = trpc.upgradeItems.create.useMutation({
     onSuccess: () => { u.upgradeItems.list.invalidate({ upgradeId }); onClose(); toast.success("Item added"); },
@@ -260,39 +264,39 @@ function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: stri
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>{editItem ? "Edit item" : "Add item"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{editItem ? t("upgradeDetail.editItem") : t("upgradeDetail.addItem")}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-1">
-          <div className="space-y-1"><Label>Item name *</Label>
+          <div className="space-y-1"><Label>{t("upgradeDetail.itemName")}</Label>
             <Input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="e.g. Undermount sink (Franke)" />
           </div>
-          <div className="space-y-1"><Label>Status</Label>
+          <div className="space-y-1"><Label>{t("common.status")}</Label>
             <Select value={f.status} onValueChange={v => setF({ ...f, status: v as ItemStatus })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{ITEM_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Est. cost (₪)</Label>
+            <div className="space-y-1"><Label>{t("upgradeDetail.estCost")}</Label>
               <Input type="number" value={f.estimatedCost} onChange={e => setF({ ...f, estimatedCost: e.target.value })} placeholder="0" />
             </div>
-            <div className="space-y-1"><Label>Actual cost (₪)</Label>
+            <div className="space-y-1"><Label>{t("upgradeDetail.actualCostField")}</Label>
               <Input type="number" value={f.actualCost} onChange={e => setF({ ...f, actualCost: e.target.value })} placeholder="0" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1"><Label>Vendor / store</Label>
+            <div className="space-y-1"><Label>{t("upgradeDetail.vendorField")}</Label>
               <Input value={f.vendorName} onChange={e => setF({ ...f, vendorName: e.target.value })} placeholder="IKEA, Amazon…" />
             </div>
-            <div className="space-y-1"><Label>ETA</Label>
+            <div className="space-y-1"><Label>{t("common.eta")}</Label>
               <Input type="date" value={f.eta} onChange={e => setF({ ...f, eta: e.target.value })} />
             </div>
           </div>
-          <div className="space-y-1"><Label>Notes</Label>
+          <div className="space-y-1"><Label>{t("common.notes")}</Label>
             <Textarea rows={2} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} />
           </div>
           <Button className="w-full" disabled={!f.name || create.isPending || update.isPending} onClick={submit}>
             {(create.isPending || update.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {editItem ? "Save changes" : "Add item"}
+            {editItem ? t("upgradeDetail.saveChanges") : t("upgradeDetail.addItem")}
           </Button>
         </div>
       </DialogContent>
@@ -301,6 +305,7 @@ function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: stri
 }
 
 function LogPaymentDialog({ optionId, optionName, open, onClose, upgradeId }: { optionId: string; optionName: string; open: boolean; onClose: () => void; upgradeId: string }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const mut = trpc.upgradeOptions.logPayment.useMutation({
     onSuccess: () => {
@@ -321,19 +326,19 @@ function LogPaymentDialog({ optionId, optionName, open, onClose, upgradeId }: { 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) { reset(); onClose(); } }}>
       <DialogContent className="sm:max-w-sm">
-        <DialogHeader><DialogTitle>Log payment — {optionName}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("upgradeDetail.logPayment")} — {optionName}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-1">
-          <div className="space-y-1"><Label>Amount (₪) *</Label>
+          <div className="space-y-1"><Label>{t("upgradeDetail.amountRequired")}</Label>
             <Input type="number" value={f.amount} onChange={e => setF({ ...f, amount: e.target.value })} placeholder="0" autoFocus />
           </div>
-          <div className="space-y-1"><Label>Date</Label>
+          <div className="space-y-1"><Label>{t("common.date")}</Label>
             <Input type="date" value={f.date} onChange={e => setF({ ...f, date: e.target.value })} />
           </div>
-          <div className="space-y-1"><Label>Notes</Label>
+          <div className="space-y-1"><Label>{t("common.notes")}</Label>
             <Input value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} placeholder="e.g. deposit payment" />
           </div>
           <div className="space-y-1">
-            <Label>Receipt</Label>
+            <Label>{t("common.receipt")}</Label>
             <FileUpload
               onUpload={file => setReceipt(file)}
               existingFiles={receipt ? [receipt] : []}
@@ -347,7 +352,7 @@ function LogPaymentDialog({ optionId, optionName, open, onClose, upgradeId }: { 
             notes: f.notes || undefined,
             receipt: receipt?.url,
           })}>
-            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Log payment
+            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t("upgradeDetail.logPayment")}
           </Button>
         </div>
       </DialogContent>
@@ -362,6 +367,7 @@ function OptionCard({
 }: {
   option: any; upgradeId: string; onLogPayment: () => void; onEdit: () => void;
 }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const [expanded, setExpanded] = useState<boolean>(option.isSelected);
   const selectMut = trpc.upgradeOptions.select.useMutation({
@@ -389,7 +395,7 @@ function OptionCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-sm">{option.name}</span>
-            {option.isSelected && <Badge className="bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400 border-0 text-xs h-5">Selected ✓</Badge>}
+            {option.isSelected && <Badge className="bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400 border-0 text-xs h-5">{t("common.selected")} ✓</Badge>}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             {option.totalPrice ? formatCurrency(option.totalPrice) : "No price"}{option.timeline ? ` · ${option.timeline}` : ""}
@@ -438,7 +444,7 @@ function OptionCard({
             {/* Payments */}
             {(option.payments || []).length > 0 && (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Payments</p>
+                <p className="text-xs font-medium text-muted-foreground">{t("upgradeDetail.payments")}</p>
                 {(option.payments as any[]).map((p: any, i: number) => (
                   <div key={i} className="flex items-center justify-between text-xs gap-2 group/payment">
                     <span className="text-muted-foreground truncate">{p.date}{p.notes ? ` · ${p.notes}` : ""}</span>
@@ -472,17 +478,17 @@ function OptionCard({
                 <Button size="sm" variant="outline" className="h-7 text-xs"
                   disabled={selectMut.isPending}
                   onClick={() => selectMut.mutate({ upgradeId, optionId: option.id })}>
-                  <Check className="h-3 w-3 mr-1" />Select this
+                  <Check className="h-3 w-3 mr-1" />{t("common.select")}
                 </Button>
               )}
               {option.isSelected && (
                 <Button size="sm" className="h-7 text-xs" onClick={onLogPayment}>
-                  <CreditCard className="h-3 w-3 mr-1" />Log payment
+                  <CreditCard className="h-3 w-3 mr-1" />{t("upgradeDetail.logPayment")}
                 </Button>
               )}
               <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                 disabled={deleteMut.isPending}
-                onClick={() => { if (confirm("Delete this option?")) deleteMut.mutate({ id: option.id }); }}>
+                onClick={() => { if (confirm(t("upgradeDetail.deleteOptionConfirm"))) deleteMut.mutate({ id: option.id }); }}>
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
             </div>
@@ -498,6 +504,7 @@ function OptionCard({
 function ItemRow({ item, upgradeId, onEdit, onAllDone }: {
   item: any; upgradeId: string; onEdit: () => void; onAllDone: (newStatus: string) => void;
 }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const updateMut = trpc.upgradeItems.update.useMutation({
     onSuccess: async (_, vars) => {
@@ -571,7 +578,7 @@ function ItemRow({ item, upgradeId, onEdit, onAllDone }: {
           </Button>
           <Button
             size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-            onClick={() => { if (confirm("Delete this item?")) deleteMut.mutate({ id: item.id }); }}
+            onClick={() => { if (confirm(t("upgradeDetail.deleteItemConfirm"))) deleteMut.mutate({ id: item.id }); }}
             title="Delete item"
           >
             <Trash2 className="h-3 w-3" />
@@ -589,6 +596,7 @@ export default function UpgradeDetail() {
   const [, navigate] = useLocation();
   const upgradeId = params.id;
 
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const { data: upgrades, isLoading: loadingUpgrade } = trpc.upgrades.list.useQuery();
   const { data: options = [], isLoading: loadingOptions } = trpc.upgradeOptions.list.useQuery({ upgradeId });
@@ -612,7 +620,7 @@ export default function UpgradeDetail() {
   const [savingPhase, setSavingPhase] = useState<Phase | null>(null);
 
   if (loadingUpgrade) return <div className="flex h-full items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /></div>;
-  if (!upgrade) return <div className="p-6 text-center text-muted-foreground">Upgrade not found. <button className="underline" onClick={() => navigate("/upgrades")}>Go back</button></div>;
+  if (!upgrade) return <div className="p-6 text-center text-muted-foreground">{t("upgrades.title")} not found. <button className="underline" onClick={() => navigate("/upgrades")}>{t("common.back")}</button></div>;
 
   const selectedOption = options.find((o: any) => o.isSelected);
   const committed = selectedOption?.totalPrice || 0;
@@ -654,7 +662,7 @@ export default function UpgradeDetail() {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground -ml-2 mb-1" onClick={() => navigate("/upgrades")}>
-            <ArrowLeft className="h-4 w-4" />Upgrades
+            <ArrowLeft className="h-4 w-4" />{t("upgrades.title")}
           </Button>
           <div className="flex items-start gap-2">
             <div className="min-w-0">
@@ -721,16 +729,16 @@ export default function UpgradeDetail() {
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
             <p className="text-base font-bold tabular-nums">{formatCurrency(committed)}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Committed</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{t("upgradeDetail.vendors").split(" ")[0]}</p>
             {selectedOption && <p className="text-[10px] text-muted-foreground truncate">{selectedOption.name}</p>}
           </div>
           <div>
             <p className="text-base font-bold tabular-nums">{formatCurrency(paid)}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Paid so far</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{t("upgrades.paidSoFar")}</p>
           </div>
           <div>
             <p className="text-base font-bold tabular-nums text-muted-foreground">{formatCurrency(upgrade.budget)}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">Budget</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{t("common.budget")}</p>
             <p className="text-[10px] text-muted-foreground">{formatCurrency(Math.max(0, upgrade.budget - spentAmt))} left</p>
           </div>
         </div>
@@ -751,16 +759,16 @@ export default function UpgradeDetail() {
         {/* Options */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Options &amp; Quotes</h2>
+            <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("upgradeDetail.vendors")}</h2>
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary" onClick={() => { setEditOption(null); setOptionDialogOpen(true); }}>
-              <Plus className="h-3.5 w-3.5" />Add quote
+              <Plus className="h-3.5 w-3.5" />{t("repairDetail.addQuote")}
             </Button>
           </div>
 
           {loadingOptions ? <div className="h-12 rounded-xl bg-muted animate-pulse" /> :
            options.length === 0 ? (
             <button onClick={() => { setEditOption(null); setOptionDialogOpen(true); }} className="w-full border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground hover:bg-muted/30 transition-colors">
-              + Add your first vendor quote
+              + {t("upgradeDetail.addFirstOption")}
             </button>
           ) : (
             <div className="space-y-2">
@@ -781,18 +789,18 @@ export default function UpgradeDetail() {
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Items to get
-              {items.length > 0 && <span className="ml-2 font-normal normal-case text-muted-foreground/70">{doneItems.length} done · {needsAction.length + orderedItems.length} remaining</span>}
+              {t("upgradeDetail.items")}
+              {items.length > 0 && <span className="ml-2 font-normal normal-case text-muted-foreground/70">{doneItems.length} {t("common.done").toLowerCase()} · {needsAction.length + orderedItems.length} {t("dashboard.remaining").toLowerCase()}</span>}
             </h2>
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary" onClick={() => { setEditItem(null); setAddItemOpen(true); }}>
-              <Plus className="h-3.5 w-3.5" />Add item
+              <Plus className="h-3.5 w-3.5" />{t("upgradeDetail.addItem")}
             </Button>
           </div>
 
           {loadingItems ? <div className="h-24 rounded-xl bg-muted animate-pulse" /> :
            items.length === 0 ? (
             <button onClick={() => setAddItemOpen(true)} className="w-full border border-dashed border-border rounded-xl p-4 text-sm text-muted-foreground hover:bg-muted/30 transition-colors flex items-center justify-center gap-2">
-              <Package className="h-4 w-4" />Add items to track (sink, tiles, faucet…)
+              <Package className="h-4 w-4" />{t("upgradeDetail.addFirstItem")}
             </button>
           ) : (
             <div className="rounded-xl border border-border overflow-hidden px-4">
@@ -821,7 +829,7 @@ export default function UpgradeDetail() {
                 </>
               )}
               <button onClick={() => { setEditItem(null); setAddItemOpen(true); }} className="flex items-center gap-1.5 text-xs text-primary font-medium py-3">
-                <Plus className="h-3.5 w-3.5" />Add item
+                <Plus className="h-3.5 w-3.5" />{t("upgradeDetail.addItem")}
               </button>
             </div>
           )}
@@ -830,13 +838,13 @@ export default function UpgradeDetail() {
 
       {/* Notes */}
       <section className="space-y-2">
-        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Notes</h2>
+        <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{t("common.notes")}</h2>
         {editingNotes ? (
           <div className="space-y-2">
             <Textarea rows={4} value={notesValue} onChange={e => setNotesValue(e.target.value)} autoFocus className="text-sm" />
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => { updateUpgrade.mutate({ id: upgradeId, data: { notes: notesValue } }); setEditingNotes(false); }}>Save</Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditingNotes(false)}>Cancel</Button>
+              <Button size="sm" onClick={() => { updateUpgrade.mutate({ id: upgradeId, data: { notes: notesValue } }); setEditingNotes(false); }}>{t("common.save")}</Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditingNotes(false)}>{t("common.cancel")}</Button>
             </div>
           </div>
         ) : (

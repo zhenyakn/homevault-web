@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ const emptyForm = () => ({
 });
 
 export default function Expenses() {
+  const { t } = useTranslation();
   const { data: expenses, isLoading, refetch } = trpc.expenses.list.useQuery();
   const createMutation = trpc.expenses.create.useMutation();
   const updateMutation = trpc.expenses.update.useMutation();
@@ -57,22 +59,23 @@ export default function Expenses() {
   };
 
   const handleSubmit = async () => {
-    if (!form.label || !form.amount) { toast.error("Description and amount are required"); return; }
+    if (!form.label || !form.amount) { toast.error(t("common.description") + " and " + t("common.amount") + " are required"); return; }
     try {
       const payload = { ...form, amount: Math.round(parseFloat(form.amount) * 100), attachments: attachments.map(a => a.url) };
-      if (editingId) { await updateMutation.mutateAsync({ id: editingId, data: payload }); toast.success("Expense updated"); }
-      else { await createMutation.mutateAsync(payload); toast.success("Expense added"); }
+      if (editingId) { await updateMutation.mutateAsync({ id: editingId, data: payload }); toast.success(t("expenses.editExpense")); }
+      else { await createMutation.mutateAsync(payload); toast.success(t("expenses.addExpense")); }
       setOpen(false); reset(); refetch();
     } catch { toast.error("Failed to save"); }
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm(t("expenses.deleteConfirm"))) return;
     try { await deleteMutation.mutateAsync({ id }); toast.success("Deleted"); refetch(); }
     catch { toast.error("Failed to delete"); }
   };
 
   const handleMarkPaid = async (id: string) => {
-    try { await markPaidMutation.mutateAsync({ id, paidDate: new Date().toISOString().split("T")[0] }); toast.success("Marked as paid"); refetch(); }
+    try { await markPaidMutation.mutateAsync({ id, paidDate: new Date().toISOString().split("T")[0] }); toast.success(t("expenses.markPaid")); refetch(); }
     catch { toast.error("Failed to mark as paid"); }
   };
 
@@ -101,34 +104,34 @@ export default function Expenses() {
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">Expenses</h1>
+        <h1 className="text-xl font-semibold">{t("expenses.title")}</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-3.5 w-3.5 mr-1.5" />Export CSV
+            <Download className="h-3.5 w-3.5 me-1.5" />{t("common.exportCsv")}
           </Button>
           <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) reset(); }}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Add expense</Button>
+              <Button size="sm"><Plus className="h-3.5 w-3.5 me-1.5" />{t("expenses.addExpense")}</Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editingId ? "Edit expense" : "Add expense"}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editingId ? t("expenses.editExpense") : t("expenses.addExpense")}</DialogTitle></DialogHeader>
               <div className="space-y-3 pt-1">
                 <div className="space-y-1.5">
-                  <Label htmlFor="ex-label">Description</Label>
+                  <Label htmlFor="ex-label">{t("common.description")}</Label>
                   <Input id="ex-label" value={form.label} onChange={e => setForm({...form, label: e.target.value})} placeholder="e.g. Monthly electricity" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="ex-amount">Amount</Label>
+                    <Label htmlFor="ex-amount">{t("common.amount")}</Label>
                     <Input id="ex-amount" type="number" step="0.01" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} placeholder="0.00" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="ex-date">Date</Label>
+                    <Label htmlFor="ex-date">{t("common.date")}</Label>
                     <Input id="ex-date" type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Category</Label>
+                  <Label>{t("common.category")}</Label>
                   <Select value={form.category} onValueChange={(v: any) => setForm({...form, category: v})}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
@@ -136,11 +139,11 @@ export default function Expenses() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Checkbox id="ex-rec" checked={form.isRecurring} onCheckedChange={v => setForm({...form, isRecurring: v as boolean})} />
-                  <Label htmlFor="ex-rec" className="font-normal cursor-pointer">Recurring expense</Label>
+                  <Label htmlFor="ex-rec" className="font-normal cursor-pointer">{t("expenses.recurringExpense")}</Label>
                 </div>
                 {form.isRecurring && (
                   <div className="space-y-1.5">
-                    <Label>Frequency</Label>
+                    <Label>{t("common.frequency")}</Label>
                     <Select value={form.recurringFrequency} onValueChange={(v: any) => setForm({...form, recurringFrequency: v})}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{FREQUENCIES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
@@ -148,14 +151,14 @@ export default function Expenses() {
                   </div>
                 )}
                 <div className="space-y-1.5">
-                  <Label htmlFor="ex-notes">Notes</Label>
-                  <Input id="ex-notes" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Optional" />
+                  <Label htmlFor="ex-notes">{t("common.notes")}</Label>
+                  <Input id="ex-notes" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder={t("common.optional")} />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Attachments</Label>
+                  <Label>{t("common.attachments")}</Label>
                   <FileUpload onUpload={f => setAttachments([...attachments, f])} existingFiles={attachments} onRemove={i => setAttachments(attachments.filter((_, idx) => idx !== i))} accept="image/*,.pdf,.doc,.docx" />
                 </div>
-                <Button onClick={handleSubmit} className="w-full">{editingId ? "Update" : "Add expense"}</Button>
+                <Button onClick={handleSubmit} className="w-full">{editingId ? t("common.update") : t("expenses.addExpense")}</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -165,10 +168,10 @@ export default function Expenses() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 border border-border rounded-lg divide-y md:divide-y-0 md:divide-x divide-border overflow-hidden">
         {[
-          { label: "Total",         value: formatCurrency(total) },
-          { label: "Recurring/mo",  value: formatCurrency(monthly) },
-          { label: "Entries",       value: String(filtered.length) },
-          { label: "Paid",          value: `${paidCount} / ${filtered.length}` },
+          { label: t("expenses.total"),          value: formatCurrency(total) },
+          { label: t("expenses.recurringPerMonth"), value: formatCurrency(monthly) },
+          { label: t("common.entries"),          value: String(filtered.length) },
+          { label: t("expenses.paid"),           value: `${paidCount} / ${filtered.length}` },
         ].map(({ label, value }) => (
           <div key={label} className="px-4 py-3.5">
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -180,9 +183,9 @@ export default function Expenses() {
       {/* Filter */}
       <div className="flex items-center gap-3">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="h-8 w-44 text-sm"><SelectValue placeholder="All categories" /></SelectTrigger>
+          <SelectTrigger className="h-8 w-44 text-sm"><SelectValue placeholder={t("expenses.allCategories")} /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="all">{t("expenses.allCategories")}</SelectItem>
             {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -197,7 +200,7 @@ export default function Expenses() {
       {filtered.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            {categoryFilter !== "all" ? `No ${categoryFilter.toLowerCase()} expenses` : "No expenses yet"}
+            {categoryFilter !== "all" ? `No ${categoryFilter.toLowerCase()} expenses` : t("expenses.noExpenses")}
           </p>
         </div>
       ) : (
@@ -216,17 +219,17 @@ export default function Expenses() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{formatDate(expense.date)}{expense.notes && ` · ${expense.notes}`}</p>
               </div>
-              <div className="shrink-0 text-right mr-2">
+              <div className="shrink-0 text-end me-2">
                 <p className="text-sm font-semibold tabular-nums">{formatCurrency(expense.amount)}</p>
                 {expense.isPaid && (
                   <p className="text-xs text-green-600 dark:text-green-400 flex items-center justify-end gap-1 mt-0.5">
-                    <Check className="h-3 w-3" />Paid
+                    <Check className="h-3 w-3" />{t("expenses.paid")}
                   </p>
                 )}
               </div>
               <div className="flex gap-1 shrink-0">
                 {!expense.isPaid && (
-                  <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Mark as paid" onClick={() => handleMarkPaid(expense.id)}>
+                  <Button size="sm" variant="outline" className="h-7 w-7 p-0" title={t("expenses.markPaid")} onClick={() => handleMarkPaid(expense.id)}>
                     <Check className="h-3.5 w-3.5" />
                   </Button>
                 )}

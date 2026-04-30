@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Loader2, ArrowLeft, Plus, Pencil, Trash2, Check, ChevronDown, Phone, Clock, ShieldCheck, FileText } from "lucide-react";
+import { Loader2, ArrowLeft, Plus, Pencil, Trash2, Check, Phone, Clock, ShieldCheck, FileText } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -42,6 +42,7 @@ const ils = (n: number) => Math.round(n * 100);
 function PhaseStepper({ phase, onChange, loading }: {
   phase: Phase; onChange: (p: Phase) => void; loading: boolean;
 }) {
+  const { t } = useTranslation();
   const currentIdx = PHASES.indexOf(phase);
   return (
     <div className="flex items-center gap-0">
@@ -63,7 +64,7 @@ function PhaseStepper({ phase, onChange, loading }: {
               )}
             >
               {done && <Check className="h-3 w-3" />}
-              {p}
+              {t(`phases.${p}`)}
             </button>
             {!isLast && (
               <div className={cn("h-px w-4 shrink-0", i < currentIdx ? "bg-indigo-200 dark:bg-indigo-900/50" : "bg-border")} />
@@ -81,6 +82,7 @@ function QuoteDialog({ open, onOpenChange, repairId, editQuote }: {
   open: boolean; onOpenChange: (v: boolean) => void;
   repairId: string; editQuote?: any;
 }) {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const createMut = trpc.repairQuotes.create.useMutation({ onSuccess: () => { utils.repairQuotes.list.invalidate(); onOpenChange(false); } });
   const updateMut = trpc.repairQuotes.update.useMutation({ onSuccess: () => { utils.repairQuotes.list.invalidate(); onOpenChange(false); } });
@@ -102,7 +104,7 @@ function QuoteDialog({ open, onOpenChange, repairId, editQuote }: {
   const busy = createMut.isPending || updateMut.isPending;
 
   const handleSave = async () => {
-    if (!f.contractorName.trim()) { toast.error("Contractor name is required"); return; }
+    if (!f.contractorName.trim()) { toast.error(t("repairDetail.contractorName") + " is required"); return; }
     const payload = {
       contractorName: f.contractorName.trim(),
       contractorPhone: f.contractorPhone || undefined,
@@ -122,44 +124,44 @@ function QuoteDialog({ open, onOpenChange, repairId, editQuote }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{editQuote ? "Edit quote" : "Add contractor quote"}</DialogTitle>
+          <DialogTitle>{editQuote ? t("repairDetail.editQuote") : t("repairDetail.addContractorQuote")}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 pt-1">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
-              <Label>Contractor name *</Label>
+              <Label>{t("repairDetail.contractorName")}</Label>
               <Input value={f.contractorName} onChange={e => setF(p => ({ ...p, contractorName: e.target.value }))} placeholder="e.g. Moshe Plumbing" />
             </div>
             <div className="space-y-1.5">
-              <Label>Phone</Label>
+              <Label>{t("common.phone")}</Label>
               <Input value={f.contractorPhone} onChange={e => setF(p => ({ ...p, contractorPhone: e.target.value }))} placeholder="050-000-0000" />
             </div>
             <div className="space-y-1.5">
-              <Label>Quoted price (₪)</Label>
+              <Label>{t("repairDetail.quotedPrice")}</Label>
               <Input type="number" min="0" value={f.quotedPrice} onChange={e => setF(p => ({ ...p, quotedPrice: e.target.value }))} placeholder="0" />
             </div>
             <div className="space-y-1.5">
-              <Label>Timeline</Label>
+              <Label>{t("common.timeline")}</Label>
               <Input value={f.timeline} onChange={e => setF(p => ({ ...p, timeline: e.target.value }))} placeholder="e.g. 2–3 days" />
             </div>
             <div className="space-y-1.5">
-              <Label>Guarantee</Label>
+              <Label>{t("common.guarantee")}</Label>
               <Input value={f.guarantee} onChange={e => setF(p => ({ ...p, guarantee: e.target.value }))} placeholder="e.g. 1 year parts" />
             </div>
             <div className="space-y-1.5 col-span-2">
-              <Label>Scope of work</Label>
+              <Label>{t("common.scope")}</Label>
               <Textarea rows={2} value={f.scope} onChange={e => setF(p => ({ ...p, scope: e.target.value }))} placeholder="What exactly will they fix / replace?" />
             </div>
             <div className="space-y-1.5 col-span-2">
-              <Label>Notes</Label>
+              <Label>{t("common.notes")}</Label>
               <Textarea rows={2} value={f.notes} onChange={e => setF(p => ({ ...p, notes: e.target.value }))} />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
             <Button size="sm" onClick={handleSave} disabled={busy}>
-              {busy && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-              {editQuote ? "Save changes" : "Add quote"}
+              {busy && <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" />}
+              {editQuote ? t("repairDetail.saveChanges") : t("repairDetail.addQuote")}
             </Button>
           </div>
         </div>
@@ -173,6 +175,7 @@ function QuoteDialog({ open, onOpenChange, repairId, editQuote }: {
 function LogPaymentDialog({ open, onOpenChange, quoteId, repairId }: {
   open: boolean; onOpenChange: (v: boolean) => void; quoteId: string; repairId: string;
 }) {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const logMut = trpc.repairQuotes.logPayment.useMutation({
     onSuccess: () => {
@@ -199,22 +202,22 @@ function LogPaymentDialog({ open, onOpenChange, quoteId, repairId }: {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
-        <DialogHeader><DialogTitle>Log payment</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("repairDetail.logPayment")}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-1">
           <div className="space-y-1.5">
-            <Label>Amount (₪) *</Label>
+            <Label>{t("repairDetail.amountRequired")}</Label>
             <Input type="number" min="0" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" />
           </div>
           <div className="space-y-1.5">
-            <Label>Date</Label>
+            <Label>{t("common.date")}</Label>
             <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label>Notes</Label>
+            <Label>{t("common.notes")}</Label>
             <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Deposit" />
           </div>
           <div className="space-y-1.5">
-            <Label>Receipt (optional)</Label>
+            <Label>{t("common.receipt")} ({t("common.optional")})</Label>
             <FileUpload
               onUpload={f => setReceipt([f])}
               existingFiles={receipt}
@@ -224,10 +227,10 @@ function LogPaymentDialog({ open, onOpenChange, quoteId, repairId }: {
             />
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
             <Button size="sm" onClick={handleSave} disabled={logMut.isPending}>
-              {logMut.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-              Log payment
+              {logMut.isPending && <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" />}
+              {t("repairDetail.logPayment")}
             </Button>
           </div>
         </div>
@@ -239,6 +242,7 @@ function LogPaymentDialog({ open, onOpenChange, quoteId, repairId }: {
 // ── QuoteCard ─────────────────────────────────────────────────────────────────
 
 function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; onEdit: () => void }) {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const selectMut  = trpc.repairQuotes.select.useMutation({ onSuccess: () => utils.repairQuotes.list.invalidate({ repairId }) });
   const deleteMut  = trpc.repairQuotes.delete.useMutation({ onSuccess: () => { utils.repairQuotes.list.invalidate({ repairId }); toast.success("Quote removed"); } });
@@ -262,20 +266,20 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
           <p className="font-semibold text-sm truncate">{quote.contractorName}</p>
           {quote.isSelected && (
             <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 shrink-0">
-              Selected
+              {t("common.selected")}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {!quote.isSelected && (
             <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => selectMut.mutate({ repairId, quoteId: quote.id })}>
-              {selectMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Select"}
+              {selectMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("common.select")}
             </Button>
           )}
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => { if (confirm("Remove this quote?")) deleteMut.mutate({ id: quote.id }); }}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => { if (confirm(t("repairDetail.deleteQuoteConfirm"))) deleteMut.mutate({ id: quote.id }); }}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -286,7 +290,7 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
         {quote.quotedPrice && (
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <span className="font-semibold text-foreground">{formatCurrency(quote.quotedPrice, "ILS")}</span>
-            quoted
+            {t("repairDetail.quoted")}
           </div>
         )}
         {quote.contractorPhone && (
@@ -315,15 +319,15 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
       {(payments.length > 0 || quote.isSelected) && (
         <div className="border-t border-border px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Payments</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">{t("repairDetail.payments")}</p>
             {quote.isSelected && (
               <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setLogOpen(true)}>
-                <Plus className="h-3 w-3 mr-1" />Log payment
+                <Plus className="h-3 w-3 me-1" />{t("repairDetail.logPayment")}
               </Button>
             )}
           </div>
           {payments.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No payments logged yet</p>
+            <p className="text-xs text-muted-foreground">{t("repairDetail.noPayments")}</p>
           ) : (
             <div className="space-y-1">
               {payments.map((p: any, i: number) => (
@@ -338,7 +342,7 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
                 </div>
               ))}
               <div className="pt-1 border-t border-border flex justify-between text-xs font-semibold">
-                <span className="text-muted-foreground">Total paid</span>
+                <span className="text-muted-foreground">{t("repairDetail.totalPaid")}</span>
                 <span>{formatCurrency(totalPaid, "ILS")}</span>
               </div>
             </div>
@@ -354,6 +358,7 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
 // ── EditRepairDialog ──────────────────────────────────────────────────────────
 
 function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpenChange: (v: boolean) => void; repair: any }) {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const updateMut = trpc.repairs.update.useMutation({
     onSuccess: () => { utils.repairs.list.invalidate(); onOpenChange(false); toast.success("Updated"); },
@@ -386,37 +391,37 @@ function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpe
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader><DialogTitle>Edit repair</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{t("repairDetail.editRepair")}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-1">
           <div className="space-y-1.5">
-            <Label>Description *</Label>
+            <Label>{t("repairs.description")} *</Label>
             <Input value={f.label} onChange={e => setF(p => ({ ...p, label: e.target.value }))} />
           </div>
           <div className="space-y-1.5">
-            <Label>Details</Label>
+            <Label>{t("repairs.details")}</Label>
             <Textarea rows={2} value={f.description} onChange={e => setF(p => ({ ...p, description: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Priority</Label>
+              <Label>{t("common.priority")}</Label>
               <select className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" value={f.priority} onChange={e => setF(p => ({ ...p, priority: e.target.value }))}>
                 {["Low","Medium","High","Critical"].map(v => <option key={v}>{v}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label>Est. cost (₪)</Label>
+              <Label>{t("upgradeDetail.estCost")}</Label>
               <Input type="number" min="0" value={f.estimatedCost} onChange={e => setF(p => ({ ...p, estimatedCost: e.target.value }))} placeholder="0" />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Notes</Label>
+            <Label>{t("common.notes")}</Label>
             <Textarea rows={2} value={f.notes} onChange={e => setF(p => ({ ...p, notes: e.target.value }))} />
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
             <Button size="sm" onClick={save} disabled={updateMut.isPending}>
-              {updateMut.isPending && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
-              Save
+              {updateMut.isPending && <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" />}
+              {t("common.save")}
             </Button>
           </div>
         </div>
@@ -428,6 +433,7 @@ function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpe
 // ── RepairDetail ──────────────────────────────────────────────────────────────
 
 export default function RepairDetail() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [, nav] = useLocation();
   const utils = trpc.useUtils();
@@ -464,7 +470,7 @@ export default function RepairDetail() {
   if (!repair) return (
     <div className="flex flex-col items-center justify-center h-[50vh] gap-3">
       <p className="text-muted-foreground">Repair not found</p>
-      <Button variant="outline" size="sm" onClick={() => nav("/repairs")}>Back to repairs</Button>
+      <Button variant="outline" size="sm" onClick={() => nav("/repairs")}>{t("common.back")}</Button>
     </div>
   );
 
@@ -481,22 +487,22 @@ export default function RepairDetail() {
           onClick={() => nav("/repairs")}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
         >
-          <ArrowLeft className="h-4 w-4" /> All repairs
+          <ArrowLeft className="h-4 w-4" /> {t("repairs.title")}
         </button>
 
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap mb-1">
               <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border", PRIORITY_COLOR[repair.priority as Priority])}>
-                {repair.priority}
+                {t(`priority.${repair.priority}`)}
               </span>
-              <span className="text-xs text-muted-foreground">Logged {formatDate(repair.dateLogged)}</span>
+              <span className="text-xs text-muted-foreground">{t("repairs.dateLogged")} {formatDate(repair.dateLogged)}</span>
               {repair.estimatedCost && (
-                <span className="text-xs text-muted-foreground">Est. {formatCurrency(repair.estimatedCost, "ILS")}</span>
+                <span className="text-xs text-muted-foreground">{t("repairs.estCost")} {formatCurrency(repair.estimatedCost, "ILS")}</span>
               )}
               {totalPaid > 0 && (
                 <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                  {formatCurrency(totalPaid, "ILS")} paid
+                  {formatCurrency(totalPaid, "ILS")} {t("repairs.paidCost")}
                 </span>
               )}
             </div>
@@ -506,7 +512,7 @@ export default function RepairDetail() {
             )}
           </div>
           <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-3.5 w-3.5 mr-1.5" />Edit
+            <Pencil className="h-3.5 w-3.5 me-1.5" />{t("common.edit")}
           </Button>
         </div>
       </div>
@@ -523,16 +529,16 @@ export default function RepairDetail() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">Contractor quotes</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">{t("repairDetail.contractors")}</p>
             <div className="flex-1 h-px bg-border w-16" />
             {quotes.length > 0 && (
               <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                {quotes.length} quote{quotes.length !== 1 ? "s" : ""}
+                {quotes.length} {quotes.length !== 1 ? t("repairs.quotes") : t("repairs.quote")}
               </span>
             )}
           </div>
           <Button size="sm" variant="outline" onClick={() => { setEditQuote(null); setQuoteOpen(true); }}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />Add quote
+            <Plus className="h-3.5 w-3.5 me-1.5" />{t("repairDetail.addQuote")}
           </Button>
         </div>
 
@@ -540,15 +546,14 @@ export default function RepairDetail() {
           <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
         ) : quotes.length === 0 ? (
           <div className="border border-border rounded-lg px-4 py-10 text-center">
-            <p className="text-sm font-medium mb-1">No quotes yet</p>
-            <p className="text-xs text-muted-foreground mb-4">Add contractor quotes to compare prices and timelines</p>
+            <p className="text-sm font-medium mb-1">{t("repairDetail.noQuotesYet")}</p>
+            <p className="text-xs text-muted-foreground mb-4">{t("repairDetail.addFirstQuote")}</p>
             <Button size="sm" variant="outline" onClick={() => { setEditQuote(null); setQuoteOpen(true); }}>
-              <Plus className="h-3.5 w-3.5 mr-1.5" />Add first quote
+              <Plus className="h-3.5 w-3.5 me-1.5" />{t("repairDetail.addQuote")}
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
-            {/* Selected quote first */}
             {[...quotes].sort((a: any, b: any) => (b.isSelected ? 1 : 0) - (a.isSelected ? 1 : 0)).map((q: any) => (
               <QuoteCard
                 key={q.id}
@@ -564,7 +569,7 @@ export default function RepairDetail() {
       {/* Notes */}
       {repair.notes && (
         <div className="border border-border rounded-lg p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">Notes</p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">{t("common.notes")}</p>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{repair.notes}</p>
         </div>
       )}

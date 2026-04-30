@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Pencil, Trash2, ListTodo, CircleDollarSign, AlertCircle, Download } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 
 type Priority = "Low" | "Medium" | "High";
@@ -23,6 +24,7 @@ interface WishlistItem {
 }
 
 export default function Wishlist() {
+  const { t } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -37,7 +39,7 @@ export default function Wishlist() {
 
   const createMutation = trpc.wishlist.create.useMutation({
     onSuccess: () => {
-      toast.success("Wishlist item created successfully");
+      toast.success(t("wishlist.addItem"));
       utils.wishlist.list.invalidate();
       closeDialog();
     },
@@ -48,7 +50,7 @@ export default function Wishlist() {
 
   const updateMutation = trpc.wishlist.update.useMutation({
     onSuccess: () => {
-      toast.success("Wishlist item updated successfully");
+      toast.success(t("wishlist.editItem"));
       utils.wishlist.list.invalidate();
       closeDialog();
     },
@@ -59,7 +61,7 @@ export default function Wishlist() {
 
   const deleteMutation = trpc.wishlist.delete.useMutation({
     onSuccess: () => {
-      toast.success("Wishlist item deleted successfully");
+      toast.success("Deleted");
       utils.wishlist.list.invalidate();
     },
     onError: (error) => {
@@ -69,9 +71,9 @@ export default function Wishlist() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.label) {
-      toast.error("Label is required");
+      toast.error(t("common.label") + " is required");
       return;
     }
 
@@ -107,7 +109,7 @@ export default function Wishlist() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this item?")) {
+    if (confirm(t("wishlist.deleteConfirm"))) {
       deleteMutation.mutate({ id });
     }
   };
@@ -150,7 +152,7 @@ export default function Wishlist() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `wishlist_${new Date().toISOString().split("T")[0]}.csv`; a.click();
     URL.revokeObjectURL(url);
-    toast.success("Wishlist exported to CSV");
+    toast.success("Exported");
   };
 
   if (isLoading) {
@@ -164,25 +166,25 @@ export default function Wishlist() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Wishlist</h1>
+        <h1 className="text-xl font-semibold">{t("wishlist.title")}</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-3.5 w-3.5 mr-1.5" />Export CSV
+            <Download className="h-3.5 w-3.5 me-1.5" />{t("common.exportCsv")}
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             if (!open) closeDialog();
             else setIsDialogOpen(true);
           }}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Add item</Button>
+              <Button size="sm"><Plus className="h-3.5 w-3.5 me-1.5" />{t("wishlist.addItem")}</Button>
             </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Wishlist Item" : "Add Wishlist Item"}</DialogTitle>
+              <DialogTitle>{editingId ? t("wishlist.editItem") : t("wishlist.addItem")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="label">Label</Label>
+                <Label htmlFor="label">{t("common.label")}</Label>
                 <Input
                   id="label"
                   value={formData.label}
@@ -192,7 +194,7 @@ export default function Wishlist() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description (Optional)</Label>
+                <Label htmlFor="description">{t("common.description")} ({t("common.optional")})</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
@@ -201,7 +203,7 @@ export default function Wishlist() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="estimatedCost">Estimated Cost</Label>
+                <Label htmlFor="estimatedCost">{t("wishlist.estimatedCost")}</Label>
                 <Input
                   id="estimatedCost"
                   type="number"
@@ -214,30 +216,30 @@ export default function Wishlist() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="priority">Priority</Label>
+                <Label htmlFor="priority">{t("common.priority")}</Label>
                 <Select
                   value={formData.priority}
                   onValueChange={(value: Priority) => setFormData({ ...formData, priority: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select priority" />
+                    <SelectValue placeholder={t("common.select") + " " + t("common.priority")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Low">Low</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Low">{t("priority.Low")}</SelectItem>
+                    <SelectItem value="Medium">{t("priority.Medium")}</SelectItem>
+                    <SelectItem value="High">{t("priority.High")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex justify-end space-x-2 pt-4">
                 <Button type="button" variant="outline" onClick={closeDialog}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
                   {(createMutation.isPending || updateMutation.isPending) && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
                   )}
-                  {editingId ? "Update" : "Create"}
+                  {editingId ? t("common.update") : t("common.create")}
                 </Button>
               </div>
             </form>
@@ -247,14 +249,14 @@ export default function Wishlist() {
       </div>
 
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Total items</p><p className="text-xl font-semibold tabular-nums mt-1">{totalItems}</p></div>
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Estimated total</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalEstimatedCost)}</p></div>
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">High priority</p><p className="text-xl font-semibold tabular-nums mt-1">{highPriorityCount}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("wishlist.totalItems")}</p><p className="text-xl font-semibold tabular-nums mt-1">{totalItems}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("wishlist.estimatedTotal")}</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalEstimatedCost)}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("wishlist.highPriority")}</p><p className="text-xl font-semibold tabular-nums mt-1">{highPriorityCount}</p></div>
       </div>
 
       {sortedItems.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
-          <p className="text-sm text-muted-foreground">No wishlist items yet</p>
+          <p className="text-sm text-muted-foreground">{t("wishlist.noItems")}</p>
         </div>
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
@@ -263,7 +265,7 @@ export default function Wishlist() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium">{item.label}</p>
-                  <Badge className={`text-xs h-5 border-0 ${getPriorityColor(item.priority)}`}>{item.priority}</Badge>
+                  <Badge className={`text-xs h-5 border-0 ${getPriorityColor(item.priority)}`}>{t(`priority.${item.priority}`)}</Badge>
                 </div>
                 {item.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>}
               </div>

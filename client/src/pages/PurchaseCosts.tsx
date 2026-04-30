@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -8,13 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Pencil, Trash2, Receipt, Hash, TrendingUp, Download } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
 
 const CATEGORIES = ["Lawyer", "Tax", "Moving", "Inspection", "Registration", "Other"];
 
 export default function PurchaseCosts() {
+  const { t } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -31,7 +33,7 @@ export default function PurchaseCosts() {
 
   const createMutation = trpc.purchaseCosts.create.useMutation({
     onSuccess: () => {
-      toast.success("Purchase cost added successfully");
+      toast.success(t("purchaseCosts.addCost"));
       utils.purchaseCosts.list.invalidate();
       setIsDialogOpen(false);
       resetForm();
@@ -43,7 +45,7 @@ export default function PurchaseCosts() {
 
   const updateMutation = trpc.purchaseCosts.update.useMutation({
     onSuccess: () => {
-      toast.success("Purchase cost updated successfully");
+      toast.success(t("purchaseCosts.editCost"));
       utils.purchaseCosts.list.invalidate();
       setIsDialogOpen(false);
       resetForm();
@@ -55,7 +57,7 @@ export default function PurchaseCosts() {
 
   const deleteMutation = trpc.purchaseCosts.delete.useMutation({
     onSuccess: () => {
-      toast.success("Purchase cost deleted successfully");
+      toast.success("Deleted");
       utils.purchaseCosts.list.invalidate();
     },
     onError: (error) => {
@@ -89,7 +91,7 @@ export default function PurchaseCosts() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this purchase cost?")) {
+    if (confirm(t("purchaseCosts.deleteConfirm"))) {
       deleteMutation.mutate({ id });
     }
   };
@@ -97,7 +99,7 @@ export default function PurchaseCosts() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amountInCents = Math.round(parseFloat(formData.amount) * 100);
-    
+
     const attachmentUrls = attachments.map((a: any) => a.url);
     if (editingId) {
       updateMutation.mutate({
@@ -128,7 +130,7 @@ export default function PurchaseCosts() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `purchase_costs_${new Date().toISOString().split("T")[0]}.csv`; a.click();
     URL.revokeObjectURL(url);
-    toast.success("Purchase costs exported to CSV");
+    toast.success("Exported");
   };
 
   if (isLoading) {
@@ -146,25 +148,25 @@ export default function PurchaseCosts() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Purchase Costs</h1>
+        <h1 className="text-xl font-semibold">{t("purchaseCosts.title")}</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-3.5 w-3.5 mr-1.5" />Export CSV
+            <Download className="h-3.5 w-3.5 me-1.5" />{t("common.exportCsv")}
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Add cost</Button>
+              <Button size="sm"><Plus className="h-3.5 w-3.5 me-1.5" />{t("purchaseCosts.addCost")}</Button>
             </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Purchase Cost" : "Add Purchase Cost"}</DialogTitle>
+              <DialogTitle>{editingId ? t("purchaseCosts.editCost") : t("purchaseCosts.addCost")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="label">Label</Label>
+                <Label htmlFor="label">{t("common.label")}</Label>
                 <Input
                   id="label"
                   value={formData.label}
@@ -173,7 +175,7 @@ export default function PurchaseCosts() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="amount">Amount (ILS)</Label>
+                <Label htmlFor="amount">{t("common.amount")} (ILS)</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -185,7 +187,7 @@ export default function PurchaseCosts() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
+                <Label htmlFor="date">{t("common.date")}</Label>
                 <Input
                   id="date"
                   type="date"
@@ -195,13 +197,13 @@ export default function PurchaseCosts() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">{t("common.category")}</Label>
                 <Select
                   value={formData.category}
                   onValueChange={(value) => setFormData({ ...formData, category: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
+                    <SelectValue placeholder={t("common.select") + " " + t("common.category")} />
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((cat) => (
@@ -213,7 +215,7 @@ export default function PurchaseCosts() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="notes">{t("common.notes")}</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
@@ -221,14 +223,14 @@ export default function PurchaseCosts() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Attachments</Label>
+                <Label>{t("common.attachments")}</Label>
                 <FileUpload onUpload={(file) => setAttachments([...attachments, file])} existingFiles={attachments} onRemove={(i) => setAttachments(attachments.filter((_, idx) => idx !== i))} accept="image/*,.pdf" />
               </div>
               <Button type="submit" className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
                 {(createMutation.isPending || updateMutation.isPending) && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 )}
-                {editingId ? "Update" : "Save"}
+                {editingId ? t("common.update") : t("common.save")}
               </Button>
             </form>
           </DialogContent>
@@ -237,14 +239,14 @@ export default function PurchaseCosts() {
       </div>
 
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Total costs</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalCosts)}</p></div>
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Entries</p><p className="text-xl font-semibold tabular-nums mt-1">{numItems}</p></div>
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Largest item</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(largestCost)}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("purchaseCosts.totalCosts")}</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalCosts)}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("common.entries")}</p><p className="text-xl font-semibold tabular-nums mt-1">{numItems}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("purchaseCosts.largestItem")}</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(largestCost)}</p></div>
       </div>
 
       {costs?.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
-          <p className="text-sm text-muted-foreground">No purchase costs yet</p>
+          <p className="text-sm text-muted-foreground">{t("purchaseCosts.noCosts")}</p>
         </div>
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
@@ -257,7 +259,7 @@ export default function PurchaseCosts() {
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{formatDate(cost.date)}{cost.notes && ` · ${cost.notes}`}</p>
               </div>
-              <p className="text-sm font-semibold tabular-nums shrink-0 mr-2">{formatCurrency(cost.amount)}</p>
+              <p className="text-sm font-semibold tabular-nums shrink-0 me-2">{formatCurrency(cost.amount)}</p>
               <div className="flex gap-1 shrink-0">
                 <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleEdit(cost)}><Pencil className="h-3.5 w-3.5" /></Button>
                 <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(cost.id)}><Trash2 className="h-3.5 w-3.5" /></Button>

@@ -1,12 +1,7 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,10 +21,11 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Trash2, Edit, Landmark, Banknote, Calendar, ArrowRight, Download } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit, Download } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Loans() {
+  const { t } = useTranslation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isRepaymentDialogOpen, setIsRepaymentDialogOpen] = useState(false);
@@ -55,7 +51,7 @@ export default function Loans() {
 
   const createMutation = trpc.loans.create.useMutation({
     onSuccess: () => {
-      toast.success("Loan added successfully");
+      toast.success(t("loans.addLoan"));
       setIsAddDialogOpen(false);
       resetForm();
       utils.loans.list.invalidate();
@@ -67,7 +63,7 @@ export default function Loans() {
 
   const updateMutation = trpc.loans.update.useMutation({
     onSuccess: () => {
-      toast.success("Loan updated successfully");
+      toast.success(t("loans.updateLoan"));
       setIsEditDialogOpen(false);
       resetForm();
       utils.loans.list.invalidate();
@@ -79,7 +75,7 @@ export default function Loans() {
 
   const deleteMutation = trpc.loans.delete.useMutation({
     onSuccess: () => {
-      toast.success("Loan deleted successfully");
+      toast.success("Deleted");
       utils.loans.list.invalidate();
     },
     onError: (error) => {
@@ -89,7 +85,7 @@ export default function Loans() {
 
   const addRepaymentMutation = trpc.loans.addRepayment.useMutation({
     onSuccess: () => {
-      toast.success("Repayment added successfully");
+      toast.success(t("loans.addRepayment"));
       setIsRepaymentDialogOpen(false);
       setRepaymentData({
         amount: "",
@@ -130,7 +126,7 @@ export default function Loans() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this loan?")) {
+    if (confirm(t("loans.deleteConfirm"))) {
       deleteMutation.mutate({ id });
     }
   };
@@ -138,7 +134,7 @@ export default function Loans() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amountInCents = Math.round(parseFloat(formData.totalAmount) * 100);
-    
+
     if (isNaN(amountInCents) || amountInCents <= 0) {
       toast.error("Please enter a valid amount");
       return;
@@ -164,7 +160,7 @@ export default function Loans() {
     if (!selectedLoan) return;
 
     const amountInCents = Math.round(parseFloat(repaymentData.amount) * 100);
-    
+
     if (isNaN(amountInCents) || amountInCents <= 0) {
       toast.error("Please enter a valid amount");
       return;
@@ -196,7 +192,7 @@ export default function Loans() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `loans_${new Date().toISOString().split("T")[0]}.csv`; a.click();
     URL.revokeObjectURL(url);
-    toast.success("Loans exported to CSV");
+    toast.success("Exported");
   };
 
   if (isLoading) {
@@ -214,131 +210,140 @@ export default function Loans() {
   }, 0) || 0;
   const outstandingBalance = totalBorrowed - totalRepaid;
 
+  const loanForm = (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="lender">{t("loans.lender")}</Label>
+        <Input
+          id="lender"
+          required
+          value={formData.lender}
+          onChange={(e) => setFormData({ ...formData, lender: e.target.value })}
+          placeholder="e.g. Bank Leumi, John Doe"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="totalAmount">{t("loans.totalAmount")}</Label>
+          <Input
+            id="totalAmount"
+            type="number"
+            step="0.01"
+            required
+            value={formData.totalAmount}
+            onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+            placeholder="0.00"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="loanType">{t("common.type")}</Label>
+          <Select
+            value={formData.loanType}
+            onValueChange={(value) => setFormData({ ...formData, loanType: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t("common.select") + " " + t("common.type")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Bank">Bank</SelectItem>
+              <SelectItem value="Family">Family</SelectItem>
+              <SelectItem value="Friend">Friend</SelectItem>
+              <SelectItem value="Other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="startDate">{t("common.startDate")}</Label>
+          <Input
+            id="startDate"
+            type="date"
+            required
+            value={formData.startDate}
+            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="dueDate">{t("common.dueDate")} ({t("common.optional")})</Label>
+          <Input
+            id="dueDate"
+            type="date"
+            value={formData.dueDate}
+            onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="interestRate">{t("common.interestRate")} ({t("common.optional")})</Label>
+        <Input
+          id="interestRate"
+          value={formData.interestRate}
+          onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })}
+          placeholder="e.g. 5% APY"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="notes">{t("common.notes")} ({t("common.optional")})</Label>
+        <Textarea
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          placeholder="Any additional details..."
+        />
+      </div>
+    </form>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Loans</h1>
+        <h1 className="text-xl font-semibold">{t("loans.title")}</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-3.5 w-3.5 mr-1.5" />Export CSV
+            <Download className="h-3.5 w-3.5 me-1.5" />{t("common.exportCsv")}
           </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
-          setIsAddDialogOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Loan
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Loan</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="lender">Lender</Label>
-                <Input
-                  id="lender"
-                  required
-                  value={formData.lender}
-                  onChange={(e) => setFormData({ ...formData, lender: e.target.value })}
-                  placeholder="e.g. Bank Leumi, John Doe"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="totalAmount">Total Amount</Label>
-                  <Input
-                    id="totalAmount"
-                    type="number"
-                    step="0.01"
-                    required
-                    value={formData.totalAmount}
-                    onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="loanType">Type</Label>
-                  <Select
-                    value={formData.loanType}
-                    onValueChange={(value) => setFormData({ ...formData, loanType: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Bank">Bank</SelectItem>
-                      <SelectItem value="Family">Family</SelectItem>
-                      <SelectItem value="Friend">Friend</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input
-                    id="startDate"
-                    type="date"
-                    required
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dueDate">Due Date (Optional)</Label>
-                  <Input
-                    id="dueDate"
-                    type="date"
-                    value={formData.dueDate}
-                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="interestRate">Interest Rate (Optional)</Label>
-                <Input
-                  id="interestRate"
-                  value={formData.interestRate}
-                  onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })}
-                  placeholder="e.g. 5% APY"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes (Optional)</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Any additional details..."
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Loan
+            setIsAddDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="me-2 h-4 w-4" />
+                {t("loans.addLoan")}
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>{t("loans.addNewLoan")}</DialogTitle>
+              </DialogHeader>
+              {loanForm}
+              <Button
+                type="button"
+                className="w-full mt-2"
+                disabled={createMutation.isPending}
+                onClick={(e) => handleSubmit(e as any)}
+              >
+                {createMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                {t("loans.saveLoan")}
+              </Button>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Total borrowed</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalBorrowed)}</p></div>
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Total repaid</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalRepaid)}</p></div>
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">Outstanding</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(outstandingBalance)}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("loans.totalBorrowed")}</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalBorrowed)}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("loans.totalRepaid")}</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalRepaid)}</p></div>
+        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("loans.outstanding")}</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(outstandingBalance)}</p></div>
       </div>
 
       {loans?.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
-          <p className="text-sm text-muted-foreground">No loans yet</p>
+          <p className="text-sm text-muted-foreground">{t("loans.noLoans")}</p>
           <Button size="sm" variant="outline" className="mt-3" onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Loan
+            <Plus className="me-2 h-4 w-4" />
+            {t("loans.addLoan")}
           </Button>
         </div>
       ) : (
@@ -355,22 +360,26 @@ export default function Loans() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium">{loan.lender}</p>
-                      <Badge variant={isFullyPaid ? "default" : "secondary"} className={isFullyPaid ? "bg-green-600 text-white" : ""}>{isFullyPaid ? "Paid off" : loan.loanType}</Badge>
+                      <Badge variant={isFullyPaid ? "default" : "secondary"} className={isFullyPaid ? "bg-green-600 text-white" : ""}>
+                        {isFullyPaid ? t("common.paidOff") : loan.loanType}
+                      </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {formatDate(loan.startDate)}{loan.dueDate && ` → ${formatDate(loan.dueDate)}`}
-                      {loan.interestRate && ` · ${loan.interestRate}% interest`}
+                      {loan.interestRate && ` · ${loan.interestRate}% ${t("loans.interest")}`}
                     </p>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => { setSelectedLoan(loan); setIsRepaymentDialogOpen(true); }} disabled={isFullyPaid}>+ Repay</Button>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => { setSelectedLoan(loan); setIsRepaymentDialogOpen(true); }} disabled={isFullyPaid}>
+                      + {t("loans.repay")}
+                    </Button>
                     <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleEdit(loan)}><Edit className="h-3.5 w-3.5" /></Button>
                     <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(loan.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
                 <div className="mt-3 space-y-1.5">
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Repaid: {formatCurrency(repaidAmount)} of {formatCurrency(loan.totalAmount)}</span>
+                    <span>{t("loans.repaid")}: {formatCurrency(repaidAmount)} {t("loans.of")} {formatCurrency(loan.totalAmount)}</span>
                     <span className="tabular-nums">{progress.toFixed(1)}%</span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-border overflow-hidden"><div className={`h-full transition-all ${isFullyPaid?"bg-green-500":"bg-foreground/70"}`} style={{width:`${progress}%`}} /></div>
@@ -383,76 +392,34 @@ export default function Loans() {
                     {repayments.length > 3 && <span className="text-xs text-muted-foreground">+{repayments.length-3} more</span>}
                   </div>
                 )}
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <div className="text-sm text-muted-foreground">Total Amount</div>
-                      <div className="text-lg font-semibold">{formatCurrency(loan.totalAmount)}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-muted-foreground">Outstanding</div>
-                      <div className="text-lg font-semibold text-red-600">
-                        {formatCurrency(loan.totalAmount - repaidAmount)}
-                      </div>
-                    </div>
+                <div className="mt-auto pt-4 border-t mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-sm">{t("loans.repaymentHistory")}</h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setSelectedLoan(loan); setIsRepaymentDialogOpen(true); }}
+                      disabled={isFullyPaid}
+                    >
+                      <Plus className="h-3 w-3 me-1" /> {t("common.add")}
+                    </Button>
                   </div>
 
-                  <div className="space-y-1.5 mb-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Repayment Progress</span>
-                      <span className="font-medium">{progress.toFixed(1)}%</span>
+                  {repayments.length > 0 ? (
+                    <div className="space-y-2 max-h-32 overflow-y-auto pe-2">
+                      {repayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((rep, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded">
+                          <span>{formatDate(rep.date)}</span>
+                          <span className="font-medium text-green-600">{formatCurrency(rep.amount)}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full ${isFullyPaid ? 'bg-green-500' : 'bg-primary'}`} 
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {loan.interestRate && (
-                    <div className="text-sm mb-4">
-                      <span className="text-muted-foreground">Interest Rate: </span>
-                      {loan.interestRate}
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      {t("loans.noRepayments")}
                     </div>
                   )}
-
-                  {loan.notes && (
-                    <div className="text-sm mb-4 p-3 bg-muted rounded-md">
-                      {loan.notes}
-                    </div>
-                  )}
-
-                  <div className="mt-auto pt-4 border-t">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-sm">Repayment History</h4>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => {
-                          setSelectedLoan(loan);
-                          setIsRepaymentDialogOpen(true);
-                        }}
-                        disabled={isFullyPaid}
-                      >
-                        <Plus className="h-3 w-3 mr-1" /> Add
-                      </Button>
-                    </div>
-                    
-                    {repayments.length > 0 ? (
-                      <div className="space-y-2 max-h-32 overflow-y-auto pr-2">
-                        {repayments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((rep, idx) => (
-                          <div key={idx} className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded">
-                            <span>{formatDate(rep.date)}</span>
-                            <span className="font-medium text-green-600">{formatCurrency(rep.amount)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-muted-foreground text-center py-2">
-                        No repayments yet
-                      </div>
-                    )}
-                  </div>
+                </div>
               </div>
             );
           })}
@@ -466,90 +433,18 @@ export default function Loans() {
       }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit Loan</DialogTitle>
+            <DialogTitle>{t("loans.editLoan")}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-lender">Lender</Label>
-              <Input
-                id="edit-lender"
-                required
-                value={formData.lender}
-                onChange={(e) => setFormData({ ...formData, lender: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-totalAmount">Total Amount</Label>
-                <Input
-                  id="edit-totalAmount"
-                  type="number"
-                  step="0.01"
-                  required
-                  value={formData.totalAmount}
-                  onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-loanType">Type</Label>
-                <Select
-                  value={formData.loanType}
-                  onValueChange={(value) => setFormData({ ...formData, loanType: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Bank">Bank</SelectItem>
-                    <SelectItem value="Family">Family</SelectItem>
-                    <SelectItem value="Friend">Friend</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-startDate">Start Date</Label>
-                <Input
-                  id="edit-startDate"
-                  type="date"
-                  required
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-dueDate">Due Date (Optional)</Label>
-                <Input
-                  id="edit-dueDate"
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-interestRate">Interest Rate (Optional)</Label>
-              <Input
-                id="edit-interestRate"
-                value={formData.interestRate}
-                onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-notes">Notes (Optional)</Label>
-              <Textarea
-                id="edit-notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={updateMutation.isPending}>
-              {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Update Loan
-            </Button>
-          </form>
+          {loanForm}
+          <Button
+            type="button"
+            className="w-full mt-2"
+            disabled={updateMutation.isPending}
+            onClick={(e) => handleSubmit(e as any)}
+          >
+            {updateMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+            {t("loans.updateLoan")}
+          </Button>
         </DialogContent>
       </Dialog>
 
@@ -566,11 +461,11 @@ export default function Loans() {
       }}>
         <DialogContent className="sm:max-w-[350px]">
           <DialogHeader>
-            <DialogTitle>Add Repayment</DialogTitle>
+            <DialogTitle>{t("loans.addRepayment")}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleRepaymentSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="rep-amount">Amount</Label>
+              <Label htmlFor="rep-amount">{t("common.amount")}</Label>
               <Input
                 id="rep-amount"
                 type="number"
@@ -582,7 +477,7 @@ export default function Loans() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="rep-date">Date</Label>
+              <Label htmlFor="rep-date">{t("common.date")}</Label>
               <Input
                 id="rep-date"
                 type="date"
@@ -592,8 +487,8 @@ export default function Loans() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={addRepaymentMutation.isPending}>
-              {addRepaymentMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Add Repayment
+              {addRepaymentMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+              {t("loans.addRepayment")}
             </Button>
           </form>
         </DialogContent>

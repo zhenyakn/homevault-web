@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -27,22 +28,10 @@ const CAT_COLOR: Record<string, string> = {
 
 const LOAN_BAR = ["bg-indigo-500", "bg-violet-500", "bg-blue-500", "bg-cyan-500"];
 
-function greeting() {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-}
-
 function barColor(pct: number) {
   if (pct >= 100) return "bg-rose-500";
   if (pct >= 80)  return "bg-amber-400";
   return "bg-indigo-500";
-}
-
-function relDate(d: string) {
-  const dt = new Date(d);
-  if (isToday(dt))    return "Today";
-  if (isTomorrow(dt)) return "Tomorrow";
-  return format(dt, "MMM d");
 }
 
 // ── SectionLabel ──────────────────────────────────────────────────────────────
@@ -67,6 +56,7 @@ function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
   cur: string;
   onMarkPaid: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [, nav] = useLocation();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const dismiss = (k: string) => setDismissed(p => new Set([...Array.from(p), k]));
@@ -76,10 +66,17 @@ function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
   const visDecision  = decisionNeeded.filter(u => !dismissed.has(`upg-${u.id}`));
   const total = visOverdue.length + visStale.length + visDecision.length;
 
+  const relDate = (d: string) => {
+    const dt = new Date(d);
+    if (isToday(dt))    return t("dashboard.today");
+    if (isTomorrow(dt)) return t("dashboard.tomorrow");
+    return format(dt, "MMM d");
+  };
+
   if (total === 0) return (
     <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900/50 text-sm font-medium text-emerald-700 dark:text-emerald-400 mb-6">
       <CheckCircle2 className="h-4 w-4 shrink-0" />
-      All clear — no overdue bills or stale repairs
+      {t("dashboard.noAttention")}
     </div>
   );
 
@@ -88,19 +85,19 @@ function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
       {visOverdue.map(e => (
         <div key={e.id} className="rounded-lg border border-border border-l-2 border-l-rose-500 bg-card p-3.5 flex flex-col gap-2.5">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-snug">{e.label} unpaid</p>
+            <p className="text-sm font-semibold leading-snug">{e.label} {t("dashboard.unpaidSuffix")}</p>
             <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 whitespace-nowrap shrink-0">
-              Overdue
+              {t("dashboard.overdue")}
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {formatCurrency(e.amount, cur)} · due {relDate(e.date)}
+            {formatCurrency(e.amount, cur)} · {t("dashboard.due")} {relDate(e.date)}
           </p>
           <button
             className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
             onClick={() => { onMarkPaid(e.id); dismiss(`exp-${e.id}`); }}
           >
-            Mark paid
+            {t("dashboard.markPaid")}
           </button>
         </div>
       ))}
@@ -110,7 +107,7 @@ function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold leading-snug truncate">{r.label}</p>
             <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900 whitespace-nowrap shrink-0">
-              Stale 5d+
+              {t("dashboard.stale5d")}
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
@@ -120,7 +117,7 @@ function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
             className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900 hover:opacity-75 transition-opacity"
             onClick={() => nav("/repairs")}
           >
-            Update status →
+            {t("dashboard.updateStatus")}
           </button>
         </div>
       ))}
@@ -130,17 +127,17 @@ function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold leading-snug truncate">{u.label}</p>
             <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900 whitespace-nowrap shrink-0">
-              Decision needed
+              {t("dashboard.decisionNeeded")}
             </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Quotes received — no vendor selected yet
+            {t("dashboard.quotesReceived")}
           </p>
           <button
             className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900 hover:opacity-75 transition-opacity"
             onClick={() => nav(`/upgrades/${u.id}`)}
           >
-            Review quotes →
+            {t("dashboard.reviewQuotes")}
           </button>
         </div>
       ))}
@@ -154,6 +151,7 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
   spent: number; baseline: number; pct: number; remaining: number;
   cats: Record<string, number>; cur: string;
 }) {
+  const { t } = useTranslation();
   const fmt = (n: number) => formatCurrency(n, cur);
   const now = new Date();
   const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
@@ -163,16 +161,16 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
     <div className="border border-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          Monthly spend
+          {t("dashboard.monthlySpend")}
         </p>
-        <p className="text-xs text-muted-foreground">{daysLeft} days left</p>
+        <p className="text-xs text-muted-foreground">{daysLeft} {t("dashboard.daysLeft")}</p>
       </div>
 
       <div className="text-2xl font-bold tracking-tight tabular-nums">{fmt(spent)}</div>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
-        of {fmt(baseline)} recurring baseline
+        {t("expenses.of")} {fmt(baseline)} {t("dashboard.ofRecurringBaseline")}
         {remaining > 0 && (
-          <> · <span className="text-emerald-600 dark:text-emerald-400 font-medium">{fmt(remaining)} remaining</span></>
+          <> · <span className="text-emerald-600 dark:text-emerald-400 font-medium">{fmt(remaining)} {t("dashboard.remaining")}</span></>
         )}
       </p>
 
@@ -182,7 +180,7 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
-      <p className="text-[11px] text-muted-foreground text-right mb-4">{pct}% of baseline</p>
+      <p className="text-[11px] text-muted-foreground text-right mb-4">{pct}{t("dashboard.ofBaseline")}</p>
 
       {top.map(([cat, amount]) => (
         <div key={cat} className="flex items-center gap-2.5 py-1.5 border-t border-border">
@@ -206,7 +204,7 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
 
       {baseline === 0 && (
         <p className="text-xs text-muted-foreground mt-2">
-          Add recurring expenses to see your monthly baseline
+          {t("dashboard.addRecurring")}
         </p>
       )}
     </div>
@@ -216,8 +214,16 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
 // ── CalendarCard ──────────────────────────────────────────────────────────────
 
 function CalendarCard({ calEvents, upcoming }: { calEvents: any[]; upcoming: any[] }) {
+  const { t } = useTranslation();
   const [, nav] = useLocation();
   const today = new Date();
+
+  const relDate = (d: string) => {
+    const dt = new Date(d);
+    if (isToday(dt))    return t("dashboard.today");
+    if (isTomorrow(dt)) return t("dashboard.tomorrow");
+    return format(dt, "MMM d");
+  };
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(today, i);
@@ -230,13 +236,13 @@ function CalendarCard({ calEvents, upcoming }: { calEvents: any[]; upcoming: any
     <div className="border border-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          Next 7 days
+          {t("dashboard.next7days")}
         </p>
         <button
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => nav("/calendar")}
         >
-          Full calendar →
+          {t("dashboard.fullCalendar")}
         </button>
       </div>
 
@@ -274,7 +280,7 @@ function CalendarCard({ calEvents, upcoming }: { calEvents: any[]; upcoming: any
 
       {upcoming.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-4">
-          Nothing scheduled this week
+          {t("dashboard.nothingScheduled")}
         </p>
       ) : (
         upcoming.map(e => (
@@ -298,6 +304,7 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
   countMap: Record<string, { total: number; done: number }>;
   cur: string;
 }) {
+  const { t } = useTranslation();
   const [, nav] = useLocation();
   const fmt = (n: number) => formatCurrency(n, cur);
 
@@ -305,17 +312,17 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
     <div className="border border-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          Active upgrades
+          {t("dashboard.activeUpgrades")}
         </p>
         {activeUpgrades.length > 0 && (
           <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400 border border-violet-200 dark:border-violet-900">
-            {activeUpgrades.length} in progress
+            {activeUpgrades.length} {t("upgrades.inProgress").toLowerCase()}
           </span>
         )}
       </div>
 
       {activeUpgrades.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">No upgrades in progress</p>
+        <p className="text-sm text-muted-foreground text-center py-6">{t("dashboard.noActiveUpgrades")}</p>
       ) : (
         <>
           {activeUpgrades.map(u => {
@@ -333,8 +340,8 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">{u.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {u.phase ?? "In progress"}
-                    {counts ? ` · ${counts.done}/${counts.total} items` : ""}
+                    {u.phase ?? t("upgrades.inProgress")}
+                    {counts ? ` · ${counts.done}/${counts.total} ${t("upgradeDetail.items").toLowerCase()}` : ""}
                   </p>
                   <div className="h-[2px] w-full bg-border rounded-full overflow-hidden mt-1.5">
                     <div
@@ -359,7 +366,7 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
             className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors mt-3 pt-3 border-t border-border"
             onClick={() => nav("/upgrades")}
           >
-            View all upgrades →
+            {t("nav.upgrades")} →
           </button>
         </>
       )}
@@ -370,6 +377,7 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
 // ── LoansCard ─────────────────────────────────────────────────────────────────
 
 function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
+  const { t } = useTranslation();
   const [, nav] = useLocation();
   const fmt = (n: number) => formatCurrency(n, cur);
 
@@ -377,12 +385,12 @@ function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
     <div className="border border-border rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          Loans
+          {t("loans.title")}
         </p>
       </div>
 
       {loans.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">No loans added</p>
+        <p className="text-sm text-muted-foreground text-center py-6">{t("dashboard.noActiveLoans")}</p>
       ) : (
         <>
           {loans.map((l, i) => {
@@ -401,12 +409,12 @@ function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
                   </div>
                   {l.paidOff ? (
                     <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 shrink-0">
-                      <CheckCircle2 className="h-3 w-3" /> Paid off
+                      <CheckCircle2 className="h-3 w-3" /> {t("common.paidOff")}
                     </span>
                   ) : (
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold tabular-nums">{fmt(remaining)}</p>
-                      <p className="text-[11px] text-muted-foreground">remaining</p>
+                      <p className="text-[11px] text-muted-foreground">{t("dashboard.remaining")}</p>
                     </div>
                   )}
                 </div>
@@ -420,7 +428,7 @@ function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
                   />
                 </div>
                 <div className="flex justify-between text-[11px] text-muted-foreground">
-                  <span>{fmt(repaid)} paid · {pct}%</span>
+                  <span>{fmt(repaid)} {t("loans.repaid")} · {pct}%</span>
                   {l.dueDate && (
                     <span>until {format(new Date(l.dueDate), "MMM yyyy")}</span>
                   )}
@@ -432,7 +440,7 @@ function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
             className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors mt-3 pt-3 border-t border-border"
             onClick={() => nav("/loans")}
           >
-            Manage loans →
+            {t("loans.title")} →
           </button>
         </>
       )}
@@ -443,6 +451,7 @@ function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const [, nav] = useLocation();
   const utils = trpc.useUtils();
 
@@ -478,6 +487,11 @@ export default function Dashboard() {
       .slice(0, 6);
   }, [calEvents]);
 
+  const greeting = () => {
+    const h = new Date().getHours();
+    return h < 12 ? t("dashboard.goodMorning") : h < 18 ? t("dashboard.goodAfternoon") : t("dashboard.goodEvening");
+  };
+
   if (isLoading) return (
     <div className="flex items-center justify-center h-[50vh]">
       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -498,13 +512,13 @@ export default function Dashboard() {
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => nav("/settings")}>
-          <Settings className="h-3.5 w-3.5 mr-1.5" />
-          Settings
+          <Settings className="h-3.5 w-3.5 me-1.5" />
+          {t("nav.settings")}
         </Button>
       </div>
 
       {/* Layer 1 — Needs attention */}
-      <SectionLabel>Needs attention</SectionLabel>
+      <SectionLabel>{t("dashboard.attention")}</SectionLabel>
       <AttentionZone
         overdue={s?.overdueExpenses ?? []}
         stale={s?.staleRepairs ?? []}
@@ -530,7 +544,7 @@ export default function Dashboard() {
       </div>
 
       {/* Layer 3 — Running context */}
-      <SectionLabel>Running context</SectionLabel>
+      <SectionLabel>{t("dashboard.context")}</SectionLabel>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <UpgradesCard
           activeUpgrades={s?.activeUpgrades ?? []}
