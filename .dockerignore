@@ -7,5 +7,4 @@ dist
 .gitignore
 *.log
 README.md
-patches/
 homevault-fixes/
