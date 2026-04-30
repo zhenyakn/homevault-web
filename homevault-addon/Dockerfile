@@ -1,5 +1,5 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
@@ -8,6 +8,7 @@ RUN npm install -g pnpm
 
 # Copy manifests first for better layer caching
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 
 # Install all dependencies (dev included — needed for build)
 RUN pnpm install --frozen-lockfile
@@ -19,7 +20,7 @@ COPY . .
 RUN pnpm build
 
 # Production stage for the Add-on
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
@@ -28,6 +29,7 @@ RUN npm install -g pnpm
 
 # Copy only what's needed at runtime
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/dist ./dist
@@ -38,7 +40,7 @@ COPY homevault-addon/run.sh /run.sh
 RUN chmod a+x /run.sh
 
 # Non-root user for security
-RUN addgroup -S homevault && adduser -S homevault -G homevault
+RUN groupadd --system homevault && useradd --system --gid homevault --create-home homevault
 RUN chown -R homevault:homevault /app
 USER homevault
 
