@@ -879,28 +879,27 @@ export default function Settings() {
         ))}
       </nav>
 
-      {/* Mobile bottom nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur-sm">
-        <div className="flex overflow-x-auto gap-0.5 px-3 py-2">
-          {NAV.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => go(id)}
-              className={cn(
-                "shrink-0 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors",
-                active === id
-                  ? "bg-foreground text-background font-medium"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* Content */}
-      <div className="flex-1 min-w-0 max-w-xl pb-20 md:pb-0">
+      <div className="flex-1 min-w-0 max-w-xl">
+        {/* Mobile top nav — inline horizontal scroll strip */}
+        <div className="md:hidden -mx-4 mb-4 px-4 border-b">
+          <div className="flex overflow-x-auto gap-0.5 pb-2">
+            {NAV.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => go(id)}
+                className={cn(
+                  "shrink-0 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors",
+                  active === id
+                    ? "bg-foreground text-background font-medium"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         {active === "property"      && <PropertySection      p={property} />}
         {active === "purchase"      && <PurchaseSection      p={property} />}
         {active === "household"     && <HouseholdSection />}
