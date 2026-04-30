@@ -7,7 +7,6 @@ on:
   workflow_dispatch:
 
 env:
-  REPOSITORY: ${{ github.repository }}
   ADDON_PATH: homevault-addon
 
 jobs:
@@ -27,6 +26,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Normalize image repository name
+        run: echo "REPOSITORY_LC=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -45,5 +47,5 @@ jobs:
             linux/arm64
           push: true
           tags: |
-            ghcr.io/${{ env.REPOSITORY }}-addon:latest
-            ghcr.io/${{ env.REPOSITORY }}-addon:${{ github.sha }}
+            ghcr.io/${{ env.REPOSITORY_LC }}-addon:latest
+            ghcr.io/${{ env.REPOSITORY_LC }}-addon:${{ github.sha }}
