@@ -44,6 +44,6 @@ RUN groupadd --system homevault && useradd --system --gid homevault --create-hom
 RUN chown -R homevault:homevault /app
 USER homevault
 
-EXPOSE 3000
+EXPOSE 3005
 
 CMD ["/bin/bash", "/run.sh"]
