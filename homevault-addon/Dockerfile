@@ -1,5 +1,5 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ COPY . .
 RUN pnpm build
 
 # Production stage for the Add-on
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
@@ -40,7 +40,7 @@ COPY homevault-addon/run.sh /run.sh
 RUN chmod a+x /run.sh
 
 # Non-root user for security
-RUN addgroup -S homevault && adduser -S homevault -G homevault
+RUN groupadd --system homevault && useradd --system --gid homevault --create-home homevault
 RUN chown -R homevault:homevault /app
 USER homevault
 
