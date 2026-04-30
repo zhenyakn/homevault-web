@@ -20,7 +20,7 @@ options:
   BUILT_IN_FORGE_API_KEY: ""
   PORT: 3000
 ports:
-  3000/tcp: 3000
+  3000/tcp: 3005
 ports_description:
   3000/tcp: Web interface
 schema:
