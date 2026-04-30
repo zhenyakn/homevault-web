@@ -8,6 +8,7 @@ RUN npm install -g pnpm
 
 # Copy manifests first for better layer caching
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 
 # Install all dependencies (dev included — needed for build)
 RUN pnpm install --frozen-lockfile
@@ -28,6 +29,7 @@ RUN npm install -g pnpm
 
 # Copy only what's needed at runtime
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/dist ./dist
