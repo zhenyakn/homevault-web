@@ -11,9 +11,9 @@ init: false
 map:
   - ssl:rw
 options:
-  DATABASE_URL: ""
+  DATABASE_URL: "mysql://homeassistant:homeassistant@core-mariadb/homeassistant?charset=utf8mb4"
   JWT_SECRET: ""
-  OWNER_OPEN_ID: ""
+  OWNER_OPEN_ID: "owner"
   VITE_APP_ID: "homevault"
   OAUTH_SERVER_URL: ""
   BUILT_IN_FORGE_API_URL: ""
@@ -24,10 +24,10 @@ ports:
 ports_description:
   3000/tcp: Web interface
 schema:
-  DATABASE_URL: "str"
-  JWT_SECRET: "str"
-  OWNER_OPEN_ID: "str"
-  VITE_APP_ID: "str"
+  DATABASE_URL: "str?"
+  JWT_SECRET: "str?"
+  OWNER_OPEN_ID: "str?"
+  VITE_APP_ID: "str?"
   OAUTH_SERVER_URL: "str?"
   BUILT_IN_FORGE_API_URL: "str?"
   BUILT_IN_FORGE_API_KEY: "str?"
