@@ -45,8 +45,8 @@ const STATUS_COLORS: Record<ItemStatus, string> = {
   "Installed":    "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
 };
 
-function statusBadge(status: ItemStatus) {
-  return <Badge className={cn("text-xs border-0 h-5", STATUS_COLORS[status])}>{status}</Badge>;
+function statusBadge(status: ItemStatus, label: string) {
+  return <Badge className={cn("text-xs border-0 h-5", STATUS_COLORS[status])}>{label}</Badge>;
 }
 
 // ─── Dialogs ──────────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ function EditUpgradeDialog({
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const mut = trpc.upgrades.update.useMutation({
-    onSuccess: () => { u.upgrades.list.invalidate(); onClose(); toast.success("Project updated"); },
+    onSuccess: () => { u.upgrades.list.invalidate(); onClose(); toast.success(t("upgradeDetail.projectUpdated")); },
     onError: e => toast.error(e.message),
   });
 
@@ -87,7 +87,7 @@ function EditUpgradeDialog({
           </div>
           <div className="space-y-1">
             <Label>{t("common.description")}</Label>
-            <Textarea rows={2} value={f.description} onChange={e => setF({ ...f, description: e.target.value })} placeholder="Short description of what this project covers" />
+            <Textarea rows={2} value={f.description} onChange={e => setF({ ...f, description: e.target.value })} placeholder={t("upgradeDetail.descPlaceholder")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -135,11 +135,11 @@ function OptionDialog({
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const createMut = trpc.upgradeOptions.create.useMutation({
-    onSuccess: () => { u.upgradeOptions.list.invalidate({ upgradeId }); onClose(); toast.success("Option added"); },
+    onSuccess: () => { u.upgradeOptions.list.invalidate({ upgradeId }); onClose(); toast.success(t("upgradeDetail.optionAdded")); },
     onError: e => toast.error(e.message),
   });
   const updateMut = trpc.upgradeOptions.update.useMutation({
-    onSuccess: () => { u.upgradeOptions.list.invalidate({ upgradeId }); onClose(); toast.success("Option updated"); },
+    onSuccess: () => { u.upgradeOptions.list.invalidate({ upgradeId }); onClose(); toast.success(t("upgradeDetail.optionUpdated")); },
     onError: e => toast.error(e.message),
   });
 
@@ -183,7 +183,7 @@ function OptionDialog({
         <DialogHeader><DialogTitle>{editOption ? t("upgradeDetail.editOption") : t("upgradeDetail.addOption")}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-1">
           <div className="space-y-1"><Label>{t("upgradeDetail.vendorName")}</Label>
-            <Input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="e.g. IKEA + Rami Installation" />
+            <Input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder={t("upgradeDetail.vendorNamePlaceholder")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1"><Label>{t("upgradeDetail.totalPrice")}</Label>
@@ -195,14 +195,14 @@ function OptionDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1"><Label>{t("common.timeline")}</Label>
-              <Input value={f.timeline} onChange={e => setF({ ...f, timeline: e.target.value })} placeholder="e.g. 8 weeks" />
+              <Input value={f.timeline} onChange={e => setF({ ...f, timeline: e.target.value })} placeholder={t("upgradeDetail.timelinePlaceholder")} />
             </div>
             <div className="space-y-1"><Label>{t("common.warranty")}</Label>
-              <Input value={f.warranty} onChange={e => setF({ ...f, warranty: e.target.value })} placeholder="e.g. 1 year" />
+              <Input value={f.warranty} onChange={e => setF({ ...f, warranty: e.target.value })} placeholder={t("upgradeDetail.warrantyPlaceholder")} />
             </div>
           </div>
           <div className="space-y-1"><Label>{t("upgradeDetail.whatIncluded")}</Label>
-            <Textarea rows={2} value={f.scope} onChange={e => setF({ ...f, scope: e.target.value })} placeholder="Cabinets, installation, countertop…" />
+            <Textarea rows={2} value={f.scope} onChange={e => setF({ ...f, scope: e.target.value })} placeholder={t("upgradeDetail.scopePlaceholder")} />
           </div>
           <div className="space-y-1"><Label>{t("common.notes")}</Label>
             <Textarea rows={2} value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} />
@@ -221,11 +221,11 @@ function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: stri
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const create = trpc.upgradeItems.create.useMutation({
-    onSuccess: () => { u.upgradeItems.list.invalidate({ upgradeId }); onClose(); toast.success("Item added"); },
+    onSuccess: () => { u.upgradeItems.list.invalidate({ upgradeId }); onClose(); toast.success(t("upgradeDetail.itemAdded")); },
     onError: e => toast.error(e.message),
   });
   const update = trpc.upgradeItems.update.useMutation({
-    onSuccess: () => { u.upgradeItems.list.invalidate({ upgradeId }); onClose(); toast.success("Item updated"); },
+    onSuccess: () => { u.upgradeItems.list.invalidate({ upgradeId }); onClose(); toast.success(t("upgradeDetail.itemUpdated")); },
     onError: e => toast.error(e.message),
   });
 
@@ -267,12 +267,12 @@ function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: stri
         <DialogHeader><DialogTitle>{editItem ? t("upgradeDetail.editItem") : t("upgradeDetail.addItem")}</DialogTitle></DialogHeader>
         <div className="space-y-3 pt-1">
           <div className="space-y-1"><Label>{t("upgradeDetail.itemName")}</Label>
-            <Input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder="e.g. Undermount sink (Franke)" />
+            <Input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder={t("upgradeDetail.itemNamePlaceholder")} />
           </div>
           <div className="space-y-1"><Label>{t("common.status")}</Label>
             <Select value={f.status} onValueChange={v => setF({ ...f, status: v as ItemStatus })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{ITEM_STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              <SelectContent>{ITEM_STATUSES.map(s => <SelectItem key={s} value={s}>{t(`itemStatus.${s}`)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -285,7 +285,7 @@ function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: stri
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1"><Label>{t("upgradeDetail.vendorField")}</Label>
-              <Input value={f.vendorName} onChange={e => setF({ ...f, vendorName: e.target.value })} placeholder="IKEA, Amazon…" />
+              <Input value={f.vendorName} onChange={e => setF({ ...f, vendorName: e.target.value })} placeholder={t("upgradeDetail.vendorPlaceholder")} />
             </div>
             <div className="space-y-1"><Label>{t("common.eta")}</Label>
               <Input type="date" value={f.eta} onChange={e => setF({ ...f, eta: e.target.value })} />
@@ -312,7 +312,7 @@ function LogPaymentDialog({ optionId, optionName, open, onClose, upgradeId }: { 
       u.upgradeOptions.list.invalidate({ upgradeId });
       u.upgrades.list.invalidate();
       onClose();
-      toast.success("Payment logged");
+      toast.success(t("upgradeDetail.paymentLogged"));
       reset();
     },
     onError: e => toast.error(e.message),
@@ -335,7 +335,7 @@ function LogPaymentDialog({ optionId, optionName, open, onClose, upgradeId }: { 
             <Input type="date" value={f.date} onChange={e => setF({ ...f, date: e.target.value })} />
           </div>
           <div className="space-y-1"><Label>{t("common.notes")}</Label>
-            <Input value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} placeholder="e.g. deposit payment" />
+            <Input value={f.notes} onChange={e => setF({ ...f, notes: e.target.value })} placeholder={t("upgradeDetail.paymentNotesPlaceholder")} />
           </div>
           <div className="space-y-1">
             <Label>{t("common.receipt")}</Label>
@@ -398,15 +398,15 @@ function OptionCard({
             {option.isSelected && <Badge className="bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400 border-0 text-xs h-5">{t("common.selected")} ✓</Badge>}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {option.totalPrice ? formatCurrency(option.totalPrice) : "No price"}{option.timeline ? ` · ${option.timeline}` : ""}
-            {option.warranty ? ` · ${option.warranty} warranty` : ""}
+            {option.totalPrice ? formatCurrency(option.totalPrice) : t("upgradeDetail.noPrice")}{option.timeline ? ` · ${option.timeline}` : ""}
+            {option.warranty ? ` · ${option.warranty} ${t("upgradeDetail.warrantyLabel")}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
             className="h-6 w-6 flex items-center justify-center rounded hover:bg-muted transition-colors"
             onClick={e => { e.stopPropagation(); onEdit(); }}
-            title="Edit option"
+            title={t("upgradeDetail.editOption")}
           >
             <Pencil className="h-3 w-3 text-muted-foreground" />
           </button>
@@ -424,9 +424,9 @@ function OptionCard({
                 <a href={`tel:${option.vendorPhone}`} className="flex items-center gap-1.5 text-sm text-primary font-medium">
                   <Phone className="h-3.5 w-3.5" />{option.vendorPhone}
                 </a>
-              ) : <span className="text-xs text-muted-foreground">No phone</span>}
+              ) : <span className="text-xs text-muted-foreground">{t("upgradeDetail.noPhone")}</span>}
               <span className="text-xs text-muted-foreground tabular-nums">
-                Paid: <span className="text-foreground font-semibold">{formatCurrency(paid)}</span>
+                {t("upgradeDetail.paidLabel")} <span className="text-foreground font-semibold">{formatCurrency(paid)}</span>
                 {option.totalPrice ? ` / ${formatCurrency(option.totalPrice)}` : ""}
               </span>
             </div>
@@ -438,7 +438,7 @@ function OptionCard({
                 <Phone className="h-3 w-3" />{option.vendorPhone}
               </p>
             )}
-            {option.scope && <p className="text-xs text-muted-foreground leading-relaxed"><span className="text-foreground font-medium">Scope: </span>{option.scope}</p>}
+            {option.scope && <p className="text-xs text-muted-foreground leading-relaxed"><span className="text-foreground font-medium">{t("upgradeDetail.scopeLabel")} </span>{option.scope}</p>}
             {option.notes && <p className="text-xs text-muted-foreground leading-relaxed">{option.notes}</p>}
 
             {/* Payments */}
@@ -450,16 +450,16 @@ function OptionCard({
                     <span className="text-muted-foreground truncate">{p.date}{p.notes ? ` · ${p.notes}` : ""}</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {p.receipt && (
-                        <a href={p.receipt} target="_blank" rel="noopener noreferrer" title="View receipt" className="text-primary hover:text-primary/80">
+                        <a href={p.receipt} target="_blank" rel="noopener noreferrer" title={t("upgradeDetail.viewReceipt")} className="text-primary hover:text-primary/80">
                           <Receipt className="h-3 w-3" />
                         </a>
                       )}
                       <span className="tabular-nums font-medium">{formatCurrency(p.amount)}</span>
                       <button
                         className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-destructive opacity-0 group-hover/payment:opacity-100 transition-opacity"
-                        title="Delete payment"
+                        title={t("upgradeDetail.deletePaymentConfirm")}
                         onClick={() => {
-                          if (confirm("Delete this payment?")) {
+                          if (confirm(t("upgradeDetail.deletePaymentConfirm"))) {
                             deletePaymentMut.mutate({ optionId: option.id, paymentIndex: i });
                           }
                         }}
@@ -534,7 +534,7 @@ function ItemRow({ item, upgradeId, onEdit, onAllDone }: {
         <p className={cn("text-sm font-medium leading-snug", isDone && "text-muted-foreground line-through")}>{item.name}</p>
         <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
           {item.vendorName && <span>{item.vendorName}</span>}
-          {item.eta && <span>ETA {item.eta}</span>}
+          {item.eta && <span>{t("common.eta")} {item.eta}</span>}
           {item.notes && <span className="truncate max-w-[160px]">{item.notes}</span>}
         </p>
       </div>
@@ -551,7 +551,7 @@ function ItemRow({ item, upgradeId, onEdit, onAllDone }: {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="focus:outline-none">
-              {statusBadge(item.status)}
+              {statusBadge(item.status, t(`itemStatus.${item.status}`))}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -564,7 +564,7 @@ function ItemRow({ item, upgradeId, onEdit, onAllDone }: {
                 }}
               >
                 <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_COLORS[s].split(" ")[0])} />
-                {s}
+                {t(`itemStatus.${s}`)}
                 {s === item.status && <Check className="h-3 w-3 ml-auto" />}
               </DropdownMenuItem>
             ))}
@@ -573,13 +573,13 @@ function ItemRow({ item, upgradeId, onEdit, onAllDone }: {
 
         {/* Always-visible actions */}
         <div className="flex gap-1">
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onEdit} title="Edit item">
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={onEdit} title={t("upgradeDetail.editItem")}>
             <Pencil className="h-3 w-3" />
           </Button>
           <Button
             size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive"
             onClick={() => { if (confirm(t("upgradeDetail.deleteItemConfirm"))) deleteMut.mutate({ id: item.id }); }}
-            title="Delete item"
+            title={t("upgradeDetail.deleteItemTitle")}
           >
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -620,7 +620,7 @@ export default function UpgradeDetail() {
   const [savingPhase, setSavingPhase] = useState<Phase | null>(null);
 
   if (loadingUpgrade) return <div className="flex h-full items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /></div>;
-  if (!upgrade) return <div className="p-6 text-center text-muted-foreground">{t("upgrades.title")} not found. <button className="underline" onClick={() => navigate("/upgrades")}>{t("common.back")}</button></div>;
+  if (!upgrade) return <div className="p-6 text-center text-muted-foreground">{t("upgradeDetail.notFound")} <button className="underline" onClick={() => navigate("/upgrades")}>{t("common.back")}</button></div>;
 
   const selectedOption = options.find((o: any) => o.isSelected);
   const committed = selectedOption?.totalPrice || 0;
@@ -645,10 +645,10 @@ export default function UpgradeDetail() {
 
   const handleAllDone = () => {
     if (currentPhase === "Done") return;
-    toast("All items are done!", {
-      description: "Mark this project as Done?",
+    toast(t("upgradeDetail.allItemsDoneTitle"), {
+      description: t("upgradeDetail.allItemsDoneDesc"),
       action: {
-        label: "Mark Done",
+        label: t("upgradeDetail.markDoneAction"),
         onClick: () => setPhase("Done"),
       },
       duration: 8000,
@@ -673,7 +673,7 @@ export default function UpgradeDetail() {
               variant="ghost" size="sm"
               className="h-7 w-7 p-0 text-muted-foreground shrink-0 mt-0.5"
               onClick={() => setEditUpgradeOpen(true)}
-              title="Edit project"
+              title={t("upgradeDetail.editProject")}
             >
               <Settings2 className="h-4 w-4" />
             </Button>
@@ -687,7 +687,7 @@ export default function UpgradeDetail() {
               <button
                 className="flex flex-col items-center gap-1 px-1 group"
                 onClick={() => setPhase(phase)}
-                title={`Set phase to ${phase}`}
+                title={t("upgradeDetail.setPhaseTitle", { phase: t(`phases.${phase}`) })}
               >
                 <div className={cn(
                   "w-3 h-3 rounded-full transition-all flex items-center justify-center",
@@ -699,7 +699,7 @@ export default function UpgradeDetail() {
                 <span className={cn(
                   "text-[10px] font-medium whitespace-nowrap",
                   idx === phaseIdx ? "text-primary" : idx < phaseIdx ? "text-muted-foreground" : "text-muted-foreground/40 group-hover:text-muted-foreground"
-                )}>{phase}</span>
+                )}>{t(`phases.${phase}`)}</span>
               </button>
               {idx < PHASES.length - 1 && (
                 <div className={cn("w-8 h-0.5 mx-0.5 mb-3", idx < phaseIdx ? "bg-primary" : "bg-border")} />
@@ -717,7 +717,7 @@ export default function UpgradeDetail() {
               <div className={cn("w-3 h-3 rounded-full transition-all", idx < phaseIdx ? "bg-primary" : idx === phaseIdx ? "bg-primary ring-4 ring-primary/20" : "bg-border")}>
                 {savingPhase === phase && <Loader2 className="h-2 w-2 animate-spin text-primary-foreground" />}
               </div>
-              <span className={cn("text-[10px] font-medium whitespace-nowrap", idx === phaseIdx ? "text-primary" : idx < phaseIdx ? "text-muted-foreground" : "text-muted-foreground/40")}>{phase}</span>
+              <span className={cn("text-[10px] font-medium whitespace-nowrap", idx === phaseIdx ? "text-primary" : idx < phaseIdx ? "text-muted-foreground" : "text-muted-foreground/40")}>{t(`phases.${phase}`)}</span>
             </button>
             {idx < PHASES.length - 1 && <div className={cn("flex-1 h-0.5 mx-1 mb-3", idx < phaseIdx ? "bg-primary" : "bg-border")} />}
           </div>
@@ -739,7 +739,7 @@ export default function UpgradeDetail() {
           <div>
             <p className="text-base font-bold tabular-nums text-muted-foreground">{formatCurrency(upgrade.budget)}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{t("common.budget")}</p>
-            <p className="text-[10px] text-muted-foreground">{formatCurrency(Math.max(0, upgrade.budget - spentAmt))} left</p>
+            <p className="text-[10px] text-muted-foreground">{formatCurrency(Math.max(0, upgrade.budget - spentAmt))} {t("upgradeDetail.leftLabel")}</p>
           </div>
         </div>
         <div className="space-y-1">
@@ -747,8 +747,8 @@ export default function UpgradeDetail() {
             <div className="h-full bg-primary transition-all rounded-full" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>{Math.round(progress)}% of budget used</span>
-            <span>{formatCurrency(spentAmt)} paid</span>
+            <span>{t("upgradeDetail.budgetUsed", { pct: Math.round(progress) })}</span>
+            <span>{formatCurrency(spentAmt)} {t("dashboard.paid")}</span>
           </div>
         </div>
       </div>
@@ -806,7 +806,7 @@ export default function UpgradeDetail() {
             <div className="rounded-xl border border-border overflow-hidden px-4">
               {needsAction.length > 0 && (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 pt-3 pb-1">⚠ Needs action</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 pt-3 pb-1">⚠ {t("upgradeDetail.needsAction")}</p>
                   {needsAction.map((item: any) => (
                     <ItemRow key={item.id} item={item} upgradeId={upgradeId} onEdit={() => { setEditItem(item); setAddItemOpen(true); }} onAllDone={handleAllDone} />
                   ))}
@@ -814,7 +814,7 @@ export default function UpgradeDetail() {
               )}
               {orderedItems.length > 0 && (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 pt-3 pb-1">⏳ Ordered / in transit</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 pt-3 pb-1">⏳ {t("upgradeDetail.orderedInTransit")}</p>
                   {orderedItems.map((item: any) => (
                     <ItemRow key={item.id} item={item} upgradeId={upgradeId} onEdit={() => { setEditItem(item); setAddItemOpen(true); }} onAllDone={handleAllDone} />
                   ))}
@@ -822,7 +822,7 @@ export default function UpgradeDetail() {
               )}
               {doneItems.length > 0 && (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pt-3 pb-1">✓ Done</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pt-3 pb-1">✓ {t("upgradeDetail.doneSectionTitle")}</p>
                   {doneItems.map((item: any) => (
                     <ItemRow key={item.id} item={item} upgradeId={upgradeId} onEdit={() => { setEditItem(item); setAddItemOpen(true); }} onAllDone={handleAllDone} />
                   ))}
@@ -854,7 +854,7 @@ export default function UpgradeDetail() {
           >
             {upgrade.notes
               ? <p className="text-sm text-muted-foreground leading-relaxed">{upgrade.notes}</p>
-              : <p className="text-sm text-muted-foreground/50 italic">Tap to add notes…</p>
+              : <p className="text-sm text-muted-foreground/50 italic">{t("upgradeDetail.tapToAddNotes")}</p>
             }
           </button>
         )}
