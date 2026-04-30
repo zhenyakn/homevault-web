@@ -44,7 +44,7 @@ export default function Wishlist() {
       closeDialog();
     },
     onError: (error) => {
-      toast.error(`Failed to create item: ${error.message}`);
+      toast.error(`${t("wishlist.failedCreate")}: ${error.message}`);
     },
   });
 
@@ -55,17 +55,17 @@ export default function Wishlist() {
       closeDialog();
     },
     onError: (error) => {
-      toast.error(`Failed to update item: ${error.message}`);
+      toast.error(`${t("wishlist.failedUpdate")}: ${error.message}`);
     },
   });
 
   const deleteMutation = trpc.wishlist.delete.useMutation({
     onSuccess: () => {
-      toast.success("Deleted");
+      toast.success(t("wishlist.deleted"));
       utils.wishlist.list.invalidate();
     },
     onError: (error) => {
-      toast.error(`Failed to delete item: ${error.message}`);
+      toast.error(`${t("wishlist.failedDeleteMsg")}: ${error.message}`);
     },
   });
 
@@ -73,13 +73,13 @@ export default function Wishlist() {
     e.preventDefault();
 
     if (!formData.label) {
-      toast.error(t("common.label") + " is required");
+      toast.error(t("wishlist.labelRequired"));
       return;
     }
 
     const estimatedCostCents = Math.round(parseFloat(formData.estimatedCost) * 100);
     if (isNaN(estimatedCostCents)) {
-      toast.error("Valid estimated cost is required");
+      toast.error(t("wishlist.validCostRequired"));
       return;
     }
 
@@ -142,7 +142,7 @@ export default function Wishlist() {
   };
 
   const handleExportCSV = () => {
-    if (!items || items.length === 0) { toast.error("No wishlist items to export"); return; }
+    if (!items || items.length === 0) { toast.error(t("wishlist.nothingToExport")); return; }
     const headers = ["Label", "Priority", "Estimated Cost", "Description"];
     const rows = sortedItems.map((i: any) => [
       i.label, i.priority, (i.estimatedCost / 100).toFixed(2), i.description || "",
@@ -152,7 +152,7 @@ export default function Wishlist() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `wishlist_${new Date().toISOString().split("T")[0]}.csv`; a.click();
     URL.revokeObjectURL(url);
-    toast.success("Exported");
+    toast.success(t("wishlist.exported"));
   };
 
   if (isLoading) {
@@ -189,7 +189,7 @@ export default function Wishlist() {
                   id="label"
                   value={formData.label}
                   onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-                  placeholder="e.g., New Kitchen Cabinets"
+                  placeholder={t("wishlist.placeholderLabel")}
                   required
                 />
               </div>
@@ -199,7 +199,7 @@ export default function Wishlist() {
                   id="description"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Details about the item..."
+                  placeholder={t("wishlist.placeholderDesc")}
                 />
               </div>
               <div className="space-y-2">

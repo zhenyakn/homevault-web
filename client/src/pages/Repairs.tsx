@@ -53,11 +53,11 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
   const utils = trpc.useUtils();
   const createMutation = trpc.repairs.create.useMutation({
     onSuccess: () => {
-      toast.success("Repair logged");
+      toast.success(t("repairs.logRepair"));
       utils.repairs.list.invalidate();
       onClose();
     },
-    onError: e => toast.error(`Failed to log repair: ${e.message}`),
+    onError: e => toast.error(`${t("repairs.failedLog")}: ${e.message}`),
   });
 
   const blank = {
@@ -94,7 +94,7 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
             <Input
               id="label"
               required
-              placeholder="e.g. Leaking kitchen faucet"
+              placeholder={t("repairs.placeholderLabel")}
               value={f.label}
               onChange={e => setF({ ...f, label: e.target.value })}
             />
@@ -104,7 +104,7 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
             <Textarea
               id="description"
               rows={2}
-              placeholder="Additional context"
+              placeholder={t("repairs.placeholderContext")}
               value={f.description}
               onChange={e => setF({ ...f, description: e.target.value })}
             />
@@ -116,7 +116,7 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {(["Critical", "High", "Medium", "Low"] as Priority[]).map(p => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                    <SelectItem key={p} value={p}>{t(`priority.${p}`)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -175,8 +175,8 @@ function RepairRow({
         {/* Title row */}
         <div className="flex items-center gap-2 flex-wrap">
           <p className={cn("text-sm font-medium", isDone && "text-muted-foreground")}>{repair.label}</p>
-          <Badge className={cn("text-xs h-5 border-0 shrink-0", PHASE_BADGE[phase])}>{phase}</Badge>
-          <Badge className={cn("text-xs h-5 border-0 shrink-0", PRIORITY_BADGE[priority])}>{priority}</Badge>
+          <Badge className={cn("text-xs h-5 border-0 shrink-0", PHASE_BADGE[phase])}>{t(`phases.${phase}`)}</Badge>
+          <Badge className={cn("text-xs h-5 border-0 shrink-0", PRIORITY_BADGE[priority])}>{t(`priority.${priority}`)}</Badge>
         </div>
 
         {/* Description */}
@@ -211,13 +211,13 @@ function RepairRow({
         {/* Cost summary if available */}
         {!isDone && repair.estimatedCost != null && (
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-            Est: {formatCurrency(repair.estimatedCost)}
-            {repair.actualCost != null && ` · Paid: ${formatCurrency(repair.actualCost)}`}
+            {t("repairs.estCost")}: {formatCurrency(repair.estimatedCost)}
+            {repair.actualCost != null && ` · ${t("repairs.paidCost")}: ${formatCurrency(repair.actualCost)}`}
           </p>
         )}
         {isDone && repair.actualCost != null && (
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-            {formatCurrency(repair.actualCost)} total cost
+            {formatCurrency(repair.actualCost)} {t("repairs.totalCost")}
           </p>
         )}
       </div>
@@ -228,7 +228,7 @@ function RepairRow({
           size="sm" variant="ghost"
           className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
           onClick={onDelete}
-          title="Delete repair"
+          title={t("repairs.deleteTitle")}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
@@ -278,14 +278,14 @@ export default function Repairs() {
   const countMap = Object.fromEntries(rawCounts.map(c => [c.repairId, c]));
 
   const deleteMutation = trpc.repairs.delete.useMutation({
-    onSuccess: () => { toast.success("Repair deleted"); utils.repairs.list.invalidate(); },
-    onError: e => toast.error(`Failed to delete: ${e.message}`),
+    onSuccess: () => { toast.success(t("repairs.deleted")); utils.repairs.list.invalidate(); },
+    onError: e => toast.error(`${t("repairs.failedDeleteMsg")}: ${e.message}`),
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleExportCSV = () => {
-    if (!repairs.length) { toast.error("Nothing to export"); return; }
+    if (!repairs.length) { toast.error(t("repairs.nothingToExport")); return; }
     const headers = ["Description", "Phase", "Priority", "Date", "Contractor", "Est Cost", "Actual Cost", "Notes"];
     const rows = (repairs as any[]).map(r => [
       r.label, r.phase || "Assessment", r.priority, r.dateLogged,
@@ -300,7 +300,7 @@ export default function Repairs() {
     a.href = URL.createObjectURL(blob);
     a.download = `repairs_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
-    toast.success("Exported to CSV");
+    toast.success(t("repairs.exported"));
   };
 
   if (isLoading) return (
@@ -331,9 +331,9 @@ export default function Repairs() {
     return (
       <div className="space-y-5">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Repairs</h1>
+          <h1 className="text-xl font-semibold">{t("repairs.title")}</h1>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />Log repair
+            <Plus className="h-3.5 w-3.5 me-1.5" />{t("repairs.logRepair")}
           </Button>
         </div>
 
@@ -379,7 +379,7 @@ export default function Repairs() {
           <p className="text-xs text-muted-foreground">{t("repairs.statOpen")}</p>
           <p className="text-xl font-semibold tabular-nums mt-1">{open.length}</p>
           {criticalCount > 0 && (
-            <p className="text-xs text-red-500 font-medium mt-0.5">{criticalCount} critical</p>
+            <p className="text-xs text-red-500 font-medium mt-0.5">{criticalCount} {t("common.critical")}</p>
           )}
         </div>
         <div className="px-4 py-3.5">
@@ -392,7 +392,7 @@ export default function Repairs() {
           <p className="text-xs text-muted-foreground">{t("repairs.statResolved")}</p>
           <p className="text-xl font-semibold tabular-nums mt-1">{resolved.length}</p>
           {totalCost > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{formatCurrency(totalCost)} spent</p>
+            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{formatCurrency(totalCost)} {t("dashboard.spent")}</p>
           )}
         </div>
       </div>
@@ -406,7 +406,7 @@ export default function Repairs() {
               repair={r}
               quoteCounts={countMap[r.id]}
               isDone={false}
-              onDelete={() => { if (confirm("Delete this repair and all its data?")) deleteMutation.mutate({ id: r.id }); }}
+              onDelete={() => { if (confirm(t("repairs.deleteConfirm"))) deleteMutation.mutate({ id: r.id }); }}
               onClick={() => navigate(`/repairs/${r.id}`)}
             />
           ))}
@@ -416,9 +416,9 @@ export default function Repairs() {
       {/* Empty open */}
       {open.length === 0 && resolved.length > 0 && (
         <div className="border border-dashed border-border rounded-lg px-4 py-8 text-center space-y-2">
-          <p className="text-sm text-muted-foreground">No open repairs</p>
+          <p className="text-sm text-muted-foreground">{t("repairs.noOpen")}</p>
           <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 mr-1.5" />Log repair
+            <Plus className="h-3.5 w-3.5 me-1.5" />{t("repairs.logRepair")}
           </Button>
         </div>
       )}
@@ -430,7 +430,7 @@ export default function Repairs() {
           count={resolved.length}
           extra={
             totalCost > 0
-              ? <p className="text-xs text-muted-foreground tabular-nums">{formatCurrency(totalCost)} total</p>
+              ? <p className="text-xs text-muted-foreground tabular-nums">{formatCurrency(totalCost)} {t("common.total")}</p>
               : undefined
           }
         >
@@ -440,7 +440,7 @@ export default function Repairs() {
               repair={r}
               quoteCounts={countMap[r.id]}
               isDone={true}
-              onDelete={() => { if (confirm("Delete this repair and all its data?")) deleteMutation.mutate({ id: r.id }); }}
+              onDelete={() => { if (confirm(t("repairs.deleteConfirm"))) deleteMutation.mutate({ id: r.id }); }}
               onClick={() => navigate(`/repairs/${r.id}`)}
             />
           ))}

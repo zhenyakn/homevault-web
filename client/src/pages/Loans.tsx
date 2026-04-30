@@ -57,7 +57,7 @@ export default function Loans() {
       utils.loans.list.invalidate();
     },
     onError: (error) => {
-      toast.error(`Failed to add loan: ${error.message}`);
+      toast.error(`${t("loans.failedAdd")}: ${error.message}`);
     },
   });
 
@@ -69,17 +69,17 @@ export default function Loans() {
       utils.loans.list.invalidate();
     },
     onError: (error) => {
-      toast.error(`Failed to update loan: ${error.message}`);
+      toast.error(`${t("loans.failedUpdate")}: ${error.message}`);
     },
   });
 
   const deleteMutation = trpc.loans.delete.useMutation({
     onSuccess: () => {
-      toast.success("Deleted");
+      toast.success(t("loans.deleted"));
       utils.loans.list.invalidate();
     },
     onError: (error) => {
-      toast.error(`Failed to delete loan: ${error.message}`);
+      toast.error(`${t("loans.failedDeleteMsg")}: ${error.message}`);
     },
   });
 
@@ -94,7 +94,7 @@ export default function Loans() {
       utils.loans.list.invalidate();
     },
     onError: (error) => {
-      toast.error(`Failed to add repayment: ${error.message}`);
+      toast.error(`${t("loans.failedAddRepayment")}: ${error.message}`);
     },
   });
 
@@ -136,7 +136,7 @@ export default function Loans() {
     const amountInCents = Math.round(parseFloat(formData.totalAmount) * 100);
 
     if (isNaN(amountInCents) || amountInCents <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error(t("common.validAmount"));
       return;
     }
 
@@ -162,7 +162,7 @@ export default function Loans() {
     const amountInCents = Math.round(parseFloat(repaymentData.amount) * 100);
 
     if (isNaN(amountInCents) || amountInCents <= 0) {
-      toast.error("Please enter a valid amount");
+      toast.error(t("common.validAmount"));
       return;
     }
 
@@ -174,7 +174,7 @@ export default function Loans() {
   };
 
   const handleExportCSV = () => {
-    if (!loans || loans.length === 0) { toast.error("No loans to export"); return; }
+    if (!loans || loans.length === 0) { toast.error(t("loans.nothingToExport")); return; }
     const headers = ["Lender", "Type", "Total Amount", "Total Repaid", "Outstanding", "Interest Rate", "Start Date", "Due Date", "Notes"];
     const rows = loans.map((l: any) => {
       const repayments = l.repayments as any[] || [];
@@ -192,7 +192,7 @@ export default function Loans() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `loans_${new Date().toISOString().split("T")[0]}.csv`; a.click();
     URL.revokeObjectURL(url);
-    toast.success("Exported");
+    toast.success(t("loans.exported"));
   };
 
   if (isLoading) {
@@ -219,7 +219,7 @@ export default function Loans() {
           required
           value={formData.lender}
           onChange={(e) => setFormData({ ...formData, lender: e.target.value })}
-          placeholder="e.g. Bank Leumi, John Doe"
+          placeholder={t("loans.placeholderLender")}
         />
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -245,10 +245,10 @@ export default function Loans() {
               <SelectValue placeholder={t("common.select") + " " + t("common.type")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Bank">Bank</SelectItem>
-              <SelectItem value="Family">Family</SelectItem>
-              <SelectItem value="Friend">Friend</SelectItem>
-              <SelectItem value="Other">Other</SelectItem>
+              <SelectItem value="Bank">{t("loanType.Bank")}</SelectItem>
+              <SelectItem value="Family">{t("loanType.Family")}</SelectItem>
+              <SelectItem value="Friend">{t("loanType.Friend")}</SelectItem>
+              <SelectItem value="Other">{t("loanType.Other")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -280,7 +280,7 @@ export default function Loans() {
           id="interestRate"
           value={formData.interestRate}
           onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })}
-          placeholder="e.g. 5% APY"
+          placeholder={t("loans.placeholderInterest")}
         />
       </div>
       <div className="space-y-2">
@@ -289,7 +289,7 @@ export default function Loans() {
           id="notes"
           value={formData.notes}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          placeholder="Any additional details..."
+          placeholder={t("loans.placeholderNotes")}
         />
       </div>
     </form>
@@ -361,7 +361,7 @@ export default function Loans() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium">{loan.lender}</p>
                       <Badge variant={isFullyPaid ? "default" : "secondary"} className={isFullyPaid ? "bg-green-600 text-white" : ""}>
-                        {isFullyPaid ? t("common.paidOff") : loan.loanType}
+                        {isFullyPaid ? t("common.paidOff") : t(`loanType.${loan.loanType}`, { defaultValue: loan.loanType })}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -389,7 +389,7 @@ export default function Loans() {
                     {repayments.slice(0,3).map((rep,idx) => (
                       <span key={idx} className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{formatDate(rep.date)} · {formatCurrency(rep.amount)}</span>
                     ))}
-                    {repayments.length > 3 && <span className="text-xs text-muted-foreground">+{repayments.length-3} more</span>}
+                    {repayments.length > 3 && <span className="text-xs text-muted-foreground">{t("loans.moreRepayments", { count: repayments.length - 3 })}</span>}
                   </div>
                 )}
                 <div className="mt-auto pt-4 border-t mt-4">

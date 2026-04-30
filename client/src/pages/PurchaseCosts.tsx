@@ -39,7 +39,7 @@ export default function PurchaseCosts() {
       resetForm();
     },
     onError: (error) => {
-      toast.error(`Failed to add cost: ${error.message}`);
+      toast.error(`${t("purchaseCosts.failedAdd")}: ${error.message}`);
     },
   });
 
@@ -51,17 +51,17 @@ export default function PurchaseCosts() {
       resetForm();
     },
     onError: (error) => {
-      toast.error(`Failed to update cost: ${error.message}`);
+      toast.error(`${t("purchaseCosts.failedUpdate")}: ${error.message}`);
     },
   });
 
   const deleteMutation = trpc.purchaseCosts.delete.useMutation({
     onSuccess: () => {
-      toast.success("Deleted");
+      toast.success(t("purchaseCosts.deleted"));
       utils.purchaseCosts.list.invalidate();
     },
     onError: (error) => {
-      toast.error(`Failed to delete cost: ${error.message}`);
+      toast.error(`${t("purchaseCosts.failedDeleteMsg")}: ${error.message}`);
     },
   });
 
@@ -120,7 +120,7 @@ export default function PurchaseCosts() {
   };
 
   const handleExportCSV = () => {
-    if (!costs || costs.length === 0) { toast.error("No purchase costs to export"); return; }
+    if (!costs || costs.length === 0) { toast.error(t("purchaseCosts.nothingToExport")); return; }
     const headers = ["Label", "Amount", "Date", "Category", "Notes"];
     const rows = costs.map((c: any) => [
       c.label, (c.amount / 100).toFixed(2), c.date, c.category || "", c.notes || "",
@@ -130,7 +130,7 @@ export default function PurchaseCosts() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `purchase_costs_${new Date().toISOString().split("T")[0]}.csv`; a.click();
     URL.revokeObjectURL(url);
-    toast.success("Exported");
+    toast.success(t("purchaseCosts.exported"));
   };
 
   if (isLoading) {
@@ -175,7 +175,7 @@ export default function PurchaseCosts() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="amount">{t("common.amount")} (ILS)</Label>
+                <Label htmlFor="amount">{t("common.amount")}</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -208,7 +208,7 @@ export default function PurchaseCosts() {
                   <SelectContent>
                     {CATEGORIES.map((cat) => (
                       <SelectItem key={cat} value={cat}>
-                        {cat}
+                        {t(`categories.${cat}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -255,7 +255,7 @@ export default function PurchaseCosts() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium">{cost.label}</p>
-                  {cost.category && <Badge variant="secondary" className="text-xs h-5">{cost.category}</Badge>}
+                  {cost.category && <Badge variant="secondary" className="text-xs h-5">{t(`categories.${cost.category}`, { defaultValue: cost.category })}</Badge>}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{formatDate(cost.date)}{cost.notes && ` · ${cost.notes}`}</p>
               </div>

@@ -65,18 +65,18 @@ export default function Expenses() {
       if (editingId) { await updateMutation.mutateAsync({ id: editingId, data: payload }); toast.success(t("expenses.editExpense")); }
       else { await createMutation.mutateAsync(payload); toast.success(t("expenses.addExpense")); }
       setOpen(false); reset(); refetch();
-    } catch { toast.error("Failed to save"); }
+    } catch { toast.error(t("expenses.failedSave")); }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm(t("expenses.deleteConfirm"))) return;
-    try { await deleteMutation.mutateAsync({ id }); toast.success("Deleted"); refetch(); }
-    catch { toast.error("Failed to delete"); }
+    try { await deleteMutation.mutateAsync({ id }); toast.success(t("expenses.deleted")); refetch(); }
+    catch { toast.error(t("expenses.failedDelete")); }
   };
 
   const handleMarkPaid = async (id: string) => {
     try { await markPaidMutation.mutateAsync({ id, paidDate: new Date().toISOString().split("T")[0] }); toast.success(t("expenses.markPaid")); refetch(); }
-    catch { toast.error("Failed to mark as paid"); }
+    catch { toast.error(t("expenses.failedMarkPaid")); }
   };
 
   const filtered = useMemo(() => {
@@ -85,12 +85,12 @@ export default function Expenses() {
   }, [expenses, categoryFilter]);
 
   const handleExportCSV = () => {
-    if (!filtered.length) { toast.error("Nothing to export"); return; }
+    if (!filtered.length) { toast.error(t("expenses.nothingToExport")); return; }
     const rows = filtered.map((e: any) => [e.label, (e.amount/100).toFixed(2), e.date, e.category, e.isRecurring?"Yes":"No", e.recurringFrequency||"", e.isPaid?"Yes":"No", e.notes||""]);
     const csv = [["Description","Amount","Date","Category","Recurring","Frequency","Paid","Notes"], ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type:"text/csv" }));
     a.download = `expenses_${new Date().toISOString().split("T")[0]}.csv`; a.click();
-    toast.success("Exported");
+    toast.success(t("expenses.exported"));
   };
 
   if (isLoading) return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin h-6 w-6 text-muted-foreground" /></div>;
@@ -118,7 +118,7 @@ export default function Expenses() {
               <div className="space-y-3 pt-1">
                 <div className="space-y-1.5">
                   <Label htmlFor="ex-label">{t("common.description")}</Label>
-                  <Input id="ex-label" value={form.label} onChange={e => setForm({...form, label: e.target.value})} placeholder="e.g. Monthly electricity" />
+                  <Input id="ex-label" value={form.label} onChange={e => setForm({...form, label: e.target.value})} placeholder={t("expenses.placeholderLabel")} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -134,7 +134,7 @@ export default function Expenses() {
                   <Label>{t("common.category")}</Label>
                   <Select value={form.category} onValueChange={(v: any) => setForm({...form, category: v})}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`categories.${c}`)}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center gap-2">
@@ -146,7 +146,7 @@ export default function Expenses() {
                     <Label>{t("common.frequency")}</Label>
                     <Select value={form.recurringFrequency} onValueChange={(v: any) => setForm({...form, recurringFrequency: v})}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{FREQUENCIES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                      <SelectContent>{FREQUENCIES.map(f => <SelectItem key={f} value={f}>{t(`frequency.${f}`)}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 )}
@@ -186,12 +186,12 @@ export default function Expenses() {
           <SelectTrigger className="h-8 w-44 text-sm"><SelectValue placeholder={t("expenses.allCategories")} /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("expenses.allCategories")}</SelectItem>
-            {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            {CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`categories.${c}`)}</SelectItem>)}
           </SelectContent>
         </Select>
         {categoryFilter !== "all" && (
           <button onClick={() => setCategoryFilter("all")} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-            Clear ×
+            {t("common.clearFilter")} ×
           </button>
         )}
       </div>
@@ -200,7 +200,7 @@ export default function Expenses() {
       {filtered.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            {categoryFilter !== "all" ? `No ${categoryFilter.toLowerCase()} expenses` : t("expenses.noExpenses")}
+            {categoryFilter !== "all" ? t("expenses.noCategoryExpenses") : t("expenses.noExpenses")}
           </p>
         </div>
       ) : (
@@ -211,10 +211,10 @@ export default function Expenses() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium">{expense.label}</p>
                   <Badge className={cn("text-xs h-5 border-0", CAT_COLOR[expense.category] ?? CAT_COLOR.Other)}>
-                    {expense.category}
+                    {t(`categories.${expense.category}`, { defaultValue: expense.category })}
                   </Badge>
                   {expense.isRecurring && (
-                    <span className="text-xs text-muted-foreground">{expense.recurringFrequency}</span>
+                    <span className="text-xs text-muted-foreground">{t(`frequency.${expense.recurringFrequency}`, { defaultValue: expense.recurringFrequency })}</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">{formatDate(expense.date)}{expense.notes && ` · ${expense.notes}`}</p>
