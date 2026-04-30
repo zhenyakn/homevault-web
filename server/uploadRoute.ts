@@ -3,6 +3,7 @@ import multer from "multer";
 import { storagePut } from "./storage";
 import { createContext } from "./_core/context";
 import type { Request, Response } from "express";
+import path from "path";
 
 const ALLOWED_MIMETYPES = new Set([
   "image/jpeg", "image/png", "image/gif", "image/webp",
@@ -27,8 +28,33 @@ const upload = multer({
 });
 
 const router = Router();
+const uploadRate = new Map<string, { count: number; resetAt: number }>();
+
+function safeFilename(name: string) {
+  const normalized = path.basename(name).replace(/[^a-zA-Z0-9._-]/g, "_");
+  return normalized.slice(0, 120);
+}
+
+function isRateLimited(ip: string) {
+  const now = Date.now();
+  const windowMs = 60_000;
+  const max = 30;
+  const bucket = uploadRate.get(ip);
+  if (!bucket || bucket.resetAt < now) {
+    uploadRate.set(ip, { count: 1, resetAt: now + windowMs });
+    return false;
+  }
+  if (bucket.count >= max) return true;
+  bucket.count += 1;
+  return false;
+}
 
 router.post("/api/upload", (req: Request, res: Response) => {
+  if (isRateLimited(req.ip || "unknown")) {
+    res.status(429).json({ error: "Too many upload requests. Please retry later." });
+    return;
+  }
+
   upload.single("file")(req, res, async (multerErr) => {
     if (multerErr) {
       res.status(400).json({ error: multerErr.message });
@@ -49,7 +75,7 @@ router.post("/api/upload", (req: Request, res: Response) => {
         return;
       }
 
-      const key = `uploads/${ctx.user.id}/${Date.now()}_${file.originalname}`;
+      const key = `uploads/${ctx.user.id}/${Date.now()}_${safeFilename(file.originalname)}`;
 
       let url: string;
       try {
