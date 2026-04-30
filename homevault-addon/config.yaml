@@ -32,4 +32,4 @@ schema:
   BUILT_IN_FORGE_API_URL: "str?"
   BUILT_IN_FORGE_API_KEY: "str?"
   PORT: "int"
-image: "ghcr.io/zhenyakn/homevault-addon-{arch}"
+image: "ghcr.io/zhenyakn/homevault-web-addon"
