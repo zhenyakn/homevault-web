@@ -229,7 +229,20 @@
     "allRecordsDeleted": "כל הרשומות נמחקו",
     "propertyDeleted": "הנכס נמחק",
     "demoRestored": "נכס הדגמה שוחזר",
-    "editing": "עריכה"
+    "editing": "עריכה",
+    "noResults": "אין תוצאות.",
+    "placeholderMyHome": "הבית שלי",
+    "placeholderHome": "בית",
+    "perModuleList": "הוצאות · תיקונים · הלוואות …"
+  },
+  "propertyType": {
+    "Apartment": "דירה",
+    "House": "בית",
+    "Villa": "וילה",
+    "Townhouse": "דירת גן",
+    "Studio": "סטודיו",
+    "Penthouse": "פנטהאוז",
+    "Other": "אחר"
   },
   "repairs": {
     "title": "תיקונים",

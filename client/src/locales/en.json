@@ -75,6 +75,15 @@
     "validAmount": "Please enter a valid amount",
     "clearFilter": "Clear"
   },
+  "propertyType": {
+    "Apartment": "Apartment",
+    "House": "House",
+    "Villa": "Villa",
+    "Townhouse": "Townhouse",
+    "Studio": "Studio",
+    "Penthouse": "Penthouse",
+    "Other": "Other"
+  },
   "categories": {
     "Mortgage": "Mortgage",
     "Utility": "Utility",
@@ -229,7 +238,11 @@
     "allRecordsDeleted": "All records deleted",
     "propertyDeleted": "Property deleted",
     "demoRestored": "Demo property restored",
-    "editing": "Editing"
+    "editing": "Editing",
+    "noResults": "No results.",
+    "placeholderMyHome": "My Home",
+    "placeholderHome": "Home",
+    "perModuleList": "Expenses · Repairs · Loans …"
   },
   "repairs": {
     "title": "Repairs",

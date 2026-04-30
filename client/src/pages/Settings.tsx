@@ -2,7 +2,7 @@
  * Settings
  *
  * Pattern: Vercel / Linear / GitHub
- *  - Left nav: text only, no icons, small font
+ *  - Side nav: text only, no icons, small font (flips to right in RTL)
  *  - Groups: border + divide-y only, bg-background (no elevation)
  *  - Rows: label left / control right, 52px min-height
  *  - Global pending indicator in content header — no per-field badges
@@ -54,7 +54,6 @@ type SID = typeof NAV_IDS[number];
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
-/** Labelled group of rows */
 function Group({ label, children }: { label?: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
@@ -68,7 +67,6 @@ function Group({ label, children }: { label?: string; children: ReactNode }) {
   );
 }
 
-/** Single settings row */
 function Row({
   label,
   hint,
@@ -101,7 +99,6 @@ function Row({
   );
 }
 
-/** Row where the control spans the full width below the label */
 function FullRow({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div className="px-4 py-3.5 space-y-2">
@@ -116,7 +113,6 @@ function FullRow({ label, hint, children }: { label: string; hint?: string; chil
 
 // ─── Input helpers ────────────────────────────────────────────────────────────
 
-/** Text input that saves on blur / Enter */
 function Field({
   id,
   value,
@@ -165,7 +161,6 @@ function Field({
   );
 }
 
-/** Searchable combobox (Popover + Command) */
 function Combobox({
   value,
   onSelect,
@@ -181,6 +176,7 @@ function Combobox({
   search?: string;
   width?: string;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const sel = options.find(o => o.value === value);
 
@@ -200,7 +196,7 @@ function Combobox({
         <Command>
           <CommandInput placeholder={search} className="h-8 text-sm" />
           <CommandList>
-            <CommandEmpty>No results.</CommandEmpty>
+            <CommandEmpty>{t("settings.noResults")}</CommandEmpty>
             <CommandGroup>
               {options.map(o => (
                 <CommandItem
@@ -223,15 +219,15 @@ function Combobox({
   );
 }
 
-/** Small pending spinner shown in the section header */
 function Pending({ show }: { show: boolean }) {
+  const { t } = useTranslation();
   return (
     <span className={cn(
       "inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-opacity duration-300",
       show ? "opacity-100" : "opacity-0 pointer-events-none",
     )}>
       <Loader2 className="h-3 w-3 animate-spin" />
-      Saving
+      {t("common.saving")}
     </span>
   );
 }
@@ -275,44 +271,53 @@ const TIMEZONES = [
 // ─── Sections ─────────────────────────────────────────────────────────────────
 
 function PropertySection({ p }: { p: any }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
   const save = useCallback((d: any) => m.mutate(d), [m]);
   const g = (k: string, fb: any = "") => p?.[k] ?? fb;
 
+  const specs = [
+    { k: "squareMeters", lKey: "settings.size",      placeholder: t("settings.sqm"), suffix: t("settings.sqm") },
+    { k: "rooms",        lKey: "settings.rooms",     placeholder: "0",    step: "0.5" },
+    { k: "floor",        lKey: "settings.floor",     placeholder: "0" },
+    { k: "parkingSpots", lKey: "settings.parking",   placeholder: "0",    min: 0 },
+    { k: "yearBuilt",    lKey: "settings.yearBuilt", placeholder: "1998", min: 1800, max: new Date().getFullYear() },
+  ] as const;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Property</h2>
+        <h2 className="text-sm font-semibold">{t("settings.property")}</h2>
         <Pending show={m.isPending} />
       </div>
 
-      <Group label="Identity">
-        <Row label="Name" hint="Shown in the sidebar and dashboard" htmlFor="p-name">
-          <Field id="p-name" value={g("houseName")} placeholder="My Home" onSave={v => save({ houseName: v })} />
+      <Group label={t("settings.identity")}>
+        <Row label={t("common.name")} hint={t("settings.propertyNameHint")} htmlFor="p-name">
+          <Field id="p-name" value={g("houseName")} placeholder={t("settings.placeholderMyHome")} onSave={v => save({ houseName: v })} />
         </Row>
-        <Row label="Nickname" hint="Shorter display name" htmlFor="p-nick">
-          <Field id="p-nick" value={g("houseNickname")} placeholder="Home" onSave={v => save({ houseNickname: v })} />
+        <Row label={t("settings.nickname")} hint={t("settings.nicknameHint")} htmlFor="p-nick">
+          <Field id="p-nick" value={g("houseNickname")} placeholder={t("settings.placeholderHome")} onSave={v => save({ houseNickname: v })} />
         </Row>
-        <Row label="Type">
+        <Row label={t("common.type")}>
           <Select value={g("propertyType") || "Apartment"} onValueChange={v => save({ propertyType: v })}>
             <SelectTrigger className="h-8 w-40 text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {["Apartment","House","Villa","Townhouse","Studio","Penthouse","Other"].map(t => (
-                <SelectItem key={t} value={t}>{t}</SelectItem>
+              {["Apartment","House","Villa","Townhouse","Studio","Penthouse","Other"].map(ptype => (
+                <SelectItem key={ptype} value={ptype}>{t(`propertyType.${ptype}`)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </Row>
       </Group>
 
-      <Group label="Location">
-        <FullRow label="Address" hint="Used for the map on the dashboard">
+      <Group label={t("settings.location")}>
+        <FullRow label={t("settings.address")} hint={t("settings.addressHint")}>
           <div className="flex gap-2">
             <Textarea
               key={g("address")}
               defaultValue={g("address")}
-              placeholder="Street address, city, country"
+              placeholder={t("settings.addressPlaceholder")}
               rows={2}
               className="text-sm resize-none"
               onBlur={e => { if (e.target.value !== g("address")) save({ address: e.target.value }); }}
@@ -326,15 +331,9 @@ function PropertySection({ p }: { p: any }) {
         </FullRow>
       </Group>
 
-      <Group label="Specifications">
-        {[
-          { k: "squareMeters", l: "Size",         placeholder: "sqm",  suffix: "sqm" },
-          { k: "rooms",        l: "Rooms",         placeholder: "0",    step: "0.5" },
-          { k: "floor",        l: "Floor",         placeholder: "0" },
-          { k: "parkingSpots", l: "Parking",       placeholder: "0",    min: 0 },
-          { k: "yearBuilt",    l: "Year built",    placeholder: "1998", min: 1800, max: new Date().getFullYear() },
-        ].map(({ k, l, placeholder, step, min, max, suffix }) => (
-          <Row key={k} label={l} htmlFor={`ps-${k}`}>
+      <Group label={t("settings.specifications")}>
+        {specs.map(({ k, lKey, placeholder, step, min, max, suffix }: any) => (
+          <Row key={k} label={t(lKey)} htmlFor={`ps-${k}`}>
             <div className="flex items-center gap-1.5">
               <Field id={`ps-${k}`} type="number" step={step} min={min} max={max}
                 value={p?.[k] ? String(p[k]) : ""} placeholder={placeholder} width="w-20"
@@ -343,7 +342,7 @@ function PropertySection({ p }: { p: any }) {
             </div>
           </Row>
         ))}
-        <Row label="Storage unit" hint="Dedicated on-site storage" htmlFor="ps-stor">
+        <Row label={t("settings.storageUnit")} hint={t("settings.storageUnitHint")} htmlFor="ps-stor">
           <Switch id="ps-stor" checked={g("hasStorage", false)} onCheckedChange={v => save({ hasStorage: v })} />
         </Row>
       </Group>
@@ -352,6 +351,7 @@ function PropertySection({ p }: { p: any }) {
 }
 
 function PurchaseSection({ p }: { p: any }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
   const { data: costs } = trpc.purchaseCosts.list.useQuery();
@@ -364,22 +364,22 @@ function PurchaseSection({ p }: { p: any }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Purchase</h2>
+        <h2 className="text-sm font-semibold">{t("settings.purchase")}</h2>
         <Pending show={m.isPending} />
       </div>
 
       <Group>
-        <Row label="Purchase price" htmlFor="pu-price">
+        <Row label={t("settings.purchasePrice")} htmlFor="pu-price">
           <Field id="pu-price" type="number" min={0} step="0.01"
             value={price ? String(price / 100) : ""} placeholder="0.00" width="w-36"
             onSave={v => m.mutate({ purchasePrice: v ? Math.round(parseFloat(v) * 100) : undefined })} />
         </Row>
-        <Row label="Purchase date" htmlFor="pu-date">
+        <Row label={t("settings.purchaseDate")} htmlFor="pu-date">
           <Field id="pu-date" type="date"
             value={p?.purchaseDate ?? ""} width="w-36"
             onSave={v => m.mutate({ purchaseDate: v || undefined })} />
         </Row>
-        <Row label="Acquisition costs" hint="Legal, tax, inspection, moving">
+        <Row label={t("settings.acquisitionCosts")} hint={t("settings.acquisitionCostsHint")}>
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium tabular-nums">{fmt(acq)}</span>
             <button
@@ -387,15 +387,15 @@ function PurchaseSection({ p }: { p: any }) {
               onClick={() => nav("/purchase-costs")}
               className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 transition-colors"
             >
-              Manage <ChevronRight className="h-3 w-3" />
+              {t("settings.manage")} <ChevronRight className="h-3 w-3" />
             </button>
           </div>
         </Row>
       </Group>
 
-      <Group label="Total invested">
+      <Group label={t("settings.totalInvested")}>
         <div className="px-4 py-4 flex items-baseline justify-between">
-          <p className="text-sm text-muted-foreground">Purchase + acquisition costs</p>
+          <p className="text-sm text-muted-foreground">{t("settings.totalInvestedDesc")}</p>
           <p className="text-base font-semibold tabular-nums">{fmt(price + acq)}</p>
         </div>
       </Group>
@@ -404,6 +404,7 @@ function PurchaseSection({ p }: { p: any }) {
 }
 
 function HouseholdSection() {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const { data: me } = trpc.profiles.current.useQuery();
   const { data: members } = trpc.profiles.list.useQuery();
@@ -416,24 +417,24 @@ function HouseholdSection() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Household</h2>
+        <h2 className="text-sm font-semibold">{t("settings.household")}</h2>
         <Pending show={upd.isPending} />
       </div>
 
-      <Group label="Your profile">
-        <Row label="Display name" htmlFor="h-name">
-          <Field id="h-name" value={me?.name ?? ""} placeholder="Your name"
+      <Group label={t("settings.yourProfile")}>
+        <Row label={t("settings.displayName")} htmlFor="h-name">
+          <Field id="h-name" value={me?.name ?? ""} placeholder={t("settings.yourName")}
             onSave={v => upd.mutate({ name: v })} />
         </Row>
-        <Row label="Email">
+        <Row label={t("settings.email")}>
           <span className="text-sm text-muted-foreground">{me?.email ?? "—"}</span>
         </Row>
-        <Row label="Role">
+        <Row label={t("settings.role")}>
           <Badge variant={me?.role === "admin" ? "default" : "secondary"} className="capitalize text-xs h-5">
             {me?.role ?? "user"}
           </Badge>
         </Row>
-        <Row label="Last sign-in">
+        <Row label={t("settings.lastSignIn")}>
           <span className="text-sm text-muted-foreground">
             {me?.lastSignedIn ? new Date(me.lastSignedIn).toLocaleDateString() : "—"}
           </span>
@@ -441,7 +442,7 @@ function HouseholdSection() {
       </Group>
 
       {(members?.length ?? 0) > 0 && (
-        <Group label={`Members · ${members?.length}`}>
+        <Group label={`${t("settings.members")} · ${members?.length}`}>
           {members?.map(m => (
             <Row
               key={m.id}
@@ -450,7 +451,7 @@ function HouseholdSection() {
             >
               <div className="flex items-center gap-2">
                 {m.id === me?.id && (
-                  <Badge variant="outline" className="text-xs h-5 font-normal">you</Badge>
+                  <Badge variant="outline" className="text-xs h-5 font-normal">{t("settings.you")}</Badge>
                 )}
                 <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
                   {ini(m.name)}
@@ -465,6 +466,7 @@ function HouseholdSection() {
 }
 
 function RegionalSection({ p }: { p: any }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
   const g = (k: string, f: any = "") => p?.[k] ?? f;
@@ -472,31 +474,31 @@ function RegionalSection({ p }: { p: any }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Regional</h2>
+        <h2 className="text-sm font-semibold">{t("settings.regional")}</h2>
         <Pending show={m.isPending} />
       </div>
 
-      <Group label="Currency">
-        <Row label="Currency">
-          <Combobox value={g("currencyCode", "ILS")} options={CURRENCIES} search="Search currencies…"
+      <Group label={t("settings.currency")}>
+        <Row label={t("settings.currency")}>
+          <Combobox value={g("currencyCode", "ILS")} options={CURRENCIES} search={t("settings.searchCurrencies")}
             onSelect={v => m.mutate({ currencyCode: v, currency: SYMBOLS[v] ?? v })} />
         </Row>
-        <Row label="Symbol" hint="Override the default symbol" htmlFor="r-sym">
+        <Row label={t("settings.symbol")} hint={t("settings.symbolHint")} htmlFor="r-sym">
           <Field id="r-sym" value={g("currency", "₪")} placeholder="₪" width="w-16"
             onSave={v => m.mutate({ currency: v })} />
         </Row>
       </Group>
 
-      <Group label="Date & time">
-        <Row label="Timezone">
-          <Combobox value={g("timezone", "Asia/Jerusalem")} options={TIMEZONES} search="Search timezones…"
+      <Group label={t("settings.dateTime")}>
+        <Row label={t("settings.timezone")}>
+          <Combobox value={g("timezone", "Asia/Jerusalem")} options={TIMEZONES} search={t("settings.searchTimezones")}
             onSelect={v => m.mutate({ timezone: v })} />
         </Row>
-        <Row label="Start of week">
+        <Row label={t("settings.startOfWeek")}>
           <ToggleGroup type="single" value={g("startOfWeek", "Sunday")} className="h-8"
             onValueChange={v => v && m.mutate({ startOfWeek: v })}>
-            <ToggleGroupItem value="Sunday"  className="text-xs h-8 px-4">Sun</ToggleGroupItem>
-            <ToggleGroupItem value="Monday"  className="text-xs h-8 px-4">Mon</ToggleGroupItem>
+            <ToggleGroupItem value="Sunday"  className="text-xs h-8 px-4">{t("settings.sun")}</ToggleGroupItem>
+            <ToggleGroupItem value="Monday"  className="text-xs h-8 px-4">{t("settings.mon")}</ToggleGroupItem>
           </ToggleGroup>
         </Row>
       </Group>
@@ -505,41 +507,42 @@ function RegionalSection({ p }: { p: any }) {
 }
 
 function NotificationsSection({ p }: { p: any }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
   const days = p?.reminderDaysBefore ?? 3;
 
   const toggles = [
-    { k: "remindExpenses", l: "Recurring expenses",  d: "Before monthly or quarterly payments are due" },
-    { k: "remindLoans",    l: "Loan repayments",      d: "Before loan repayment due dates" },
-    { k: "remindRepairs",  l: "Open repairs",         d: "When a repair has been pending too long" },
-    { k: "remindCalendar", l: "Calendar events",      d: "Before manually-added calendar events" },
+    { k: "remindExpenses", lKey: "settings.remindExpenses", dKey: "settings.remindExpensesHint" },
+    { k: "remindLoans",    lKey: "settings.remindLoans",    dKey: "settings.remindLoansHint" },
+    { k: "remindRepairs",  lKey: "settings.remindRepairs",  dKey: "settings.remindRepairsHint" },
+    { k: "remindCalendar", lKey: "settings.remindCalendar", dKey: "settings.remindCalendarHint" },
   ] as const;
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Notifications</h2>
+        <h2 className="text-sm font-semibold">{t("settings.notifications")}</h2>
         <Pending show={m.isPending} />
       </div>
 
-      <Group label="Lead time">
+      <Group label={t("settings.leadTime")}>
         <div className="px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm">Remind</p>
+            <p className="text-sm">{t("settings.remind")}</p>
             <span className="text-sm font-medium tabular-nums text-muted-foreground">
-              {days} {days === 1 ? "day" : "days"} before
+              {days} {t("settings.daysBefore")}
             </span>
           </div>
           <Slider min={1} max={30} step={1} value={[days]}
             onValueCommit={([v]) => m.mutate({ reminderDaysBefore: v })} />
-          <p className="text-xs text-muted-foreground">Applies to all reminder types below</p>
+          <p className="text-xs text-muted-foreground">{t("settings.appliesAll")}</p>
         </div>
       </Group>
 
-      <Group label="Reminder types">
-        {toggles.map(({ k, l, d }) => (
-          <Row key={k} label={l} hint={d} htmlFor={`n-${k}`}>
+      <Group label={t("settings.reminderTypes")}>
+        {toggles.map(({ k, lKey, dKey }) => (
+          <Row key={k} label={t(lKey)} hint={t(dKey)} htmlFor={`n-${k}`}>
             <Switch id={`n-${k}`}
               checked={p?.[k] ?? true}
               onCheckedChange={v => m.mutate({ [k]: v })} />
@@ -551,6 +554,7 @@ function NotificationsSection({ p }: { p: any }) {
 }
 
 function IntegrationsSection({ p }: { p: any }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
   const hasKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
@@ -558,28 +562,28 @@ function IntegrationsSection({ p }: { p: any }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Integrations</h2>
+        <h2 className="text-sm font-semibold">{t("settings.integrations")}</h2>
         <Pending show={m.isPending} />
       </div>
 
       <Group label="Google Calendar">
-        <Row label="Sync events" hint="Push HomeVault events to Google Calendar" htmlFor="i-sync">
+        <Row label={t("settings.syncEvents")} hint={t("settings.syncEventsHint")} htmlFor="i-sync">
           <Switch id="i-sync"
             checked={p?.calendarSyncEnabled ?? false}
             onCheckedChange={v => m.mutate({ calendarSyncEnabled: v })} />
         </Row>
-        <Row label="Connected account">
+        <Row label={t("settings.connectedAccount")}>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">Not connected</span>
+            <span className="text-xs text-muted-foreground">{t("settings.notConnected")}</span>
             <Button variant="outline" size="sm" className="h-7 text-xs" disabled>
-              Connect
+              {t("settings.connect")}
             </Button>
           </div>
         </Row>
       </Group>
 
-      <Group label="Maps">
-        <Row label="Provider">
+      <Group label={t("settings.maps")}>
+        <Row label={t("settings.provider")}>
           <ToggleGroup type="single" value={p?.mapsProvider ?? "google"} className="h-8"
             onValueChange={v => v && m.mutate({ mapsProvider: v as any })}>
             <ToggleGroupItem value="google" className="text-xs h-8 px-4">Google</ToggleGroupItem>
@@ -644,15 +648,16 @@ function DataSection({
   activePropertyId: number;
   switchProperty: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   const u = trpc.useUtils();
   const { refetch, isFetching } = trpc.data.exportAll.useQuery(undefined, { enabled: false });
   const del = trpc.data.deleteAll.useMutation({
-    onSuccess: () => { toast.success("All records deleted"); setPhrase(""); setDanger(false); },
+    onSuccess: () => { toast.success(t("settings.allRecordsDeleted")); setPhrase(""); setDanger(false); },
     onError: e => toast.error(e.message),
   });
   const delProp = trpc.property.delete.useMutation({
     onSuccess: () => {
-      toast.success("Property deleted");
+      toast.success(t("settings.propertyDeleted"));
       u.property.list.invalidate();
       switchProperty(1);
     },
@@ -662,7 +667,7 @@ function DataSection({
   const [phrase, setPhrase] = useState("");
   const seed = trpc.data.seedMock.useMutation({
     onSuccess: ({ propertyId }) => {
-      toast.success("Demo property restored");
+      toast.success(t("settings.demoRestored"));
       u.property.list.invalidate();
       switchProperty(propertyId);
     },
@@ -687,13 +692,10 @@ function DataSection({
 
   return (
     <div className="space-y-5">
-      <h2 className="text-sm font-semibold">Data</h2>
+      <h2 className="text-sm font-semibold">{t("settings.data")}</h2>
 
-      <Group label="Demo data">
-        <Row
-          label="Restore demo property"
-          hint="Creates (or resets) the 'Florentin Apartment' demo with realistic Israeli data."
-        >
+      <Group label={t("settings.demoData")}>
+        <Row label={t("settings.restoreDemo")} hint={t("settings.restoreDemoHint")}>
           <Button
             variant="outline" size="sm" className="h-7 text-xs"
             onClick={() => seed.mutate()}
@@ -702,44 +704,41 @@ function DataSection({
             {seed.isPending
               ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
               : <RefreshCw className="mr-1.5 h-3 w-3" />}
-            {seed.isPending ? "Restoring…" : "Restore demo"}
+            {seed.isPending ? t("settings.restoringDemo") : t("settings.restoreDemoBtn")}
           </Button>
         </Row>
       </Group>
 
-      <Group label="Export">
-        <Row label="All data" hint="Expenses, repairs, upgrades, loans, wishlist, calendar">
+      <Group label={t("settings.export")}>
+        <Row label={t("settings.allData")} hint={t("settings.allDataHint")}>
           <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportAll} disabled={isFetching}>
             {isFetching ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Download className="mr-1.5 h-3 w-3" />}
-            {isFetching ? "Preparing…" : "Download JSON"}
+            {isFetching ? t("settings.preparing") : t("settings.downloadJson")}
           </Button>
         </Row>
-        <Row label="Per module" hint="CSV available from each module page">
-          <span className="text-xs text-muted-foreground">Expenses · Repairs · Loans …</span>
+        <Row label={t("settings.perModule")} hint={t("settings.perModuleHint")}>
+          <span className="text-xs text-muted-foreground">{t("settings.perModuleList")}</span>
         </Row>
       </Group>
 
-      <Group label="Danger zone">
+      <Group label={t("settings.dangerZone")}>
         {!danger ? (
-          <Row
-            label="Delete all records"
-            hint="Permanently removes all financial data. Property settings preserved."
-          >
+          <Row label={t("settings.deleteAll")} hint={t("settings.deleteAllHint")}>
             <Button
               variant="outline" size="sm"
               className="h-7 text-xs text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => setDanger(true)}
             >
-              Delete all…
+              {t("settings.deleteAllBtn")}
             </Button>
           </Row>
         ) : (
           <div className="px-4 py-4 space-y-3">
             <p className="text-sm font-medium text-destructive flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0" />This cannot be undone
+              <AlertTriangle className="h-4 w-4 shrink-0" />{t("settings.cannotUndo")}
             </p>
             <p className="text-sm text-muted-foreground">
-              Type <strong className="text-foreground font-medium">{expected}</strong> to confirm.
+              {t("settings.typePrefix")} <strong className="text-foreground font-medium">{expected}</strong> {t("settings.typeSuffix")}
             </p>
             <Input
               value={phrase}
@@ -756,11 +755,11 @@ function DataSection({
                 onClick={() => del.mutate({ confirmationPhrase: phrase })}
               >
                 {del.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-                Confirm
+                {t("settings.confirm")}
               </Button>
               <Button variant="ghost" size="sm" className="h-7 text-xs"
                 onClick={() => { setDanger(false); setPhrase(""); }}>
-                Cancel
+                {t("common.cancel")}
               </Button>
             </div>
           </div>
@@ -769,25 +768,22 @@ function DataSection({
         {canDeleteProperty && (
           <>
             {!propDanger ? (
-              <Row
-                label="Delete this property"
-                hint="Permanently removes the property and all its data."
-              >
+              <Row label={t("settings.deleteProperty")} hint={t("settings.deletePropertyHint")}>
                 <Button
                   variant="outline" size="sm"
                   className="h-7 text-xs text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
                   onClick={() => setPropDanger(true)}
                 >
-                  <Trash2 className="h-3 w-3 mr-1.5" />Delete property…
+                  <Trash2 className="h-3 w-3 mr-1.5" />{t("settings.deletePropertyBtn")}
                 </Button>
               </Row>
             ) : (
               <div className="px-4 py-4 space-y-3">
                 <p className="text-sm font-medium text-destructive flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />This will delete the property and all its data
+                  <AlertTriangle className="h-4 w-4 shrink-0" />{t("settings.deletePropertyConfirm")}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Type <strong className="text-foreground font-medium">{propExpected}</strong> to confirm.
+                  {t("settings.typePrefix")} <strong className="text-foreground font-medium">{propExpected}</strong> {t("settings.typeSuffix")}
                 </p>
                 <Input
                   value={propPhrase}
@@ -804,11 +800,11 @@ function DataSection({
                     onClick={() => delProp.mutate({ propertyId: activePropertyId })}
                   >
                     {delProp.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-                    Delete property
+                    {t("settings.deletePropertyConfirmBtn")}
                   </Button>
                   <Button variant="ghost" size="sm" className="h-7 text-xs"
                     onClick={() => { setPropDanger(false); setPropPhrase(""); }}>
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                 </div>
               </div>
@@ -854,14 +850,14 @@ export default function Settings() {
   return (
     <div className="flex gap-12 min-h-full">
 
-      {/* Desktop left nav — text only */}
+      {/* Desktop side nav — text only, order flips in RTL via flex direction */}
       <nav className="hidden md:block w-36 shrink-0 sticky top-4 self-start">
         <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
           {t("settings.title")}
         </p>
         {(property?.houseNickname || property?.houseName) && (
           <p className="mb-3 px-2 text-[11px] text-muted-foreground truncate">
-            Editing:{" "}
+            {t("settings.editing")}:{" "}
             <span className="text-foreground font-medium">
               {property.houseNickname || property.houseName}
             </span>
@@ -872,7 +868,7 @@ export default function Settings() {
             key={id}
             onClick={() => go(id)}
             className={cn(
-              "w-full text-left px-2 py-1.5 rounded text-sm transition-colors",
+              "w-full text-start px-2 py-1.5 rounded text-sm transition-colors",
               active === id
                 ? "text-foreground font-medium"
                 : "text-muted-foreground hover:text-foreground",
