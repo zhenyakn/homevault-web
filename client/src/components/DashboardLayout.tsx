@@ -43,6 +43,7 @@ import {
   Monitor,
   Moon,
   PanelLeft,
+  PanelRight,
   Plus,
   Receipt,
   Settings,
@@ -166,7 +167,7 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Add property</DialogTitle>
+            <DialogTitle>{t("common.addProperty")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <input
@@ -319,8 +320,9 @@ function DashboardLayoutContent({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      const sidebarLeft = sidebarRef.current?.getBoundingClientRect().left ?? 0;
-      const newWidth = e.clientX - sidebarLeft;
+      const rect = sidebarRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const newWidth = isRTL ? rect.right - e.clientX : e.clientX - rect.left;
       if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) setSidebarWidth(newWidth);
     };
     const handleMouseUp = () => setIsResizing(false);
@@ -345,7 +347,13 @@ function DashboardLayoutContent({
           <SidebarHeader className="h-14 justify-center">
             <div className="flex items-center gap-2 px-2 w-full">
                   {isCollapsed ? (
-                <PropertySwitcher isCollapsed={true} />
+                <button
+                  onClick={toggleSidebar}
+                  className="flex items-center justify-center w-full focus:outline-none"
+                  aria-label="Expand sidebar"
+                >
+                  <PropertySwitcher isCollapsed={true} />
+                </button>
               ) : (
                 <>
                   <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 shrink-0 shadow-sm">
@@ -359,7 +367,7 @@ function DashboardLayoutContent({
                     className="h-7 w-7 flex items-center justify-center hover:bg-sidebar-accent rounded-md transition-colors focus:outline-none shrink-0"
                     aria-label="Collapse sidebar"
                   >
-                    <PanelLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                    {isRTL ? <PanelRight className="h-3.5 w-3.5 text-muted-foreground" /> : <PanelLeft className="h-3.5 w-3.5 text-muted-foreground" />}
                   </button>
                 </>
               )}
@@ -421,7 +429,7 @@ function DashboardLayoutContent({
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <button className={`flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isCollapsed ? "justify-center" : "text-start"}`}>
                   <Avatar className="h-9 w-9 border shrink-0">
                     <AvatarFallback className="text-xs font-medium">
                       {getInitials(user?.name)}
@@ -437,7 +445,7 @@ function DashboardLayoutContent({
                 {profiles && profiles.length > 1 && (
                   <>
                     <div className="px-2 py-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">Household</p>
+                      <p className="text-xs font-medium text-muted-foreground">{t("common.household")}</p>
                     </div>
                     {profiles.map((profile: any, index: number) => (
                       <DropdownMenuItem key={profile.id} className="cursor-pointer">
@@ -462,13 +470,11 @@ function DashboardLayoutContent({
           </SidebarFooter>
         </Sidebar>
 
-        {!isRTL && (
-          <div
-            className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
-            onMouseDown={() => { if (!isCollapsed) setIsResizing(true); }}
-            style={{ zIndex: 50 }}
-          />
-        )}
+        <div
+          className={`absolute top-0 ${isRTL ? "left-0" : "right-0"} w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+          onMouseDown={() => { if (!isCollapsed) setIsResizing(true); }}
+          style={{ zIndex: 50 }}
+        />
       </div>
 
       <SidebarInset>
