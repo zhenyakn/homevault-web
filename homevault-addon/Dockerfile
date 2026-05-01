@@ -1,3 +1,6 @@
+# Global ARG must be declared before the first FROM to be used in any FROM instruction
+ARG BUILD_ARCH=amd64
+
 # Build stage
 FROM node:22-bookworm-slim AS builder
 
@@ -20,8 +23,7 @@ COPY . .
 RUN pnpm build
 
 # Production stage
-# Use the official Home Assistant base image for the specific architecture
-# The {build_arch} placeholder is handled by the HA build system or our CI
+# Re-declare the ARG so it can be used in the FROM instruction
 ARG BUILD_ARCH
 FROM ghcr.io/home-assistant/${BUILD_ARCH}-base:3.16
 
@@ -58,9 +60,9 @@ LABEL \
     io.hass.description="Property management solution for Home Assistant" \
     io.hass.arch="${BUILD_ARCH}" \
     io.hass.type="addon" \
-    io.hass.version="0.1.3"
+    io.hass.version="0.1.4"
 
-# Healthcheck using HA base image utilities if available
+# Healthcheck using node
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD node -e "fetch('http://localhost:3005/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
