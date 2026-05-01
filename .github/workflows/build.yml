@@ -50,7 +50,6 @@ jobs:
           build-args: |
             BUILD_ARCH=${{ matrix.arch }}
           tags: |
-            tags: |
-              ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:latest
-              ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:${{ github.sha }}
-              ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:0.1.4
+            ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:latest
+            ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:${{ github.sha }}
+            ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:0.1.4
