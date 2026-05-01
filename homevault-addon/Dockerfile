@@ -30,7 +30,7 @@ FROM ghcr.io/home-assistant/${BUILD_ARCH}-base:3.16
 # Install Node.js and pnpm
 RUN \
     apk add --no-cache \
-        nodejs \
+        nodejs-current \
         npm \
         bash \
     && npm install -g pnpm@8.15.9
@@ -44,7 +44,7 @@ COPY drizzle.config.ts ./
 COPY drizzle ./drizzle
 
 # Install production dependencies + drizzle-kit for migrations
-RUN pnpm install --frozen-lockfile --prod && pnpm add -D drizzle-kit
+RUN pnpm install --frozen-lockfile --prod
 
 # Copy built assets from builder
 COPY --from=builder /app/dist ./dist
