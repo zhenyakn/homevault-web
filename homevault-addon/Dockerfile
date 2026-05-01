@@ -19,9 +19,6 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-# Prune to production deps only AFTER build
-RUN pnpm prune --prod
-
 # ── Production stage ───────────────────────────────────────────────────────────
 ARG BUILD_ARCH
 FROM ghcr.io/home-assistant/${BUILD_ARCH}-base:3.21
@@ -31,7 +28,8 @@ RUN apk add --no-cache nodejs bash
 
 WORKDIR /app
 
-# Copy built output and pruned node_modules from builder
+# Copy built output and full node_modules from builder
+# (vite cannot be pruned — static top-level import in server/_core/vite.ts)
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
