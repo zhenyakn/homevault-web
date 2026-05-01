@@ -12,7 +12,11 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, aarch64, armv7]
     permissions:
+
       contents: read
       packages: write
 
@@ -41,11 +45,10 @@ jobs:
         with:
           context: .
           file: ${{ env.ADDON_PATH }}/Dockerfile
-          platforms: |
-            linux/amd64
-            linux/arm/v7
-            linux/arm64
+          platforms: linux/${{ matrix.arch == 'armv7' && 'arm/v7' || matrix.arch }}
           push: true
+          build-args: |
+            BUILD_ARCH=${{ matrix.arch }}
           tags: |
-            ghcr.io/${{ env.REPOSITORY_LC }}-addon:latest
-            ghcr.io/${{ env.REPOSITORY_LC }}-addon:${{ github.sha }}
+            ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:latest
+            ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:${{ github.sha }}
