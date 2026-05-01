@@ -4,7 +4,6 @@ slug: homevault
 description: A property management solution for homeowners and small investors.
 url: https://github.com/zhenyakn/homevault-web
 arch:
-  - armv7
   - aarch64
   - amd64
 init: false
