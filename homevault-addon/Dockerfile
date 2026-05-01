@@ -33,7 +33,7 @@ RUN \
         nodejs \
         npm \
         bash \
-    && npm install -g pnpm
+    && npm install -g pnpm@8.15.9
 
 WORKDIR /app
 
