@@ -7,7 +7,8 @@ FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
 # Install pnpm
-RUN npm install -g pnpm
+RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
+
 
 # Copy manifests first for better layer caching
 COPY package.json pnpm-lock.yaml ./
@@ -33,7 +34,9 @@ RUN \
         nodejs-current \
         npm \
         bash \
-    && npm install -g pnpm@8.15.9
+    && corepack enable \
+    && corepack prepare pnpm@10.4.1 --activate
+
 
 WORKDIR /app
 
