@@ -1,18 +1,16 @@
 #!/usr/bin/env bashio
 
-set -e
-
-# Read config with fallbacks in case Supervisor API is unavailable
-export DATABASE_URL=$(bashio::config 'DATABASE_URL' 2>/dev/null || echo "")
-export JWT_SECRET=$(bashio::config 'JWT_SECRET' 2>/dev/null || echo "")
-export OWNER_OPEN_ID=$(bashio::config 'OWNER_OPEN_ID' 2>/dev/null || echo "owner")
-export VITE_APP_ID=$(bashio::config 'VITE_APP_ID' 2>/dev/null || echo "homevault")
-export OAUTH_SERVER_URL=$(bashio::config 'OAUTH_SERVER_URL' 2>/dev/null || echo "")
-export PORT=$(bashio::config 'PORT' 2>/dev/null || echo "3005")
+# Read from environment directly (set by HA) with fallbacks
+export DATABASE_URL="${DATABASE_URL:-mysql://homeassistant:homeassistant@core-mariadb/homeassistant?charset=utf8mb4}"
+export JWT_SECRET="${JWT_SECRET:-}"
+export OWNER_OPEN_ID="${OWNER_OPEN_ID:-owner}"
+export VITE_APP_ID="${VITE_APP_ID:-homevault}"
+export OAUTH_SERVER_URL="${OAUTH_SERVER_URL:-}"
+export PORT="${PORT:-3005}"
 export HOST="0.0.0.0"
 export NODE_ENV="production"
 
-# Fallback for missing JWT_SECRET
+# Generate JWT_SECRET if missing
 if [ -z "$JWT_SECRET" ]; then
     bashio::log.info "Generating random JWT_SECRET..."
     export JWT_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
@@ -32,4 +30,4 @@ if [ -n "$DATABASE_URL" ]; then
     fi
 fi
 
-exec node dist/index.js
+exec node dist/index.js 2>&1
