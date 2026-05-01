@@ -1,5 +1,5 @@
 name: HomeVault
-version: "0.1.5"
+version: "0.1.6"
 slug: homevault
 description: A property management solution for homeowners and small investors.
 url: https://github.com/zhenyakn/homevault-web
@@ -17,6 +17,8 @@ boot: auto
 host_network: false
 full_access: false
 homeassistant: "2023.1.0"
+hassio_api: true
+hassio_role: default
 map:
   - ssl:rw
   - share:rw
@@ -25,11 +27,13 @@ options:
   JWT_SECRET: ""
   OWNER_OPEN_ID: "owner"
   VITE_APP_ID: "homevault"
+  OAUTH_SERVER_URL: ""
   PORT: 3005
 schema:
   DATABASE_URL: "str?"
   JWT_SECRET: "str?"
   OWNER_OPEN_ID: "str?"
   VITE_APP_ID: "str?"
+  OAUTH_SERVER_URL: "str?"
   PORT: "int"
 image: "ghcr.io/zhenyakn/homevault-web-addon-{arch}"
