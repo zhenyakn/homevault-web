@@ -118,6 +118,11 @@
     "onlyBuiltDependencies": [
       "@tailwindcss/oxide",
       "esbuild"
-    ]
+    ],
+    "supportedArchitectures": {
+      "os": ["linux"],
+      "cpu": ["x64", "arm64", "arm"],
+      "libc": ["glibc", "musl"]
+    }
   }
 }
