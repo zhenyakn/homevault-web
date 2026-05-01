@@ -46,7 +46,7 @@ COPY drizzle.config.ts ./
 COPY drizzle ./drizzle
 
 # Install production dependencies + drizzle-kit for migrations
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile
 
 # Copy built assets from builder
 COPY --from=builder /app/dist ./dist
