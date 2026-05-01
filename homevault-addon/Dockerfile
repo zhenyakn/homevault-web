@@ -26,17 +26,16 @@ RUN pnpm build
 # Production stage
 # Re-declare the ARG so it can be used in the FROM instruction
 ARG BUILD_ARCH
-FROM ghcr.io/home-assistant/${BUILD_ARCH}-base:3.16
 
-# Install Node.js and pnpm
+FROM ghcr.io/home-assistant/${BUILD_ARCH}-base:3.21
+
+# Install Node.js 22 and pnpm
 RUN \
     apk add --no-cache \
-        nodejs-current \
+        nodejs \
         npm \
         bash \
-    && corepack enable \
-    && corepack prepare pnpm@10.4.1 --activate
-
+    && npm install -g pnpm@10.4.1
 
 WORKDIR /app
 
