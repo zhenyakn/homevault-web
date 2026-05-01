@@ -19,19 +19,32 @@ COPY . .
 # Build client (Vite) + server (esbuild)
 RUN pnpm build
 
-# Production stage for the Add-on
-FROM node:22-bookworm-slim
+# Production stage
+# Use the official Home Assistant base image for the specific architecture
+# The {build_arch} placeholder is handled by the HA build system or our CI
+ARG BUILD_ARCH
+FROM ghcr.io/home-assistant/${BUILD_ARCH}-base:3.16
+
+# Install Node.js and pnpm
+RUN \
+    apk add --no-cache \
+        nodejs \
+        npm \
+        bash \
+    && npm install -g pnpm
 
 WORKDIR /app
-
-# Install pnpm
-RUN npm install -g pnpm
 
 # Copy only what's needed at runtime
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
-RUN pnpm install --frozen-lockfile --prod
+COPY drizzle.config.ts ./
+COPY drizzle ./drizzle
 
+# Install production dependencies + drizzle-kit for migrations
+RUN pnpm install --frozen-lockfile --prod && pnpm add -D drizzle-kit
+
+# Copy built assets from builder
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/apply-migration-v3.mjs ./
 
@@ -39,11 +52,16 @@ COPY --from=builder /app/apply-migration-v3.mjs ./
 COPY homevault-addon/run.sh /run.sh
 RUN chmod a+x /run.sh
 
-# Non-root user for security
-RUN groupadd --system homevault && useradd --system --gid homevault --create-home homevault
-RUN chown -R homevault:homevault /app
-USER homevault
+# Home Assistant Labels
+LABEL \
+    io.hass.name="HomeVault" \
+    io.hass.description="Property management solution for Home Assistant" \
+    io.hass.arch="${BUILD_ARCH}" \
+    io.hass.type="addon" \
+    io.hass.version="0.1.3"
 
-EXPOSE 3005
+# Healthcheck using HA base image utilities if available
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD node -e "fetch('http://localhost:3005/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
-CMD ["/bin/bash", "/run.sh"]
+CMD ["/run.sh"]

@@ -1,47 +1,34 @@
-#!/usr/bin/env bash
+#!/usr/bin/env bashio
 
-set -euo pipefail
+set -e
 
-DATA_ENV_FILE="/data/homevault.env"
-mkdir -p /data
-
-if [[ -f "$DATA_ENV_FILE" ]]; then
-  # shellcheck disable=SC1090
-  source "$DATA_ENV_FILE"
-fi
-
-# Home Assistant option values (if provided) should override persisted/generated defaults
-DATABASE_URL="${DATABASE_URL:-${HOMEVAULT_DATABASE_URL:-}}"
-JWT_SECRET="${JWT_SECRET:-${HOMEVAULT_JWT_SECRET:-}}"
-OWNER_OPEN_ID="${OWNER_OPEN_ID:-${HOMEVAULT_OWNER_OPEN_ID:-}}"
-VITE_APP_ID="${VITE_APP_ID:-${HOMEVAULT_APP_ID:-homevault}}"
-OAUTH_SERVER_URL="${OAUTH_SERVER_URL:-${HOMEVAULT_OAUTH_SERVER_URL:-}}"
-BUILT_IN_FORGE_API_URL="${BUILT_IN_FORGE_API_URL:-${HOMEVAULT_FORGE_API_URL:-}}"
-BUILT_IN_FORGE_API_KEY="${BUILT_IN_FORGE_API_KEY:-${HOMEVAULT_FORGE_API_KEY:-}}"
-PORT="${PORT:-${HOMEVAULT_PORT:-3000}}"
-
-# Generate missing secrets/IDs once and persist them in /data
-if [[ -z "$JWT_SECRET" ]]; then
-  JWT_SECRET="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-fi
-if [[ -z "$OWNER_OPEN_ID" ]]; then
-  OWNER_OPEN_ID="owner-$(head -c 6 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-fi
-
-cat > "$DATA_ENV_FILE" <<ENV
-HOMEVAULT_DATABASE_URL=${DATABASE_URL}
-HOMEVAULT_JWT_SECRET=${JWT_SECRET}
-HOMEVAULT_OWNER_OPEN_ID=${OWNER_OPEN_ID}
-HOMEVAULT_APP_ID=${VITE_APP_ID}
-HOMEVAULT_OAUTH_SERVER_URL=${OAUTH_SERVER_URL}
-HOMEVAULT_FORGE_API_URL=${BUILT_IN_FORGE_API_URL}
-HOMEVAULT_FORGE_API_KEY=${BUILT_IN_FORGE_API_KEY}
-HOMEVAULT_PORT=${PORT}
-ENV
-chmod 600 "$DATA_ENV_FILE"
-
+# Use bashio to get configuration options from Home Assistant
+export DATABASE_URL=$(bashio::config 'DATABASE_URL')
+export JWT_SECRET=$(bashio::config 'JWT_SECRET')
+export OWNER_OPEN_ID=$(bashio::config 'OWNER_OPEN_ID')
+export VITE_APP_ID=$(bashio::config 'VITE_APP_ID')
+export PORT=$(bashio::config 'PORT')
 export NODE_ENV="production"
-export DATABASE_URL JWT_SECRET OWNER_OPEN_ID VITE_APP_ID OAUTH_SERVER_URL BUILT_IN_FORGE_API_URL BUILT_IN_FORGE_API_KEY PORT
+
+# Fallback for missing secrets
+if ! bashio::config.has_value 'JWT_SECRET'; then
+    bashio::log.info "Generating random JWT_SECRET..."
+    export JWT_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+fi
+
+bashio::log.info "Starting HomeVault Add-on..."
 
 cd /app
+
+# Run database migrations
+if [ -n "$DATABASE_URL" ]; then
+    bashio::log.info "Running database migrations..."
+    if npx drizzle-kit push; then
+        bashio::log.info "Database migrations completed."
+    else
+        bashio::log.warning "Database migration failed. Checking connection..."
+    fi
+fi
+
+bashio::log.info "Starting Node.js application on port ${PORT}..."
 exec node dist/index.js
