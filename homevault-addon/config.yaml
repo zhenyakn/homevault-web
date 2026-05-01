@@ -35,7 +35,6 @@ schema:
   VITE_APP_ID: "str?"
   OAUTH_SERVER_URL: "str?"
   PORT: "int"
-image: "ghcr.io/zhenyakn/homevault-web-addon-{arch}"
 environment:
   DATABASE_URL: "{{DATABASE_URL}}"
   JWT_SECRET: "{{JWT_SECRET}}"
@@ -43,3 +42,5 @@ environment:
   VITE_APP_ID: "{{VITE_APP_ID}}"
   OAUTH_SERVER_URL: "{{OAUTH_SERVER_URL}}"
   PORT: "{{PORT}}"
+image: "ghcr.io/zhenyakn/homevault-web-addon-{arch}"
+
