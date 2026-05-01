@@ -23,7 +23,7 @@ cd /app
 # Run database migrations
 if [ -n "$DATABASE_URL" ]; then
     bashio::log.info "Running database migrations..."
-    if npx drizzle-kit push; then
+    if node apply-migration-v3.mjs; then
         bashio::log.info "Database migrations completed."
     else
         bashio::log.warning "Database migration failed. Checking connection..."
