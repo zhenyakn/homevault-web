@@ -125,7 +125,7 @@ OWNER_OPEN_ID=your-open-id`}
   );
 }
 
-// ─── Spinner ──────────────────────────────────────────────────────────────────
+// ─── Spinner ─────────────────────────────────────────────────────────────────
 
 function Spinner() {
   return (
@@ -140,53 +140,57 @@ function Spinner() {
 function AppRouter() {
   const { isAuthenticated, loading } = useAuth();
 
-  // Ask the server at runtime whether NO_AUTH is active. This is the
-  // only reliable signal in the addon — VITE_* build-time vars are empty.
-  const noAuthQuery = trpc.system.noAuth.useQuery(undefined, {
+  // Fetch in parallel — never blocks the auth.me loading state.
+  // Only used as a tiebreaker after auth.me has settled to null.
+  const { data: noAuthData } = trpc.system.noAuth.useQuery(undefined, {
     retry: 1,
     retryDelay: 300,
     refetchOnWindowFocus: false,
   });
 
-  // Wait for both auth.me and system.noAuth to settle.
-  if (loading || noAuthQuery.isLoading) {
+  // Always wait for auth.me first — same as before.
+  if (loading) {
     return <Spinner />;
   }
 
-  const serverNoAuth = noAuthQuery.data?.noAuth ?? false;
-
-  if (!isAuthenticated) {
-    // In NO_AUTH mode the server always returns a user — if we somehow
-    // still have no user (e.g. transient DB hiccup) show a spinner and
-    // let React Query retry rather than showing the sign-in screen.
-    if (serverNoAuth) {
-      return <Spinner />;
-    }
-    return <SignInPage />;
+  // auth.me returned a user — go straight to dashboard.
+  if (isAuthenticated) {
+    return (
+      <DashboardLayout>
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route path="/expenses" component={Expenses} />
+          <Route path="/repairs" component={Repairs} />
+          <Route path="/repairs/:id" component={RepairDetail} />
+          <Route path="/upgrades" component={Upgrades} />
+          <Route path="/upgrades/:id" component={UpgradeDetail} />
+          <Route path="/loans" component={Loans} />
+          <Route path="/wishlist" component={Wishlist} />
+          <Route path="/purchase-costs" component={PurchaseCosts} />
+          <Route path="/calendar" component={Calendar} />
+          <Route path="/portfolio" component={Portfolio} />
+          <Route path="/settings" component={Settings} />
+          <Route path="/settings/:section" component={Settings} />
+          <Route path="/property-settings" component={PropertySettings} />
+          <Route path="/404" component={NotFound} />
+          <Route component={NotFound} />
+        </Switch>
+      </DashboardLayout>
+    );
   }
 
-  return (
-    <DashboardLayout>
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/expenses" component={Expenses} />
-        <Route path="/repairs" component={Repairs} />
-        <Route path="/repairs/:id" component={RepairDetail} />
-        <Route path="/upgrades" component={Upgrades} />
-        <Route path="/upgrades/:id" component={UpgradeDetail} />
-        <Route path="/loans" component={Loans} />
-        <Route path="/wishlist" component={Wishlist} />
-        <Route path="/purchase-costs" component={PurchaseCosts} />
-        <Route path="/calendar" component={Calendar} />
-        <Route path="/portfolio" component={Portfolio} />
-        <Route path="/settings" component={Settings} />
-        <Route path="/settings/:section" component={Settings} />
-        <Route path="/property-settings" component={PropertySettings} />
-        <Route path="/404" component={NotFound} />
-        <Route component={NotFound} />
-      </Switch>
-    </DashboardLayout>
-  );
+  // auth.me returned null (not authenticated).
+  // If the server says NO_AUTH=true we're in the addon — auth.me should
+  // have returned a user but didn't yet (DB not ready, image mismatch).
+  // Show a spinner and let React Query retry rather than the error screen.
+  // If noAuthData is still loading (undefined) we default to false so the
+  // dev VM never hangs — it falls through to SignInPage immediately.
+  if (noAuthData?.noAuth === true) {
+    return <Spinner />;
+  }
+
+  // Dev VM or OAuth mode — show the normal sign-in page.
+  return <SignInPage />;
 }
 
 // ─── App ─────────────────────────────────────────────────────────────────────
