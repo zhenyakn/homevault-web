@@ -1,6 +1,20 @@
 # Changelog
 
-## 0.1.37
+## 0.1.40
+- chore: remove root apply-migration-v3.mjs (moved to scripts/migrations/)
+- chore: remove root apply-migration-v2.mjs (moved to scripts/migrations/)
+- chore: remove root apply-migration.mjs (moved to scripts/migrations/)
+- chore: remove todo.md planning artefact
+- chore: remove mock-upgrade-c.html prototype artefact
+- chore: delete root migration scripts, mock-upgrade-c.html, todo.md
+- chore: move migration scripts to scripts/migrations/, remove mock-upgrade-c.html and todo.md
+- chore: remove dashboard-mock.html prototype artefact
+- chore: storage Forge delete throws, migrate scripts moved, prototype files removed
+- fix(schema): add FK constraints, remove propertyId .default(1), add loanRepayments table
+- fix(db): add getById helpers, connection pool, query simplifications, transactions
+- fix(security): add ownership guards to all update/delete mutations
+- fix(security): validate propertyId ownership in tRPC context
+- change port to 3005
 - fix(addon): parse repayments JSON string in loans.list before returning to client
 - fix(addon): JSON.parse repayments/payments JSON columns before .reduce
 - fix(addon): handle missing property + stats undefined crash on fresh DB
@@ -127,6 +141,22 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.1.37
+- chore: remove root apply-migration-v3.mjs (moved to scripts/migrations/)
+- chore: remove root apply-migration-v2.mjs (moved to scripts/migrations/)
+- chore: remove root apply-migration.mjs (moved to scripts/migrations/)
+- chore: remove todo.md planning artefact
+- chore: remove mock-upgrade-c.html prototype artefact
+- chore: delete root migration scripts, mock-upgrade-c.html, todo.md
+- chore: move migration scripts to scripts/migrations/, remove mock-upgrade-c.html and todo.md
+- chore: remove dashboard-mock.html prototype artefact
+- chore: storage Forge delete throws, migrate scripts moved, prototype files removed
+- fix(schema): add FK constraints, remove propertyId .default(1), add loanRepayments table
+- fix(db): add getById helpers, connection pool, query simplifications, transactions
+- fix(security): add ownership guards to all update/delete mutations
+- fix(security): validate propertyId ownership in tRPC context
+- change port to 3005
 
 ## 0.1.36
 - fix(addon): parse repayments JSON string in loans.list before returning to client

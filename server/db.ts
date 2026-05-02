@@ -45,6 +45,8 @@ export async function getDb() {
       );
     }
     try {
+      // Use a connection pool instead of a single connection to handle
+      // concurrent requests without exhausting the database connection limit.
       const pool = mysql.createPool({
         uri: ENV.databaseUrl,
         connectionLimit: 10,
@@ -69,11 +71,7 @@ function parseJsonArray(value: unknown): any[] {
   return [];
 }
 
-<<<<<<< HEAD
-// ─── Users ────────────────────────────────────────────────────────────────────────────────
-=======
 // ─── Users ────────────────────────────────────────────────────────────────────
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
 
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
@@ -123,7 +121,7 @@ export async function getAllUsers() {
   return await db.select().from(users);
 }
 
-// ─── Property ─────────────────────────────────────────────────────────────────
+// ─── Property ────────────────────────────────────────────────────────────────────────────
 
 export async function getProperty(propertyId: number = 1) {
   const db = await getDb();
@@ -154,7 +152,7 @@ export async function deleteProperty(propertyId: number) {
   return true;
 }
 
-// ─── Expenses ─────────────────────────────────────────────────────────────────
+// ─── Expenses ───────────────────────────────────────────────────────────────────────
 
 export async function getExpenses(userId: number, propertyId: number) {
   const db = await getDb();
@@ -171,23 +169,15 @@ export async function getExpenseById(id: string) {
 
 export async function createExpense(data: typeof expenses.$inferInsert) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.insert(expenses).values(data);
-=======
   await db.insert(expenses).values({ ...data, attachments: (data.attachments ?? []) as any });
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
 export async function updateExpense(id: string, data: Partial<Expense>) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.update(expenses).set(data).where(eq(expenses.id, id));
-=======
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
   await db.update(expenses).set(normalized).where(eq(expenses.id, id));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
@@ -197,7 +187,7 @@ export async function deleteExpense(id: string) {
   return true;
 }
 
-// ─── Repairs ──────────────────────────────────────────────────────────────────
+// ─── Repairs ──────────────────────────────────────────────────────────────────────────
 
 export async function getRepairs(userId: number, propertyId: number) {
   const db = await getDb();
@@ -214,23 +204,15 @@ export async function getRepairById(id: string) {
 
 export async function createRepair(data: typeof repairs.$inferInsert) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.insert(repairs).values(data);
-=======
   await db.insert(repairs).values({ ...data, attachments: (data.attachments ?? []) as any });
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
 export async function updateRepair(id: string, data: Partial<Repair>) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.update(repairs).set(data).where(eq(repairs.id, id));
-=======
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
   await db.update(repairs).set(normalized).where(eq(repairs.id, id));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
@@ -240,7 +222,7 @@ export async function deleteRepair(id: string) {
   return true;
 }
 
-// ─── Repair Quotes ────────────────────────────────────────────────────────────
+// ─── Repair Quotes ────────────────────────────────────────────────────────────────
 
 export async function getRepairQuotes(repairId: string) {
   const db = await getDb();
@@ -267,26 +249,21 @@ export async function getRepairQuoteCounts(repairIds: string[]) {
 
 export async function createRepairQuote(data: typeof repairQuotes.$inferInsert) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.insert(repairQuotes).values(data);
-=======
   await db.insert(repairQuotes).values({ ...data, payments: (data.payments ?? []) as any });
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
 export async function updateRepairQuote(id: string, data: Partial<RepairQuote>) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.update(repairQuotes).set(data).where(eq(repairQuotes.id, id));
-=======
   const normalized: any = { ...data };
   if ("payments" in normalized) normalized.payments = normalized.payments ?? [];
   await db.update(repairQuotes).set(normalized).where(eq(repairQuotes.id, id));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
+// Uses a transaction so the deselect + select are atomic.
+// Without this a crash between the two statements would leave
+// no option selected for the repair.
 export async function selectRepairQuote(repairId: string, quoteId: string) {
   const db = await getDb();
   await db.transaction(async (tx) => {
@@ -300,11 +277,7 @@ export async function logRepairQuotePayment(quoteId: string, payment: { date: st
   const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
   if (!existing) throw new Error("Quote not found");
   const payments = [...parseJsonArray(existing.payments), payment];
-<<<<<<< HEAD
-  await db.update(repairQuotes).set({ payments }).where(eq(repairQuotes.id, quoteId));
-=======
   await db.update(repairQuotes).set({ payments: payments as any }).where(eq(repairQuotes.id, quoteId));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
     await db.update(repairs).set({ actualCost: totalPaid }).where(eq(repairs.id, existing.repairId));
@@ -316,11 +289,7 @@ export async function deleteRepairQuotePayment(quoteId: string, paymentIndex: nu
   const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
   if (!existing) throw new Error("Quote not found");
   const payments = parseJsonArray(existing.payments).filter((_: any, i: number) => i !== paymentIndex);
-<<<<<<< HEAD
-  await db.update(repairQuotes).set({ payments }).where(eq(repairQuotes.id, quoteId));
-=======
   await db.update(repairQuotes).set({ payments: payments as any }).where(eq(repairQuotes.id, quoteId));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
     await db.update(repairs).set({ actualCost: totalPaid }).where(eq(repairs.id, existing.repairId));
@@ -333,7 +302,7 @@ export async function deleteRepairQuote(id: string) {
   return true;
 }
 
-// ─── Upgrades ─────────────────────────────────────────────────────────────────
+// ─── Upgrades ───────────────────────────────────────────────────────────────────────
 
 export async function getUpgrades(userId: number, propertyId: number) {
   const db = await getDb();
@@ -350,23 +319,15 @@ export async function getUpgradeById(id: string) {
 
 export async function createUpgrade(data: typeof upgrades.$inferInsert) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.insert(upgrades).values(data);
-=======
   await db.insert(upgrades).values({ ...data, attachments: (data.attachments ?? []) as any });
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
 export async function updateUpgrade(id: string, data: Partial<Upgrade>) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.update(upgrades).set(data).where(eq(upgrades.id, id));
-=======
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
   await db.update(upgrades).set(normalized).where(eq(upgrades.id, id));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
@@ -376,7 +337,7 @@ export async function deleteUpgrade(id: string) {
   return true;
 }
 
-// ─── Loans ────────────────────────────────────────────────────────────────────
+// ─── Loans ──────────────────────────────────────────────────────────────────────────────
 
 export async function getLoans(userId: number, propertyId: number) {
   const db = await getDb();
@@ -395,28 +356,20 @@ export async function getLoanById(id: string) {
 
 export async function createLoan(data: typeof loans.$inferInsert) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.insert(loans).values(data);
-=======
   await db.insert(loans).values({
     ...data,
     attachments: (data.attachments ?? []) as any,
     repayments: (data.repayments ?? []) as any,
   });
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
 export async function updateLoan(id: string, data: Partial<Loan>) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.update(loans).set(data).where(eq(loans.id, id));
-=======
   const normalized: any = { ...data };
   if ("repayments" in normalized) normalized.repayments = normalized.repayments ?? [];
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
   await db.update(loans).set(normalized).where(eq(loans.id, id));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
@@ -426,7 +379,7 @@ export async function deleteLoan(id: string) {
   return true;
 }
 
-// ─── Wishlist ──────────────────────────────────────────────────────────────────
+// ─── Wishlist ─────────────────────────────────────────────────────────────────────────
 
 export async function getWishlistItems(userId: number, propertyId: number) {
   const db = await getDb();
@@ -443,23 +396,15 @@ export async function getWishlistItemById(id: string) {
 
 export async function createWishlistItem(data: typeof wishlistItems.$inferInsert) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.insert(wishlistItems).values(data);
-=======
   await db.insert(wishlistItems).values({ ...data, attachments: (data.attachments ?? []) as any });
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
 export async function updateWishlistItem(id: string, data: Partial<WishlistItem>) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.update(wishlistItems).set(data).where(eq(wishlistItems.id, id));
-=======
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
   await db.update(wishlistItems).set(normalized).where(eq(wishlistItems.id, id));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
@@ -469,7 +414,7 @@ export async function deleteWishlistItem(id: string) {
   return true;
 }
 
-// ─── Purchase Costs ───────────────────────────────────────────────────────────
+// ─── Purchase Costs ───────────────────────────────────────────────────────────────────
 
 export async function getPurchaseCosts(userId: number, propertyId: number) {
   const db = await getDb();
@@ -486,23 +431,15 @@ export async function getPurchaseCostById(id: string) {
 
 export async function createPurchaseCost(data: typeof purchaseCosts.$inferInsert) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.insert(purchaseCosts).values(data);
-=======
   await db.insert(purchaseCosts).values({ ...data, attachments: (data.attachments ?? []) as any });
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
 export async function updatePurchaseCost(id: string, data: Partial<PurchaseCost>) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.update(purchaseCosts).set(data).where(eq(purchaseCosts.id, id));
-=======
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
   await db.update(purchaseCosts).set(normalized).where(eq(purchaseCosts.id, id));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
@@ -512,10 +449,12 @@ export async function deletePurchaseCost(id: string) {
   return true;
 }
 
-// ─── Calendar Events ──────────────────────────────────────────────────────────
+// ─── Calendar Events ────────────────────────────────────────────────────────────────────
 
 export async function getCalendarEvents(propertyId: number, startDate?: string, endDate?: string) {
   const db = await getDb();
+  // Single query with conditional filters — replaces the previous
+  // 4-branch if/else chain that was difficult to maintain.
   return await db.select().from(calendarEvents)
     .where(
       and(
@@ -545,7 +484,7 @@ export async function deleteCalendarEvent(id: string) {
   return true;
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
+// ─── Dashboard ─────────────────────────────────────────────────────────────────────────────
 
 export async function getRecentActivity(propertyId: number) {
   const db = await getDb();
@@ -589,6 +528,8 @@ export async function getRecentActivity(propertyId: number) {
   return all.slice(0, 10);
 }
 
+// Pure helper functions extracted from getDashboardStats to improve
+// testability and reduce function length.
 function calcMonthlyStats(allExpenses: Expense[], monthStart: string, monthEnd: string) {
   const thisMonthExp = allExpenses.filter(e => e.date >= monthStart && e.date <= monthEnd);
   const monthSpent = thisMonthExp.reduce((s, e) => s + e.amount, 0);
@@ -642,6 +583,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const today        = now.toISOString().split("T")[0];
   const staleCutoff  = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
+  // Typed filter builder — replaces the untyped pf = (col: any) => ... shorthand.
   const ownerPropFilter = <T extends { ownerId: ReturnType<typeof eq>; propertyId: ReturnType<typeof eq> }>(
     col: { ownerId: any; propertyId: any }
   ) => and(eq(col.ownerId, userId), eq(col.propertyId, propertyId));
@@ -663,6 +605,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const overdueExpenses = getOverdueExpenses(allExpenses, today);
   const staleRepairs    = getStaleRepairs(allRepairs, staleCutoff);
 
+  // ── Open repairs ────────────────────────────────────────────────────────────────────
   const priOrder: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
   const openRepairs = allRepairs
     .filter(r => r.status !== "Resolved")
@@ -670,6 +613,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
     .slice(0, 5)
     .map(r => ({ id: r.id, label: r.label, priority: r.priority, status: r.status, contractor: r.contractor }));
 
+  // ── Active upgrades + decision needed ─────────────────────────────────────────────
   const activeIds = allUpgrades.filter(u => u.status === "In Progress").map(u => u.id);
   const activeOpts = activeIds.length > 0
     ? await db.select({ upgradeId: upgradeOptions.upgradeId, isSelected: upgradeOptions.isSelected })
@@ -713,7 +657,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   };
 }
 
-// ─── Upgrade Options ──────────────────────────────────────────────────────────
+// ─── Upgrade Options ────────────────────────────────────────────────────────────────
 
 export async function getUpgradeOptions(upgradeId: string) {
   const db = await getDb();
@@ -740,26 +684,19 @@ export async function getUpgradeOptionCounts(upgradeIds: string[]) {
 
 export async function createUpgradeOption(data: typeof upgradeOptions.$inferInsert) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.insert(upgradeOptions).values(data);
-=======
   await db.insert(upgradeOptions).values({ ...data, payments: (data.payments ?? []) as any });
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
 export async function updateUpgradeOption(id: string, data: Partial<UpgradeOption>) {
   const db = await getDb();
-<<<<<<< HEAD
-  await db.update(upgradeOptions).set(data).where(eq(upgradeOptions.id, id));
-=======
   const normalized: any = { ...data };
   if ("payments" in normalized) normalized.payments = normalized.payments ?? [];
   await db.update(upgradeOptions).set(normalized).where(eq(upgradeOptions.id, id));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   return data;
 }
 
+// Uses a transaction so the deselect + select are atomic.
 export async function selectUpgradeOption(upgradeId: string, optionId: string) {
   const db = await getDb();
   await db.transaction(async (tx) => {
@@ -773,11 +710,7 @@ export async function logUpgradeOptionPayment(optionId: string, payment: { date:
   const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
   if (!existing) throw new Error("Option not found");
   const payments = [...parseJsonArray(existing.payments), payment];
-<<<<<<< HEAD
-  await db.update(upgradeOptions).set({ payments }).where(eq(upgradeOptions.id, optionId));
-=======
   await db.update(upgradeOptions).set({ payments: payments as any }).where(eq(upgradeOptions.id, optionId));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
     await db.update(upgrades).set({ spent: totalPaid }).where(eq(upgrades.id, existing.upgradeId));
@@ -789,11 +722,7 @@ export async function deleteUpgradeOptionPayment(optionId: string, paymentIndex:
   const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
   if (!existing) throw new Error("Option not found");
   const payments = parseJsonArray(existing.payments).filter((_: any, i: number) => i !== paymentIndex);
-<<<<<<< HEAD
-  await db.update(upgradeOptions).set({ payments }).where(eq(upgradeOptions.id, optionId));
-=======
   await db.update(upgradeOptions).set({ payments: payments as any }).where(eq(upgradeOptions.id, optionId));
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
     await db.update(upgrades).set({ spent: totalPaid }).where(eq(upgrades.id, existing.upgradeId));
@@ -806,7 +735,7 @@ export async function deleteUpgradeOption(id: string) {
   return true;
 }
 
-// ─── Upgrade Items ────────────────────────────────────────────────────────────
+// ─── Upgrade Items ────────────────────────────────────────────────────────────────────
 
 export async function getUpgradeItems(upgradeId: string) {
   const db = await getDb();
@@ -849,7 +778,7 @@ export async function deleteUpgradeItem(id: string) {
   return true;
 }
 
-// ─── Portfolio ────────────────────────────────────────────────────────────────
+// ─── Portfolio ────────────────────────────────────────────────────────────────────────────
 
 export async function getPortfolioSummary(userId: number) {
   const props = await getPropertiesByUser(userId);
@@ -897,10 +826,12 @@ export async function getPortfolioSummary(userId: number) {
   }));
 }
 
-// ─── Data Management ──────────────────────────────────────────────────────────
+// ─── Data Management ────────────────────────────────────────────────────────────────────
 
 export async function deleteAllUserData(userId: number) {
   const db = await getDb();
+  // Wrap everything in a single transaction so a partial failure
+  // doesn't leave orphaned records.
   await db.transaction(async (tx) => {
     const userRepairIds = (
       await tx.select({ id: repairs.id }).from(repairs).where(eq(repairs.ownerId, userId))
@@ -932,7 +863,7 @@ export async function deleteAllUserData(userId: number) {
   return true;
 }
 
-// ─── Mock / Demo Seed ─────────────────────────────────────────────────────────
+// ─── Mock / Demo Seed ────────────────────────────────────────────────────────────────────────────
 
 export async function seedMockProperty(userId: number): Promise<number> {
   const db = await getDb();
@@ -975,37 +906,23 @@ export async function seedMockProperty(userId: number): Promise<number> {
 
   const oid = userId;
   const pid = propertyId;
+  const now = new Date();
 
   await db.insert(expenses).values(
-<<<<<<< HEAD
-    mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid }))
-  );
-
-  await db.insert(repairs).values(
-    mockRepairs.map(r => ({ id: nanoid(), ...r, ownerId: oid, propertyId: pid }))
-=======
     mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid, attachments: [] as any }))
   );
 
   await db.insert(repairs).values(
     mockRepairs.map(r => ({ id: nanoid(), ...r, ownerId: oid, propertyId: pid, attachments: [] as any }))
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
   );
 
   for (const u of mockUpgrades) {
     const { options, items, ...upgradeCore } = u as any;
     const upgradeId = nanoid();
-<<<<<<< HEAD
-    await db.insert(upgrades).values({ id: upgradeId, ...upgradeCore, ownerId: oid, propertyId: pid });
-    if (options?.length) {
-      await db.insert(upgradeOptions).values(
-        options.map((opt: any) => ({ id: nanoid(), upgradeId, ...opt, payments: opt.payments ?? [] }))
-=======
     await db.insert(upgrades).values({ id: upgradeId, ...upgradeCore, ownerId: oid, propertyId: pid, attachments: [] as any });
     if (options?.length) {
       await db.insert(upgradeOptions).values(
         options.map((opt: any) => ({ id: nanoid(), upgradeId, ...opt, payments: (opt.payments ?? []) as any }))
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
       );
     }
     if (items?.length) {
@@ -1019,25 +936,14 @@ export async function seedMockProperty(userId: number): Promise<number> {
     mockLoans.map(l => ({
       id: nanoid(),
       ...l,
-<<<<<<< HEAD
-      repayments: l.repayments.map(r => ({ ...r, ownerId: oid })),
-=======
       repayments: l.repayments.map((r: any) => ({ ...r, ownerId: oid })) as any,
       attachments: [] as any,
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
       ownerId: oid,
       propertyId: pid,
     }))
   );
 
   await db.insert(wishlistItems).values(
-<<<<<<< HEAD
-    mockWishlist.map(w => ({ id: nanoid(), ...w, ownerId: oid, propertyId: pid }))
-  );
-
-  await db.insert(purchaseCosts).values(
-    mockPurchaseCosts.map(c => ({ id: nanoid(), ...c, ownerId: oid, propertyId: pid }))
-=======
     mockWishlist.map(w => ({
       id: nanoid(),
       ...w,
@@ -1055,7 +961,28 @@ export async function seedMockProperty(userId: number): Promise<number> {
       ownerId: oid,
       propertyId: pid,
     }))
->>>>>>> dea327a (fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify)
+=======
+    mockWishlist.map(w => ({
+      id: nanoid(),
+      ...w,
+      attachments: [],
+      ownerId: oid,
+      propertyId: pid,
+      createdAt: now,
+      updatedAt: now,
+    }))
+  );
+
+  await db.insert(purchaseCosts).values(
+    mockPurchaseCosts.map(c => ({
+      id: nanoid(),
+      ...c,
+      attachments: [],
+      ownerId: oid,
+      propertyId: pid,
+      createdAt: now,
+      updatedAt: now,
+    }))
   );
 
   await db.insert(calendarEvents).values(

@@ -328,7 +328,6 @@ export const appRouter = router({
       scope: z.string().optional(),
       notes: z.string().optional(),
     })).mutation(async ({ ctx, input }) => {
-      // Ensure the parent repair belongs to this user before adding a quote.
       await assertRepairOwner(input.repairId, ctx.user.id);
       return await db.createRepairQuote({ id: nanoid(), payments: [], ...input });
     }),
@@ -503,6 +502,7 @@ export const appRouter = router({
     addRepayment: protectedProcedure
       .input(z.object({ loanId: z.string(), amount: z.number().int().positive(), date: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        // Fetch the loan directly by id rather than pulling the full list.
         const targetLoan = await assertLoanOwner(input.loanId, ctx.user.id);
         const updatedRepayments = [
           ...((targetLoan as any).repayments || []),
