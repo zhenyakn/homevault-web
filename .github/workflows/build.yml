@@ -41,7 +41,6 @@ jobs:
       - name: Resolve version
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            # Strip the leading 'v' from the tag
             VERSION="${GITHUB_REF_NAME#v}"
           elif [[ -n "${{ github.event.inputs.version }}" ]]; then
             VERSION="${{ github.event.inputs.version }}"
@@ -51,23 +50,26 @@ jobs:
           echo "ADDON_VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Resolved version: $VERSION"
 
-      - name: Update config.yaml version
-        run: |
-          sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
-          echo "config.yaml version set to ${{ env.ADDON_VERSION }}"
-          cat ${{ env.ADDON_PATH }}/config.yaml | grep '^version:'
-
-      - name: Commit updated config.yaml (tag builds only)
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Commit updated config.yaml version back to main (tag builds only, amd64 only)
+        if: startsWith(github.ref, 'refs/tags/') && matrix.arch == 'amd64'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Fetch main without switching — we are on the detached tag HEAD
           git fetch origin main
-          git checkout main
+          # Apply the version bump to the file in the working tree
           sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
+          # Commit directly onto main via a temporary branch
+          git stash
+          git checkout -B _version_bump origin/main
+          git stash pop
           git add ${{ env.ADDON_PATH }}/config.yaml
           git diff --staged --quiet || git commit -m "chore: bump addon version to ${{ env.ADDON_VERSION }} [skip ci]"
-          git push origin main
+          git push origin _version_bump:main
+
+      - name: Update config.yaml version in working tree (all arches, for Docker build context)
+        run: |
+          sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
