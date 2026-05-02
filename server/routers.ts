@@ -184,6 +184,12 @@ export const appRouter = router({
 
   dashboard: router({
     stats: protectedProcedure.query(async ({ ctx }) => {
+      // On a fresh addon install the DB has no property rows yet.
+      // Auto-create one so getDashboardStats never queries with a missing property.
+      const props = await db.getPropertiesByUser(ctx.user.id);
+      if (props.length === 0) {
+        await db.createProperty(ctx.user.id, { houseName: "My Home" });
+      }
       return await db.getDashboardStats(ctx.user.id, ctx.propertyId);
     }),
     recentActivity: protectedProcedure.query(async ({ ctx }) => {

@@ -455,8 +455,8 @@ export default function Dashboard() {
   const [, nav] = useLocation();
   const utils = trpc.useUtils();
 
-  const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
-  const { data: calEvents = [] }   = trpc.calendar.list.useQuery({});
+  const { data: stats, isLoading, error } = trpc.dashboard.stats.useQuery();
+  const { data: calEvents = [] }          = trpc.calendar.list.useQuery({});
 
   const markPaid = trpc.expenses.markAsPaid.useMutation({
     onSuccess: () => utils.dashboard.stats.invalidate(),
@@ -498,8 +498,16 @@ export default function Dashboard() {
     </div>
   );
 
-  const s = stats!;
-  const cur = s?.currency ?? "ILS";
+  // stats may be undefined if the query errored (e.g. first boot race condition).
+  // Render nothing meaningful until data arrives rather than crashing.
+  if (error || !stats) return (
+    <div className="flex items-center justify-center h-[50vh]">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+
+  const s = stats;
+  const cur = s.currency ?? "ILS";
 
   return (
     <div>
@@ -520,9 +528,9 @@ export default function Dashboard() {
       {/* Layer 1 — Needs attention */}
       <SectionLabel>{t("dashboard.attention")}</SectionLabel>
       <AttentionZone
-        overdue={s?.overdueExpenses ?? []}
-        stale={s?.staleRepairs ?? []}
-        decisionNeeded={s?.upgradesNeedingDecision ?? []}
+        overdue={s.overdueExpenses ?? []}
+        stale={s.staleRepairs ?? []}
+        decisionNeeded={s.upgradesNeedingDecision ?? []}
         cur={cur}
         onMarkPaid={id =>
           markPaid.mutate({ id, paidDate: new Date().toISOString().split("T")[0] })
@@ -547,11 +555,11 @@ export default function Dashboard() {
       <SectionLabel>{t("dashboard.context")}</SectionLabel>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <UpgradesCard
-          activeUpgrades={s?.activeUpgrades ?? []}
+          activeUpgrades={s.activeUpgrades ?? []}
           countMap={countMap}
           cur={cur}
         />
-        <LoansCard loans={s?.loanSummary ?? []} cur={cur} />
+        <LoansCard loans={s.loanSummary ?? []} cur={cur} />
       </div>
     </div>
   );
