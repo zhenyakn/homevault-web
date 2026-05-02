@@ -1,6 +1,9 @@
 #!/usr/bin/env bashio
 
-export DATABASE_URL="${DATABASE_URL:-mysql://homeassistant:homeassistant@core-mariadb/homeassistant?charset=utf8mb4}"
+# Strip ?charset=... from DATABASE_URL — mysql2 doesn't accept it as a URL param
+RAW_DB_URL="${DATABASE_URL:-mysql://homeassistant:homeassistant@core-mariadb/homeassistant?charset=utf8mb4}"
+export DATABASE_URL="${RAW_DB_URL%%\?*}"
+
 export JWT_SECRET="${JWT_SECRET:-}"
 export OWNER_OPEN_ID="${OWNER_OPEN_ID:-owner}"
 export VITE_APP_ID="${VITE_APP_ID:-homevault}"
@@ -17,16 +20,15 @@ fi
 
 bashio::log.info "Starting HomeVault Add-on on port ${PORT}..."
 bashio::log.info "NO_AUTH mode: ${NO_AUTH}"
+bashio::log.info "DATABASE_URL (sanitized): ${DATABASE_URL}"
 
 cd /app
 
-if [ -n "$DATABASE_URL" ]; then
-    bashio::log.info "Running unified database migration..."
-    if node apply-migration-addon.mjs; then
-        bashio::log.info "Database migration completed."
-    else
-        bashio::log.warning "Database migration failed. Continuing anyway..."
-    fi
+bashio::log.info "Running unified database migration..."
+if ! node apply-migration-addon.mjs; then
+    bashio::log.error "Database migration FAILED — check logs above. Addon will not start."
+    exit 1
 fi
+bashio::log.info "Database migration completed."
 
 exec node dist/index.js 2>&1
