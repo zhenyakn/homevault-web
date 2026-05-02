@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, Settings } from "lucide-react";
+import { Loader2, CheckCircle2, Settings, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { format, isToday, isTomorrow, addDays } from "date-fns";
@@ -498,11 +498,19 @@ export default function Dashboard() {
     </div>
   );
 
-  // stats may be undefined if the query errored (e.g. first boot race condition).
-  // Render nothing meaningful until data arrives rather than crashing.
   if (error || !stats) return (
-    <div className="flex items-center justify-center h-[50vh]">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center gap-4 h-[50vh] text-center">
+      <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
+      <div>
+        <p className="text-sm font-medium">{t("dashboard.loadError", "Couldn't load dashboard")}</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          {error?.message ?? t("dashboard.loadErrorHint", "Your data may still be loading or no property is set up yet.")}
+        </p>
+      </div>
+      <Button variant="outline" size="sm" onClick={() => nav("/settings")}>
+        <Settings className="h-3.5 w-3.5 me-1.5" />
+        {t("nav.settings")}
+      </Button>
     </div>
   );
 

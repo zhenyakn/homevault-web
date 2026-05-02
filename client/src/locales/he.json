@@ -122,6 +122,22 @@
     "Planned": "מתוכנן",
     "Done": "הושלם"
   },
+  "search": {
+    "dialogTitle": "חיפוש כללי",
+    "placeholder": "חפש הוצאות, תיקונים, שיפוצים…",
+    "clear": "נקה",
+    "minChars": "הקלד לפחות 2 תווים לחיפוש",
+    "noResults": "אין תוצאות עבור \"{{query}}\"",
+    "kbdNavigate": "ניווט",
+    "kbdOpen": "פתח",
+    "kbdClose": "סגור",
+    "typeExpense": "הוצאה",
+    "typeRepair": "תיקון",
+    "typeUpgrade": "שיפוץ",
+    "typeLoan": "הלוואה",
+    "typeWishlist": "משאלה",
+    "typePurchase": "רכישה"
+  },
   "settings": {
     "title": "הגדרות",
     "property": "נכס",
@@ -234,15 +250,6 @@
     "placeholderMyHome": "הבית שלי",
     "placeholderHome": "בית",
     "perModuleList": "הוצאות · תיקונים · הלוואות …"
-  },
-  "propertyType": {
-    "Apartment": "דירה",
-    "House": "בית",
-    "Villa": "וילה",
-    "Townhouse": "דירת גן",
-    "Studio": "סטודיו",
-    "Penthouse": "פנטהאוז",
-    "Other": "אחר"
   },
   "repairs": {
     "title": "תיקונים",
