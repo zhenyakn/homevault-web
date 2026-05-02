@@ -197,7 +197,7 @@ export const appRouter = router({
 
   repairs: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getRepairs(ctx.user.id, ctx.propertyId);
+      return (await db.getRepairs(ctx.user.id, ctx.propertyId)) ?? [];
     }),
     create: protectedProcedure.input(repairSchema).mutation(async ({ ctx, input }) => {
       return await db.createRepair({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
@@ -214,7 +214,7 @@ export const appRouter = router({
 
   repairQuotes: router({
     list: protectedProcedure.input(z.object({ repairId: z.string() })).query(async ({ input }) => {
-      return await db.getRepairQuotes(input.repairId);
+      return (await db.getRepairQuotes(input.repairId)) ?? [];
     }),
     countByRepair: protectedProcedure.input(z.object({ repairIds: z.array(z.string()) })).query(async ({ input }) => {
       return await db.getRepairQuoteCounts(input.repairIds);
@@ -270,7 +270,7 @@ export const appRouter = router({
 
   upgradeOptions: router({
     list: protectedProcedure.input(z.object({ upgradeId: z.string() })).query(async ({ input }) => {
-      return await db.getUpgradeOptions(input.upgradeId);
+      return (await db.getUpgradeOptions(input.upgradeId)) ?? [];
     }),
     create: protectedProcedure.input(z.object({
       upgradeId: z.string(),
@@ -323,7 +323,7 @@ export const appRouter = router({
 
   upgradeItems: router({
     list: protectedProcedure.input(z.object({ upgradeId: z.string() })).query(async ({ input }) => {
-      return await db.getUpgradeItems(input.upgradeId);
+      return (await db.getUpgradeItems(input.upgradeId)) ?? [];
     }),
     countByUpgrade: protectedProcedure.input(z.object({ upgradeIds: z.array(z.string()) })).query(async ({ input }) => {
       return await db.getUpgradeItemCounts(input.upgradeIds);
@@ -358,7 +358,7 @@ export const appRouter = router({
 
   upgrades: router({
     list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getUpgrades(ctx.user.id, ctx.propertyId);
+      return (await db.getUpgrades(ctx.user.id, ctx.propertyId)) ?? [];
     }),
     create: protectedProcedure.input(upgradeSchema).mutation(async ({ ctx, input }) => {
       return await db.createUpgrade({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });

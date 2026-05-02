@@ -439,10 +439,14 @@ export default function RepairDetail() {
   const [, nav] = useLocation();
   const utils = trpc.useUtils();
 
-  const { data: repairs, isLoading } = trpc.repairs.list.useQuery();
-  const { data: quotes = [], isLoading: quotesLoading } = trpc.repairQuotes.list.useQuery({ repairId: id! });
+  const { data: repairsRaw, isLoading } = trpc.repairs.list.useQuery();
+  const { data: quotesRaw, isLoading: quotesLoading } = trpc.repairQuotes.list.useQuery({ repairId: id! });
 
-  const repair = useMemo(() => (repairs ?? []).find((r: any) => r.id === id), [repairs, id]);
+  // Guard against null returns from MariaDB (null ≠ undefined, so = [] default won't fire)
+  const repairs = Array.isArray(repairsRaw) ? repairsRaw : [];
+  const quotes = Array.isArray(quotesRaw) ? quotesRaw : [];
+
+  const repair = useMemo(() => repairs.find((r: any) => r.id === id), [repairs, id]);
 
   const updateMut = trpc.repairs.update.useMutation({
     onSuccess: () => utils.repairs.list.invalidate(),
