@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.1.35
+## 0.1.36
+- fix(addon): JSON.parse repayments/payments JSON columns before .reduce
 - fix(addon): handle missing property + stats undefined crash on fresh DB
 - fix: read all config from /data/options.json in run.sh
 - fix: handle boolean true/True/1 from HA supervisor in run.sh
@@ -125,6 +126,9 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.1.35
+- fix(addon): JSON.parse repayments/payments JSON columns before .reduce
 
 ## 0.1.34
 - fix(addon): handle missing property + stats undefined crash on fresh DB
