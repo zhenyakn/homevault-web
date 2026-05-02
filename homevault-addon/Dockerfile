@@ -39,6 +39,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/apply-migration-v3.mjs ./apply-migration-v3.mjs
 COPY --from=builder /app/apply-migration-v4.mjs ./apply-migration-v4.mjs
 COPY --from=builder /app/apply-migration-v5.mjs ./apply-migration-v5.mjs
+COPY --from=builder /app/apply-migration-addon.mjs ./app/apply-migration-addon.mjs
 
 # Copy drizzle schema folder, if used by runtime
 COPY drizzle ./drizzle
