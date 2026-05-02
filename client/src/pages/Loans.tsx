@@ -23,6 +23,8 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Trash2, Edit, Download } from "lucide-react";
 import { toast } from "sonner";
+import { AttachmentsPanel } from "@/components/AttachmentsPanel";
+import { useAttachments } from "@/hooks/useAttachments";
 
 export default function Loans() {
   const { t } = useTranslation();
@@ -30,6 +32,8 @@ export default function Loans() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isRepaymentDialogOpen, setIsRepaymentDialogOpen] = useState(false);
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
+  // Buffer for new-loan attachments (no id yet)
+  const [newAttachments, setNewAttachments] = useState<string[]>([]);
 
   const [formData, setFormData] = useState({
     lender: "",
@@ -108,6 +112,7 @@ export default function Loans() {
       dueDate: "",
       notes: "",
     });
+    setNewAttachments([]);
     setSelectedLoan(null);
   };
 
@@ -148,10 +153,10 @@ export default function Loans() {
     if (selectedLoan) {
       updateMutation.mutate({
         id: selectedLoan.id,
-        data: payload,
+        data: { ...payload, attachments: selectedLoan.attachments ?? [] },
       });
     } else {
-      createMutation.mutate(payload);
+      createMutation.mutate({ ...payload, attachments: newAttachments });
     }
   };
 
@@ -194,6 +199,17 @@ export default function Loans() {
     URL.revokeObjectURL(url);
     toast.success(t("loans.exported"));
   };
+
+  // Sub-component so useAttachments hook is only called when editing a real id
+  function EditLoanAttachments({ loan }: { loan: any }) {
+    const onChange = useAttachments("loan", loan.id);
+    return (
+      <div className="space-y-1.5">
+        <Label>{t("common.attachments")}</Label>
+        <AttachmentsPanel attachments={loan.attachments ?? []} onChange={onChange} />
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -318,6 +334,10 @@ export default function Loans() {
                 <DialogTitle>{t("loans.addNewLoan")}</DialogTitle>
               </DialogHeader>
               {loanForm}
+              <div className="space-y-1.5 mt-2">
+                <Label>{t("common.attachments")}</Label>
+                <AttachmentsPanel attachments={newAttachments} onChange={setNewAttachments} />
+              </div>
               <Button
                 type="button"
                 className="w-full mt-2"
@@ -420,6 +440,14 @@ export default function Loans() {
                     </div>
                   )}
                 </div>
+
+                {/* Attachments — live-persisted via useAttachments */}
+                {loan.attachments && loan.attachments.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-xs text-muted-foreground mb-2">{t("common.attachments")}</p>
+                    <EditLoanAttachments loan={loan} />
+                  </div>
+                )}
               </div>
             );
           })}
@@ -436,6 +464,7 @@ export default function Loans() {
             <DialogTitle>{t("loans.editLoan")}</DialogTitle>
           </DialogHeader>
           {loanForm}
+          {selectedLoan && <EditLoanAttachments loan={selectedLoan} />}
           <Button
             type="button"
             className="w-full mt-2"

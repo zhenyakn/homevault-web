@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Trash2, Check, Pencil, Download } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
-import { FileUpload } from "@/components/FileUpload";
+import { AttachmentsPanel } from "@/components/AttachmentsPanel";
+import { useAttachments } from "@/hooks/useAttachments";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES = ["Mortgage", "Utility", "Insurance", "Tax", "Maintenance", "Other"] as const;
@@ -35,6 +36,11 @@ const emptyForm = () => ({
   notes: "",
 });
 
+function EditingAttachments({ id, attachments }: { id: string; attachments: string[] }) {
+  const onChange = useAttachments("expense", id);
+  return <AttachmentsPanel attachments={attachments} onChange={onChange} />;
+}
+
 export default function Expenses() {
   const { t } = useTranslation();
   const { data: expenses, isLoading, refetch } = trpc.expenses.list.useQuery();
@@ -45,23 +51,25 @@ export default function Expenses() {
 
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingAttachments, setEditingAttachments] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [form, setForm] = useState(emptyForm());
-  const [attachments, setAttachments] = useState<any[]>([]);
+  // For new (create) records only — no id yet, so we buffer URLs locally
+  const [newAttachments, setNewAttachments] = useState<string[]>([]);
 
-  const reset = () => { setForm(emptyForm()); setAttachments([]); setEditingId(null); };
+  const reset = () => { setForm(emptyForm()); setNewAttachments([]); setEditingId(null); setEditingAttachments([]); };
 
   const handleEdit = (e: any) => {
     setEditingId(e.id);
+    setEditingAttachments(e.attachments ?? []);
     setForm({ label: e.label, amount: String(e.amount / 100), date: e.date, category: e.category, isRecurring: e.isRecurring || false, recurringFrequency: e.recurringFrequency || "Monthly", notes: e.notes || "" });
-    setAttachments((e.attachments || []).map((url: string) => ({ url, filename: url.split("/").pop() || "file", mimeType: "application/octet-stream", size: 0 })));
     setOpen(true);
   };
 
   const handleSubmit = async () => {
     if (!form.label || !form.amount) { toast.error(t("common.description") + " and " + t("common.amount") + " are required"); return; }
     try {
-      const payload = { ...form, amount: Math.round(parseFloat(form.amount) * 100), attachments: attachments.map(a => a.url) };
+      const payload = { ...form, amount: Math.round(parseFloat(form.amount) * 100), attachments: editingId ? editingAttachments : newAttachments };
       if (editingId) { await updateMutation.mutateAsync({ id: editingId, data: payload }); toast.success(t("expenses.editExpense")); }
       else { await createMutation.mutateAsync(payload); toast.success(t("expenses.addExpense")); }
       setOpen(false); reset(); refetch();
@@ -101,8 +109,6 @@ export default function Expenses() {
 
   return (
     <div className="space-y-5">
-
-      {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-xl font-semibold">{t("expenses.title")}</h1>
         <div className="flex items-center gap-2">
@@ -156,16 +162,21 @@ export default function Expenses() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t("common.attachments")}</Label>
-                  <FileUpload onUpload={f => setAttachments([...attachments, f])} existingFiles={attachments} onRemove={i => setAttachments(attachments.filter((_, idx) => idx !== i))} accept="image/*,.pdf,.doc,.docx" />
+                  {editingId
+                    ? <EditingAttachments id={editingId} attachments={editingAttachments} />
+                    : <AttachmentsPanel attachments={newAttachments} onChange={setNewAttachments} />
+                  }
                 </div>
-                <Button onClick={handleSubmit} className="w-full">{editingId ? t("common.update") : t("expenses.addExpense")}</Button>
+                <Button onClick={handleSubmit} className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                  {editingId ? t("common.update") : t("expenses.addExpense")}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 border border-border rounded-lg divide-y md:divide-y-0 md:divide-x divide-border overflow-hidden">
         {[
           { label: t("expenses.total"),          value: formatCurrency(total) },
@@ -180,7 +191,6 @@ export default function Expenses() {
         ))}
       </div>
 
-      {/* Filter */}
       <div className="flex items-center gap-3">
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="h-8 w-44 text-sm"><SelectValue placeholder={t("expenses.allCategories")} /></SelectTrigger>
@@ -196,7 +206,6 @@ export default function Expenses() {
         )}
       </div>
 
-      {/* List */}
       {filtered.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
           <p className="text-sm text-muted-foreground">
