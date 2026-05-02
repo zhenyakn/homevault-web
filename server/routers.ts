@@ -10,6 +10,11 @@ import * as db from "./db";
 
 const attachmentSchema = z.array(z.string()).optional();
 
+/** Coerce an optional attachment list to a non-null array before writing to DB.
+ *  Prevents NULL being stored when no files are attached, which would cause
+ *  .map() calls on the read path to throw without an explicit null-guard. */
+const normaliseAttachments = (a: string[] | undefined): string[] => a ?? [];
+
 const expenseSchema = z.object({
   label: z.string().min(1),
   amount: z.number().int().positive(),
@@ -266,13 +271,13 @@ export const appRouter = router({
       return await db.getExpenses(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(expenseSchema).mutation(async ({ ctx, input }) => {
-      return await db.createExpense({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createExpense({ id: nanoid(), ...input, attachments: normaliseAttachments(input.attachments), ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: expenseSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await assertExpenseOwner(input.id, ctx.user.id);
-        return await db.updateExpense(input.id, input.data);
+        return await db.updateExpense(input.id, { ...input.data, attachments: normaliseAttachments(input.data.attachments) });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
@@ -293,13 +298,13 @@ export const appRouter = router({
       return (await db.getRepairs(ctx.user.id, ctx.propertyId)) ?? [];
     }),
     create: protectedProcedure.input(repairSchema).mutation(async ({ ctx, input }) => {
-      return await db.createRepair({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createRepair({ id: nanoid(), ...input, attachments: normaliseAttachments(input.attachments), ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: repairSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await assertRepairOwner(input.id, ctx.user.id);
-        return await db.updateRepair(input.id, input.data);
+        return await db.updateRepair(input.id, { ...input.data, attachments: normaliseAttachments(input.data.attachments) });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
@@ -463,13 +468,13 @@ export const appRouter = router({
       return (await db.getUpgrades(ctx.user.id, ctx.propertyId)) ?? [];
     }),
     create: protectedProcedure.input(upgradeSchema).mutation(async ({ ctx, input }) => {
-      return await db.createUpgrade({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createUpgrade({ id: nanoid(), ...input, attachments: normaliseAttachments(input.attachments), ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: upgradeSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await assertUpgradeOwner(input.id, ctx.user.id);
-        return await db.updateUpgrade(input.id, input.data);
+        return await db.updateUpgrade(input.id, { ...input.data, attachments: normaliseAttachments(input.data.attachments) });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
@@ -484,13 +489,13 @@ export const appRouter = router({
       return await db.getLoans(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(loanSchema).mutation(async ({ ctx, input }) => {
-      return await db.createLoan({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createLoan({ id: nanoid(), ...input, attachments: normaliseAttachments(input.attachments), ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: loanSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await assertLoanOwner(input.id, ctx.user.id);
-        return await db.updateLoan(input.id, input.data);
+        return await db.updateLoan(input.id, { ...input.data, attachments: normaliseAttachments(input.data.attachments) });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
@@ -516,13 +521,13 @@ export const appRouter = router({
       return await db.getWishlistItems(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(wishlistSchema).mutation(async ({ ctx, input }) => {
-      return await db.createWishlistItem({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createWishlistItem({ id: nanoid(), ...input, attachments: normaliseAttachments(input.attachments), ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: wishlistSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await assertWishlistOwner(input.id, ctx.user.id);
-        return await db.updateWishlistItem(input.id, input.data);
+        return await db.updateWishlistItem(input.id, { ...input.data, attachments: normaliseAttachments(input.data.attachments) });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
@@ -537,13 +542,13 @@ export const appRouter = router({
       return await db.getPurchaseCosts(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(purchaseCostSchema).mutation(async ({ ctx, input }) => {
-      return await db.createPurchaseCost({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createPurchaseCost({ id: nanoid(), ...input, attachments: normaliseAttachments(input.attachments), ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: purchaseCostSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await assertPurchaseCostOwner(input.id, ctx.user.id);
-        return await db.updatePurchaseCost(input.id, input.data);
+        return await db.updatePurchaseCost(input.id, { ...input.data, attachments: normaliseAttachments(input.data.attachments) });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
