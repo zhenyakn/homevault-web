@@ -18,7 +18,10 @@ if (!url) {
   process.exit(1);
 }
 
-const conn = await mysql.createConnection(url);
+const conn = await mysql.createConnection(url).catch(e => {
+  console.error("Failed to connect to DB:", e.message);
+  process.exit(1);
+});
 
 const run = async (sql, label) => {
   try {
