@@ -36,6 +36,22 @@ function phaseToStatus(phase: Phase): "Planned" | "In Progress" | "Done" {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Safely coerce a DB JSON-array field to a real array.
+ *  MariaDB via the HA addon may return JSON columns as strings instead of
+ *  parsed objects — this handles both cases. */
+function asArray<T = any>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 const STATUS_COLORS: Record<ItemStatus, string> = {
   "Need to find": "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
   "Researching":  "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
@@ -383,7 +399,9 @@ function OptionCard({
     onError: e => toast.error(e.message),
   });
 
-  const paid = ((option.payments || []) as any[]).reduce((s: number, p: any) => s + p.amount, 0);
+  // Normalize: MariaDB may return JSON columns as strings instead of parsed arrays
+  const payments = asArray(option.payments);
+  const paid = payments.reduce((s: number, p: any) => s + p.amount, 0);
 
   return (
     <div className={cn("border rounded-xl overflow-hidden transition-colors", option.isSelected ? "border-primary" : "border-border")}>
@@ -442,10 +460,10 @@ function OptionCard({
             {option.notes && <p className="text-xs text-muted-foreground leading-relaxed">{option.notes}</p>}
 
             {/* Payments */}
-            {(option.payments || []).length > 0 && (
+            {payments.length > 0 && (
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">{t("upgradeDetail.payments")}</p>
-                {(option.payments as any[]).map((p: any, i: number) => (
+                {payments.map((p: any, i: number) => (
                   <div key={i} className="flex items-center justify-between text-xs gap-2 group/payment">
                     <span className="text-muted-foreground truncate">{p.date}{p.notes ? ` · ${p.notes}` : ""}</span>
                     <div className="flex items-center gap-1.5 shrink-0">
@@ -624,7 +642,9 @@ export default function UpgradeDetail() {
 
   const selectedOption = options.find((o: any) => o.isSelected);
   const committed = selectedOption?.totalPrice || 0;
-  const paid = ((selectedOption?.payments || []) as any[]).reduce((s: number, p: any) => s + p.amount, 0);
+  // Normalize selectedOption.payments — may be a JSON string from MariaDB
+  const selectedPayments = asArray(selectedOption?.payments);
+  const paid = selectedPayments.reduce((s: number, p: any) => s + p.amount, 0);
   const spentAmt = upgrade.spent ?? 0;
   const progress = upgrade.budget > 0 ? Math.min(100, (spentAmt / upgrade.budget) * 100) : 0;
 
