@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, KeyboardEvent } from "react";
 import { useHashLocation } from "wouter/use-hash-location";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -36,15 +37,6 @@ const TYPE_COLORS: Record<SearchResultItem["type"], string> = {
   purchaseCost: "text-teal-500  bg-teal-50  dark:bg-teal-950/40",
 };
 
-const TYPE_LABELS: Record<SearchResultItem["type"], string> = {
-  expense:      "Expense",
-  repair:       "Repair",
-  upgrade:      "Upgrade",
-  loan:         "Loan",
-  wishlist:     "Wishlist",
-  purchaseCost: "Purchase",
-};
-
 interface SearchModalProps {
   open: boolean;
   onClose: () => void;
@@ -62,6 +54,7 @@ export function SearchModal({
   results,
   isFetching,
 }: SearchModalProps) {
+  const { t } = useTranslation();
   const [, navigate] = useHashLocation();
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -94,6 +87,15 @@ export function SearchModal({
     }
   };
 
+  const typeLabels: Record<SearchResultItem["type"], string> = {
+    expense:      t("search.typeExpense"),
+    repair:       t("search.typeRepair"),
+    upgrade:      t("search.typeUpgrade"),
+    loan:         t("search.typeLoan"),
+    wishlist:     t("search.typeWishlist"),
+    purchaseCost: t("search.typePurchase"),
+  };
+
   const showEmpty =
     !isFetching && query.trim().length >= 2 && results.length === 0;
   const showHint = query.trim().length < 2;
@@ -104,7 +106,7 @@ export function SearchModal({
         className="max-w-lg p-0 gap-0 overflow-hidden"
         aria-describedby={undefined}
       >
-        <DialogTitle className="sr-only">Global Search</DialogTitle>
+        <DialogTitle className="sr-only">{t("search.dialogTitle")}</DialogTitle>
 
         {/* Input */}
         <div className="flex items-center gap-2 px-4 py-3 border-b">
@@ -119,14 +121,14 @@ export function SearchModal({
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Search expenses, repairs, upgrades…"
+            placeholder={t("search.placeholder")}
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
           {query && (
             <button
               onClick={() => onQueryChange("")}
               className="text-muted-foreground hover:text-foreground transition-colors text-xs"
-              aria-label="Clear"
+              aria-label={t("search.clear")}
             >
               ✕
             </button>
@@ -140,13 +142,13 @@ export function SearchModal({
         <div className="max-h-[360px] overflow-y-auto">
           {showHint && (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Type at least 2 characters to search
+              {t("search.minChars")}
             </p>
           )}
 
           {showEmpty && (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              No results for &ldquo;{query}&rdquo;
+              {t("search.noResults", { query })}
             </p>
           )}
 
@@ -183,7 +185,7 @@ export function SearchModal({
                     )}
                   </div>
                   <span className="text-[10px] text-muted-foreground shrink-0">
-                    {TYPE_LABELS[item.type]}
+                    {typeLabels[item.type]}
                   </span>
                 </li>
               ))}
@@ -194,9 +196,9 @@ export function SearchModal({
         {/* Footer */}
         {results.length > 0 && (
           <div className="flex items-center gap-3 px-4 py-2 border-t text-[10px] text-muted-foreground bg-muted/30">
-            <span><kbd className="font-mono">↑↓</kbd> navigate</span>
-            <span><kbd className="font-mono">↵</kbd> open</span>
-            <span><kbd className="font-mono">Esc</kbd> close</span>
+            <span><kbd className="font-mono">↑↓</kbd> {t("search.kbdNavigate")}</span>
+            <span><kbd className="font-mono">↵</kbd> {t("search.kbdOpen")}</span>
+            <span><kbd className="font-mono">Esc</kbd> {t("search.kbdClose")}</span>
           </div>
         )}
       </DialogContent>
