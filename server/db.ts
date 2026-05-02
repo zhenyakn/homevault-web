@@ -52,6 +52,16 @@ export async function getDb() {
   return _db;
 }
 
+// MySQL returns JSON columns as raw strings via the mysql2 driver.
+// Always run through this before calling array methods.
+function parseJsonArray(value: unknown): any[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try { return JSON.parse(value) ?? []; } catch { return []; }
+  }
+  return [];
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -233,7 +243,7 @@ export async function logRepairQuotePayment(quoteId: string, payment: { date: st
   const db = await getDb();
   const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
   if (!existing) throw new Error("Quote not found");
-  const payments = [...((existing.payments as any[]) || []), payment];
+  const payments = [...parseJsonArray(existing.payments), payment];
   await db.update(repairQuotes).set({ payments }).where(eq(repairQuotes.id, quoteId));
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
@@ -245,7 +255,7 @@ export async function deleteRepairQuotePayment(quoteId: string, paymentIndex: nu
   const db = await getDb();
   const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
   if (!existing) throw new Error("Quote not found");
-  const payments = ((existing.payments as any[]) || []).filter((_: any, i: number) => i !== paymentIndex);
+  const payments = parseJsonArray(existing.payments).filter((_: any, i: number) => i !== paymentIndex);
   await db.update(repairQuotes).set({ payments }).where(eq(repairQuotes.id, quoteId));
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
@@ -535,7 +545,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
 
   // ── Loan paydown ────────────────────────────────────────────────────────────
   const loanSummary = allLoans.map(l => {
-    const repaid = ((l.repayments as any[]) || []).reduce((s: number, r: any) => s + r.amount, 0);
+    const repaid = parseJsonArray(l.repayments).reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
     const remaining = Math.max(0, l.totalAmount - repaid);
     return {
       id: l.id, lender: l.lender, loanType: l.loanType,
@@ -592,7 +602,7 @@ export async function logUpgradeOptionPayment(optionId: string, payment: { date:
   const db = await getDb();
   const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
   if (!existing) throw new Error("Option not found");
-  const payments = [...((existing.payments as any[]) || []), payment];
+  const payments = [...parseJsonArray(existing.payments), payment];
   await db.update(upgradeOptions).set({ payments }).where(eq(upgradeOptions.id, optionId));
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
@@ -604,7 +614,7 @@ export async function deleteUpgradeOptionPayment(optionId: string, paymentIndex:
   const db = await getDb();
   const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
   if (!existing) throw new Error("Option not found");
-  const payments = ((existing.payments as any[]) || []).filter((_: any, i: number) => i !== paymentIndex);
+  const payments = parseJsonArray(existing.payments).filter((_: any, i: number) => i !== paymentIndex);
   await db.update(upgradeOptions).set({ payments }).where(eq(upgradeOptions.id, optionId));
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
@@ -689,7 +699,7 @@ export async function getPortfolioSummary(userId: number) {
     const openRepairsCount = allRepairs.filter(r => r.status !== "Resolved").length;
 
     const outstandingLoanBalance = allLoans.reduce((sum, l) => {
-      const repaid = ((l.repayments as any[]) || []).reduce((s: number, r: any) => s + r.amount, 0);
+      const repaid = parseJsonArray(l.repayments).reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
       return sum + Math.max(0, l.totalAmount - repaid);
     }, 0);
 
@@ -724,7 +734,6 @@ export async function deleteAllUserData(userId: number) {
     db.delete(wishlistItems).where(eq(wishlistItems.ownerId, userId)),
     db.delete(purchaseCosts).where(eq(purchaseCosts.ownerId, userId)),
   ]);
-  // Calendar events by createdById
   await db.delete(calendarEvents).where(eq(calendarEvents.createdById, userId));
   return true;
 }
@@ -734,7 +743,6 @@ export async function deleteAllUserData(userId: number) {
 export async function seedMockProperty(userId: number): Promise<number> {
   const db = await getDb();
 
-  // Find or create the demo property
   const existing = await db.select({ id: properties.id })
     .from(properties)
     .where(and(eq(properties.userId, userId), eq(properties.houseName, MOCK_PROPERTY_NAME)))
@@ -750,7 +758,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
     propertyId = (res as any).insertId as number;
   }
 
-  // Delete upgradeOptions and upgradeItems before wiping upgrades (FK-safe)
   const existingUpgradeIds = (
     await db.select({ id: upgrades.id }).from(upgrades).where(eq(upgrades.propertyId, propertyId))
   ).map(u => u.id);
@@ -762,7 +769,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
     ]);
   }
 
-  // Wipe existing data for this property (idempotent restore)
   await Promise.all([
     db.delete(expenses).where(eq(expenses.propertyId, propertyId)),
     db.delete(repairs).where(eq(repairs.propertyId, propertyId)),
@@ -776,17 +782,14 @@ export async function seedMockProperty(userId: number): Promise<number> {
   const oid = userId;
   const pid = propertyId;
 
-  // Seed expenses
   await db.insert(expenses).values(
     mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid }))
   );
 
-  // Seed repairs
   await db.insert(repairs).values(
     mockRepairs.map(r => ({ id: nanoid(), ...r, ownerId: oid, propertyId: pid }))
   );
 
-  // Seed upgrades with nested options and items
   for (const u of mockUpgrades) {
     const { options, items, ...upgradeCore } = u as any;
     const upgradeId = nanoid();
@@ -803,7 +806,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
     }
   }
 
-  // Seed loans — attach ownerId to each repayment entry
   await db.insert(loans).values(
     mockLoans.map(l => ({
       id: nanoid(),
@@ -814,17 +816,14 @@ export async function seedMockProperty(userId: number): Promise<number> {
     }))
   );
 
-  // Seed wishlist
   await db.insert(wishlistItems).values(
     mockWishlist.map(w => ({ id: nanoid(), ...w, ownerId: oid, propertyId: pid }))
   );
 
-  // Seed purchase costs
   await db.insert(purchaseCosts).values(
     mockPurchaseCosts.map(c => ({ id: nanoid(), ...c, ownerId: oid, propertyId: pid }))
   );
 
-  // Seed calendar events
   await db.insert(calendarEvents).values(
     mockCalendarEvents.map(e => ({ id: nanoid(), ...e, createdById: oid, propertyId: pid }))
   );
