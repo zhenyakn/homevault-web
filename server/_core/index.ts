@@ -34,23 +34,40 @@ async function findAvailablePort(startPort: number = 3005): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+function hasSessionCookie(cookieHeader?: string): boolean {
+  if (!cookieHeader) return false;
+  return cookieHeader
+    .split(";")
+    .some(part => part.trim().startsWith(`${COOKIE_NAME}=`));
+}
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // Configure body parser with larger size limit for file uploads
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.use(uploadRouter);
 
-  // Dev-only login bypass — skips OAuth, creates a local admin session
+  // Dev-only login bypass — keeps existing dev-server behavior unchanged
   if (process.env.NODE_ENV === "development") {
     app.post("/api/dev/login", async (req, res) => {
       try {
         const openId = ENV.ownerOpenId || "local-admin";
-        await db.upsertUser({ openId, name: "Dev Admin", email: "dev@localhost", role: "admin", lastSignedIn: new Date() });
-        const token = await sdk.createSessionToken(openId, { name: "Dev Admin", expiresInMs: ONE_YEAR_MS });
+        await db.upsertUser({
+          openId,
+          name: "Dev Admin",
+          email: "dev@localhost",
+          role: "admin",
+          lastSignedIn: new Date(),
+        });
+        const token = await sdk.createSessionToken(openId, {
+          name: "Dev Admin",
+          expiresInMs: ONE_YEAR_MS,
+        });
         const cookieOptions = getSessionCookieOptions(req);
         res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
         res.json({ ok: true });
@@ -61,12 +78,44 @@ async function startServer() {
     });
   }
 
-  // Health check — used by deploy scripts, Proxmox setup, and uptime monitors
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  // No-auth mode for Home Assistant or other private environments
+  if (ENV.noAuth) {
+    console.log("[Auth] NO_AUTH mode enabled");
+    app.use(async (req, res, next) => {
+      try {
+        if (!hasSessionCookie(req.headers.cookie)) {
+          const openId = ENV.ownerOpenId || "owner";
+          await db.upsertUser({
+            openId,
+            name: "HomeVault Admin",
+            email: "admin@local",
+            role: "admin",
+            lastSignedIn: new Date(),
+          });
+
+          const token = await sdk.createSessionToken(openId, {
+            name: "HomeVault Admin",
+            expiresInMs: ONE_YEAR_MS,
+          });
+
+          const cookieOptions = getSessionCookieOptions(req);
+          res.cookie(COOKIE_NAME, token, {
+            ...cookieOptions,
+            maxAge: ONE_YEAR_MS,
+          });
+        }
+      } catch (err) {
+        console.error("[NO_AUTH] Failed to create auto-session:", err);
+      }
+
+      next();
+    });
+  }
+
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // tRPC API
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -75,7 +124,6 @@ async function startServer() {
     })
   );
 
-  // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
