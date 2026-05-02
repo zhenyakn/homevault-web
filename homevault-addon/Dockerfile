@@ -2,7 +2,7 @@
 ARG BUILD_ARCH=amd64
 ARG BUILD_VERSION
 
-# ── Build stage ────────────────────────────────────────────────────────────────
+# ── Build stage ──────────────────────────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
 
 WORKDIR /app
@@ -20,7 +20,7 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-# ── Production stage ───────────────────────────────────────────────────────────
+# ── Production stage ──────────────────────────────────────────────────────────────────────────────
 ARG BUILD_ARCH
 ARG BUILD_VERSION
 FROM ghcr.io/home-assistant/${BUILD_ARCH}-base:3.21
@@ -35,10 +35,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
-# Copy migration scripts
-COPY --from=builder /app/apply-migration-v3.mjs ./apply-migration-v3.mjs
-COPY --from=builder /app/apply-migration-v4.mjs ./apply-migration-v4.mjs
-COPY --from=builder /app/apply-migration-v5.mjs ./apply-migration-v5.mjs
+# Copy the unified addon migration script
 COPY --from=builder /app/apply-migration-addon.mjs ./apply-migration-addon.mjs
 
 # Copy drizzle schema folder, if used by runtime
