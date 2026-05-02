@@ -22,7 +22,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # 2. Start the dev server
 Write-Host "Starting HomeVault dev server..." -ForegroundColor Cyan
-Write-Host "Open http://localhost:3000 in your browser" -ForegroundColor Yellow
+Write-Host "Open http://localhost:3005 in your browser" -ForegroundColor Yellow
 Write-Host "Press Ctrl+C to stop`n" -ForegroundColor DarkGray
 
 cmd /c "node node_modules\tsx\dist\cli.mjs server/_core/index.ts"
