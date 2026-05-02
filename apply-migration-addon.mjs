@@ -354,6 +354,7 @@ async function main() {
       \`estimatedCost\` int NOT NULL,
       \`priority\` enum('Low','Medium','High') COLLATE utf8mb4_unicode_ci NOT NULL,
       \`ownerId\` int NOT NULL,
+      \`attachments\` json DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT (now()),
       \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
       \`propertyId\` int NOT NULL DEFAULT '1',
@@ -371,10 +372,14 @@ async function main() {
     "FK wishlistItems.ownerId → users.id"
   );
 
-  // Legacy upgrade: ensure propertyId exists on older wishlistItems tables
+  // Legacy upgrades: ensure propertyId and attachments exist on older wishlistItems tables
   await run(
     "ALTER TABLE `wishlistItems` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
     "wishlistItems.propertyId"
+  );
+  await run(
+    "ALTER TABLE `wishlistItems` ADD COLUMN `attachments` json DEFAULT NULL",
+    "wishlistItems.attachments"
   );
 
   // ── repairQuotes ────────────────────────────────────────────────────────────
