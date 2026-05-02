@@ -1,6 +1,33 @@
 # Changelog
 
-## 0.1.40
+## 0.1.50
+- i18n: translate search trigger label in sidebar
+- i18n: wire SearchModal strings through locale files
+- fix: resolve merge conflict leftover in db.ts seedMockProperty
+- fix: reactive x-property-id header, keepPreviousData→placeholderData, dashboard error state
+- fix: add db:migrate script and migrate.ts runner
+- fix(migration): remove IF NOT EXISTS from ADD COLUMN — invalid MySQL syntax
+- fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify
+- fix(search): repair SQL bug, add purchaseCost to hook + modal
+- fix: wire global search into UI and fix useSearch tRPC call
+- feat(search): add useSearch hook, SearchModal component, wire into App
+- feat(search): register searchRouter in appRouter
+- feat(search): add global search tRPC router
+- chore: storage Forge delete throws, migrate scripts moved, prototype files removed
+- fix(schema): add FK constraints, remove propertyId .default(1), add loanRepayments table
+- fix(db): add getById helpers, connection pool, query simplifications, transactions
+- fix(security): add ownership guards to all update/delete mutations
+- fix(security): validate propertyId ownership in tRPC context
+- Docs: Add comprehensive assessment and roadmap report
+- Docs: Add SKILL.md for faster environment setup
+- Docs: Revamp README with features, screenshots, and deployment instructions
+- revert: remove toJsonColumn from main — belongs on feat/global-search only
+- fix: stringify attachments/repayments JSON before insert in seedMockProperty
+- revert: undo accidental normaliseAttachments commit on main
+- fix: normalise attachments to [] on create/update for all entity types
+- Docs: Add comprehensive assessment and roadmap report
+- Docs: Add SKILL.md for faster environment setup
+- Docs: Revamp README with features, screenshots, and deployment instructions
 - chore: remove root apply-migration-v3.mjs (moved to scripts/migrations/)
 - chore: remove root apply-migration-v2.mjs (moved to scripts/migrations/)
 - chore: remove root apply-migration.mjs (moved to scripts/migrations/)
@@ -141,6 +168,35 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.1.40
+- i18n: translate search trigger label in sidebar
+- i18n: wire SearchModal strings through locale files
+- fix: resolve merge conflict leftover in db.ts seedMockProperty
+- fix: reactive x-property-id header, keepPreviousData→placeholderData, dashboard error state
+- fix: add db:migrate script and migrate.ts runner
+- fix(migration): remove IF NOT EXISTS from ADD COLUMN — invalid MySQL syntax
+- fix: pass raw JS arrays to JSON columns — remove toJsonColumn stringify
+- fix(search): repair SQL bug, add purchaseCost to hook + modal
+- fix: wire global search into UI and fix useSearch tRPC call
+- feat(search): add useSearch hook, SearchModal component, wire into App
+- feat(search): register searchRouter in appRouter
+- feat(search): add global search tRPC router
+- chore: storage Forge delete throws, migrate scripts moved, prototype files removed
+- fix(schema): add FK constraints, remove propertyId .default(1), add loanRepayments table
+- fix(db): add getById helpers, connection pool, query simplifications, transactions
+- fix(security): add ownership guards to all update/delete mutations
+- fix(security): validate propertyId ownership in tRPC context
+- Docs: Add comprehensive assessment and roadmap report
+- Docs: Add SKILL.md for faster environment setup
+- Docs: Revamp README with features, screenshots, and deployment instructions
+- revert: remove toJsonColumn from main — belongs on feat/global-search only
+- fix: stringify attachments/repayments JSON before insert in seedMockProperty
+- revert: undo accidental normaliseAttachments commit on main
+- fix: normalise attachments to [] on create/update for all entity types
+- Docs: Add comprehensive assessment and roadmap report
+- Docs: Add SKILL.md for faster environment setup
+- Docs: Revamp README with features, screenshots, and deployment instructions
 
 ## 0.1.37
 - chore: remove root apply-migration-v3.mjs (moved to scripts/migrations/)
