@@ -4,6 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { ENV } from "./_core/env";
 import * as db from "./db";
 
 const attachmentSchema = z.array(z.string()).optional();
@@ -104,7 +105,27 @@ const propertySchema = z.object({
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
+    // In NO_AUTH mode (HA addon) ctx.user may be null on the very first
+    // request if ingress strips/delays the session cookie. Fall back to
+    // upsert + return the admin user directly so auth.me never returns
+    // null when NO_AUTH is active, regardless of cookie state.
+    me: publicProcedure.query(async ({ ctx }) => {
+      if (ctx.user) return ctx.user;
+
+      if (ENV.noAuth) {
+        const openId = ENV.ownerOpenId || "owner";
+        await db.upsertUser({
+          openId,
+          name: "HomeVault Admin",
+          email: "admin@local",
+          role: "admin",
+          lastSignedIn: new Date(),
+        });
+        return await db.getUserByOpenId(openId);
+      }
+
+      return null;
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -387,7 +408,7 @@ export const appRouter = router({
       }),
     delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
       return await db.deleteLoan(input.id);
-    }),
+      }),
     addRepayment: protectedProcedure
       .input(z.object({ loanId: z.string(), amount: z.number().int().positive(), date: z.string() }))
       .mutation(async ({ ctx, input }) => {

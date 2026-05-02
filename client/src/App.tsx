@@ -7,7 +7,6 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { useAuth } from "./_core/hooks/useAuth";
-import { trpc } from "./lib/trpc";
 import { getLoginUrl } from "./const";
 import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
@@ -26,43 +25,12 @@ import RepairDetail from "./pages/RepairDetail";
 import { Home, Loader2, LogIn, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// ─── Sign-in page ─────────────────────────────────────────────────────────────
+// ─── Sign-in page ────────────────────────────────────────────────────────────
 
 function SignInPage() {
   const oauthUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
   const isConfigured = Boolean(oauthUrl && appId);
-
-  // Ask the server whether NO_AUTH mode is active at runtime.
-  // This covers the HA addon case where the pre-built Docker image has no
-  // VITE_* build-time vars. When noAuth is true the server auto-creates a
-  // session on every request so auth.me will succeed — we just need to
-  // avoid blocking on this screen.
-  const noAuthQuery = trpc.system.noAuth.useQuery(undefined, {
-    retry: 1,
-    retryDelay: 300,
-    refetchOnWindowFocus: false,
-  });
-
-  // While we're asking the server, show a spinner so there's no flash.
-  if (noAuthQuery.isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin w-8 h-8 text-muted-foreground" />
-      </div>
-    );
-  }
-
-  // NO_AUTH mode active server-side — the middleware will set a session
-  // cookie; reload so AppRouter picks it up via auth.me.
-  if (noAuthQuery.data?.noAuth) {
-    window.location.reload();
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin w-8 h-8 text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
@@ -166,7 +134,7 @@ OWNER_OPEN_ID=your-open-id`}
   );
 }
 
-// ─── Router ───────────────────────────────────────────────────────────────────
+// ─── Router ──────────────────────────────────────────────────────────────────
 
 function AppRouter() {
   const { isAuthenticated, loading } = useAuth();
@@ -207,7 +175,7 @@ function AppRouter() {
   );
 }
 
-// ─── App ──────────────────────────────────────────────────────────────────────
+// ─── App ─────────────────────────────────────────────────────────────────────
 
 function App() {
   return (
