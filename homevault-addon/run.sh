@@ -8,11 +8,23 @@ export JWT_SECRET="${JWT_SECRET:-}"
 export OWNER_OPEN_ID="${OWNER_OPEN_ID:-owner}"
 export VITE_APP_ID="${VITE_APP_ID:-homevault}"
 export OAUTH_SERVER_URL="${OAUTH_SERVER_URL:-}"
-export NO_AUTH="${NO_AUTH:-true}"
-export SEED_MOCK_DATA="${SEED_MOCK_DATA:-false}"
 export PORT="${PORT:-3005}"
 export HOST="0.0.0.0"
 export NODE_ENV="production"
+
+# Read boolean options from addon config via bashio (env-block values are
+# not guaranteed to arrive as the string "true" on all HA supervisor versions)
+if bashio::config.true 'NO_AUTH'; then
+  export NO_AUTH="true"
+else
+  export NO_AUTH="false"
+fi
+
+if bashio::config.true 'SEED_MOCK_DATA'; then
+  export SEED_MOCK_DATA="true"
+else
+  export SEED_MOCK_DATA="false"
+fi
 
 if [ -z "$JWT_SECRET" ]; then
     bashio::log.info "Generating random JWT_SECRET..."
