@@ -3,6 +3,7 @@
  *
  * - Given DATABASE_URL, ensure DB schema matches the current dev schema.
  * - Creates tables if they don't exist.
+ * - Upgrades legacy tables by adding missing columns (propertyId, phase, etc.).
  * - Safe to re-run: duplicate table/column/index/constraint errors are treated as no-ops.
  */
 
@@ -137,6 +138,12 @@ async function main() {
     "FK calendarEvents.createdById → users.id"
   );
 
+  // Legacy upgrade: ensure propertyId exists on older calendarEvents tables
+  await run(
+    "ALTER TABLE `calendarEvents` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "calendarEvents.propertyId"
+  );
+
   // ── expenses ────────────────────────────────────────────────────────────────
   await run(
     `CREATE TABLE IF NOT EXISTS \`expenses\` (
@@ -171,6 +178,12 @@ async function main() {
     "FK expenses.ownerId → users.id"
   );
 
+  // Legacy upgrade: ensure propertyId exists on older expenses tables
+  await run(
+    "ALTER TABLE `expenses` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "expenses.propertyId"
+  );
+
   // ── loans ───────────────────────────────────────────────────────────────────
   await run(
     `CREATE TABLE IF NOT EXISTS \`loans\` (
@@ -201,6 +214,12 @@ async function main() {
     "FK loans.ownerId → users.id"
   );
 
+  // Legacy upgrade: ensure propertyId exists on older loans tables
+  await run(
+    "ALTER TABLE `loans` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "loans.propertyId"
+  );
+
   // ── purchaseCosts ───────────────────────────────────────────────────────────
   await run(
     `CREATE TABLE IF NOT EXISTS \`purchaseCosts\` (
@@ -228,6 +247,12 @@ async function main() {
        ADD CONSTRAINT \`purchaseCosts_ownerId_users_id_fk\`
        FOREIGN KEY (\`ownerId\`) REFERENCES \`users\`(\`id\`)`,
     "FK purchaseCosts.ownerId → users.id"
+  );
+
+  // Legacy upgrade: ensure propertyId exists on older purchaseCosts tables
+  await run(
+    "ALTER TABLE `purchaseCosts` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "purchaseCosts.propertyId"
   );
 
   // ── repairs ─────────────────────────────────────────────────────────────────
@@ -266,6 +291,16 @@ async function main() {
     "FK repairs.ownerId → users.id"
   );
 
+  // Legacy upgrade: ensure propertyId and phase exist on older repairs tables
+  await run(
+    "ALTER TABLE `repairs` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "repairs.propertyId"
+  );
+  await run(
+    "ALTER TABLE `repairs` ADD COLUMN `phase` enum('Assessment','Quoting','Scheduled','In Progress','Resolved') DEFAULT 'Assessment'",
+    "repairs.phase"
+  );
+
   // ── upgrades ────────────────────────────────────────────────────────────────
   await run(
     `CREATE TABLE IF NOT EXISTS \`upgrades\` (
@@ -297,6 +332,16 @@ async function main() {
     "FK upgrades.ownerId → users.id"
   );
 
+  // Legacy upgrade: ensure propertyId and phase exist on older upgrades tables
+  await run(
+    "ALTER TABLE `upgrades` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "upgrades.propertyId"
+  );
+  await run(
+    "ALTER TABLE `upgrades` ADD COLUMN `phase` enum('Planning','Sourcing','Building','Done') NOT NULL DEFAULT 'Planning'",
+    "upgrades.phase"
+  );
+
   // ── wishlistItems ───────────────────────────────────────────────────────────
   await run(
     `CREATE TABLE IF NOT EXISTS \`wishlistItems\` (
@@ -321,6 +366,12 @@ async function main() {
        ADD CONSTRAINT \`wishlistItems_ownerId_users_id_fk\`
        FOREIGN KEY (\`ownerId\`) REFERENCES \`users\`(\`id\`)`,
     "FK wishlistItems.ownerId → users.id"
+  );
+
+  // Legacy upgrade: ensure propertyId exists on older wishlistItems tables
+  await run(
+    "ALTER TABLE `wishlistItems` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "wishlistItems.propertyId"
   );
 
   // ── repairQuotes ────────────────────────────────────────────────────────────
@@ -388,6 +439,12 @@ async function main() {
       KEY \`idx_upgradeItems_propertyId\` (\`propertyId\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "upgradeItems"
+  );
+
+  // Legacy upgrade: ensure propertyId exists on older upgradeItems tables
+  await run(
+    "ALTER TABLE `upgradeItems` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "upgradeItems.propertyId"
   );
 
   console.log("Unified HomeVault migration complete.");
