@@ -74,7 +74,7 @@ function SignInPage() {
               <Button
                 className="w-full h-11 text-base"
                 onClick={async () => {
-                  await fetch("/api/dev/login", { method: "POST" });
+                  await fetch("api/dev/login", { method: "POST" });
                   window.location.reload();
                 }}
               >
