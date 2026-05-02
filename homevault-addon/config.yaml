@@ -34,6 +34,7 @@ options:
   VITE_APP_ID: "homevault"
   OAUTH_SERVER_URL: ""
   NO_AUTH: true
+  SEED_MOCK_DATA: false
   PORT: 3005
 
 schema:
@@ -43,6 +44,7 @@ schema:
   VITE_APP_ID: "str?"
   OAUTH_SERVER_URL: "str?"
   NO_AUTH: "bool?"
+  SEED_MOCK_DATA: "bool?"
   PORT: "int"
 
 services:
@@ -55,6 +57,7 @@ environment:
   VITE_APP_ID: "{{VITE_APP_ID}}"
   OAUTH_SERVER_URL: "{{OAUTH_SERVER_URL}}"
   NO_AUTH: "{{NO_AUTH}}"
+  SEED_MOCK_DATA: "{{SEED_MOCK_DATA}}"
   PORT: "{{PORT}}"
 
 image: "ghcr.io/zhenyakn/homevault-web-addon-{arch}"
