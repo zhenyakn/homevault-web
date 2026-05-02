@@ -45,8 +45,6 @@ export async function getDb() {
       );
     }
     try {
-      // Use a connection pool instead of a single connection to handle
-      // concurrent requests without exhausting the database connection limit.
       const pool = mysql.createPool({
         uri: ENV.databaseUrl,
         connectionLimit: 10,
@@ -261,9 +259,6 @@ export async function updateRepairQuote(id: string, data: Partial<RepairQuote>) 
   return data;
 }
 
-// Uses a transaction so the deselect + select are atomic.
-// Without this a crash between the two statements would leave
-// no option selected for the repair.
 export async function selectRepairQuote(repairId: string, quoteId: string) {
   const db = await getDb();
   await db.transaction(async (tx) => {
@@ -453,8 +448,6 @@ export async function deletePurchaseCost(id: string) {
 
 export async function getCalendarEvents(propertyId: number, startDate?: string, endDate?: string) {
   const db = await getDb();
-  // Single query with conditional filters — replaces the previous
-  // 4-branch if/else chain that was difficult to maintain.
   return await db.select().from(calendarEvents)
     .where(
       and(
@@ -528,8 +521,6 @@ export async function getRecentActivity(propertyId: number) {
   return all.slice(0, 10);
 }
 
-// Pure helper functions extracted from getDashboardStats to improve
-// testability and reduce function length.
 function calcMonthlyStats(allExpenses: Expense[], monthStart: string, monthEnd: string) {
   const thisMonthExp = allExpenses.filter(e => e.date >= monthStart && e.date <= monthEnd);
   const monthSpent = thisMonthExp.reduce((s, e) => s + e.amount, 0);
@@ -583,7 +574,6 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const today        = now.toISOString().split("T")[0];
   const staleCutoff  = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-  // Typed filter builder — replaces the untyped pf = (col: any) => ... shorthand.
   const ownerPropFilter = <T extends { ownerId: ReturnType<typeof eq>; propertyId: ReturnType<typeof eq> }>(
     col: { ownerId: any; propertyId: any }
   ) => and(eq(col.ownerId, userId), eq(col.propertyId, propertyId));
@@ -605,7 +595,6 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const overdueExpenses = getOverdueExpenses(allExpenses, today);
   const staleRepairs    = getStaleRepairs(allRepairs, staleCutoff);
 
-  // ── Open repairs ────────────────────────────────────────────────────────────────────
   const priOrder: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
   const openRepairs = allRepairs
     .filter(r => r.status !== "Resolved")
@@ -613,7 +602,6 @@ export async function getDashboardStats(userId: number, propertyId: number) {
     .slice(0, 5)
     .map(r => ({ id: r.id, label: r.label, priority: r.priority, status: r.status, contractor: r.contractor }));
 
-  // ── Active upgrades + decision needed ─────────────────────────────────────────────
   const activeIds = allUpgrades.filter(u => u.status === "In Progress").map(u => u.id);
   const activeOpts = activeIds.length > 0
     ? await db.select({ upgradeId: upgradeOptions.upgradeId, isSelected: upgradeOptions.isSelected })
@@ -696,7 +684,6 @@ export async function updateUpgradeOption(id: string, data: Partial<UpgradeOptio
   return data;
 }
 
-// Uses a transaction so the deselect + select are atomic.
 export async function selectUpgradeOption(upgradeId: string, optionId: string) {
   const db = await getDb();
   await db.transaction(async (tx) => {
@@ -830,8 +817,6 @@ export async function getPortfolioSummary(userId: number) {
 
 export async function deleteAllUserData(userId: number) {
   const db = await getDb();
-  // Wrap everything in a single transaction so a partial failure
-  // doesn't leave orphaned records.
   await db.transaction(async (tx) => {
     const userRepairIds = (
       await tx.select({ id: repairs.id }).from(repairs).where(eq(repairs.ownerId, userId))
@@ -906,7 +891,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
 
   const oid = userId;
   const pid = propertyId;
-  const now = new Date();
 
   await db.insert(expenses).values(
     mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid, attachments: [] as any }))
@@ -960,28 +944,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
       attachments: [] as any,
       ownerId: oid,
       propertyId: pid,
-    }))
-=======
-    mockWishlist.map(w => ({
-      id: nanoid(),
-      ...w,
-      attachments: [],
-      ownerId: oid,
-      propertyId: pid,
-      createdAt: now,
-      updatedAt: now,
-    }))
-  );
-
-  await db.insert(purchaseCosts).values(
-    mockPurchaseCosts.map(c => ({
-      id: nanoid(),
-      ...c,
-      attachments: [],
-      ownerId: oid,
-      propertyId: pid,
-      createdAt: now,
-      updatedAt: now,
     }))
   );
 
