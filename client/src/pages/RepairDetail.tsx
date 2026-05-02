@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, ArrowLeft, Plus, Pencil, Trash2, Check, Phone, Clock, ShieldCheck, FileText } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, asArray } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
@@ -249,7 +249,8 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
   const delPayMut  = trpc.repairQuotes.deletePayment.useMutation({ onSuccess: () => { utils.repairQuotes.list.invalidate({ repairId }); utils.repairs.list.invalidate(); } });
 
   const [logOpen, setLogOpen] = useState(false);
-  const payments = (quote.payments as any[]) || [];
+  // Normalize: MariaDB may return JSON columns as strings instead of parsed arrays
+  const payments = asArray(quote.payments);
   const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
 
   return (
@@ -475,9 +476,8 @@ export default function RepairDetail() {
   );
 
   const selectedQuote = quotes.find((q: any) => q.isSelected);
-  const totalPaid = selectedQuote
-    ? ((selectedQuote.payments as any[]) || []).reduce((s: number, p: any) => s + p.amount, 0)
-    : 0;
+  // Normalize: MariaDB may return JSON columns as strings instead of parsed arrays
+  const totalPaid = asArray(selectedQuote?.payments).reduce((s: number, p: any) => s + p.amount, 0);
 
   return (
     <div className="max-w-4xl space-y-6">
