@@ -71,13 +71,6 @@ function parseJsonArray(value: unknown): any[] {
   return [];
 }
 
-// mysql2 does not auto-serialise JS arrays/objects into JSON column values.
-// Call this before inserting any field declared as `json` in the schema.
-function toJsonColumn(value: unknown): string {
-  if (typeof value === "string") return value;
-  return JSON.stringify(value ?? []);
-}
-
 // ─── Users ────────────────────────────────────────────────────────────────────────────────
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -176,7 +169,7 @@ export async function getExpenseById(id: string) {
 
 export async function createExpense(data: typeof expenses.$inferInsert) {
   const db = await getDb();
-  await db.insert(expenses).values({ ...data, attachments: toJsonColumn(data.attachments) as any });
+  await db.insert(expenses).values(data);
   return data;
 }
 
@@ -209,7 +202,7 @@ export async function getRepairById(id: string) {
 
 export async function createRepair(data: typeof repairs.$inferInsert) {
   const db = await getDb();
-  await db.insert(repairs).values({ ...data, attachments: toJsonColumn(data.attachments) as any });
+  await db.insert(repairs).values(data);
   return data;
 }
 
@@ -252,7 +245,7 @@ export async function getRepairQuoteCounts(repairIds: string[]) {
 
 export async function createRepairQuote(data: typeof repairQuotes.$inferInsert) {
   const db = await getDb();
-  await db.insert(repairQuotes).values({ ...data, payments: toJsonColumn(data.payments) as any });
+  await db.insert(repairQuotes).values(data);
   return data;
 }
 
@@ -278,7 +271,7 @@ export async function logRepairQuotePayment(quoteId: string, payment: { date: st
   const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
   if (!existing) throw new Error("Quote not found");
   const payments = [...parseJsonArray(existing.payments), payment];
-  await db.update(repairQuotes).set({ payments: toJsonColumn(payments) as any }).where(eq(repairQuotes.id, quoteId));
+  await db.update(repairQuotes).set({ payments }).where(eq(repairQuotes.id, quoteId));
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
     await db.update(repairs).set({ actualCost: totalPaid }).where(eq(repairs.id, existing.repairId));
@@ -290,7 +283,7 @@ export async function deleteRepairQuotePayment(quoteId: string, paymentIndex: nu
   const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
   if (!existing) throw new Error("Quote not found");
   const payments = parseJsonArray(existing.payments).filter((_: any, i: number) => i !== paymentIndex);
-  await db.update(repairQuotes).set({ payments: toJsonColumn(payments) as any }).where(eq(repairQuotes.id, quoteId));
+  await db.update(repairQuotes).set({ payments }).where(eq(repairQuotes.id, quoteId));
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
     await db.update(repairs).set({ actualCost: totalPaid }).where(eq(repairs.id, existing.repairId));
@@ -320,7 +313,7 @@ export async function getUpgradeById(id: string) {
 
 export async function createUpgrade(data: typeof upgrades.$inferInsert) {
   const db = await getDb();
-  await db.insert(upgrades).values({ ...data, attachments: toJsonColumn(data.attachments) as any });
+  await db.insert(upgrades).values(data);
   return data;
 }
 
@@ -357,20 +350,13 @@ export async function getLoanById(id: string) {
 
 export async function createLoan(data: typeof loans.$inferInsert) {
   const db = await getDb();
-  await db.insert(loans).values({
-    ...data,
-    attachments: toJsonColumn(data.attachments) as any,
-    repayments: toJsonColumn(data.repayments) as any,
-  });
+  await db.insert(loans).values(data);
   return data;
 }
 
 export async function updateLoan(id: string, data: Partial<Loan>) {
   const db = await getDb();
-  const normalized: any = { ...data };
-  if ("repayments" in normalized) normalized.repayments = toJsonColumn(normalized.repayments);
-  if ("attachments" in normalized) normalized.attachments = toJsonColumn(normalized.attachments);
-  await db.update(loans).set(normalized).where(eq(loans.id, id));
+  await db.update(loans).set(data).where(eq(loans.id, id));
   return data;
 }
 
@@ -397,7 +383,7 @@ export async function getWishlistItemById(id: string) {
 
 export async function createWishlistItem(data: typeof wishlistItems.$inferInsert) {
   const db = await getDb();
-  await db.insert(wishlistItems).values({ ...data, attachments: toJsonColumn(data.attachments) as any });
+  await db.insert(wishlistItems).values(data);
   return data;
 }
 
@@ -430,7 +416,7 @@ export async function getPurchaseCostById(id: string) {
 
 export async function createPurchaseCost(data: typeof purchaseCosts.$inferInsert) {
   const db = await getDb();
-  await db.insert(purchaseCosts).values({ ...data, attachments: toJsonColumn(data.attachments) as any });
+  await db.insert(purchaseCosts).values(data);
   return data;
 }
 
@@ -681,7 +667,7 @@ export async function getUpgradeOptionCounts(upgradeIds: string[]) {
 
 export async function createUpgradeOption(data: typeof upgradeOptions.$inferInsert) {
   const db = await getDb();
-  await db.insert(upgradeOptions).values({ ...data, payments: toJsonColumn(data.payments) as any });
+  await db.insert(upgradeOptions).values(data);
   return data;
 }
 
@@ -705,7 +691,7 @@ export async function logUpgradeOptionPayment(optionId: string, payment: { date:
   const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
   if (!existing) throw new Error("Option not found");
   const payments = [...parseJsonArray(existing.payments), payment];
-  await db.update(upgradeOptions).set({ payments: toJsonColumn(payments) as any }).where(eq(upgradeOptions.id, optionId));
+  await db.update(upgradeOptions).set({ payments }).where(eq(upgradeOptions.id, optionId));
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
     await db.update(upgrades).set({ spent: totalPaid }).where(eq(upgrades.id, existing.upgradeId));
@@ -717,7 +703,7 @@ export async function deleteUpgradeOptionPayment(optionId: string, paymentIndex:
   const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
   if (!existing) throw new Error("Option not found");
   const payments = parseJsonArray(existing.payments).filter((_: any, i: number) => i !== paymentIndex);
-  await db.update(upgradeOptions).set({ payments: toJsonColumn(payments) as any }).where(eq(upgradeOptions.id, optionId));
+  await db.update(upgradeOptions).set({ payments }).where(eq(upgradeOptions.id, optionId));
   if (existing.isSelected) {
     const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
     await db.update(upgrades).set({ spent: totalPaid }).where(eq(upgrades.id, existing.upgradeId));
@@ -901,22 +887,23 @@ export async function seedMockProperty(userId: number): Promise<number> {
 
   const oid = userId;
   const pid = propertyId;
+  const now = new Date();
 
   await db.insert(expenses).values(
-    mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid, attachments: toJsonColumn(e.attachments) as any }))
+    mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid }))
   );
 
   await db.insert(repairs).values(
-    mockRepairs.map(r => ({ id: nanoid(), ...r, ownerId: oid, propertyId: pid, attachments: toJsonColumn(r.attachments) as any }))
+    mockRepairs.map(r => ({ id: nanoid(), ...r, ownerId: oid, propertyId: pid }))
   );
 
   for (const u of mockUpgrades) {
     const { options, items, ...upgradeCore } = u as any;
     const upgradeId = nanoid();
-    await db.insert(upgrades).values({ id: upgradeId, ...upgradeCore, ownerId: oid, propertyId: pid, attachments: toJsonColumn(upgradeCore.attachments) as any });
+    await db.insert(upgrades).values({ id: upgradeId, ...upgradeCore, ownerId: oid, propertyId: pid });
     if (options?.length) {
       await db.insert(upgradeOptions).values(
-        options.map((opt: any) => ({ id: nanoid(), upgradeId, ...opt, payments: toJsonColumn(opt.payments ?? []) as any }))
+        options.map((opt: any) => ({ id: nanoid(), upgradeId, ...opt, payments: opt.payments ?? [] }))
       );
     }
     if (items?.length) {
@@ -930,19 +917,34 @@ export async function seedMockProperty(userId: number): Promise<number> {
     mockLoans.map(l => ({
       id: nanoid(),
       ...l,
-      repayments: toJsonColumn(l.repayments.map(r => ({ ...r, ownerId: oid }))) as any,
-      attachments: toJsonColumn(l.attachments) as any,
+      repayments: l.repayments.map(r => ({ ...r, ownerId: oid })),
       ownerId: oid,
       propertyId: pid,
     }))
   );
 
   await db.insert(wishlistItems).values(
-    mockWishlist.map(w => ({ id: nanoid(), ...w, ownerId: oid, propertyId: pid, attachments: toJsonColumn(w.attachments) as any }))
+    mockWishlist.map(w => ({
+      id: nanoid(),
+      ...w,
+      attachments: [],
+      ownerId: oid,
+      propertyId: pid,
+      createdAt: now,
+      updatedAt: now,
+    }))
   );
 
   await db.insert(purchaseCosts).values(
-    mockPurchaseCosts.map(c => ({ id: nanoid(), ...c, ownerId: oid, propertyId: pid, attachments: toJsonColumn(c.attachments) as any }))
+    mockPurchaseCosts.map(c => ({
+      id: nanoid(),
+      ...c,
+      attachments: [],
+      ownerId: oid,
+      propertyId: pid,
+      createdAt: now,
+      updatedAt: now,
+    }))
   );
 
   await db.insert(calendarEvents).values(
