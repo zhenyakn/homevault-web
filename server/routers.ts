@@ -7,6 +7,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import * as db from "./db";
+import { searchRouter } from "./searchRouter";
 
 const attachmentSchema = z.array(z.string()).optional();
 
@@ -156,6 +157,7 @@ async function assertPurchaseCostOwner(id: string, userId: number) {
 
 export const appRouter = router({
   system: systemRouter,
+  search: searchRouter,
   auth: router({
     // In NO_AUTH mode (HA addon) ctx.user may be null on the very first
     // request if ingress strips/delays the session cookie. Fall back to
@@ -501,7 +503,6 @@ export const appRouter = router({
     addRepayment: protectedProcedure
       .input(z.object({ loanId: z.string(), amount: z.number().int().positive(), date: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        // Fetch the loan directly by id rather than pulling the full list.
         const targetLoan = await assertLoanOwner(input.loanId, ctx.user.id);
         const updatedRepayments = [
           ...((targetLoan as any).repayments || []),
