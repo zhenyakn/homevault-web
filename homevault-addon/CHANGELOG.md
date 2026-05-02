@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.1.30
+## 0.1.31
+- fix: remove environment block from config.yaml and read all vars via bashio in run.sh
 - fix: remove isFetching from loading in useAuth to prevent infinite spinner
 - fix: don't block AppRouter on noAuth query — prevents infinite spinner on dev VM
 - fix: hide SignInPage when server reports NO_AUTH mode
@@ -120,6 +121,9 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.1.30
+- fix: remove environment block from config.yaml and read all vars via bashio in run.sh
 
 ## 0.1.29
 - fix: remove isFetching from loading in useAuth to prevent infinite spinner
