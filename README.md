@@ -89,4 +89,4 @@ HomeVault can be deployed as a Home Assistant add-on. Refer to the `homevault-ad
 Contributions are welcome! Please check our issues page or submit a pull request.
 
 ## 📄 License
-This project is licensed under the MIT License.
+This project is licensed under the **HomeVault Personal Use License**. It is free for personal, non-commercial use. Commercial use, redistribution for profit, or incorporation into paid products is strictly prohibited. See the [LICENSE](./LICENSE) file for full details.
