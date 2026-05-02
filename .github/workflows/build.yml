@@ -14,8 +14,119 @@ env:
   ADDON_PATH: homevault-addon
 
 jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    # Only run on tag pushes; skip for manual dispatch (no git history context)
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve version from tag
+        run: echo "ADDON_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Generate CHANGELOG.md
+        run: |
+          VERSION="${{ env.ADDON_VERSION }}"
+          CHANGELOG_FILE="${{ env.ADDON_PATH }}/CHANGELOG.md"
+
+          # ── Collect all version tags sorted newest-first ─────────────────────
+          TAGS=$(git tag --list 'v*' --sort=-version:refname)
+          CURRENT_TAG="v${VERSION}"
+
+          # ── Build changelog entries ──────────────────────────────────────────
+          CHANGELOG="# Changelog\n"
+
+          PREV_TAG=""
+          for TAG in $TAGS; do
+            V="${TAG#v}"
+
+            # Range: commits since previous tag (or all commits if first tag)
+            if [ -z "$PREV_TAG" ]; then
+              RANGE="$TAG"
+            else
+              RANGE="${TAG}..${PREV_TAG}"
+            fi
+
+            # Gather commits in this range, skip automated chore/bot commits
+            COMMITS=$(git log "$RANGE" \
+              --pretty=format:"%s" \
+              --no-merges \
+              | grep -v '\[skip ci\]' \
+              | grep -v '^chore: bump addon version' \
+              | grep -v '^Merge ' \
+              || true)
+
+            if [ -z "$COMMITS" ]; then
+              COMMITS="- Internal improvements and dependency updates"
+            else
+              COMMITS=$(echo "$COMMITS" | sed 's/^/- /')
+            fi
+
+            CHANGELOG+="\n## ${V}\n${COMMITS}\n"
+            PREV_TAG="$TAG"
+          done
+
+          printf "%b" "$CHANGELOG" > "$CHANGELOG_FILE"
+          echo "Generated $CHANGELOG_FILE:"
+          cat "$CHANGELOG_FILE"
+
+      - name: Update config.yaml version
+        run: |
+          sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
+
+      - name: Commit CHANGELOG.md + config.yaml back to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
+          # Re-apply version bump on the clean main checkout
+          sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
+          # Re-generate changelog on the clean main checkout (same logic)
+          VERSION="${{ env.ADDON_VERSION }}"
+          CHANGELOG_FILE="${{ env.ADDON_PATH }}/CHANGELOG.md"
+          TAGS=$(git tag --list 'v*' --sort=-version:refname)
+          CHANGELOG="# Changelog\n"
+          PREV_TAG=""
+          for TAG in $TAGS; do
+            V="${TAG#v}"
+            if [ -z "$PREV_TAG" ]; then
+              RANGE="$TAG"
+            else
+              RANGE="${TAG}..${PREV_TAG}"
+            fi
+            COMMITS=$(git log "$RANGE" \
+              --pretty=format:"%s" \
+              --no-merges \
+              | grep -v '\[skip ci\]' \
+              | grep -v '^chore: bump addon version' \
+              | grep -v '^Merge ' \
+              || true)
+            if [ -z "$COMMITS" ]; then
+              COMMITS="- Internal improvements and dependency updates"
+            else
+              COMMITS=$(echo "$COMMITS" | sed 's/^/- /')
+            fi
+            CHANGELOG+="\n## ${V}\n${COMMITS}\n"
+            PREV_TAG="$TAG"
+          done
+          printf "%b" "$CHANGELOG" > "$CHANGELOG_FILE"
+          git add ${{ env.ADDON_PATH }}/CHANGELOG.md ${{ env.ADDON_PATH }}/config.yaml
+          git diff --staged --quiet || git commit -m "chore: bump addon to ${{ env.ADDON_VERSION }} + update CHANGELOG [skip ci]"
+          git push origin main
+
   build:
     runs-on: ubuntu-latest
+    needs: [changelog]
+    # Run build whether changelog job ran or was skipped (manual dispatch)
+    if: always()
     strategy:
       matrix:
         arch: [amd64, aarch64]
@@ -27,6 +138,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Pull the latest main so we get the CHANGELOG commit if it just ran
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
@@ -49,24 +162,6 @@ jobs:
           fi
           echo "ADDON_VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Resolved version: $VERSION"
-
-      - name: Update config.yaml version in working tree
-        run: |
-          sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
-          echo "config.yaml version set to ${{ env.ADDON_VERSION }}"
-
-      - name: Commit updated config.yaml back to main (tag builds only, amd64 only)
-        if: startsWith(github.ref, 'refs/tags/') && matrix.arch == 'amd64'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          # Check out main cleanly, then re-apply the version change
-          git checkout -B main origin/main
-          sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
-          git add ${{ env.ADDON_PATH }}/config.yaml
-          git diff --staged --quiet || git commit -m "chore: bump addon version to ${{ env.ADDON_VERSION }} [skip ci]"
-          git push origin main
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -96,16 +191,5 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: "HomeVault ${{ env.ADDON_VERSION }}"
-          body: |
-            ## HomeVault Add-on v${{ env.ADDON_VERSION }}
-
-            ### Installation
-            Add this repository to Home Assistant:
-            ```
-            https://github.com/zhenyakn/homevault-web
-            ```
-
-            ### Docker Images
-            - `ghcr.io/zhenyakn/homevault-web-addon-amd64:${{ env.ADDON_VERSION }}`
-            - `ghcr.io/zhenyakn/homevault-web-addon-aarch64:${{ env.ADDON_VERSION }}`
-          generate_release_notes: true
+          body_path: ${{ env.ADDON_PATH }}/CHANGELOG.md
+          generate_release_notes: false
