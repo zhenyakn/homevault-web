@@ -21,6 +21,7 @@
 
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { TRPCError } from "@trpc/server";
 
 // ─── Backend detection ────────────────────────────────────────────────────────
 
@@ -221,13 +222,22 @@ export async function storageGetSignedUrl(
 
 /**
  * Delete a file from storage.
+ *
+ * NOTE: The Forge backend does not expose a delete API. If you need file
+ * deletion, switch to an S3-compatible backend (Cloudflare R2 recommended).
+ * Callers that catch this error should surface a user-facing message so the
+ * file can be removed manually from the Forge storage dashboard.
  */
 export async function storageDelete(relKey: string): Promise<void> {
   const key = normalizeKey(relKey);
   if (useForgeBackend()) {
-    // Forge backend doesn't expose a delete API — log and skip
-    console.warn(`[Storage] Forge backend does not support delete. Key: ${key}`);
-    return;
+    throw new TRPCError({
+      code: "METHOD_NOT_SUPPORTED",
+      message:
+        "File deletion is not supported with the Forge storage backend. " +
+        "Switch to an S3-compatible backend (e.g. Cloudflare R2) to enable deletions, " +
+        "or remove the file manually from the Forge storage dashboard.",
+    });
   }
   await s3StorageDelete(key);
 }
