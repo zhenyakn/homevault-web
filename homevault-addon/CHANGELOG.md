@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.1.24
+## 0.1.25
+- fix: retry auth/me once so NO_AUTH session bootstrap doesn't flash sign-in screen
 - fix: read SEED_MOCK_DATA from addon config; remove startup-only seed gate; always register seedMock tRPC route
 - ci: auto-generate CHANGELOG.md from commits on every tag build
 - addon: fix mock data seeding — call seedMockProperty directly at startup
@@ -114,6 +115,9 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.1.24
+- fix: retry auth/me once so NO_AUTH session bootstrap doesn't flash sign-in screen
 
 ## 0.1.23
 - fix: read SEED_MOCK_DATA from addon config; remove startup-only seed gate; always register seedMock tRPC route
