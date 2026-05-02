@@ -1,176 +1,123 @@
-# HomeVault
+# HomeVault: Your Property, Mastered.
 
-> The operating system for your property — from the day you decide to buy to the day you sell.
+## Overview
 
-HomeVault is a full-stack property management app for homeowners and small investors. Track expenses, repairs, upgrades, family loans, a wish list, purchase costs, and calendar events — all in one place, for your whole household.
+HomeVault is a powerful, open-source property management platform designed to give you complete control and insight into your real estate investments. Whether you're a homeowner, landlord, or property manager, HomeVault provides intuitive tools to track expenses, manage repairs, plan upgrades, monitor loans, and organize your property's entire lifecycle. Say goodbye to spreadsheets and scattered documents – with HomeVault, everything you need is in one secure, accessible place.
 
----
+## Key Features
 
-## Features
+### Dashboard: Your Property at a Glance
 
-- **Overview dashboard** — KPIs, recent activity, property map
-- **Expenses** — recurring and one-time, with category filters and CSV export
-- **Repairs** — priority/status tracking, contractor details, photo uploads
-- **Upgrades** — project planning, budget vs. actual spend
-- **Family loans** — repayment history, per-lender progress
-- **Wish list** — prioritised future projects with cost estimates
-- **Purchase costs** — full acquisition cost breakdown
-- **Calendar** — month view with colour-coded event types
-- **Settings** — property details, currency, timezone, sync toggles
-- **Multi-profile** — per-entry ownership attribution for households
-- **Dark / light / system** theme
+The HomeVault dashboard provides a comprehensive overview of your property's financial health and upcoming events. Quickly see overdue expenses, track monthly spending against your baseline, and get a snapshot of active upgrades and outstanding loans.
 
-## Stack
+![Dashboard Screenshot](./screenshots/01-dashboard.webp)
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, Vite, Tailwind v4, shadcn/ui, Radix UI |
-| Backend | Node.js, Express, tRPC |
-| Database | MySQL 8 / TiDB Cloud via Drizzle ORM |
-| Auth | OAuth / JWT (self-hosted) |
-| File storage | Cloudflare R2 / AWS S3 / any S3-compatible |
-| Language | TypeScript throughout |
+### Expenses: Track Every Penny
 
----
+Effortlessly log and categorize all your property-related expenses. From recurring mortgage payments and HOA fees to one-time maintenance costs, HomeVault helps you keep a detailed financial record. Filter by category, mark payments as paid, and export your data for easy accounting.
 
-## Quick start
+![Expenses Screenshot](./screenshots/02-expenses.webp)
 
-### Prerequisites
+### Repairs: Stay on Top of Maintenance
 
-- Node.js 22+
-- pnpm (`npm install -g pnpm`)
-- MySQL 8 database (local, TiDB Cloud, or PlanetScale)
+Manage all your property repairs with ease. Log new issues, track their status (open, in progress, resolved), assign priorities, and keep notes on contractors and estimated costs. Never let a maintenance issue fall through the cracks again.
 
-### 1. Clone and install
+![Repairs Screenshot](./screenshots/03-repairs.webp)
 
-```bash
-git clone https://github.com/zhenyakn/homevault-web.git
-cd homevault-web
-pnpm install
-```
+### Upgrades: Plan and Execute Renovations
 
-### 2. Configure environment
+Plan and track property upgrades and renovations from start to finish. Monitor active projects, see your budget allocation, and keep tabs on individual items within each upgrade. HomeVault helps you visualize progress and manage your investment in property improvements.
 
-```bash
-cp .env.example .env
-```
+![Upgrades Screenshot](./screenshots/04-upgrades.webp)
 
-Edit `.env` and fill in at minimum:
-- `DATABASE_URL` — your MySQL connection string
-- Auth vars (`OAUTH_SERVER_URL`, `OWNER_OPEN_ID`) if using OAuth
-- Storage vars (`STORAGE_ENDPOINT`, `STORAGE_BUCKET`, etc.) for file uploads
+### Loans: Comprehensive Debt Management
 
-See `.env.example` for full documentation of every variable.
+Keep a clear record of all loans associated with your property. Track total borrowed, amounts repaid, and outstanding balances. Monitor repayment history and understand your debt progression over time.
 
-### 3. Run the database migration
+![Loans Screenshot](./screenshots/05-loans.webp)
 
-```bash
-node apply-migration-v3.mjs
-```
+### Wishlist: Dream Big, Plan Smart
 
-This creates all tables and seeds the default property row. Safe to run multiple times — every step is idempotent.
+Curate a wishlist of future purchases or improvements for your property. Prioritize items, estimate costs, and keep track of potential additions to your home. HomeVault helps you plan for the future, one item at a time.
 
-### 4. Start the dev server
+![Wishlist Screenshot](./screenshots/06-wishlist.webp)
 
-```bash
-pnpm dev
-```
+### Calendar: Never Miss an Event
 
-Open [http://localhost:3000](http://localhost:3000).
+Visualize all your property-related events, appointments, and deadlines in one integrated calendar. From scheduled maintenance to payment due dates, HomeVault ensures you're always informed and prepared.
 
----
+![Calendar Screenshot](./screenshots/07-calendar.webp)
 
-## Deployment
+### Settings: Customize Your HomeVault Experience
 
-### Docker Compose (recommended for self-hosted)
+Tailor HomeVault to your specific needs. Manage property details, configure regional settings, set up notifications, and handle data management. HomeVault puts customization at your fingertips.
 
-```bash
-cp .env.example .env
-# Edit .env — set MYSQL_PASSWORD and any auth/storage vars
-docker compose up -d
-```
+![Settings Screenshot](./screenshots/08-settings.webp)
 
-The `migrate` service runs automatically on first start.
+## Technical Details
 
-### Proxmox / Ubuntu VM
+### Local Deployment
 
-See the full step-by-step guide including GitHub auto-deploy setup:
-→ `homevault-proxmox-deploy.md`
+To run HomeVault locally, follow these steps:
 
-### Cloud (Railway / GCP Cloud Run)
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/zhenyakn/homevault-web.git
+    cd homevault-web
+    ```
 
-See the cloud deployment guide:
-→ `homevault-deployment-guide.md`
+2.  **Install dependencies:**
+    HomeVault uses `pnpm` as its package manager. If you don't have it installed, you can install it via npm:
+    ```bash
+    npm install -g pnpm
+    pnpm install
+    ```
 
----
+3.  **Set up the database:**
+    HomeVault uses MySQL. Ensure you have a MySQL server running and create a database and user for HomeVault. For example:
+    ```bash
+    sudo service mysql start
+    sudo mysql -e "CREATE DATABASE IF NOT EXISTS homevault;"
+    sudo mysql -e "CREATE USER IF NOT EXISTS 'homevault'@'localhost' IDENTIFIED BY 'password';"
+    sudo mysql -e "GRANT ALL PRIVILEGES ON homevault.* TO 'homevault'@'localhost';"
+    sudo mysql -e "FLUSH PRIVILEGES;"
+    ```
 
-## File storage setup (Cloudflare R2 — free)
+4.  **Configure environment variables:**
+    Create a `.env` file in the root of the project with the following content:
+    ```dotenv
+    DATABASE_URL="mysql://homevault:password@localhost:3306/homevault"
+    JWT_SECRET="your_secret_key_here" # Replace with a strong, random secret
+    OWNER_OPEN_ID="owner" # Or your preferred owner ID
+    NO_AUTH="true" # Set to true for local development without OAuth
+    SEED_MOCK_DATA="true" # Set to true to seed mock data on startup
+    ```
 
-1. Sign up at [dash.cloudflare.com](https://dash.cloudflare.com)
-2. Go to **R2** → **Create bucket** → name it `homevault`
-3. **Settings → Public access → Allow access**
-4. **Manage API Tokens → Create Token** (Object Read & Write on `homevault`)
-5. Add to `.env`:
+5.  **Run database migrations:**
+    ```bash
+    pnpm drizzle-kit push
+    ```
 
-```
-STORAGE_ENDPOINT=https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
-STORAGE_BUCKET=homevault
-STORAGE_REGION=auto
-STORAGE_ACCESS_KEY_ID=your-access-key
-STORAGE_SECRET_ACCESS_KEY=your-secret
-STORAGE_PUBLIC_URL=https://pub-XXXXXXXX.r2.dev
-```
+6.  **Seed mock data (optional, but recommended for demonstration):**
+    ```bash
+    pnpm tsx server/_core/index.ts --seed-mock-only
+    ```
 
-10 GB free storage, zero egress fees.
+7.  **Build the client and start the server:**
+    ```bash
+    pnpm build
+    pnpm start
+    ```
+    The application will be available at `http://localhost:3005`.
 
----
+### Home Assistant Add-on Deployment
 
-## Project structure
+*(Details for Home Assistant Add-on deployment will be added here once available or can be derived from the `homevault-addon` directory.)*
 
-```
-├── client/src/
-│   ├── pages/          # One file per module (Dashboard, Expenses, Repairs…)
-│   ├── components/     # Shared components (DashboardLayout, FileUpload, Map…)
-│   └── lib/            # tRPC client, utilities
-├── server/
-│   ├── _core/          # Express server, auth, OAuth, tRPC setup
-│   ├── db.ts           # All database queries
-│   ├── routers.ts      # All tRPC procedures
-│   ├── storage.ts      # File storage (Forge / S3-compatible)
-│   └── uploadRoute.ts  # POST /api/upload endpoint
-├── drizzle/
-│   ├── schema.ts       # Drizzle table definitions + TypeScript types
-│   └── relations.ts    # Drizzle relation definitions
-├── apply-migration-v3.mjs  # Idempotent DB setup script
-├── Dockerfile
-├── docker-compose.yml
-└── .env.example
-```
+## Contributing
 
----
-
-## Development commands
-
-```bash
-pnpm dev          # start dev server with hot reload
-pnpm build        # build for production (Vite + esbuild)
-pnpm start        # start production build
-pnpm check        # TypeScript type check
-pnpm test         # run tests (vitest)
-pnpm format       # format with prettier
-```
-
----
-
-## Roadmap
-
-See [todo.md](./todo.md) for the full feature roadmap across three phases:
-- **Phase 1** — personal app (stable daily use)
-- **Phase 2** — SaaS launch (multi-tenant, billing, integrations)
-- **Phase 3** — scale and AI features
-
----
+We welcome contributions! Please see our `CONTRIBUTING.md` for more details.
 
 ## License
 
-Private — all rights reserved.
+This project is licensed under the MIT License - see the `LICENSE` file for details.
