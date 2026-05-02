@@ -387,10 +387,10 @@ function DashboardLayoutContent({
                   type="button"
                   onClick={() => search.setOpen(true)}
                   className="flex h-8 w-full items-center gap-2 rounded-md border bg-background px-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                  aria-label="Open search"
+                  aria-label={t("search.dialogTitle")}
                 >
                   <Search className="h-3.5 w-3.5 shrink-0" />
-                  <span className="flex-1 text-left text-xs">Search…</span>
+                  <span className="flex-1 text-start text-xs">{t("search.placeholder")}</span>
                   <kbd className="hidden sm:inline-flex items-center rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
                     ⌘K
                   </kbd>
@@ -402,8 +402,8 @@ function DashboardLayoutContent({
                   type="button"
                   onClick={() => search.setOpen(true)}
                   className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
-                  aria-label="Open search"
-                  title="Search (⌘K)"
+                  aria-label={t("search.dialogTitle")}
+                  title={`${t("search.dialogTitle")} (⌘K)`}
                 >
                   <Search className="h-4 w-4 text-muted-foreground" />
                 </button>
@@ -523,7 +523,7 @@ function DashboardLayoutContent({
               type="button"
               onClick={() => search.setOpen(true)}
               className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-accent transition-colors"
-              aria-label="Open search"
+              aria-label={t("search.dialogTitle")}
             >
               <Search className="h-4 w-4" />
             </button>
