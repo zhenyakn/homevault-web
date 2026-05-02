@@ -1,31 +1,30 @@
 #!/usr/bin/env bash
 
-# HA supervisor injects real values via the environment: block in config.yaml.
-# Booleans may arrive as 'true', 'True', or '1' depending on supervisor version.
+# HA supervisor writes the addon config to /data/options.json.
+# The environment: block does NOT substitute {{placeholders}} for boolean
+# or integer schema types, so we read everything directly from options.json.
 
-# Strip ?charset=... from DATABASE_URL - mysql2 doesn't accept it
-RAW_DB_URL="${DATABASE_URL:-mysql://homeassistant:homeassistant@core-mariadb/homeassistant}"
+OPTIONS="/data/options.json"
+
+RAW_DB_URL=$(jq -r '.DATABASE_URL // "mysql://homeassistant:homeassistant@core-mariadb/homeassistant"' "$OPTIONS")
 export DATABASE_URL="${RAW_DB_URL%%\?*}"
 
-export JWT_SECRET="${JWT_SECRET:-}"
-export OWNER_OPEN_ID="${OWNER_OPEN_ID:-owner}"
-export VITE_APP_ID="${VITE_APP_ID:-homevault}"
-export OAUTH_SERVER_URL="${OAUTH_SERVER_URL:-}"
-export PORT="${PORT:-3005}"
+export JWT_SECRET=$(jq -r '.JWT_SECRET // ""' "$OPTIONS")
+export OWNER_OPEN_ID=$(jq -r '.OWNER_OPEN_ID // "owner"' "$OPTIONS")
+export VITE_APP_ID=$(jq -r '.VITE_APP_ID // "homevault"' "$OPTIONS")
+export OAUTH_SERVER_URL=$(jq -r '.OAUTH_SERVER_URL // ""' "$OPTIONS")
+export PORT=$(jq -r '.PORT // 3005' "$OPTIONS")
 export HOST="0.0.0.0"
 export NODE_ENV="production"
 
-# Normalise NO_AUTH - accept true/True/1
-NO_AUTH_RAW="${NO_AUTH:-false}"
-if [[ "${NO_AUTH_RAW,,}" == "true" || "${NO_AUTH_RAW}" == "1" ]]; then
+# Read booleans as true/false strings
+if [ "$(jq -r '.NO_AUTH // false' "$OPTIONS")" = "true" ]; then
   export NO_AUTH="true"
 else
   export NO_AUTH="false"
 fi
 
-# Normalise SEED_MOCK_DATA - accept true/True/1
-SEED_RAW="${SEED_MOCK_DATA:-false}"
-if [[ "${SEED_RAW,,}" == "true" || "${SEED_RAW}" == "1" ]]; then
+if [ "$(jq -r '.SEED_MOCK_DATA // false' "$OPTIONS")" = "true" ]; then
   export SEED_MOCK_DATA="true"
 else
   export SEED_MOCK_DATA="false"
@@ -37,7 +36,7 @@ if [ -z "$JWT_SECRET" ]; then
 fi
 
 echo "[INFO] Starting HomeVault Add-on on port ${PORT}..."
-echo "[INFO] NO_AUTH raw value: '${NO_AUTH_RAW}' -> normalised: '${NO_AUTH}'"
+echo "[INFO] NO_AUTH mode: ${NO_AUTH}"
 echo "[INFO] SEED_MOCK_DATA: ${SEED_MOCK_DATA}"
 echo "[INFO] DATABASE_URL (sanitized): ${DATABASE_URL}"
 
