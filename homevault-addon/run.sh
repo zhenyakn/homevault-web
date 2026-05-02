@@ -21,9 +21,9 @@ bashio::log.info "NO_AUTH mode: ${NO_AUTH}"
 cd /app
 
 if [ -n "$DATABASE_URL" ]; then
-    bashio::log.info "Running database migrations..."
-    if node apply-migration-v3.mjs && node apply-migration-v4.mjs && node apply-migration-v5.mjs; then
-        bashio::log.info "Database migrations completed."
+    bashio::log.info "Running unified database migration..."
+    if node apply-migration-addon.mjs; then
+        bashio::log.info "Database migration completed."
     else
         bashio::log.warning "Database migration failed. Continuing anyway..."
     fi
