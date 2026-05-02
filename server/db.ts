@@ -5,6 +5,7 @@ import {
   mockUpgrades, mockLoans, mockWishlist, mockPurchaseCosts, mockCalendarEvents,
 } from "./mockData.js";
 import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 import {
   InsertUser,
   users,
@@ -44,7 +45,15 @@ export async function getDb() {
       );
     }
     try {
-      _db = drizzle(ENV.databaseUrl);
+      // Use a connection pool instead of a single connection to handle
+      // concurrent requests without exhausting the database connection limit.
+      const pool = mysql.createPool({
+        uri: ENV.databaseUrl,
+        connectionLimit: 10,
+        waitForConnections: true,
+        queueLimit: 0,
+      });
+      _db = drizzle(pool);
     } catch (error) {
       throw new Error(`[Database] Failed to connect: ${error}`);
     }
@@ -62,7 +71,7 @@ function parseJsonArray(value: unknown): any[] {
   return [];
 }
 
-// ─── Users ────────────────────────────────────────────────────────────────────
+// ─── Users ────────────────────────────────────────────────────────────────────────────────
 
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
@@ -112,7 +121,7 @@ export async function getAllUsers() {
   return await db.select().from(users);
 }
 
-// ─── Property ─────────────────────────────────────────────────────────────────
+// ─── Property ────────────────────────────────────────────────────────────────────────────
 
 export async function getProperty(propertyId: number = 1) {
   const db = await getDb();
@@ -143,13 +152,19 @@ export async function deleteProperty(propertyId: number) {
   return true;
 }
 
-// ─── Expenses ─────────────────────────────────────────────────────────────────
+// ─── Expenses ───────────────────────────────────────────────────────────────────────
 
 export async function getExpenses(userId: number, propertyId: number) {
   const db = await getDb();
   return await db.select().from(expenses)
     .where(and(eq(expenses.ownerId, userId), eq(expenses.propertyId, propertyId)))
     .orderBy(desc(expenses.date));
+}
+
+export async function getExpenseById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
+  return result[0] ?? null;
 }
 
 export async function createExpense(data: typeof expenses.$inferInsert) {
@@ -170,13 +185,19 @@ export async function deleteExpense(id: string) {
   return true;
 }
 
-// ─── Repairs ──────────────────────────────────────────────────────────────────
+// ─── Repairs ──────────────────────────────────────────────────────────────────────────
 
 export async function getRepairs(userId: number, propertyId: number) {
   const db = await getDb();
   return await db.select().from(repairs)
     .where(and(eq(repairs.ownerId, userId), eq(repairs.propertyId, propertyId)))
     .orderBy(desc(repairs.dateLogged));
+}
+
+export async function getRepairById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(repairs).where(eq(repairs.id, id)).limit(1);
+  return result[0] ?? null;
 }
 
 export async function createRepair(data: typeof repairs.$inferInsert) {
@@ -197,7 +218,7 @@ export async function deleteRepair(id: string) {
   return true;
 }
 
-// ─── Repair Quotes ────────────────────────────────────────────────────────────
+// ─── Repair Quotes ────────────────────────────────────────────────────────────────
 
 export async function getRepairQuotes(repairId: string) {
   const db = await getDb();
@@ -234,10 +255,15 @@ export async function updateRepairQuote(id: string, data: Partial<RepairQuote>) 
   return data;
 }
 
+// Uses a transaction so the deselect + select are atomic.
+// Without this a crash between the two statements would leave
+// no option selected for the repair.
 export async function selectRepairQuote(repairId: string, quoteId: string) {
   const db = await getDb();
-  await db.update(repairQuotes).set({ isSelected: false }).where(eq(repairQuotes.repairId, repairId));
-  await db.update(repairQuotes).set({ isSelected: true }).where(eq(repairQuotes.id, quoteId));
+  await db.transaction(async (tx) => {
+    await tx.update(repairQuotes).set({ isSelected: false }).where(eq(repairQuotes.repairId, repairId));
+    await tx.update(repairQuotes).set({ isSelected: true }).where(eq(repairQuotes.id, quoteId));
+  });
 }
 
 export async function logRepairQuotePayment(quoteId: string, payment: { date: string; amount: number; notes?: string; receipt?: string }) {
@@ -270,13 +296,19 @@ export async function deleteRepairQuote(id: string) {
   return true;
 }
 
-// ─── Upgrades ─────────────────────────────────────────────────────────────────
+// ─── Upgrades ───────────────────────────────────────────────────────────────────────
 
 export async function getUpgrades(userId: number, propertyId: number) {
   const db = await getDb();
   return await db.select().from(upgrades)
     .where(and(eq(upgrades.ownerId, userId), eq(upgrades.propertyId, propertyId)))
     .orderBy(desc(upgrades.createdAt));
+}
+
+export async function getUpgradeById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(upgrades).where(eq(upgrades.id, id)).limit(1);
+  return result[0] ?? null;
 }
 
 export async function createUpgrade(data: typeof upgrades.$inferInsert) {
@@ -297,7 +329,7 @@ export async function deleteUpgrade(id: string) {
   return true;
 }
 
-// ─── Loans ────────────────────────────────────────────────────────────────────
+// ─── Loans ──────────────────────────────────────────────────────────────────────────────
 
 export async function getLoans(userId: number, propertyId: number) {
   const db = await getDb();
@@ -307,6 +339,13 @@ export async function getLoans(userId: number, propertyId: number) {
   // Normalise repayments to a real array so all consumers (frontend + server)
   // get a consistent type regardless of MySQL driver JSON serialisation.
   return rows.map(l => ({ ...l, repayments: parseJsonArray(l.repayments) }));
+}
+
+export async function getLoanById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(loans).where(eq(loans.id, id)).limit(1);
+  if (!result[0]) return null;
+  return { ...result[0], repayments: parseJsonArray(result[0].repayments) };
 }
 
 export async function createLoan(data: typeof loans.$inferInsert) {
@@ -327,13 +366,19 @@ export async function deleteLoan(id: string) {
   return true;
 }
 
-// ─── Wishlist ─────────────────────────────────────────────────────────────────
+// ─── Wishlist ─────────────────────────────────────────────────────────────────────────
 
 export async function getWishlistItems(userId: number, propertyId: number) {
   const db = await getDb();
   return await db.select().from(wishlistItems)
     .where(and(eq(wishlistItems.ownerId, userId), eq(wishlistItems.propertyId, propertyId)))
     .orderBy(desc(wishlistItems.createdAt));
+}
+
+export async function getWishlistItemById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(wishlistItems).where(eq(wishlistItems.id, id)).limit(1);
+  return result[0] ?? null;
 }
 
 export async function createWishlistItem(data: typeof wishlistItems.$inferInsert) {
@@ -354,13 +399,19 @@ export async function deleteWishlistItem(id: string) {
   return true;
 }
 
-// ─── Purchase Costs ───────────────────────────────────────────────────────────
+// ─── Purchase Costs ───────────────────────────────────────────────────────────────────
 
 export async function getPurchaseCosts(userId: number, propertyId: number) {
   const db = await getDb();
   return await db.select().from(purchaseCosts)
     .where(and(eq(purchaseCosts.ownerId, userId), eq(purchaseCosts.propertyId, propertyId)))
     .orderBy(desc(purchaseCosts.date));
+}
+
+export async function getPurchaseCostById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(purchaseCosts).where(eq(purchaseCosts.id, id)).limit(1);
+  return result[0] ?? null;
 }
 
 export async function createPurchaseCost(data: typeof purchaseCosts.$inferInsert) {
@@ -381,28 +432,21 @@ export async function deletePurchaseCost(id: string) {
   return true;
 }
 
-// ─── Calendar Events ──────────────────────────────────────────────────────────
+// ─── Calendar Events ────────────────────────────────────────────────────────────────────
 
 export async function getCalendarEvents(propertyId: number, startDate?: string, endDate?: string) {
   const db = await getDb();
-  const propFilter = eq(calendarEvents.propertyId, propertyId);
-
-  if (startDate && endDate) {
-    return await db.select().from(calendarEvents)
-      .where(and(propFilter, gte(calendarEvents.date, startDate), lte(calendarEvents.date, endDate)))
-      .orderBy(calendarEvents.date);
-  }
-  if (startDate) {
-    return await db.select().from(calendarEvents)
-      .where(and(propFilter, gte(calendarEvents.date, startDate)))
-      .orderBy(calendarEvents.date);
-  }
-  if (endDate) {
-    return await db.select().from(calendarEvents)
-      .where(and(propFilter, lte(calendarEvents.date, endDate)))
-      .orderBy(calendarEvents.date);
-  }
-  return await db.select().from(calendarEvents).where(propFilter).orderBy(calendarEvents.date);
+  // Single query with conditional filters — replaces the previous
+  // 4-branch if/else chain that was difficult to maintain.
+  return await db.select().from(calendarEvents)
+    .where(
+      and(
+        eq(calendarEvents.propertyId, propertyId),
+        startDate ? gte(calendarEvents.date, startDate) : undefined,
+        endDate   ? lte(calendarEvents.date, endDate)   : undefined,
+      )
+    )
+    .orderBy(calendarEvents.date);
 }
 
 export async function createCalendarEvent(data: typeof calendarEvents.$inferInsert) {
@@ -423,7 +467,7 @@ export async function deleteCalendarEvent(id: string) {
   return true;
 }
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
+// ─── Dashboard ─────────────────────────────────────────────────────────────────────────────
 
 export async function getRecentActivity(propertyId: number) {
   const db = await getDb();
@@ -467,6 +511,50 @@ export async function getRecentActivity(propertyId: number) {
   return all.slice(0, 10);
 }
 
+// Pure helper functions extracted from getDashboardStats to improve
+// testability and reduce function length.
+function calcMonthlyStats(allExpenses: Expense[], monthStart: string, monthEnd: string) {
+  const thisMonthExp = allExpenses.filter(e => e.date >= monthStart && e.date <= monthEnd);
+  const monthSpent = thisMonthExp.reduce((s, e) => s + e.amount, 0);
+  const monthlyRecurring = allExpenses
+    .filter(e => e.isRecurring && e.recurringFrequency === "Monthly")
+    .reduce((s, e) => s + e.amount, 0);
+  const monthCats: Record<string, number> = {};
+  for (const e of thisMonthExp) monthCats[e.category] = (monthCats[e.category] || 0) + e.amount;
+  return { monthSpent, monthlyRecurring, monthCats };
+}
+
+function getOverdueExpenses(allExpenses: Expense[], today: string) {
+  return allExpenses
+    .filter(e => e.isRecurring && !e.isPaid && e.date <= today)
+    .map(e => ({ id: e.id, label: e.label, amount: e.amount, date: e.date }));
+}
+
+function getStaleRepairs(allRepairs: Repair[], staleCutoff: string) {
+  return allRepairs
+    .filter(r => r.status !== "Resolved" &&
+      (r.priority === "Critical" || r.priority === "High") &&
+      (r.updatedAt
+        ? new Date(r.updatedAt).toISOString().split("T")[0] <= staleCutoff
+        : r.dateLogged <= staleCutoff))
+    .map(r => ({ id: r.id, label: r.label, priority: r.priority, status: r.status, contractor: r.contractor }));
+}
+
+function buildLoanSummary(allLoans: (Loan & { repayments: any[] })[]) {
+  return allLoans.map(l => {
+    const repaid = l.repayments.reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
+    const remaining = Math.max(0, l.totalAmount - repaid);
+    return {
+      id: l.id, lender: l.lender, loanType: l.loanType,
+      totalAmount: l.totalAmount, repaid, remaining,
+      pct: l.totalAmount > 0 ? Math.round((repaid / l.totalAmount) * 100) : 0,
+      paidOff: repaid >= l.totalAmount,
+      interestRate: l.interestRate,
+      dueDate: l.dueDate,
+    };
+  });
+}
+
 export async function getDashboardStats(userId: number, propertyId: number) {
   const db = await getDb();
 
@@ -478,44 +566,29 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const today        = now.toISOString().split("T")[0];
   const staleCutoff  = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-  const pf = (col: any) => and(eq(col.ownerId, userId), eq(col.propertyId, propertyId));
+  // Typed filter builder — replaces the untyped pf = (col: any) => ... shorthand.
+  const ownerPropFilter = <T extends { ownerId: ReturnType<typeof eq>; propertyId: ReturnType<typeof eq> }>(
+    col: { ownerId: any; propertyId: any }
+  ) => and(eq(col.ownerId, userId), eq(col.propertyId, propertyId));
 
   const [
     allExpenses, allRepairs, allUpgrades, allLoansRaw, allPurchaseCosts, prop,
   ] = await Promise.all([
-    db.select().from(expenses).where(pf(expenses)),
-    db.select().from(repairs).where(pf(repairs)),
-    db.select().from(upgrades).where(pf(upgrades)),
-    db.select().from(loans).where(pf(loans)),
-    db.select().from(purchaseCosts).where(pf(purchaseCosts)),
+    db.select().from(expenses).where(ownerPropFilter(expenses)),
+    db.select().from(repairs).where(ownerPropFilter(repairs)),
+    db.select().from(upgrades).where(ownerPropFilter(upgrades)),
+    db.select().from(loans).where(ownerPropFilter(loans)),
+    db.select().from(purchaseCosts).where(ownerPropFilter(purchaseCosts)),
     getProperty(propertyId),
   ]);
 
   const allLoans = allLoansRaw.map(l => ({ ...l, repayments: parseJsonArray(l.repayments) }));
 
-  // ── This month ─────────────────────────────────────────────────────────────
-  const thisMonthExp  = allExpenses.filter(e => e.date >= monthStart && e.date <= monthEnd);
-  const monthSpent    = thisMonthExp.reduce((s, e) => s + e.amount, 0);
-  const monthlyRecurring = allExpenses
-    .filter(e => e.isRecurring && e.recurringFrequency === "Monthly")
-    .reduce((s, e) => s + e.amount, 0);
-  const monthCats: Record<string, number> = {};
-  for (const e of thisMonthExp) monthCats[e.category] = (monthCats[e.category] || 0) + e.amount;
+  const { monthSpent, monthlyRecurring, monthCats } = calcMonthlyStats(allExpenses, monthStart, monthEnd);
+  const overdueExpenses = getOverdueExpenses(allExpenses, today);
+  const staleRepairs    = getStaleRepairs(allRepairs, staleCutoff);
 
-  // ── Attention ───────────────────────────────────────────────────────────────
-  const overdueExpenses = allExpenses
-    .filter(e => e.isRecurring && !e.isPaid && e.date <= today)
-    .map(e => ({ id: e.id, label: e.label, amount: e.amount, date: e.date }));
-
-  const staleRepairs = allRepairs
-    .filter(r => r.status !== "Resolved" &&
-      (r.priority === "Critical" || r.priority === "High") &&
-      (r.updatedAt
-        ? new Date(r.updatedAt).toISOString().split("T")[0] <= staleCutoff
-        : r.dateLogged <= staleCutoff))
-    .map(r => ({ id: r.id, label: r.label, priority: r.priority, status: r.status, contractor: r.contractor }));
-
-  // ── Open repairs ────────────────────────────────────────────────────────────
+  // ── Open repairs ────────────────────────────────────────────────────────────────────
   const priOrder: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
   const openRepairs = allRepairs
     .filter(r => r.status !== "Resolved")
@@ -523,7 +596,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
     .slice(0, 5)
     .map(r => ({ id: r.id, label: r.label, priority: r.priority, status: r.status, contractor: r.contractor }));
 
-  // ── Active upgrades + decision needed ──────────────────────────────────────
+  // ── Active upgrades + decision needed ─────────────────────────────────────────────
   const activeIds = allUpgrades.filter(u => u.status === "In Progress").map(u => u.id);
   const activeOpts = activeIds.length > 0
     ? await db.select({ upgradeId: upgradeOptions.upgradeId, isSelected: upgradeOptions.isSelected })
@@ -549,19 +622,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
       pct: u.budget > 0 ? Math.round(((u.spent || 0) / u.budget) * 100) : 0,
     }));
 
-  // ── Loan paydown ────────────────────────────────────────────────────────────
-  const loanSummary = allLoans.map(l => {
-    const repaid = l.repayments.reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
-    const remaining = Math.max(0, l.totalAmount - repaid);
-    return {
-      id: l.id, lender: l.lender, loanType: l.loanType,
-      totalAmount: l.totalAmount, repaid, remaining,
-      pct: l.totalAmount > 0 ? Math.round((repaid / l.totalAmount) * 100) : 0,
-      paidOff: repaid >= l.totalAmount,
-      interestRate: l.interestRate,
-      dueDate: l.dueDate,
-    };
-  });
+  const loanSummary = buildLoanSummary(allLoans);
 
   return {
     monthSpent, monthlyRecurring,
@@ -579,7 +640,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   };
 }
 
-// ─── Upgrade Options ──────────────────────────────────────────────────────────
+// ─── Upgrade Options ────────────────────────────────────────────────────────────────
 
 export async function getUpgradeOptions(upgradeId: string) {
   const db = await getDb();
@@ -616,10 +677,13 @@ export async function updateUpgradeOption(id: string, data: Partial<UpgradeOptio
   return data;
 }
 
+// Uses a transaction so the deselect + select are atomic.
 export async function selectUpgradeOption(upgradeId: string, optionId: string) {
   const db = await getDb();
-  await db.update(upgradeOptions).set({ isSelected: false }).where(eq(upgradeOptions.upgradeId, upgradeId));
-  await db.update(upgradeOptions).set({ isSelected: true }).where(eq(upgradeOptions.id, optionId));
+  await db.transaction(async (tx) => {
+    await tx.update(upgradeOptions).set({ isSelected: false }).where(eq(upgradeOptions.upgradeId, upgradeId));
+    await tx.update(upgradeOptions).set({ isSelected: true }).where(eq(upgradeOptions.id, optionId));
+  });
 }
 
 export async function logUpgradeOptionPayment(optionId: string, payment: { date: string; amount: number; notes?: string; receipt?: string }) {
@@ -652,7 +716,7 @@ export async function deleteUpgradeOption(id: string) {
   return true;
 }
 
-// ─── Upgrade Items ────────────────────────────────────────────────────────────
+// ─── Upgrade Items ────────────────────────────────────────────────────────────────────
 
 export async function getUpgradeItems(upgradeId: string) {
   const db = await getDb();
@@ -695,7 +759,7 @@ export async function deleteUpgradeItem(id: string) {
   return true;
 }
 
-// ─── Portfolio ────────────────────────────────────────────────────────────────
+// ─── Portfolio ────────────────────────────────────────────────────────────────────────────
 
 export async function getPortfolioSummary(userId: number) {
   const props = await getPropertiesByUser(userId);
@@ -708,12 +772,13 @@ export async function getPortfolioSummary(userId: number) {
 
   return await Promise.all(props.map(async (prop) => {
     const pid = prop.id;
-    const pf = (col: any) => and(eq(col.ownerId, userId), eq(col.propertyId, pid));
+    const propFilter = <T extends { ownerId: any; propertyId: any }>(col: T) =>
+      and(eq(col.ownerId, userId), eq(col.propertyId, pid));
 
     const [allExpenses, allRepairs, allLoans] = await Promise.all([
-      db.select({ amount: expenses.amount, date: expenses.date }).from(expenses).where(pf(expenses)),
-      db.select({ status: repairs.status }).from(repairs).where(pf(repairs)),
-      db.select({ totalAmount: loans.totalAmount, repayments: loans.repayments }).from(loans).where(pf(loans)),
+      db.select({ amount: expenses.amount, date: expenses.date }).from(expenses).where(propFilter(expenses)),
+      db.select({ status: repairs.status }).from(repairs).where(propFilter(repairs)),
+      db.select({ totalAmount: loans.totalAmount, repayments: loans.repayments }).from(loans).where(propFilter(loans)),
     ]);
 
     const monthSpent = allExpenses
@@ -742,27 +807,44 @@ export async function getPortfolioSummary(userId: number) {
   }));
 }
 
-// ─── Data Management ──────────────────────────────────────────────────────────
+// ─── Data Management ────────────────────────────────────────────────────────────────────
 
 export async function deleteAllUserData(userId: number) {
   const db = await getDb();
-  const userRepairIds = (await db.select({ id: repairs.id }).from(repairs).where(eq(repairs.ownerId, userId))).map(r => r.id);
-  if (userRepairIds.length > 0) {
-    await db.delete(repairQuotes).where(inArray(repairQuotes.repairId, userRepairIds));
-  }
-  await Promise.all([
-    db.delete(expenses).where(eq(expenses.ownerId, userId)),
-    db.delete(repairs).where(eq(repairs.ownerId, userId)),
-    db.delete(upgrades).where(eq(upgrades.ownerId, userId)),
-    db.delete(loans).where(eq(loans.ownerId, userId)),
-    db.delete(wishlistItems).where(eq(wishlistItems.ownerId, userId)),
-    db.delete(purchaseCosts).where(eq(purchaseCosts.ownerId, userId)),
-  ]);
-  await db.delete(calendarEvents).where(eq(calendarEvents.createdById, userId));
+  // Wrap everything in a single transaction so a partial failure
+  // doesn't leave orphaned records.
+  await db.transaction(async (tx) => {
+    const userRepairIds = (
+      await tx.select({ id: repairs.id }).from(repairs).where(eq(repairs.ownerId, userId))
+    ).map(r => r.id);
+
+    if (userRepairIds.length > 0) {
+      await tx.delete(repairQuotes).where(inArray(repairQuotes.repairId, userRepairIds));
+    }
+
+    const userUpgradeIds = (
+      await tx.select({ id: upgrades.id }).from(upgrades).where(eq(upgrades.ownerId, userId))
+    ).map(u => u.id);
+
+    if (userUpgradeIds.length > 0) {
+      await tx.delete(upgradeOptions).where(inArray(upgradeOptions.upgradeId, userUpgradeIds));
+      await tx.delete(upgradeItems).where(inArray(upgradeItems.upgradeId, userUpgradeIds));
+    }
+
+    await Promise.all([
+      tx.delete(expenses).where(eq(expenses.ownerId, userId)),
+      tx.delete(repairs).where(eq(repairs.ownerId, userId)),
+      tx.delete(upgrades).where(eq(upgrades.ownerId, userId)),
+      tx.delete(loans).where(eq(loans.ownerId, userId)),
+      tx.delete(wishlistItems).where(eq(wishlistItems.ownerId, userId)),
+      tx.delete(purchaseCosts).where(eq(purchaseCosts.ownerId, userId)),
+      tx.delete(calendarEvents).where(eq(calendarEvents.createdById, userId)),
+    ]);
+  });
   return true;
 }
 
-// ─── Mock / Demo Seed ─────────────────────────────────────────────────────────
+// ─── Mock / Demo Seed ────────────────────────────────────────────────────────────────────────────
 
 export async function seedMockProperty(userId: number): Promise<number> {
   const db = await getDb();
