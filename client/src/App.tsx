@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, Router as WouterRouter } from "wouter";
+import { useHashLocation } from "wouter/use-hash-location";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -56,7 +57,9 @@ function SignInPage() {
               </div>
               <Button
                 className="w-full h-11 text-base"
-                onClick={() => { window.location.href = getLoginUrl(); }}
+                onClick={() => {
+                  window.location.href = getLoginUrl();
+                }}
               >
                 <LogIn className="w-4 h-4 mr-2" />
                 Sign in
@@ -95,7 +98,11 @@ function SignInPage() {
                     Authentication not configured
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-400">
-                    Add the following to your <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 rounded">.env</code> file:
+                    Add the following to your{" "}
+                    <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
+                      .env
+                    </code>{" "}
+                    file:
                   </p>
                 </div>
               </div>
@@ -129,7 +136,7 @@ OWNER_OPEN_ID=your-open-id`}
 
 // ─── Router ───────────────────────────────────────────────────────────────────
 
-function Router() {
+function AppRouter() {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
@@ -160,7 +167,7 @@ function Router() {
         <Route path="/portfolio" component={Portfolio} />
         <Route path="/settings" component={Settings} />
         <Route path="/settings/:section" component={Settings} />
-        <Route path="/property-settings" component={Settings} />
+        <Route path="/property-settings" component={PropertySettings} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>
@@ -177,7 +184,10 @@ function App() {
         <LanguageProvider>
           <TooltipProvider>
             <Toaster />
-            <Router />
+            {/* Use hash-based routing so HA ingress path doesn't break routes */}
+            <WouterRouter hook={useHashLocation}>
+              <AppRouter />
+            </WouterRouter>
           </TooltipProvider>
         </LanguageProvider>
       </ThemeProvider>
