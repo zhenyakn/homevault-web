@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { keepPreviousData } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc";
 import { useDebounce } from "./useDebounce";
 import { useProperty } from "../contexts/PropertyContext";
@@ -85,7 +86,10 @@ export function useSearch() {
     { query: debouncedQuery, propertyId: activePropertyId },
     {
       enabled: debouncedQuery.trim().length >= 2,
-      keepPreviousData: true,
+      // keepPreviousData was removed in TanStack Query v5.
+      // Use placeholderData with the keepPreviousData helper instead so
+      // stale results are shown while a new fetch is in flight.
+      placeholderData: keepPreviousData,
       staleTime: 30_000,
     }
   );
