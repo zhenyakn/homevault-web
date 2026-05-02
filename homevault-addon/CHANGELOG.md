@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.1.50
+## 0.1.51
+- fix: add wishlistItems.attachments column to addon migration
 - i18n: translate search trigger label in sidebar
 - i18n: wire SearchModal strings through locale files
 - fix: resolve merge conflict leftover in db.ts seedMockProperty
@@ -168,6 +169,9 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.1.50
+- fix: add wishlistItems.attachments column to addon migration
 
 ## 0.1.40
 - i18n: translate search trigger label in sidebar
