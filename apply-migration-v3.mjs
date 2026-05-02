@@ -12,14 +12,14 @@
  *   - Seeds default property row so the app loads without manual setup
  */
 
-import mysql from 'mysql2/promise';
+import mysql from "mysql2/promise";
 
 const IGNORABLE = new Set([
-  'ER_DUP_KEYNAME',
-  'ER_FK_DUP_NAME',
-  'ER_DUP_FIELDNAME',
-  'ER_TABLE_EXISTS_ERROR',
-  'ER_DUP_ENTRY',
+  "ER_DUP_KEYNAME",
+  "ER_FK_DUP_NAME",
+  "ER_DUP_FIELDNAME",
+  "ER_TABLE_EXISTS_ERROR",
+  "ER_DUP_ENTRY",
 ]);
 
 async function exec(conn, sql, label) {
@@ -27,10 +27,19 @@ async function exec(conn, sql, label) {
     await conn.execute(sql);
     console.log(`  ✓  ${label}`);
   } catch (e) {
-    if (IGNORABLE.has(e.code)) {
+    const err = /** @type {any} */ (e);
+
+    // Some MySQL/MariaDB versions report duplicate FK/index creation as ER_CANT_CREATE_TABLE
+    // with errno 121 "Duplicate key on write or update". Treat that as "already exists".
+    const isDuplicateFk =
+      err.code === "ER_CANT_CREATE_TABLE" &&
+      typeof err.message === "string" &&
+      err.message.includes('Duplicate key on write or update');
+
+    if (IGNORABLE.has(err.code) || isDuplicateFk) {
       console.log(`  –  ${label} (already exists, skipped)`);
     } else {
-      console.error(`  ✗  ${label}\n     ${e.code}: ${e.message}`);
+      console.error(`  ✗  ${label}\n     ${err.code}: ${err.message}`);
       throw e;
     }
   }
@@ -39,13 +48,15 @@ async function exec(conn, sql, label) {
 async function run() {
   const url = process.env.DATABASE_URL;
   if (!url) {
-    console.error('ERROR: DATABASE_URL environment variable is not set.');
-    console.error('  Set it in your .env file and run: node apply-migration-v3.mjs');
+    console.error("ERROR: DATABASE_URL environment variable is not set.");
+    console.error(
+      "  Set it in your .env file and run: node apply-migration-v3.mjs",
+    );
     process.exit(1);
   }
 
   const conn = await mysql.createConnection(url);
-  console.log('Connected. Running migration v3…\n');
+  console.log("Connected. Running migration v3…\n");
 
   // ─── 1. users ───────────────────────────────────────────────────────────────
   await exec(conn, `
@@ -301,4 +312,7 @@ async function run() {
   console.log('\nMigration v3 complete ✓');
 }
 
-run().catch(e => { console.error(e); process.exit(1); });
+run().catch(err => {
+  console.error("Migration v3 failed:", err);
+  process.exit(1);
+});
