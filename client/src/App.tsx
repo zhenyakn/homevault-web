@@ -25,6 +25,8 @@ import UpgradeDetail from "./pages/UpgradeDetail";
 import RepairDetail from "./pages/RepairDetail";
 import { Home, Loader2, LogIn, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SearchModal } from "./components/SearchModal";
+import { useSearch } from "./hooks/useSearch";
 
 // ─── Sign-in page ────────────────────────────────────────────────────────────
 
@@ -139,57 +141,57 @@ function Spinner() {
 
 function AppRouter() {
   const { isAuthenticated, loading } = useAuth();
+  const search = useSearch();
 
-  // Fetch in parallel — never blocks the auth.me loading state.
-  // Only used as a tiebreaker after auth.me has settled to null.
   const { data: noAuthData } = trpc.system.noAuth.useQuery(undefined, {
     retry: 1,
     retryDelay: 300,
     refetchOnWindowFocus: false,
   });
 
-  // Always wait for auth.me first — same as before.
   if (loading) {
     return <Spinner />;
   }
 
-  // auth.me returned a user — go straight to dashboard.
   if (isAuthenticated) {
     return (
-      <DashboardLayout>
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/expenses" component={Expenses} />
-          <Route path="/repairs" component={Repairs} />
-          <Route path="/repairs/:id" component={RepairDetail} />
-          <Route path="/upgrades" component={Upgrades} />
-          <Route path="/upgrades/:id" component={UpgradeDetail} />
-          <Route path="/loans" component={Loans} />
-          <Route path="/wishlist" component={Wishlist} />
-          <Route path="/purchase-costs" component={PurchaseCosts} />
-          <Route path="/calendar" component={Calendar} />
-          <Route path="/portfolio" component={Portfolio} />
-          <Route path="/settings" component={Settings} />
-          <Route path="/settings/:section" component={Settings} />
-          <Route path="/property-settings" component={PropertySettings} />
-          <Route path="/404" component={NotFound} />
-          <Route component={NotFound} />
-        </Switch>
-      </DashboardLayout>
+      <>
+        <SearchModal
+          open={search.open}
+          onClose={search.close}
+          query={search.query}
+          onQueryChange={search.setQuery}
+          results={search.results}
+          isFetching={search.isFetching}
+        />
+        <DashboardLayout onSearchOpen={() => search.setOpen(true)}>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/expenses" component={Expenses} />
+            <Route path="/repairs" component={Repairs} />
+            <Route path="/repairs/:id" component={RepairDetail} />
+            <Route path="/upgrades" component={Upgrades} />
+            <Route path="/upgrades/:id" component={UpgradeDetail} />
+            <Route path="/loans" component={Loans} />
+            <Route path="/wishlist" component={Wishlist} />
+            <Route path="/purchase-costs" component={PurchaseCosts} />
+            <Route path="/calendar" component={Calendar} />
+            <Route path="/portfolio" component={Portfolio} />
+            <Route path="/settings" component={Settings} />
+            <Route path="/settings/:section" component={Settings} />
+            <Route path="/property-settings" component={PropertySettings} />
+            <Route path="/404" component={NotFound} />
+            <Route component={NotFound} />
+          </Switch>
+        </DashboardLayout>
+      </>
     );
   }
 
-  // auth.me returned null (not authenticated).
-  // If the server says NO_AUTH=true we're in the addon — auth.me should
-  // have returned a user but didn't yet (DB not ready, image mismatch).
-  // Show a spinner and let React Query retry rather than the error screen.
-  // If noAuthData is still loading (undefined) we default to false so the
-  // dev VM never hangs — it falls through to SignInPage immediately.
   if (noAuthData?.noAuth === true) {
     return <Spinner />;
   }
 
-  // Dev VM or OAuth mode — show the normal sign-in page.
   return <SignInPage />;
 }
 
@@ -202,7 +204,6 @@ function App() {
         <LanguageProvider>
           <TooltipProvider>
             <Toaster />
-            {/* Hash-based routing so HA ingress path doesn't break client routes */}
             <WouterRouter hook={useHashLocation}>
               <AppRouter />
             </WouterRouter>
