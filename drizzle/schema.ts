@@ -37,11 +37,15 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 /**
- * Property settings and metadata
+ * Property settings and metadata.
+ * Every other entity FK references this table.
  */
 export const properties = mysqlTable("properties", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().default(1),
+  // userId has no .default() — every property must be owned by a real user.
+  userId: int("userId")
+    .notNull()
+    .references(() => users.id),
   houseName: varchar("houseName", { length: 200 }).default("My Home"),
   houseNickname: varchar("houseNickname", { length: 200 }),
   address: text("address"),
@@ -62,9 +66,7 @@ export const properties = mysqlTable("properties", {
   reminderDaysBefore: int("reminderDaysBefore").default(3),
   calendarSyncEnabled: boolean("calendarSyncEnabled").default(false),
   mapsProvider: varchar("mapsProvider", { length: 20 }).default("google"),
-  // Property type
   propertyType: varchar("propertyType", { length: 50 }).default("Apartment"),
-  // Per-type notification toggles
   remindExpenses: boolean("remindExpenses").default(true),
   remindLoans: boolean("remindLoans").default(true),
   remindRepairs: boolean("remindRepairs").default(true),
@@ -77,7 +79,7 @@ export type Property = typeof properties.$inferSelect;
 export type InsertProperty = typeof properties.$inferInsert;
 
 /**
- * Expenses with category, recurring support, and attachments
+ * Expenses with category, recurring support, and attachments.
  */
 export const expenses = mysqlTable(
   "expenses",
@@ -97,7 +99,10 @@ export const expenses = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    propertyId: int("propertyId").notNull().default(1),
+    // No .default(1) — a missing propertyId is a data error, not a fallback.
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
     isRecurring: boolean("isRecurring").default(false),
     recurringFrequency: mysqlEnum("recurringFrequency", [
       "Monthly",
@@ -116,6 +121,7 @@ export const expenses = mysqlTable(
     dateIdx: index("expense_date_idx").on(table.date),
     ownerIdx: index("expense_owner_idx").on(table.ownerId),
     categoryIdx: index("expense_category_idx").on(table.category),
+    propertyIdx: index("expense_property_idx").on(table.propertyId),
   })
 );
 
@@ -123,7 +129,7 @@ export type Expense = typeof expenses.$inferSelect;
 export type InsertExpense = typeof expenses.$inferInsert;
 
 /**
- * Repairs with priority, status, and contractor tracking
+ * Repairs with priority, status, and contractor tracking.
  */
 export const repairs = mysqlTable(
   "repairs",
@@ -131,20 +137,20 @@ export const repairs = mysqlTable(
     id: varchar("id", { length: 36 }).primaryKey(),
     label: varchar("label", { length: 200 }).notNull(),
     description: text("description"),
-    priority: mysqlEnum("priority", ["Low", "Medium", "High", "Critical"])
-      .notNull(),
-    status: mysqlEnum("status", ["Pending", "In Progress", "Resolved"])
-      .notNull(),
+    priority: mysqlEnum("priority", ["Low", "Medium", "High", "Critical"]).notNull(),
+    status: mysqlEnum("status", ["Pending", "In Progress", "Resolved"]).notNull(),
     dateLogged: varchar("dateLogged", { length: 20 }).notNull(), // YYYY-MM-DD
     phase: mysqlEnum("phase", ["Assessment", "Quoting", "Scheduled", "In Progress", "Resolved"]).default("Assessment"),
     contractor: varchar("contractor", { length: 200 }),
     contractorPhone: varchar("contractorPhone", { length: 20 }),
     estimatedCost: int("estimatedCost"), // In cents
-    actualCost: int("actualCost"), // In cents
+    actualCost: int("actualCost"),       // In cents
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    propertyId: int("propertyId").notNull().default(1),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
     attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
@@ -155,6 +161,7 @@ export const repairs = mysqlTable(
     statusIdx: index("repair_status_idx").on(table.status),
     priorityIdx: index("repair_priority_idx").on(table.priority),
     ownerIdx: index("repair_owner_idx").on(table.ownerId),
+    propertyIdx: index("repair_property_idx").on(table.propertyId),
   })
 );
 
@@ -162,7 +169,7 @@ export type Repair = typeof repairs.$inferSelect;
 export type InsertRepair = typeof repairs.$inferInsert;
 
 /**
- * Upgrade projects with budget tracking
+ * Upgrade projects with budget tracking.
  */
 export const upgrades = mysqlTable(
   "upgrades",
@@ -173,11 +180,13 @@ export const upgrades = mysqlTable(
     status: mysqlEnum("status", ["Planned", "In Progress", "Done"]).notNull(),
     phase: mysqlEnum("phase", ["Planning", "Sourcing", "Building", "Done"]).default("Planning"),
     budget: int("budget").notNull(), // In cents
-    spent: int("spent").default(0), // In cents
+    spent: int("spent").default(0),  // In cents
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    propertyId: int("propertyId").notNull().default(1),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
     attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
@@ -187,6 +196,7 @@ export const upgrades = mysqlTable(
   (table) => ({
     statusIdx: index("upgrade_status_idx").on(table.status),
     ownerIdx: index("upgrade_owner_idx").on(table.ownerId),
+    propertyIdx: index("upgrade_property_idx").on(table.propertyId),
   })
 );
 
@@ -194,7 +204,10 @@ export type Upgrade = typeof upgrades.$inferSelect;
 export type InsertUpgrade = typeof upgrades.$inferInsert;
 
 /**
- * Family loans with repayment tracking
+ * Loans with interest rate and due-date tracking.
+ * NOTE: loans.repayments JSON column is kept for legacy compatibility.
+ * New repayments are written to loanRepayments table.
+ * The JSON column will be dropped after the backfill migration is applied.
  */
 export const loans = mysqlTable(
   "loans",
@@ -202,21 +215,19 @@ export const loans = mysqlTable(
     id: varchar("id", { length: 36 }).primaryKey(),
     lender: varchar("lender", { length: 200 }).notNull(),
     totalAmount: int("totalAmount").notNull(), // In cents
-    loanType: mysqlEnum("loanType", [
-      "Family",
-      "Bank",
-      "Friend",
-      "Other",
-    ]).notNull(),
-    interestRate: decimal("interestRate", { precision: 5, scale: 2 }).default(
-      "0"
-    ),
+    loanType: mysqlEnum("loanType", ["Family", "Bank", "Friend", "Other"]).notNull(),
+    // Stored as decimal(5,2) — e.g. 3.50 means 3.5%.
+    // The router validates this as z.string().optional(); cast to number before use.
+    interestRate: decimal("interestRate", { precision: 5, scale: 2 }).default("0"),
     startDate: varchar("startDate", { length: 20 }).notNull(), // YYYY-MM-DD
     dueDate: varchar("dueDate", { length: 20 }),
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    propertyId: int("propertyId").notNull().default(1),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
+    // Legacy JSON column — being phased out in favour of loanRepayments table.
     repayments: json("repayments").$type<
       Array<{ date: string; amount: number; ownerId: number }>
     >(),
@@ -227,6 +238,7 @@ export const loans = mysqlTable(
   },
   (table) => ({
     ownerIdx: index("loan_owner_idx").on(table.ownerId),
+    propertyIdx: index("loan_property_idx").on(table.propertyId),
   })
 );
 
@@ -234,7 +246,38 @@ export type Loan = typeof loans.$inferSelect;
 export type InsertLoan = typeof loans.$inferInsert;
 
 /**
- * Wishlist items for future improvements
+ * Normalised loan repayment rows — replaces loans.repayments JSON blob.
+ * Each row is an immutable append; to "undo" a repayment, delete its row.
+ * The loanId FK cascades on delete so repayments are cleaned up automatically.
+ */
+export const loanRepayments = mysqlTable(
+  "loanRepayments",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    loanId: varchar("loanId", { length: 36 })
+      .notNull()
+      .references(() => loans.id, { onDelete: "cascade" }),
+    ownerId: int("ownerId")
+      .notNull()
+      .references(() => users.id),
+    amount: int("amount").notNull(), // In cents
+    date: varchar("date", { length: 20 }).notNull(), // YYYY-MM-DD
+    notes: text("notes"),
+    receipt: varchar("receipt", { length: 500 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    loanIdx: index("loanRepayment_loanId_idx").on(table.loanId),
+    ownerIdx: index("loanRepayment_owner_idx").on(table.ownerId),
+    dateIdx: index("loanRepayment_date_idx").on(table.date),
+  })
+);
+
+export type LoanRepayment = typeof loanRepayments.$inferSelect;
+export type InsertLoanRepayment = typeof loanRepayments.$inferInsert;
+
+/**
+ * Wishlist items for future improvements.
  */
 export const wishlistItems = mysqlTable(
   "wishlistItems",
@@ -247,13 +290,17 @@ export const wishlistItems = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    propertyId: int("propertyId").notNull().default(1),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
+    attachments: json("attachments").$type<string[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   (table) => ({
     priorityIdx: index("wishlist_priority_idx").on(table.priority),
     ownerIdx: index("wishlist_owner_idx").on(table.ownerId),
+    propertyIdx: index("wishlist_property_idx").on(table.propertyId),
   })
 );
 
@@ -261,7 +308,7 @@ export type WishlistItem = typeof wishlistItems.$inferSelect;
 export type InsertWishlistItem = typeof wishlistItems.$inferInsert;
 
 /**
- * One-time purchase costs during acquisition
+ * One-time purchase costs during acquisition.
  */
 export const purchaseCosts = mysqlTable(
   "purchaseCosts",
@@ -274,7 +321,9 @@ export const purchaseCosts = mysqlTable(
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    propertyId: int("propertyId").notNull().default(1),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
     attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
     calendarEventId: varchar("calendarEventId", { length: 36 }),
@@ -284,6 +333,7 @@ export const purchaseCosts = mysqlTable(
   (table) => ({
     dateIdx: index("purchase_cost_date_idx").on(table.date),
     ownerIdx: index("purchase_cost_owner_idx").on(table.ownerId),
+    propertyIdx: index("purchase_cost_property_idx").on(table.propertyId),
   })
 );
 
@@ -291,7 +341,7 @@ export type PurchaseCost = typeof purchaseCosts.$inferSelect;
 export type InsertPurchaseCost = typeof purchaseCosts.$inferInsert;
 
 /**
- * Calendar events linked to various entities
+ * Calendar events linked to various entities.
  */
 export const calendarEvents = mysqlTable(
   "calendarEvents",
@@ -299,7 +349,7 @@ export const calendarEvents = mysqlTable(
     id: varchar("id", { length: 36 }).primaryKey(),
     title: varchar("title", { length: 200 }).notNull(),
     date: varchar("date", { length: 20 }).notNull(), // YYYY-MM-DD
-    time: varchar("time", { length: 20 }), // HH:MM
+    time: varchar("time", { length: 20 }),           // HH:MM
     eventType: mysqlEnum("eventType", [
       "Expense",
       "Repair",
@@ -310,7 +360,9 @@ export const calendarEvents = mysqlTable(
     createdById: int("createdById")
       .notNull()
       .references(() => users.id),
-    propertyId: int("propertyId").notNull().default(1),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
     linkedEntityId: varchar("linkedEntityId", { length: 36 }),
     linkedEntityType: mysqlEnum("linkedEntityType", [
       "Expense",
@@ -327,6 +379,7 @@ export const calendarEvents = mysqlTable(
   (table) => ({
     dateIdx: index("calendar_date_idx").on(table.date),
     createdByIdx: index("calendar_created_by_idx").on(table.createdById),
+    propertyIdx: index("calendar_property_idx").on(table.propertyId),
   })
 );
 
@@ -334,13 +387,16 @@ export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
 
 /**
- * Vendor quotes / options per upgrade project
+ * Vendor quotes / options per upgrade project.
+ * upgradeId FK cascades so options are cleaned up when an upgrade is deleted.
  */
 export const upgradeOptions = mysqlTable(
   "upgradeOptions",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
-    upgradeId: varchar("upgradeId", { length: 36 }).notNull(),
+    upgradeId: varchar("upgradeId", { length: 36 })
+      .notNull()
+      .references(() => upgrades.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 200 }).notNull(),
     vendorPhone: varchar("vendorPhone", { length: 30 }),
     totalPrice: int("totalPrice"),   // In cents
@@ -362,16 +418,19 @@ export type UpgradeOption = typeof upgradeOptions.$inferSelect;
 export type InsertUpgradeOption = typeof upgradeOptions.$inferInsert;
 
 /**
- * Contractor quotes per repair
+ * Contractor quotes per repair.
+ * repairId FK cascades so quotes are cleaned up when a repair is deleted.
  */
 export const repairQuotes = mysqlTable(
   "repairQuotes",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
-    repairId: varchar("repairId", { length: 36 }).notNull(),
+    repairId: varchar("repairId", { length: 36 })
+      .notNull()
+      .references(() => repairs.id, { onDelete: "cascade" }),
     contractorName: varchar("contractorName", { length: 200 }).notNull(),
     contractorPhone: varchar("contractorPhone", { length: 30 }),
-    quotedPrice: int("quotedPrice"),      // In cents
+    quotedPrice: int("quotedPrice"),     // In cents
     timeline: varchar("timeline", { length: 100 }),
     guarantee: varchar("guarantee", { length: 100 }),
     scope: text("scope"),
@@ -390,15 +449,22 @@ export type RepairQuote = typeof repairQuotes.$inferSelect;
 export type InsertRepairQuote = typeof repairQuotes.$inferInsert;
 
 /**
- * Individual items / products / tasks within an upgrade project
+ * Individual items / products / tasks within an upgrade project.
+ * upgradeId FK cascades so items are cleaned up when an upgrade is deleted.
  */
 export const upgradeItems = mysqlTable(
   "upgradeItems",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
-    upgradeId: varchar("upgradeId", { length: 36 }).notNull(),
-    propertyId: int("propertyId").notNull().default(1),
-    ownerId: int("ownerId").notNull(),
+    upgradeId: varchar("upgradeId", { length: 36 })
+      .notNull()
+      .references(() => upgrades.id, { onDelete: "cascade" }),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
+    ownerId: int("ownerId")
+      .notNull()
+      .references(() => users.id),
     name: varchar("name", { length: 200 }).notNull(),
     vendorName: varchar("vendorName", { length: 200 }),
     estimatedCost: int("estimatedCost"),  // In cents
@@ -414,6 +480,7 @@ export const upgradeItems = mysqlTable(
   (table) => ({
     upgradeIdx: index("upgradeItem_upgradeId_idx").on(table.upgradeId),
     propertyIdx: index("upgradeItem_propertyId_idx").on(table.propertyId),
+    ownerIdx: index("upgradeItem_owner_idx").on(table.ownerId),
   })
 );
 
