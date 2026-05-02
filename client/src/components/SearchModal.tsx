@@ -1,30 +1,48 @@
 import { useEffect, useRef, useState, KeyboardEvent } from "react";
-import { useLocation } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Loader2, Search, Wrench, TrendingUp, DollarSign, CreditCard, Heart } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  Wrench,
+  TrendingUp,
+  DollarSign,
+  CreditCard,
+  Heart,
+  ShoppingCart,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SearchResultItem } from "../hooks/useSearch";
 
 const TYPE_ICONS: Record<SearchResultItem["type"], React.ReactNode> = {
-  expense: <DollarSign className="w-4 h-4" />,
-  repair: <Wrench className="w-4 h-4" />,
-  upgrade: <TrendingUp className="w-4 h-4" />,
-  loan: <CreditCard className="w-4 h-4" />,
-  wishlist: <Heart className="w-4 h-4" />,
+  expense:      <DollarSign   className="w-4 h-4" />,
+  repair:       <Wrench       className="w-4 h-4" />,
+  upgrade:      <TrendingUp   className="w-4 h-4" />,
+  loan:         <CreditCard   className="w-4 h-4" />,
+  wishlist:     <Heart        className="w-4 h-4" />,
+  purchaseCost: <ShoppingCart className="w-4 h-4" />,
 };
 
 const TYPE_COLORS: Record<SearchResultItem["type"], string> = {
-  expense: "text-orange-500 bg-orange-50 dark:bg-orange-950/40",
-  repair: "text-red-500 bg-red-50 dark:bg-red-950/40",
-  upgrade: "text-blue-500 bg-blue-50 dark:bg-blue-950/40",
-  loan: "text-purple-500 bg-purple-50 dark:bg-purple-950/40",
-  wishlist: "text-pink-500 bg-pink-50 dark:bg-pink-950/40",
+  expense:      "text-orange-500 bg-orange-50 dark:bg-orange-950/40",
+  repair:       "text-red-500   bg-red-50   dark:bg-red-950/40",
+  upgrade:      "text-blue-500  bg-blue-50  dark:bg-blue-950/40",
+  loan:         "text-purple-500 bg-purple-50 dark:bg-purple-950/40",
+  wishlist:     "text-pink-500  bg-pink-50  dark:bg-pink-950/40",
+  purchaseCost: "text-teal-500  bg-teal-50  dark:bg-teal-950/40",
+};
+
+const TYPE_LABELS: Record<SearchResultItem["type"], string> = {
+  expense:      "Expense",
+  repair:       "Repair",
+  upgrade:      "Upgrade",
+  loan:         "Loan",
+  wishlist:     "Wishlist",
+  purchaseCost: "Purchase",
 };
 
 interface SearchModalProps {
@@ -47,9 +65,15 @@ export function SearchModal({
   const [, navigate] = useHashLocation();
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
-  // Reset active index when results change
   useEffect(() => setActiveIdx(0), [results]);
+
+  // Scroll active item into view
+  useEffect(() => {
+    const el = listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    el?.scrollIntoView({ block: "nearest" });
+  }, [activeIdx]);
 
   const go = (item: SearchResultItem) => {
     navigate(item.route);
@@ -70,7 +94,8 @@ export function SearchModal({
     }
   };
 
-  const showEmpty = !isFetching && query.trim().length >= 2 && results.length === 0;
+  const showEmpty =
+    !isFetching && query.trim().length >= 2 && results.length === 0;
   const showHint = query.trim().length < 2;
 
   return (
@@ -81,7 +106,7 @@ export function SearchModal({
       >
         <DialogTitle className="sr-only">Global Search</DialogTitle>
 
-        {/* Search input */}
+        {/* Input */}
         <div className="flex items-center gap-2 px-4 py-3 border-b">
           {isFetching ? (
             <Loader2 className="w-4 h-4 text-muted-foreground animate-spin shrink-0" />
@@ -97,6 +122,15 @@ export function SearchModal({
             placeholder="Search expenses, repairs, upgrades…"
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
+          {query && (
+            <button
+              onClick={() => onQueryChange("")}
+              className="text-muted-foreground hover:text-foreground transition-colors text-xs"
+              aria-label="Clear"
+            >
+              ✕
+            </button>
+          )}
           <kbd className="hidden sm:inline-flex items-center gap-1 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
             Esc
           </kbd>
@@ -117,10 +151,10 @@ export function SearchModal({
           )}
 
           {results.length > 0 && (
-            <ul role="listbox">
+            <ul role="listbox" ref={listRef}>
               {results.map((item, idx) => (
                 <li
-                  key={item.id}
+                  key={`${item.type}-${item.id}`}
                   role="option"
                   aria-selected={idx === activeIdx}
                   onClick={() => go(item)}
@@ -142,10 +176,14 @@ export function SearchModal({
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{item.label}</p>
-                    <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p>
+                    {item.subtitle && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.subtitle}
+                      </p>
+                    )}
                   </div>
-                  <span className="text-[10px] text-muted-foreground capitalize shrink-0">
-                    {item.type}
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {TYPE_LABELS[item.type]}
                   </span>
                 </li>
               ))}
@@ -153,7 +191,7 @@ export function SearchModal({
           )}
         </div>
 
-        {/* Footer hint */}
+        {/* Footer */}
         {results.length > 0 && (
           <div className="flex items-center gap-3 px-4 py-2 border-t text-[10px] text-muted-foreground bg-muted/30">
             <span><kbd className="font-mono">↑↓</kbd> navigate</span>
