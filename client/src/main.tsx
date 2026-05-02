@@ -1,12 +1,15 @@
 import { trpc } from "@/lib/trpc";
-import { UNAUTHED_ERR_MSG } from '@shared/const';
+import { UNAUTHED_ERR_MSG } from "@shared/const";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import { getLoginUrl } from "./const";
-import { PropertyProvider, getStoredPropertyId } from "./contexts/PropertyContext";
+import {
+  PropertyProvider,
+  getStoredPropertyId,
+} from "./contexts/PropertyContext";
 import "./index.css";
 import "./lib/i18n";
 
@@ -35,7 +38,8 @@ queryClient.getMutationCache().subscribe(event => {
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: "/api/trpc",
+      // Use a path relative to the current origin/path so it works under HA ingress
+      url: "api/trpc",
       transformer: superjson,
       fetch(input, init) {
         return globalThis.fetch(input, {
