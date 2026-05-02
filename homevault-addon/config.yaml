@@ -50,14 +50,4 @@ schema:
 services:
   - mysql:want
 
-environment:
-  DATABASE_URL: "{{DATABASE_URL}}"
-  JWT_SECRET: "{{JWT_SECRET}}"
-  OWNER_OPEN_ID: "{{OWNER_OPEN_ID}}"
-  VITE_APP_ID: "{{VITE_APP_ID}}"
-  OAUTH_SERVER_URL: "{{OAUTH_SERVER_URL}}"
-  NO_AUTH: "{{NO_AUTH}}"
-  SEED_MOCK_DATA: "{{SEED_MOCK_DATA}}"
-  PORT: "{{PORT}}"
-
 image: "ghcr.io/zhenyakn/homevault-web-addon-{arch}"
