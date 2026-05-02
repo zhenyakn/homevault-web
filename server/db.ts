@@ -53,7 +53,7 @@ export async function getDb() {
 }
 
 // MySQL returns JSON columns as raw strings via the mysql2 driver.
-// Always run through this before calling array methods.
+// Always run through this before calling array methods or returning to clients.
 function parseJsonArray(value: unknown): any[] {
   if (Array.isArray(value)) return value;
   if (typeof value === "string") {
@@ -201,7 +201,8 @@ export async function deleteRepair(id: string) {
 
 export async function getRepairQuotes(repairId: string) {
   const db = await getDb();
-  return await db.select().from(repairQuotes).where(eq(repairQuotes.repairId, repairId)).orderBy(repairQuotes.createdAt);
+  const rows = await db.select().from(repairQuotes).where(eq(repairQuotes.repairId, repairId)).orderBy(repairQuotes.createdAt);
+  return rows.map(r => ({ ...r, payments: parseJsonArray(r.payments) }));
 }
 
 export async function getRepairQuoteCounts(repairIds: string[]) {
@@ -300,9 +301,12 @@ export async function deleteUpgrade(id: string) {
 
 export async function getLoans(userId: number, propertyId: number) {
   const db = await getDb();
-  return await db.select().from(loans)
+  const rows = await db.select().from(loans)
     .where(and(eq(loans.ownerId, userId), eq(loans.propertyId, propertyId)))
     .orderBy(desc(loans.createdAt));
+  // Normalise repayments to a real array so all consumers (frontend + server)
+  // get a consistent type regardless of MySQL driver JSON serialisation.
+  return rows.map(l => ({ ...l, repayments: parseJsonArray(l.repayments) }));
 }
 
 export async function createLoan(data: typeof loans.$inferInsert) {
@@ -477,7 +481,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const pf = (col: any) => and(eq(col.ownerId, userId), eq(col.propertyId, propertyId));
 
   const [
-    allExpenses, allRepairs, allUpgrades, allLoans, allPurchaseCosts, prop,
+    allExpenses, allRepairs, allUpgrades, allLoansRaw, allPurchaseCosts, prop,
   ] = await Promise.all([
     db.select().from(expenses).where(pf(expenses)),
     db.select().from(repairs).where(pf(repairs)),
@@ -486,6 +490,8 @@ export async function getDashboardStats(userId: number, propertyId: number) {
     db.select().from(purchaseCosts).where(pf(purchaseCosts)),
     getProperty(propertyId),
   ]);
+
+  const allLoans = allLoansRaw.map(l => ({ ...l, repayments: parseJsonArray(l.repayments) }));
 
   // ── This month ─────────────────────────────────────────────────────────────
   const thisMonthExp  = allExpenses.filter(e => e.date >= monthStart && e.date <= monthEnd);
@@ -545,7 +551,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
 
   // ── Loan paydown ────────────────────────────────────────────────────────────
   const loanSummary = allLoans.map(l => {
-    const repaid = parseJsonArray(l.repayments).reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
+    const repaid = l.repayments.reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
     const remaining = Math.max(0, l.totalAmount - repaid);
     return {
       id: l.id, lender: l.lender, loanType: l.loanType,
@@ -577,7 +583,25 @@ export async function getDashboardStats(userId: number, propertyId: number) {
 
 export async function getUpgradeOptions(upgradeId: string) {
   const db = await getDb();
-  return await db.select().from(upgradeOptions).where(eq(upgradeOptions.upgradeId, upgradeId)).orderBy(upgradeOptions.createdAt);
+  const rows = await db.select().from(upgradeOptions).where(eq(upgradeOptions.upgradeId, upgradeId)).orderBy(upgradeOptions.createdAt);
+  return rows.map(r => ({ ...r, payments: parseJsonArray(r.payments) }));
+}
+
+export async function getUpgradeOptionCounts(upgradeIds: string[]) {
+  if (upgradeIds.length === 0) return [];
+  const db = await getDb();
+  const rows = await db
+    .select({ upgradeId: upgradeOptions.upgradeId, isSelected: upgradeOptions.isSelected })
+    .from(upgradeOptions)
+    .where(inArray(upgradeOptions.upgradeId, upgradeIds));
+
+  const map: Record<string, { total: number; hasSelected: boolean }> = {};
+  for (const row of rows) {
+    if (!map[row.upgradeId]) map[row.upgradeId] = { total: 0, hasSelected: false };
+    map[row.upgradeId].total++;
+    if (row.isSelected) map[row.upgradeId].hasSelected = true;
+  }
+  return Object.entries(map).map(([upgradeId, c]) => ({ upgradeId, ...c }));
 }
 
 export async function createUpgradeOption(data: typeof upgradeOptions.$inferInsert) {
