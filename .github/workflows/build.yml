@@ -2,9 +2,13 @@ name: Build & Publish Home Assistant Add-on
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (e.g. 1.2.3) — leave empty to use config.yaml version"
+        required: false
 
 env:
   ADDON_PATH: homevault-addon
@@ -16,13 +20,14 @@ jobs:
       matrix:
         arch: [amd64, aarch64]
     permissions:
-
-      contents: read
+      contents: write
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -32,12 +37,38 @@ jobs:
 
       - name: Normalize image repository name
         run: echo "REPOSITORY_LC=${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
-      
-      - name: Extract addon version
+
+      - name: Resolve version
         run: |
-          VERSION=$(grep '^version:' ${{ env.ADDON_PATH }}/config.yaml | sed 's/version: *"//' | sed 's/"//')
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            # Strip the leading 'v' from the tag
+            VERSION="${GITHUB_REF_NAME#v}"
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=$(grep '^version:' ${{ env.ADDON_PATH }}/config.yaml | sed 's/version: *"//' | sed 's/"//')
+          fi
           echo "ADDON_VERSION=$VERSION" >> "$GITHUB_ENV"
-      
+          echo "Resolved version: $VERSION"
+
+      - name: Update config.yaml version
+        run: |
+          sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
+          echo "config.yaml version set to ${{ env.ADDON_VERSION }}"
+          cat ${{ env.ADDON_PATH }}/config.yaml | grep '^version:'
+
+      - name: Commit updated config.yaml (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
+          git add ${{ env.ADDON_PATH }}/config.yaml
+          git diff --staged --quiet || git commit -m "chore: bump addon version to ${{ env.ADDON_VERSION }} [skip ci]"
+          git push origin main
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -59,3 +90,23 @@ jobs:
             ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:latest
             ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:${{ github.sha }}
             ghcr.io/${{ env.REPOSITORY_LC }}-addon-${{ matrix.arch }}:${{ env.ADDON_VERSION }}
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') && matrix.arch == 'amd64'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "HomeVault ${{ env.ADDON_VERSION }}"
+          body: |
+            ## HomeVault Add-on v${{ env.ADDON_VERSION }}
+
+            ### Installation
+            Add this repository to Home Assistant:
+            ```
+            https://github.com/zhenyakn/homevault-web
+            ```
+
+            ### Docker Images
+            - `ghcr.io/zhenyakn/homevault-web-addon-amd64:${{ env.ADDON_VERSION }}`
+            - `ghcr.io/zhenyakn/homevault-web-addon-aarch64:${{ env.ADDON_VERSION }}`
+          generate_release_notes: true
