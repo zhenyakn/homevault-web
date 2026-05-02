@@ -15,6 +15,34 @@ import * as db from "../db";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./env";
 
+// ── Seed-only mode (called from run.sh before the HTTP server starts) ─────────
+// Usage: node dist/index.js --seed-mock-only
+// Finds (or creates) the owner user, seeds the mock property, then exits.
+if (process.argv.includes("--seed-mock-only")) {
+  (async () => {
+    try {
+      const openId = ENV.ownerOpenId || "owner";
+      await db.upsertUser({
+        openId,
+        name: "HomeVault Admin",
+        email: "admin@local",
+        role: "admin",
+        lastSignedIn: new Date(),
+      });
+      const user = await db.getUserByOpenId(openId);
+      if (!user) throw new Error("Could not find or create owner user");
+      const propertyId = await db.seedMockProperty(user.id);
+      console.log(`[Seed] Demo property created/updated (id=${propertyId}). Exiting.`);
+      process.exit(0);
+    } catch (err) {
+      console.error("[Seed] Failed:", err);
+      process.exit(1);
+    }
+  })();
+} else {
+  startServer().catch(console.error);
+}
+
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
     const server = net.createServer();
@@ -142,5 +170,3 @@ async function startServer() {
     console.log(`Server running on http://${host}:${port}/`);
   });
 }
-
-startServer().catch(console.error);

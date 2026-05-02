@@ -33,50 +33,14 @@ if ! node apply-migration-addon.mjs; then
 fi
 bashio::log.info "Database migration completed."
 
-# Start server in background so we can run the seed, then keep it alive
-node dist/index.js 2>&1 &
-SERVER_PID=$!
-
-# Wait for the server to become healthy (up to 30s)
-bashio::log.info "Waiting for server to become healthy..."
-ATTEMPTS=0
-until curl -sf "http://127.0.0.1:${PORT}/health" > /dev/null 2>&1; do
-    ATTEMPTS=$((ATTEMPTS + 1))
-    if [ $ATTEMPTS -ge 30 ]; then
-        bashio::log.warning "Server did not become healthy in 30s — continuing anyway"
-        break
-    fi
-    sleep 1
-done
-
-if curl -sf "http://127.0.0.1:${PORT}/health" > /dev/null 2>&1; then
-    bashio::log.info "Server is healthy."
-
-    # Auto-seed demo data if requested
-    if [ "${SEED_MOCK_DATA}" = "true" ]; then
-        bashio::log.info "SEED_MOCK_DATA=true — seeding demo property (Florentin Apartment)..."
-
-        # Warm up the session cookie via the NO_AUTH middleware
-        curl -sf "http://127.0.0.1:${PORT}/api/trpc/auth.me?batch=1&input=%7B%7D" \
-            -c /tmp/hv_cookies.txt -b /tmp/hv_cookies.txt > /dev/null 2>&1 || true
-
-        # Call the seedMock tRPC mutation
-        SEED_RESULT=$(curl -sf -X POST \
-            "http://127.0.0.1:${PORT}/api/trpc/data.seedMock?batch=1" \
-            -H "Content-Type: application/json" \
-            -d '{"0":{"json":null,"meta":{"values":["undefined"]}}}' \
-            -b /tmp/hv_cookies.txt \
-            -c /tmp/hv_cookies.txt 2>&1 || echo "SEED_FAILED")
-
-        rm -f /tmp/hv_cookies.txt
-
-        if echo "${SEED_RESULT}" | grep -q '"result"'; then
-            bashio::log.info "Demo data seeded successfully."
-        else
-            bashio::log.warning "Seed returned unexpected response: ${SEED_RESULT}"
-        fi
+# Seed demo data directly in Node before starting the HTTP server
+if [ "${SEED_MOCK_DATA}" = "true" ]; then
+    bashio::log.info "Seeding demo data (Florentin Apartment)..."
+    if node dist/index.js --seed-mock-only; then
+        bashio::log.info "Demo data seeded successfully."
+    else
+        bashio::log.warning "Demo data seed failed — continuing startup anyway."
     fi
 fi
 
-# Wait on the server process — keeps the addon alive
-wait ${SERVER_PID}
+exec node dist/index.js 2>&1
