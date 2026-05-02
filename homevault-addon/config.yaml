@@ -3,44 +3,58 @@ version: "0.1.9"
 slug: homevault
 description: A property management solution for homeowners and small investors.
 url: https://github.com/zhenyakn/homevault-web
+
 arch:
   - aarch64
   - amd64
+
 init: false
 ingress: true
 ingress_port: 3005
 panel_icon: mdi:home-account
 panel_title: HomeVault
+
 startup: services
 boot: auto
 host_network: false
 full_access: false
 homeassistant: "2023.1.0"
+
 hassio_api: true
 hassio_role: default
+
 map:
   - ssl:rw
   - share:rw
+
 options:
   DATABASE_URL: "mysql://homeassistant:homeassistant@core-mariadb/homeassistant?charset=utf8mb4"
   JWT_SECRET: ""
   OWNER_OPEN_ID: "owner"
   VITE_APP_ID: "homevault"
   OAUTH_SERVER_URL: ""
+  NO_AUTH: true
   PORT: 3005
+
 schema:
   DATABASE_URL: "str?"
   JWT_SECRET: "str?"
   OWNER_OPEN_ID: "str?"
   VITE_APP_ID: "str?"
   OAUTH_SERVER_URL: "str?"
+  NO_AUTH: "bool?"
   PORT: "int"
+
+services:
+  - mysql:want
+
 environment:
   DATABASE_URL: "{{DATABASE_URL}}"
   JWT_SECRET: "{{JWT_SECRET}}"
   OWNER_OPEN_ID: "{{OWNER_OPEN_ID}}"
   VITE_APP_ID: "{{VITE_APP_ID}}"
   OAUTH_SERVER_URL: "{{OAUTH_SERVER_URL}}"
+  NO_AUTH: "{{NO_AUTH}}"
   PORT: "{{PORT}}"
-image: "ghcr.io/zhenyakn/homevault-web-addon-{arch}"
 
+image: "ghcr.io/zhenyakn/homevault-web-addon-{arch}"
