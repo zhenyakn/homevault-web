@@ -20,17 +20,19 @@ export async function createContext(
   if (ENV.noAuth) {
     const openId = ENV.ownerOpenId || "owner";
 
-    // Ensure the owner user exists in the DB
-    await db.upsertUser({
-      openId,
-      name: "HomeVault Admin",
-      email: "admin@local",
-      role: "admin",
-      lastSignedIn: new Date(),
-    });
-
-    const existing = await db.getUserByOpenId(openId);
-    user = existing ?? null;
+    // Cache the upsert so it only runs once per server process, not per request.
+    // The _noAuthUserCache is intentionally module-scoped.
+    if (!_noAuthUserCache) {
+      await db.upsertUser({
+        openId,
+        name: "HomeVault Admin",
+        email: "admin@local",
+        role: "admin",
+        lastSignedIn: new Date(),
+      });
+      _noAuthUserCache = (await db.getUserByOpenId(openId)) ?? null;
+    }
+    user = _noAuthUserCache;
   } else {
     // Normal behavior: authenticate via session cookie / OAuth
     try {
@@ -40,10 +42,25 @@ export async function createContext(
     }
   }
 
+  // Resolve propertyId from the request header, then validate ownership.
+  // This prevents a logged-in user from spoofing another user's propertyId.
   const rawPropertyId = opts.req.headers["x-property-id"];
-  const propertyId = rawPropertyId
+  const requestedId = rawPropertyId
     ? parseInt(rawPropertyId as string, 10) || 1
     : 1;
+
+  let propertyId = requestedId;
+
+  if (user) {
+    const ownedProperties = await db.getPropertiesByUser(user.id);
+    const isOwned = ownedProperties.some((p) => p.id === requestedId);
+
+    if (!isOwned) {
+      // Fall back to the first owned property rather than silently
+      // serving data from an unrelated property.
+      propertyId = ownedProperties[0]?.id ?? requestedId;
+    }
+  }
 
   return {
     req: opts.req,
@@ -52,3 +69,7 @@ export async function createContext(
     propertyId,
   };
 }
+
+// Module-level cache for the NO_AUTH admin user — avoids a DB round-trip
+// on every single request when running as a Home Assistant addon.
+let _noAuthUserCache: User | null = null;
