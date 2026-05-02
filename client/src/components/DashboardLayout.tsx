@@ -46,6 +46,7 @@ import {
   PanelRight,
   Plus,
   Receipt,
+  Search,
   Settings,
   ShoppingCart,
   Sun,
@@ -58,6 +59,8 @@ import {
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
+import { SearchModal } from "./SearchModal";
+import { useSearch } from "@/hooks/useSearch";
 
 const coreMenuPaths = [
   { icon: Home,         key: "nav.dashboard",     path: "/" },
@@ -297,6 +300,8 @@ function DashboardLayoutContent({
   const { data: properties } = trpc.property.list.useQuery();
   const hasMultipleProperties = (properties?.length ?? 0) > 1;
 
+  const search = useSearch();
+
   const coreMenuItems = coreMenuPaths.map(item => ({ ...item, label: t(item.key) }));
 
   // Insert Portfolio before Settings
@@ -346,7 +351,7 @@ function DashboardLayoutContent({
         <Sidebar collapsible="icon" side={isRTL ? "right" : "left"} className={isRTL ? "border-l" : "border-r"} disableTransition={isResizing}>
           <SidebarHeader className="h-14 justify-center">
             <div className="flex items-center gap-2 px-2 w-full">
-                  {isCollapsed ? (
+              {isCollapsed ? (
                 <button
                   onClick={toggleSidebar}
                   className="flex items-center justify-center w-full focus:outline-none"
@@ -375,6 +380,36 @@ function DashboardLayoutContent({
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
+            {/* Search trigger */}
+            {!isCollapsed ? (
+              <div className="px-2 pb-2">
+                <button
+                  type="button"
+                  onClick={() => search.setOpen(true)}
+                  className="flex h-8 w-full items-center gap-2 rounded-md border bg-background px-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  aria-label="Open search"
+                >
+                  <Search className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 text-left text-xs">Search…</span>
+                  <kbd className="hidden sm:inline-flex items-center rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                    ⌘K
+                  </kbd>
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-center pb-2">
+                <button
+                  type="button"
+                  onClick={() => search.setOpen(true)}
+                  className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
+                  aria-label="Open search"
+                  title="Search (⌘K)"
+                >
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
+            )}
+
             <SidebarMenu className="px-2 py-1">
               {orderedItems.map(item => {
                 const isActive = item.path === "/"
@@ -484,10 +519,27 @@ function DashboardLayoutContent({
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <span className="tracking-tight text-foreground">{activeMenuItem?.label ?? "Menu"}</span>
             </div>
+            <button
+              type="button"
+              onClick={() => search.setOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-accent transition-colors"
+              aria-label="Open search"
+            >
+              <Search className="h-4 w-4" />
+            </button>
           </div>
         )}
         <main className="flex-1 p-4">{children}</main>
       </SidebarInset>
+
+      <SearchModal
+        open={search.open}
+        onClose={search.close}
+        query={search.query}
+        onQueryChange={search.setQuery}
+        results={search.results}
+        isFetching={search.isFetching}
+      />
     </>
   );
 }
