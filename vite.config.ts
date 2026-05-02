@@ -5,6 +5,9 @@ import path from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // Important for Home Assistant ingress: use relative URLs for assets
+  base: "./",
+
   plugins: [react(), tailwindcss(), jsxLocPlugin()],
   resolve: {
     alias: {
