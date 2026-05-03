@@ -3,7 +3,7 @@
  *
  * - Given DATABASE_URL, ensure DB schema matches the current dev schema.
  * - Creates tables if they don't exist.
- * - Upgrades legacy tables by adding missing columns (propertyId, phase, etc.).
+ * - Upgrades legacy tables by adding missing columns.
  * - Safe to re-run: duplicate table/column/index/constraint errors are treated as no-ops.
  */
 
@@ -105,7 +105,6 @@ async function main() {
     "properties"
   );
 
-  // Seed default property row (id=1, userId=1)
   await run(
     `INSERT IGNORE INTO \`properties\` (\`id\`, \`userId\`) VALUES (1, 1)`,
     "properties seed row"
@@ -134,6 +133,13 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "expenses"
   );
+  // Legacy expenses used `label` instead of `name`; add missing columns.
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' FIRST`, "expenses.name");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`ownerId\` int NOT NULL DEFAULT 1`, "expenses.ownerId");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`propertyId\` int NOT NULL DEFAULT 1`, "expenses.propertyId");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`nextDueDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "expenses.nextDueDate");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`recurringInterval\` enum('monthly','quarterly','yearly') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "expenses.recurringInterval");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`, "expenses.updatedAt");
 
   // ── repairs ──────────────────────────────────────────────────────────────────
   await run(
@@ -160,6 +166,14 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "repairs"
   );
+  // Legacy repairs used `label` and different enums; add/normalise missing columns.
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' FIRST`, "repairs.title");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`ownerId\` int NOT NULL DEFAULT 1`, "repairs.ownerId");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`propertyId\` int NOT NULL DEFAULT 1`, "repairs.propertyId");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`category\` enum('Plumbing','Electrical','HVAC','Structural','Appliance','Cosmetic','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairs.category");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`reportedDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairs.reportedDate");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`completedDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairs.completedDate");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`cost\` int DEFAULT NULL`, "repairs.cost");
 
   // ── repairQuotes ─────────────────────────────────────────────────────────────
   await run(
@@ -177,6 +191,10 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "repairQuotes"
   );
+  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`contractor\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''`, "repairQuotes.contractor");
+  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`amount\` int NOT NULL DEFAULT 0`, "repairQuotes.amount");
+  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairQuotes.date");
+  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`selected\` tinyint(1) DEFAULT '0'`, "repairQuotes.selected");
 
   // ── upgrades ─────────────────────────────────────────────────────────────────
   await run(
@@ -206,6 +224,18 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "upgrades"
   );
+  // Legacy upgrades used `label`, `budget`, `spent`; add new columns.
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' FIRST`, "upgrades.title");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`ownerId\` int NOT NULL DEFAULT 1`, "upgrades.ownerId");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`propertyId\` int NOT NULL DEFAULT 1`, "upgrades.propertyId");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`category\` enum('Kitchen','Bathroom','Bedroom','Living Room','Outdoor','Structural','Technology','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.category");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`priority\` enum('low','medium','high') COLLATE utf8mb4_unicode_ci DEFAULT 'medium'`, "upgrades.priority");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`estimatedCost\` int DEFAULT NULL`, "upgrades.estimatedCost");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`actualCost\` int DEFAULT NULL`, "upgrades.actualCost");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`startDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.startDate");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`completedDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.completedDate");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`contractor\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.contractor");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`roiEstimate\` int DEFAULT NULL`, "upgrades.roiEstimate");
 
   // ── upgradeOptions ───────────────────────────────────────────────────────────
   await run(
@@ -224,6 +254,13 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "upgradeOptions"
   );
+  // Legacy upgradeOptions used `name` instead of `title`; add new columns.
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''`, "upgradeOptions.title");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`description\` text COLLATE utf8mb4_unicode_ci`, "upgradeOptions.description");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`estimatedCost\` int DEFAULT NULL`, "upgradeOptions.estimatedCost");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`pros\` json DEFAULT NULL`, "upgradeOptions.pros");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`cons\` json DEFAULT NULL`, "upgradeOptions.cons");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`selected\` tinyint(1) DEFAULT '0'`, "upgradeOptions.selected");
 
   // ── upgradeItems ─────────────────────────────────────────────────────────────
   await run(
@@ -244,6 +281,11 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "upgradeItems"
   );
+  // Legacy upgradeItems had different columns; add missing ones.
+  await run(`ALTER TABLE \`upgradeItems\` ADD COLUMN \`quantity\` int DEFAULT '1'`, "upgradeItems.quantity");
+  await run(`ALTER TABLE \`upgradeItems\` ADD COLUMN \`unit\` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgradeItems.unit");
+  await run(`ALTER TABLE \`upgradeItems\` ADD COLUMN \`store\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgradeItems.store");
+  await run(`ALTER TABLE \`upgradeItems\` ADD COLUMN \`purchased\` tinyint(1) DEFAULT '0'`, "upgradeItems.purchased");
 
   // ── loans ────────────────────────────────────────────────────────────────────
   await run(
@@ -271,31 +313,21 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "loans"
   );
+  // Legacy loans had totalAmount/dueDate/repayments; add new schema columns.
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' FIRST`, "loans.name");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`ownerId\` int NOT NULL DEFAULT 1`, "loans.ownerId");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`propertyId\` int NOT NULL DEFAULT 1`, "loans.propertyId");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`originalAmount\` int NOT NULL DEFAULT 0`, "loans.originalAmount");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`currentBalance\` int NOT NULL DEFAULT 0`, "loans.currentBalance");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`monthlyPayment\` int DEFAULT NULL`, "loans.monthlyPayment");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`endDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "loans.endDate");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`nextPaymentDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "loans.nextPaymentDate");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`attachments\` json DEFAULT NULL`, "loans.attachments");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`, "loans.updatedAt");
+  // loanType enum changed — add column if missing (existing enum rows stay as-is)
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`loanType\` enum('mortgage','heloc','personal','construction','other') COLLATE utf8mb4_unicode_ci DEFAULT 'mortgage'`, "loans.loanType");
 
-  // ── loans: upgrade pre-existing tables missing columns ───────────────────────
-  // These ALTER statements are safe to re-run — ER_DUP_FIELDNAME is caught above.
-  await run(
-    `ALTER TABLE \`loans\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' FIRST`,
-    "loans.name column"
-  );
-  await run(
-    `ALTER TABLE \`loans\` ADD COLUMN \`lender\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER \`name\``,
-    "loans.lender column"
-  );
-  await run(
-    `ALTER TABLE \`loans\` ADD COLUMN \`nextPaymentDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER \`endDate\``,
-    "loans.nextPaymentDate column"
-  );
-  await run(
-    `ALTER TABLE \`loans\` ADD COLUMN \`loanType\` enum('mortgage','heloc','personal','construction','other') COLLATE utf8mb4_unicode_ci DEFAULT 'mortgage' AFTER \`nextPaymentDate\``,
-    "loans.loanType column"
-  );
-  await run(
-    `ALTER TABLE \`loans\` ADD COLUMN \`attachments\` json DEFAULT NULL AFTER \`notes\``,
-    "loans.attachments column"
-  );
-
-  // ── wishlistItems ────────────────────────────────────────────────────────────
+  // ── wishlistItems ───────────────────────────────────────────────────────────
   await run(
     `CREATE TABLE IF NOT EXISTS \`wishlistItems\` (
       \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -317,8 +349,18 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "wishlistItems"
   );
+  // Legacy wishlistItems had label/description/estimatedCost; add new schema columns.
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' FIRST`, "wishlistItems.name");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`ownerId\` int NOT NULL DEFAULT 1`, "wishlistItems.ownerId");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`propertyId\` int NOT NULL DEFAULT 1`, "wishlistItems.propertyId");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`category\` enum('Furniture','Appliance','Electronics','Decor','Renovation','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "wishlistItems.category");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`estimatedPrice\` int DEFAULT NULL`, "wishlistItems.estimatedPrice");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`status\` enum('wanted','saved','purchased') COLLATE utf8mb4_unicode_ci DEFAULT 'wanted'`, "wishlistItems.status");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`url\` text COLLATE utf8mb4_unicode_ci`, "wishlistItems.url");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`attachments\` json DEFAULT NULL`, "wishlistItems.attachments");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`, "wishlistItems.updatedAt");
 
-  // ── purchaseCosts ────────────────────────────────────────────────────────────
+  // ── purchaseCosts ───────────────────────────────────────────────────────────
   await run(
     `CREATE TABLE IF NOT EXISTS \`purchaseCosts\` (
       \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -338,6 +380,11 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "purchaseCosts"
   );
+  // Legacy purchaseCosts used `label`; add new schema columns.
+  await run(`ALTER TABLE \`purchaseCosts\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' FIRST`, "purchaseCosts.name");
+  await run(`ALTER TABLE \`purchaseCosts\` ADD COLUMN \`ownerId\` int NOT NULL DEFAULT 1`, "purchaseCosts.ownerId");
+  await run(`ALTER TABLE \`purchaseCosts\` ADD COLUMN \`propertyId\` int NOT NULL DEFAULT 1`, "purchaseCosts.propertyId");
+  await run(`ALTER TABLE \`purchaseCosts\` ADD COLUMN \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`, "purchaseCosts.updatedAt");
 
   // ── calendarEvents ───────────────────────────────────────────────────────────
   await run(
@@ -363,6 +410,16 @@ async function main() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "calendarEvents"
   );
+  // Legacy calendarEvents had completely different columns (eventType, createdById, etc.)
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`ownerId\` int NOT NULL DEFAULT 1`, "calendarEvents.ownerId");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''`, "calendarEvents.title");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`description\` text COLLATE utf8mb4_unicode_ci`, "calendarEvents.description");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`endDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.endDate");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`category\` enum('Maintenance','Payment','Inspection','Renovation','Legal','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.category");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`isRecurring\` tinyint(1) DEFAULT '0'`, "calendarEvents.isRecurring");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`recurringInterval\` enum('monthly','quarterly','yearly') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.recurringInterval");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`reminderDaysBefore\` int DEFAULT NULL`, "calendarEvents.reminderDaysBefore");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`externalCalendarId\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.externalCalendarId");
 
   // ── inventoryItems ───────────────────────────────────────────────────────────
   await run(
