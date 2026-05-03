@@ -1,6 +1,5 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Route, Router, Switch } from "wouter";
 import { useAuth } from "./_core/hooks/useAuth";
 import DashboardLayout from "./components/DashboardLayout";
@@ -19,18 +18,10 @@ import Settings from "./pages/Settings";
 import Upgrades from "./pages/Upgrades";
 import Wishlist from "./pages/Wishlist";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: 30_000,
-    },
-  },
-});
+const isMockMode = import.meta.env.VITE_MOCK_MODE === "true";
 
 function AppRoutes() {
-  const { user, loading } = useAuth();
-  const isMockMode = import.meta.env.VITE_MOCK_MODE === "true";
+  const { loading } = useAuth();
 
   if (loading) {
     return (
@@ -46,7 +37,7 @@ function AppRoutes() {
       <Route path="/login" component={Login} />
       {isMockMode && <Route path="/mock-login" component={MockLogin} />}
 
-      {/* App — all dashboard routes share the DashboardLayout */}
+      {/* Protected app routes */}
       <Route path="/:rest*">
         <ProtectedRoute>
           <DashboardLayout>
@@ -74,13 +65,11 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Router>
-          <AppRoutes />
-          <Toaster richColors position="top-right" />
-        </Router>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <TooltipProvider>
+      <Router>
+        <AppRoutes />
+        <Toaster richColors position="top-right" />
+      </Router>
+    </TooltipProvider>
   );
 }
