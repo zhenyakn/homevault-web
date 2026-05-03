@@ -8,119 +8,119 @@ ALTER TABLE `upgradeItems` ADD CONSTRAINT `upgradeItems_upgradeId_upgrades_id_fk
 --> statement-breakpoint
 ALTER TABLE `upgradeOptions` ADD CONSTRAINT `upgradeOptions_upgradeId_upgrades_id_fk` FOREIGN KEY (`upgradeId`) REFERENCES `upgrades`(`id`) ON DELETE CASCADE ON UPDATE NO ACTION;
 --> statement-breakpoint
-ALTER TABLE `calendarEvents` ADD COLUMN IF NOT EXISTS `ownerId` int NOT NULL DEFAULT 1;
+ALTER TABLE `calendarEvents` ADD COLUMN `ownerId` int NOT NULL DEFAULT 1;
 --> statement-breakpoint
-ALTER TABLE `calendarEvents` ADD COLUMN IF NOT EXISTS `description` text;
+ALTER TABLE `calendarEvents` ADD COLUMN `description` text;
 --> statement-breakpoint
-ALTER TABLE `calendarEvents` ADD COLUMN IF NOT EXISTS `endDate` varchar(20);
+ALTER TABLE `calendarEvents` ADD COLUMN `endDate` varchar(20);
 --> statement-breakpoint
-ALTER TABLE `calendarEvents` ADD COLUMN IF NOT EXISTS `category` enum('Maintenance','Payment','Inspection','Renovation','Legal','Other');
+ALTER TABLE `calendarEvents` ADD COLUMN `category` enum('Maintenance','Payment','Inspection','Renovation','Legal','Other');
 --> statement-breakpoint
-ALTER TABLE `calendarEvents` ADD COLUMN IF NOT EXISTS `isRecurring` boolean DEFAULT false;
+ALTER TABLE `calendarEvents` ADD COLUMN `isRecurring` boolean DEFAULT false;
 --> statement-breakpoint
-ALTER TABLE `calendarEvents` ADD COLUMN IF NOT EXISTS `recurringInterval` enum('monthly','quarterly','yearly');
+ALTER TABLE `calendarEvents` ADD COLUMN `recurringInterval` enum('monthly','quarterly','yearly');
 --> statement-breakpoint
-ALTER TABLE `calendarEvents` ADD COLUMN IF NOT EXISTS `reminderDaysBefore` int;
+ALTER TABLE `calendarEvents` ADD COLUMN `reminderDaysBefore` int;
 --> statement-breakpoint
-ALTER TABLE `calendarEvents` ADD COLUMN IF NOT EXISTS `externalCalendarId` varchar(200);
+ALTER TABLE `calendarEvents` ADD COLUMN `externalCalendarId` varchar(200);
 --> statement-breakpoint
 ALTER TABLE `calendarEvents` ADD CONSTRAINT `calendarEvents_ownerId_users_id_fk` FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`) ON DELETE NO ACTION ON UPDATE NO ACTION;
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `calendar_owner_idx` ON `calendarEvents` (`ownerId`);
+CREATE INDEX `calendar_owner_idx` ON `calendarEvents` (`ownerId`);
 --> statement-breakpoint
-ALTER TABLE `expenses` ADD COLUMN IF NOT EXISTS `name` varchar(200);
+ALTER TABLE `expenses` ADD COLUMN `name` varchar(200);
 --> statement-breakpoint
-ALTER TABLE `expenses` ADD COLUMN IF NOT EXISTS `nextDueDate` varchar(20);
+ALTER TABLE `expenses` ADD COLUMN `nextDueDate` varchar(20);
 --> statement-breakpoint
-ALTER TABLE `expenses` ADD COLUMN IF NOT EXISTS `recurringInterval` enum('monthly','quarterly','yearly');
+ALTER TABLE `expenses` ADD COLUMN `recurringInterval` enum('monthly','quarterly','yearly');
 --> statement-breakpoint
-ALTER TABLE `expenses` ADD COLUMN IF NOT EXISTS `attachments` json;
+ALTER TABLE `expenses` ADD COLUMN `attachments` json;
 --> statement-breakpoint
 UPDATE `expenses` SET `name` = `label` WHERE `name` IS NULL AND `label` IS NOT NULL;
 --> statement-breakpoint
-ALTER TABLE `repairs` ADD COLUMN IF NOT EXISTS `title` varchar(200);
+ALTER TABLE `repairs` ADD COLUMN `title` varchar(200);
 --> statement-breakpoint
-ALTER TABLE `repairs` ADD COLUMN IF NOT EXISTS `category` enum('Plumbing','Electrical','HVAC','Structural','Appliance','Cosmetic','Other');
+ALTER TABLE `repairs` ADD COLUMN `category` enum('Plumbing','Electrical','HVAC','Structural','Appliance','Cosmetic','Other');
 --> statement-breakpoint
-ALTER TABLE `repairs` ADD COLUMN IF NOT EXISTS `reportedDate` varchar(20);
+ALTER TABLE `repairs` ADD COLUMN `reportedDate` varchar(20);
 --> statement-breakpoint
-ALTER TABLE `repairs` ADD COLUMN IF NOT EXISTS `completedDate` varchar(20);
+ALTER TABLE `repairs` ADD COLUMN `completedDate` varchar(20);
 --> statement-breakpoint
-ALTER TABLE `repairs` ADD COLUMN IF NOT EXISTS `cost` int;
+ALTER TABLE `repairs` ADD COLUMN `cost` int;
 --> statement-breakpoint
 UPDATE `repairs` SET `title` = `label` WHERE `title` IS NULL AND `label` IS NOT NULL;
 --> statement-breakpoint
-ALTER TABLE `repairQuotes` ADD COLUMN IF NOT EXISTS `contractor` varchar(200);
+ALTER TABLE `repairQuotes` ADD COLUMN `contractor` varchar(200);
 --> statement-breakpoint
-ALTER TABLE `repairQuotes` ADD COLUMN IF NOT EXISTS `amount` int;
+ALTER TABLE `repairQuotes` ADD COLUMN `amount` int;
 --> statement-breakpoint
-ALTER TABLE `repairQuotes` ADD COLUMN IF NOT EXISTS `date` varchar(20);
+ALTER TABLE `repairQuotes` ADD COLUMN `date` varchar(20);
 --> statement-breakpoint
-ALTER TABLE `repairQuotes` ADD COLUMN IF NOT EXISTS `selected` boolean DEFAULT false;
+ALTER TABLE `repairQuotes` ADD COLUMN `selected` boolean DEFAULT false;
 --> statement-breakpoint
 UPDATE `repairQuotes` SET `contractor` = `contractorName`, `amount` = `quotedPrice`, `selected` = `isSelected` WHERE `contractor` IS NULL AND `contractorName` IS NOT NULL;
 --> statement-breakpoint
-ALTER TABLE `upgrades` ADD COLUMN IF NOT EXISTS `title` varchar(200);
+ALTER TABLE `upgrades` ADD COLUMN `title` varchar(200);
 --> statement-breakpoint
-ALTER TABLE `upgrades` ADD COLUMN IF NOT EXISTS `category` enum('Kitchen','Bathroom','Bedroom','Living Room','Outdoor','Structural','Technology','Other');
+ALTER TABLE `upgrades` ADD COLUMN `category` enum('Kitchen','Bathroom','Bedroom','Living Room','Outdoor','Structural','Technology','Other');
 --> statement-breakpoint
-ALTER TABLE `upgrades` ADD COLUMN IF NOT EXISTS `priority` enum('low','medium','high') DEFAULT 'medium';
+ALTER TABLE `upgrades` ADD COLUMN `priority` enum('low','medium','high') DEFAULT 'medium';
 --> statement-breakpoint
-ALTER TABLE `upgrades` ADD COLUMN IF NOT EXISTS `estimatedCost` int;
+ALTER TABLE `upgrades` ADD COLUMN `estimatedCost` int;
 --> statement-breakpoint
-ALTER TABLE `upgrades` ADD COLUMN IF NOT EXISTS `actualCost` int;
+ALTER TABLE `upgrades` ADD COLUMN `actualCost` int;
 --> statement-breakpoint
-ALTER TABLE `upgrades` ADD COLUMN IF NOT EXISTS `startDate` varchar(20);
+ALTER TABLE `upgrades` ADD COLUMN `startDate` varchar(20);
 --> statement-breakpoint
-ALTER TABLE `upgrades` ADD COLUMN IF NOT EXISTS `completedDate` varchar(20);
+ALTER TABLE `upgrades` ADD COLUMN `completedDate` varchar(20);
 --> statement-breakpoint
-ALTER TABLE `upgrades` ADD COLUMN IF NOT EXISTS `contractor` varchar(200);
+ALTER TABLE `upgrades` ADD COLUMN `contractor` varchar(200);
 --> statement-breakpoint
-ALTER TABLE `upgrades` ADD COLUMN IF NOT EXISTS `roiEstimate` int;
+ALTER TABLE `upgrades` ADD COLUMN `roiEstimate` int;
 --> statement-breakpoint
 UPDATE `upgrades` SET `title` = `label` WHERE `title` IS NULL AND `label` IS NOT NULL;
 --> statement-breakpoint
-ALTER TABLE `upgradeOptions` ADD COLUMN IF NOT EXISTS `title` varchar(200);
+ALTER TABLE `upgradeOptions` ADD COLUMN `title` varchar(200);
 --> statement-breakpoint
-ALTER TABLE `upgradeOptions` ADD COLUMN IF NOT EXISTS `description` text;
+ALTER TABLE `upgradeOptions` ADD COLUMN `description` text;
 --> statement-breakpoint
-ALTER TABLE `upgradeOptions` ADD COLUMN IF NOT EXISTS `estimatedCost` int;
+ALTER TABLE `upgradeOptions` ADD COLUMN `estimatedCost` int;
 --> statement-breakpoint
-ALTER TABLE `upgradeOptions` ADD COLUMN IF NOT EXISTS `pros` json;
+ALTER TABLE `upgradeOptions` ADD COLUMN `pros` json;
 --> statement-breakpoint
-ALTER TABLE `upgradeOptions` ADD COLUMN IF NOT EXISTS `cons` json;
+ALTER TABLE `upgradeOptions` ADD COLUMN `cons` json;
 --> statement-breakpoint
-ALTER TABLE `upgradeOptions` ADD COLUMN IF NOT EXISTS `selected` boolean DEFAULT false;
+ALTER TABLE `upgradeOptions` ADD COLUMN `selected` boolean DEFAULT false;
 --> statement-breakpoint
 UPDATE `upgradeOptions` SET `title` = `name`, `estimatedCost` = `totalPrice`, `selected` = `isSelected` WHERE `title` IS NULL AND `name` IS NOT NULL;
 --> statement-breakpoint
-ALTER TABLE `loans` ADD COLUMN IF NOT EXISTS `name` varchar(200);
+ALTER TABLE `loans` ADD COLUMN `name` varchar(200);
 --> statement-breakpoint
-ALTER TABLE `loans` ADD COLUMN IF NOT EXISTS `originalAmount` int;
+ALTER TABLE `loans` ADD COLUMN `originalAmount` int;
 --> statement-breakpoint
-ALTER TABLE `loans` ADD COLUMN IF NOT EXISTS `currentBalance` int;
+ALTER TABLE `loans` ADD COLUMN `currentBalance` int;
 --> statement-breakpoint
-ALTER TABLE `loans` ADD COLUMN IF NOT EXISTS `monthlyPayment` int;
+ALTER TABLE `loans` ADD COLUMN `monthlyPayment` int;
 --> statement-breakpoint
-ALTER TABLE `loans` ADD COLUMN IF NOT EXISTS `endDate` varchar(20);
+ALTER TABLE `loans` ADD COLUMN `endDate` varchar(20);
 --> statement-breakpoint
-ALTER TABLE `loans` ADD COLUMN IF NOT EXISTS `nextPaymentDate` varchar(20);
+ALTER TABLE `loans` ADD COLUMN `nextPaymentDate` varchar(20);
 --> statement-breakpoint
 UPDATE `loans` SET `name` = `lender`, `originalAmount` = `totalAmount`, `currentBalance` = `totalAmount` WHERE `name` IS NULL AND `lender` IS NOT NULL;
 --> statement-breakpoint
-ALTER TABLE `wishlistItems` ADD COLUMN IF NOT EXISTS `name` varchar(200);
+ALTER TABLE `wishlistItems` ADD COLUMN `name` varchar(200);
 --> statement-breakpoint
-ALTER TABLE `wishlistItems` ADD COLUMN IF NOT EXISTS `category` enum('Furniture','Appliance','Electronics','Decor','Renovation','Other');
+ALTER TABLE `wishlistItems` ADD COLUMN `category` enum('Furniture','Appliance','Electronics','Decor','Renovation','Other');
 --> statement-breakpoint
-ALTER TABLE `wishlistItems` ADD COLUMN IF NOT EXISTS `estimatedPrice` int;
+ALTER TABLE `wishlistItems` ADD COLUMN `estimatedPrice` int;
 --> statement-breakpoint
-ALTER TABLE `wishlistItems` ADD COLUMN IF NOT EXISTS `status` enum('wanted','saved','purchased') DEFAULT 'wanted';
+ALTER TABLE `wishlistItems` ADD COLUMN `status` enum('wanted','saved','purchased') DEFAULT 'wanted';
 --> statement-breakpoint
-ALTER TABLE `wishlistItems` ADD COLUMN IF NOT EXISTS `url` text;
+ALTER TABLE `wishlistItems` ADD COLUMN `url` text;
 --> statement-breakpoint
 UPDATE `wishlistItems` SET `name` = `label`, `estimatedPrice` = `estimatedCost` WHERE `name` IS NULL AND `label` IS NOT NULL;
 --> statement-breakpoint
-ALTER TABLE `purchaseCosts` ADD COLUMN IF NOT EXISTS `name` varchar(200);
+ALTER TABLE `purchaseCosts` ADD COLUMN `name` varchar(200);
 --> statement-breakpoint
 UPDATE `purchaseCosts` SET `name` = `label` WHERE `name` IS NULL AND `label` IS NOT NULL;
 --> statement-breakpoint
@@ -130,10 +130,10 @@ ALTER TABLE `inventoryItems` ADD CONSTRAINT `inventoryItems_propertyId_fk` FOREI
 --> statement-breakpoint
 ALTER TABLE `inventoryItems` ADD CONSTRAINT `inventoryItems_ownerId_fk` FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`) ON DELETE NO ACTION ON UPDATE NO ACTION;
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `inventoryItem_property_idx` ON `inventoryItems` (`propertyId`);
+CREATE INDEX `inventoryItem_property_idx` ON `inventoryItems` (`propertyId`);
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `inventoryItem_owner_idx` ON `inventoryItems` (`ownerId`);
+CREATE INDEX `inventoryItem_owner_idx` ON `inventoryItems` (`ownerId`);
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `inventoryItem_category_idx` ON `inventoryItems` (`category`);
+CREATE INDEX `inventoryItem_category_idx` ON `inventoryItems` (`category`);
 --> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `inventoryItem_room_idx` ON `inventoryItems` (`room`);
+CREATE INDEX `inventoryItem_room_idx` ON `inventoryItems` (`room`);
