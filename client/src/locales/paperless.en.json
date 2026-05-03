@@ -1,0 +1,30 @@
+{
+  "nav": {
+    "documents": "Documents"
+  },
+  "documents": {
+    "title": "Documents",
+    "subtitle": "Paperless-backed document vault, OCR, and search.",
+    "refresh": "Refresh",
+    "checkingConnection": "Checking Paperless connection…",
+    "notConnected": "Paperless is not connected",
+    "configureHint": "Set PAPERLESS_URL and PAPERLESS_TOKEN in the HomeVault environment.",
+    "connected": "Connected to Paperless",
+    "uploadTitle": "Upload to Paperless",
+    "uploadHint": "HomeVault sends the file to Paperless. OCR and document processing happen there.",
+    "file": "File",
+    "documentTitle": "Title",
+    "titlePlaceholder": "Optional title",
+    "tags": "Tags",
+    "tagsPlaceholder": "homevault, warranty, bill",
+    "upload": "Upload",
+    "search": "Search",
+    "searchPlaceholder": "Search OCR text and document titles…",
+    "totalDocuments": "{{count}} documents",
+    "created": "Created",
+    "empty": "No documents found.",
+    "selectFileFirst": "Select a file first",
+    "uploadStarted": "Upload sent to Paperless for processing",
+    "uploadFailed": "Upload failed"
+  }
+}
