@@ -20,7 +20,7 @@ export default function Documents() {
   const [query, setQuery] = useState("");
   const [pendingQuery, setPendingQuery] = useState("");
   const [title, setTitle] = useState("");
-  const [tags, setTags] = useState("homevault");
+  const [tags, setTags] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -73,6 +73,7 @@ export default function Documents() {
       toast.success(t("documents.uploadStarted", { defaultValue: "Upload sent to Paperless for processing" }));
       setSelectedFile(null);
       setTitle("");
+      setTags("");
       fileInputRef.current && (fileInputRef.current.value = "");
       await documents.refetch();
     } catch (error: any) {
@@ -156,14 +157,17 @@ export default function Documents() {
 
           <div className="space-y-2">
             <label className="text-sm font-medium" htmlFor="document-tags">
-              {t("documents.tags", { defaultValue: "Tags" })}
+              {t("documents.tags", { defaultValue: "Tag IDs" })}
             </label>
             <Input
               id="document-tags"
               value={tags}
               onChange={(event) => setTags(event.target.value)}
-              placeholder={t("documents.tagsPlaceholder", { defaultValue: "homevault, warranty, bill" })}
+              placeholder={t("documents.tagsPlaceholder", { defaultValue: "Optional, e.g. 1, 2, 3" })}
             />
+            <p className="text-xs text-muted-foreground">
+              {t("documents.tagsHint", { defaultValue: "Paperless expects numeric tag IDs. Leave empty if unsure." })}
+            </p>
           </div>
 
           <Button
