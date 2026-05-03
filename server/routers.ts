@@ -104,8 +104,27 @@ const propertySchema = z.object({
   remindCalendar: z.boolean().optional(),
 });
 
+const inventorySchema = z.object({
+  name: z.string().min(1),
+  sku: z.string().optional(),
+  category: z.enum(["Appliance", "Furniture", "Electronics", "Consumable", "Tool", "Valuable", "Other"]).optional(),
+  room: z.string().optional(),
+  quantity: z.number().int().min(0).optional(),
+  minQuantity: z.number().int().min(0).optional(),
+  unit: z.string().optional(),
+  purchasePrice: z.number().int().positive().optional(),
+  purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  brand: z.string().optional(),
+  store: z.string().optional(),
+  warrantyExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  condition: z.enum(["New", "Good", "Fair", "Poor"]).optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  photoUrl: z.string().optional(),
+  serialNumber: z.string().optional(),
+});
+
 // ─── Ownership guard helpers ───────────────────────────────────────────────────
-// These throw FORBIDDEN before any DB write if the caller doesn't own the record.
 
 async function assertExpenseOwner(id: string, userId: number) {
   const record = await db.getExpenseById(id);
@@ -155,14 +174,18 @@ async function assertPurchaseCostOwner(id: string, userId: number) {
   return record;
 }
 
+async function assertInventoryOwner(id: string, userId: number) {
+  const record = await db.getInventoryItemById(id);
+  if (!record || record.ownerId !== userId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised to modify this inventory item" });
+  }
+  return record;
+}
+
 export const appRouter = router({
   system: systemRouter,
   search: searchRouter,
   auth: router({
-    // In NO_AUTH mode (HA addon) ctx.user may be null on the very first
-    // request if ingress strips/delays the session cookie. Fall back to
-    // upsert + return the admin user directly so auth.me never returns
-    // null when NO_AUTH is active, regardless of cookie state.
     me: publicProcedure.query(async ({ ctx }) => {
       if (ctx.user) return ctx.user;
 
@@ -203,7 +226,6 @@ export const appRouter = router({
   }),
 
   onboarding: router({
-    // Moved out of dashboard.stats query — side-effects belong in mutations.
     ensureProperty: protectedProcedure.mutation(async ({ ctx }) => {
       const props = await db.getPropertiesByUser(ctx.user.id);
       if (props.length === 0) {
@@ -218,7 +240,7 @@ export const appRouter = router({
     exportAll: protectedProcedure.query(async ({ ctx }) => {
       const pid = ctx.propertyId;
       const uid = ctx.user.id;
-      const [expensesData, repairsData, upgradesData, loansData, wishlist, purchaseCostsData, events, property] =
+      const [expensesData, repairsData, upgradesData, loansData, wishlist, purchaseCostsData, events, property, inventoryData] =
         await Promise.all([
           db.getExpenses(uid, pid),
           db.getRepairs(uid, pid),
@@ -228,8 +250,9 @@ export const appRouter = router({
           db.getPurchaseCosts(uid, pid),
           db.getCalendarEvents(pid),
           db.getProperty(pid),
+          db.getInventoryItems(uid, pid),
         ]);
-      return { expenses: expensesData, repairs: repairsData, upgrades: upgradesData, loans: loansData, wishlist, purchaseCosts: purchaseCostsData, calendarEvents: events, property, exportedAt: new Date().toISOString() };
+      return { expenses: expensesData, repairs: repairsData, upgrades: upgradesData, loans: loansData, wishlist, purchaseCosts: purchaseCostsData, calendarEvents: events, property, inventory: inventoryData, exportedAt: new Date().toISOString() };
     }),
     seedMock: protectedProcedure.mutation(async ({ ctx }) => {
       const propertyId = await db.seedMockProperty(ctx.user.id);
@@ -502,7 +525,6 @@ export const appRouter = router({
     addRepayment: protectedProcedure
       .input(z.object({ loanId: z.string(), amount: z.number().int().positive(), date: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        // Fetch the loan directly by id rather than pulling the full list.
         const targetLoan = await assertLoanOwner(input.loanId, ctx.user.id);
         const updatedRepayments = [
           ...((targetLoan as any).repayments || []),
@@ -602,6 +624,33 @@ export const appRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Property not found" });
         }
         return await db.deleteProperty(input.propertyId);
+      }),
+  }),
+
+  inventory: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getInventoryItems(ctx.user.id, ctx.propertyId);
+    }),
+    create: protectedProcedure.input(inventorySchema).mutation(async ({ ctx, input }) => {
+      return await db.createInventoryItem({
+        id: nanoid(),
+        ...input,
+        quantity: input.quantity ?? 1,
+        ownerId: ctx.user.id,
+        propertyId: ctx.propertyId,
+      });
+    }),
+    update: protectedProcedure
+      .input(z.object({ id: z.string(), data: inventorySchema.partial() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertInventoryOwner(input.id, ctx.user.id);
+        return await db.updateInventoryItem(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertInventoryOwner(input.id, ctx.user.id);
+        return await db.deleteInventoryItem(input.id);
       }),
   }),
 });

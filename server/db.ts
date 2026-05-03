@@ -20,6 +20,7 @@ import {
   wishlistItems,
   purchaseCosts,
   calendarEvents,
+  inventoryItems,
   type Expense,
   type Repair,
   type RepairQuote,
@@ -31,6 +32,8 @@ import {
   type PurchaseCost,
   type CalendarEvent,
   type Property,
+  type InventoryItem,
+  type InsertInventoryItem,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -191,7 +194,7 @@ export async function getRepairs(userId: number, propertyId: number) {
   const db = await getDb();
   return await db.select().from(repairs)
     .where(and(eq(repairs.ownerId, userId), eq(repairs.propertyId, propertyId)))
-    .orderBy(desc(repairs.dateLogged));
+    .orderBy(desc(repairs.createdAt));
 }
 
 export async function getRepairById(id: string) {
@@ -474,6 +477,41 @@ export async function updateCalendarEvent(id: string, data: Partial<CalendarEven
 export async function deleteCalendarEvent(id: string) {
   const db = await getDb();
   await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+  return true;
+}
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+
+export async function getInventoryItems(userId: number, propertyId: number) {
+  const db = await getDb();
+  return await db.select().from(inventoryItems)
+    .where(and(eq(inventoryItems.ownerId, userId), eq(inventoryItems.propertyId, propertyId)))
+    .orderBy(inventoryItems.name);
+}
+
+export async function getInventoryItemById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(inventoryItems).where(eq(inventoryItems.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createInventoryItem(data: InsertInventoryItem) {
+  const db = await getDb();
+  await db.insert(inventoryItems).values({ ...data, tags: (data.tags ?? []) as any });
+  return data;
+}
+
+export async function updateInventoryItem(id: string, data: Partial<InventoryItem>) {
+  const db = await getDb();
+  const normalized: any = { ...data };
+  if ("tags" in normalized) normalized.tags = normalized.tags ?? [];
+  await db.update(inventoryItems).set(normalized).where(eq(inventoryItems.id, id));
+  return data;
+}
+
+export async function deleteInventoryItem(id: string) {
+  const db = await getDb();
+  await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
   return true;
 }
 
@@ -843,6 +881,7 @@ export async function deleteAllUserData(userId: number) {
       tx.delete(wishlistItems).where(eq(wishlistItems.ownerId, userId)),
       tx.delete(purchaseCosts).where(eq(purchaseCosts.ownerId, userId)),
       tx.delete(calendarEvents).where(eq(calendarEvents.createdById, userId)),
+      tx.delete(inventoryItems).where(eq(inventoryItems.ownerId, userId)),
     ]);
   });
   return true;
@@ -887,6 +926,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
     db.delete(wishlistItems).where(eq(wishlistItems.propertyId, propertyId)),
     db.delete(purchaseCosts).where(eq(purchaseCosts.propertyId, propertyId)),
     db.delete(calendarEvents).where(eq(calendarEvents.propertyId, propertyId)),
+    db.delete(inventoryItems).where(eq(inventoryItems.propertyId, propertyId)),
   ]);
 
   const oid = userId;
