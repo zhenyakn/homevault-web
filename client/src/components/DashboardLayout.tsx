@@ -37,6 +37,7 @@ import { useTranslation } from "react-i18next";
 import {
   Check,
   ChevronDown,
+  FileText,
   Home,
   LayoutGrid,
   LogOut,
@@ -71,6 +72,7 @@ const coreMenuPaths = [
   { icon: Heart,        key: "nav.wishlist",        path: "/wishlist" },
   { icon: ShoppingCart, key: "nav.purchaseCosts",  path: "/purchase-costs" },
   { icon: Calendar,     key: "nav.calendar",        path: "/calendar" },
+  { icon: FileText,     key: "nav.documents",      path: "/documents" },
   { icon: Settings,     key: "nav.settings",        path: "/settings" },
 ];
 
