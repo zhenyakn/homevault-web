@@ -49,29 +49,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 // ── AttentionZone ─────────────────────────────────────────────────────────────
 
-function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
-  overdue: any[];
+function AttentionZone({ stale, decisionNeeded, cur }: {
   stale: any[];
   decisionNeeded: any[];
   cur: string;
-  onMarkPaid: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const [, nav] = useLocation();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const dismiss = (k: string) => setDismissed(p => new Set([...Array.from(p), k]));
 
-  const visOverdue   = overdue.filter(e => !dismissed.has(`exp-${e.id}`));
-  const visStale     = stale.filter(r => !dismissed.has(`rep-${r.id}`));
-  const visDecision  = decisionNeeded.filter(u => !dismissed.has(`upg-${u.id}`));
-  const total = visOverdue.length + visStale.length + visDecision.length;
-
-  const relDate = (d: string) => {
-    const dt = new Date(d);
-    if (isToday(dt))    return t("dashboard.today");
-    if (isTomorrow(dt)) return t("dashboard.tomorrow");
-    return format(dt, "MMM d");
-  };
+  const visStale    = stale.filter(r => !dismissed.has(`rep-${r.id}`));
+  const visDecision = decisionNeeded.filter(u => !dismissed.has(`upg-${u.id}`));
+  const total = visStale.length + visDecision.length;
 
   if (total === 0) return (
     <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900/50 text-sm font-medium text-emerald-700 dark:text-emerald-400 mb-6">
@@ -82,26 +72,6 @@ function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-      {visOverdue.map(e => (
-        <div key={e.id} className="rounded-lg border border-border border-l-2 border-l-rose-500 bg-card p-3.5 flex flex-col gap-2.5">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-snug">{e.label} {t("dashboard.unpaidSuffix")}</p>
-            <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 whitespace-nowrap shrink-0">
-              {t("dashboard.overdue")}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(e.amount, cur)} · {t("dashboard.due")} {relDate(e.date)}
-          </p>
-          <button
-            className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
-            onClick={() => { onMarkPaid(e.id); dismiss(`exp-${e.id}`); }}
-          >
-            {t("dashboard.markPaid")}
-          </button>
-        </div>
-      ))}
-
       {visStale.map(r => (
         <div key={r.id} className="rounded-lg border border-border border-l-2 border-l-amber-400 bg-card p-3.5 flex flex-col gap-2.5">
           <div className="flex items-start justify-between gap-2">
@@ -327,6 +297,9 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
         <>
           {activeUpgrades.map(u => {
             const counts = countMap[u.id];
+            // db returns actualCost / estimatedCost; pct is pre-computed
+            const spent  = u.actualCost  ?? u.spent  ?? 0;
+            const budget = u.estimatedCost ?? u.budget ?? 0;
             return (
               <div
                 key={u.id}
@@ -355,9 +328,9 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
                     "text-sm font-bold tabular-nums",
                     u.pct >= 100 ? "text-rose-500" : u.pct >= 80 ? "text-amber-500" : ""
                   )}>
-                    {fmt(u.spent)}
+                    {fmt(spent)}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">/ {fmt(u.budget)}</p>
+                  <p className="text-[11px] text-muted-foreground">/ {fmt(budget)}</p>
                 </div>
               </div>
             );
@@ -394,9 +367,10 @@ function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
       ) : (
         <>
           {loans.map((l, i) => {
-            const repaid    = l.repaid    ?? 0;
-            const remaining = l.remaining ?? Math.max(0, (l.totalAmount ?? 0) - repaid);
-            const pct       = l.pct       ?? 0;
+            // db returns: originalAmount, currentBalance, pct, paidOff, nextPaymentDate
+            const remaining = l.currentBalance ?? Math.max(0, (l.originalAmount ?? 0) - (l.repaid ?? 0));
+            const repaid    = Math.max(0, (l.originalAmount ?? 0) - remaining);
+            const pct       = l.pct ?? (l.originalAmount > 0 ? Math.round((repaid / l.originalAmount) * 100) : 0);
             return (
               <div key={l.id} className={cn(i > 0 && "pt-3 mt-3 border-t border-border")}>
                 <div className="flex items-start justify-between gap-2 mb-2">
@@ -429,8 +403,8 @@ function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
                 </div>
                 <div className="flex justify-between text-[11px] text-muted-foreground">
                   <span>{fmt(repaid)} {t("loans.repaid")} · {pct}%</span>
-                  {l.dueDate && (
-                    <span>until {format(new Date(l.dueDate), "MMM yyyy")}</span>
+                  {l.nextPaymentDate && (
+                    <span>next {format(new Date(l.nextPaymentDate), "MMM d, yyyy")}</span>
                   )}
                 </div>
               </div>
@@ -458,7 +432,7 @@ export default function Dashboard() {
   const { data: stats, isLoading, error } = trpc.dashboard.stats.useQuery();
   const { data: calEvents = [] }          = trpc.calendar.list.useQuery({});
 
-  const markPaid = trpc.expenses.markAsPaid.useMutation({
+  const markPaid = trpc.expenses.markAsPaid?.useMutation({
     onSuccess: () => utils.dashboard.stats.invalidate(),
   });
 
@@ -536,13 +510,9 @@ export default function Dashboard() {
       {/* Layer 1 — Needs attention */}
       <SectionLabel>{t("dashboard.attention")}</SectionLabel>
       <AttentionZone
-        overdue={s.overdueExpenses ?? []}
         stale={s.staleRepairs ?? []}
         decisionNeeded={s.upgradesNeedingDecision ?? []}
         cur={cur}
-        onMarkPaid={id =>
-          markPaid.mutate({ id, paidDate: new Date().toISOString().split("T")[0] })
-        }
       />
 
       {/* Layer 2 — This month */}
