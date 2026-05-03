@@ -1,0 +1,30 @@
+{
+  "nav": {
+    "documents": "מסמכים"
+  },
+  "documents": {
+    "title": "מסמכים",
+    "subtitle": "כספת מסמכים, OCR וחיפוש שמבוססים על Paperless.",
+    "refresh": "רענן",
+    "checkingConnection": "בודק חיבור ל-Paperless…",
+    "notConnected": "Paperless לא מחובר",
+    "configureHint": "יש להגדיר PAPERLESS_URL ו-PAPERLESS_TOKEN בסביבת HomeVault.",
+    "connected": "מחובר ל-Paperless",
+    "uploadTitle": "העלאה ל-Paperless",
+    "uploadHint": "HomeVault שולח את הקובץ ל-Paperless. ה-OCR ועיבוד המסמך מתבצעים שם.",
+    "file": "קובץ",
+    "documentTitle": "כותרת",
+    "titlePlaceholder": "כותרת אופציונלית",
+    "tags": "תגיות",
+    "tagsPlaceholder": "homevault, warranty, bill",
+    "upload": "העלה",
+    "search": "חיפוש",
+    "searchPlaceholder": "חפש בטקסט OCR ובכותרות מסמכים…",
+    "totalDocuments": "{{count}} מסמכים",
+    "created": "נוצר",
+    "empty": "לא נמצאו מסמכים.",
+    "selectFileFirst": "בחר קובץ קודם",
+    "uploadStarted": "הקובץ נשלח ל-Paperless לעיבוד",
+    "uploadFailed": "ההעלאה נכשלה"
+  }
+}
