@@ -214,10 +214,21 @@ function parseJsonArray(value: unknown): any[] {
   return [];
 }
 
-/** Coerce an empty string / undefined to null — prevents "" reaching ENUM or
- *  nullable-varchar columns which MySQL strict mode rejects. */
-function emptyToNull<T>(v: T): T | null {
-  return (v === "" || v === undefined) ? null : v;
+/**
+ * Return v as-is when it is a non-empty string/non-null value, otherwise
+ * return undefined so the key is omitted from the row object entirely.
+ *
+ * WHY: Drizzle's mysql2 bulk-insert driver serialises an explicit `null`
+ * (and even `undefined`) for ENUM / nullable-varchar columns as the empty
+ * string "" in the parameterised VALUES() array.  MySQL strict mode rejects
+ * "" for ENUM columns with ER_TRUNCATED_WRONG_VALUE_FOR_FIELD.
+ *
+ * Omitting the key from the row object causes Drizzle to skip that position
+ * entirely, so MySQL falls back to the column DEFAULT (NULL), which is
+ * always valid for a nullable column.
+ */
+function omitIfEmpty<T>(v: T): T | undefined {
+  return (v === "" || v === null || v === undefined) ? undefined : v;
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -1020,38 +1031,65 @@ export async function seedMockProperty(userId: number): Promise<number> {
   const oid = userId;
   const pid = propertyId;
 
-  // ── Expenses — pre-process each row to avoid TS duplicate-key silent drop ──
-  // TypeScript silently discards duplicate keys in object literals, so the
-  // "post-spread override" pattern (set key before spread, then override after)
-  // is unreliable. Instead we pre-build a clean row with no duplicate keys.
+  // ── Expenses ───────────────────────────────────────────────────────────────
+  // Build each row explicitly and OMIT nullable ENUM/varchar keys when the
+  // value is absent. Drizzle mysql2 bulk-insert coerces an explicit null (or
+  // undefined) for ENUM columns to "" in the parameterised query, which MySQL
+  // strict mode rejects. Omitting the key entirely causes Drizzle to skip that
+  // column, so MySQL uses the column DEFAULT (NULL).
   await db.insert(expenses).values(
     mockExpenses.map(e => {
       const raw = e as any;
-      return {
-        id:                nanoid(),
-        ownerId:           oid,
-        propertyId:        pid,
-        name:              raw.name,
-        amount:            raw.amount,
-        date:              raw.date,
-        category:          raw.category ?? null,
-        isRecurring:       (raw.isRecurring ? 1 : 0) as any,
-        recurringInterval: emptyToNull(raw.recurringInterval) as any,
-        nextDueDate:       emptyToNull(raw.nextDueDate) as any,
-        notes:             emptyToNull(raw.notes) as any,
-        attachments:       [] as any,
+      const row: any = {
+        id:          nanoid(),
+        ownerId:     oid,
+        propertyId:  pid,
+        name:        raw.name,
+        amount:      raw.amount,
+        date:        raw.date,
+        category:    raw.category ?? null,
+        isRecurring: (raw.isRecurring ? 1 : 0) as any,
+        attachments: [] as any,
       };
+      // Only set these keys when they carry a real value — omitting them lets
+      // the column DEFAULT NULL apply, avoiding the Drizzle "" coercion bug.
+      const ri = omitIfEmpty(raw.recurringInterval);
+      if (ri !== undefined) row.recurringInterval = ri;
+      const nd = omitIfEmpty(raw.nextDueDate);
+      if (nd !== undefined) row.nextDueDate = nd;
+      const nt = omitIfEmpty(raw.notes);
+      if (nt !== undefined) row.notes = nt;
+      return row;
     })
   );
 
+  // ── Repairs ────────────────────────────────────────────────────────────────
   await db.insert(repairs).values(
-    mockRepairs.map(r => ({
-      id: nanoid(),
-      ownerId: oid,
-      propertyId: pid,
-      attachments: [] as any,
-      ...r,
-    }))
+    mockRepairs.map(r => {
+      const raw = r as any;
+      const row: any = {
+        id:          nanoid(),
+        ownerId:     oid,
+        propertyId:  pid,
+        title:       raw.title,
+        description: raw.description ?? null,
+        priority:    raw.priority ?? "medium",
+        status:      raw.status ?? "open",
+        cost:        raw.cost ?? null,
+        attachments: [] as any,
+      };
+      const cat = omitIfEmpty(raw.category);
+      if (cat !== undefined) row.category = cat;
+      const rd = omitIfEmpty(raw.reportedDate);
+      if (rd !== undefined) row.reportedDate = rd;
+      const cd = omitIfEmpty(raw.completedDate);
+      if (cd !== undefined) row.completedDate = cd;
+      const co = omitIfEmpty(raw.contractor);
+      if (co !== undefined) row.contractor = co;
+      const nt = omitIfEmpty(raw.notes);
+      if (nt !== undefined) row.notes = nt;
+      return row;
+    })
   );
 
   for (const u of mockUpgrades) {
@@ -1112,25 +1150,32 @@ export async function seedMockProperty(userId: number): Promise<number> {
     }))
   );
 
-  // ── Calendar events — same pre-process pattern as expenses ─────────────────
+  // ── Calendar Events ────────────────────────────────────────────────────────
   await db.insert(calendarEvents).values(
     mockCalendarEvents.map(e => {
       const raw = e as any;
-      return {
-        id:                 nanoid(),
-        ownerId:            oid,
-        propertyId:         pid,
-        title:              raw.title,
-        date:               raw.date,
-        category:           raw.category ?? null,
-        isRecurring:        (raw.isRecurring ? 1 : 0) as any,
-        recurringInterval:  emptyToNull(raw.recurringInterval) as any,
-        notes:              emptyToNull(raw.notes) as any,
-        description:        emptyToNull(raw.description) as any,
-        endDate:            emptyToNull(raw.endDate) as any,
-        reminderDaysBefore: raw.reminderDaysBefore ?? null,
-        externalCalendarId: raw.externalCalendarId ?? null,
+      const row: any = {
+        id:          nanoid(),
+        ownerId:     oid,
+        propertyId:  pid,
+        title:       raw.title,
+        date:        raw.date,
+        category:    raw.category ?? null,
+        isRecurring: (raw.isRecurring ? 1 : 0) as any,
       };
+      const ri = omitIfEmpty(raw.recurringInterval);
+      if (ri !== undefined) row.recurringInterval = ri;
+      const nd = omitIfEmpty(raw.endDate);
+      if (nd !== undefined) row.endDate = nd;
+      const nt = omitIfEmpty(raw.notes);
+      if (nt !== undefined) row.notes = nt;
+      const desc = omitIfEmpty(raw.description);
+      if (desc !== undefined) row.description = desc;
+      const rdb = raw.reminderDaysBefore ?? null;
+      if (rdb !== null) row.reminderDaysBefore = rdb;
+      const eci = omitIfEmpty(raw.externalCalendarId);
+      if (eci !== undefined) row.externalCalendarId = eci;
+      return row;
     })
   );
 
