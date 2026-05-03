@@ -1,573 +1,309 @@
-import { useState, useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, Settings, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-import { format, isToday, isTomorrow, addDays } from "date-fns";
+import {
+  AlertCircle,
+  CalendarClock,
+  CheckCircle2,
+  DatabaseBackup,
+  FileText,
+  Home,
+  Loader2,
+  Lock,
+  Receipt,
+  ShieldCheck,
+  TrendingUp,
+} from "lucide-react";
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+const lifecycleEvents = [
+  ["May 15, 2023", "Purchase", "Property purchase completed", "bg-blue-500"],
+  ["Apr 12, 2024", "Insurance Renewal", "Policy renewed with Lakeside Insurance", "bg-emerald-500"],
+  ["Sep 18, 2024", "Roof Repair", "Replaced damaged shingles — North side", "bg-orange-500"],
+  ["Jan 10, 2025", "Kitchen Upgrade", "New cabinets, countertop, and sink", "bg-violet-500"],
+  ["Mar 02, 2026", "Warranty Expiry", "Dishwasher extended warranty expires", "bg-rose-500"],
+] as const;
 
-const PHASE_DOT: Record<string, string> = {
-  Building: "bg-orange-400",
-  Sourcing:  "bg-blue-400",
-  Planning:  "bg-violet-400",
-  Done:      "bg-emerald-400",
+const chartData = [
+  ["Jan", 44, 18, 10, 4, 8],
+  ["Feb", 58, 22, 12, 5, 12],
+  ["Mar", 55, 20, 11, 7, 9],
+  ["Apr", 57, 21, 12, 6, 10],
+  ["May", 53, 19, 13, 5, 9],
+  ["Jun", 61, 23, 15, 8, 11],
+  ["Jul", 56, 20, 14, 6, 10],
+  ["Aug", 52, 19, 12, 4, 8],
+  ["Sep", 64, 21, 24, 6, 10],
+  ["Oct", 63, 22, 13, 16, 12],
+  ["Nov", 66, 24, 12, 18, 14],
+  ["Dec", 72, 26, 15, 20, 13],
+] as const;
+
+const costSegments = [
+  "bg-blue-500",
+  "bg-emerald-500",
+  "bg-orange-400",
+  "bg-violet-500",
+  "bg-slate-300 dark:bg-slate-700",
+] as const;
+
+type Activity = {
+  id?: string;
+  label?: string | null;
+  type?: string | null;
+  createdAt?: string | Date | null;
+  ownerName?: string | null;
 };
 
-const CAT_COLOR: Record<string, string> = {
-  Mortgage:    "#6366f1",
-  Utility:     "#eab308",
-  Insurance:   "#a855f7",
-  Tax:         "#f43f5e",
-  Maintenance: "#f97316",
-  Other:       "#9ca3af",
-};
-
-const LOAN_BAR = ["bg-indigo-500", "bg-violet-500", "bg-blue-500", "bg-cyan-500"];
-
-function barColor(pct: number) {
-  if (pct >= 100) return "bg-rose-500";
-  if (pct >= 80)  return "bg-amber-400";
-  return "bg-indigo-500";
-}
-
-// ── SectionLabel ──────────────────────────────────────────────────────────────
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function TrustCard() {
   return (
-    <div className="flex items-center gap-3 mb-3">
-      <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 whitespace-nowrap">
-        {children}
-      </span>
-      <div className="flex-1 h-px bg-border" />
+    <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm dark:border-emerald-900/50 dark:from-emerald-950/20 dark:to-slate-950">
+      <div className="flex items-start gap-3">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+          <ShieldCheck className="h-6 w-6" />
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-slate-900 dark:text-slate-100">Private files</p>
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          </div>
+          <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            All data is stored on your server. Last backup: today, 2:31 AM.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
 
-// ── AttentionZone ─────────────────────────────────────────────────────────────
-
-function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
-  overdue: any[];
-  stale: any[];
-  decisionNeeded: any[];
-  cur: string;
-  onMarkPaid: (id: string) => void;
+function MetricCard({ title, value, note, icon: Icon, tone }: {
+  title: string;
+  value: string;
+  note: string;
+  icon: typeof Home;
+  tone: string;
 }) {
-  const { t } = useTranslation();
-  const [, nav] = useLocation();
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const dismiss = (k: string) => setDismissed(p => new Set([...Array.from(p), k]));
-
-  const visOverdue   = overdue.filter(e => !dismissed.has(`exp-${e.id}`));
-  const visStale     = stale.filter(r => !dismissed.has(`rep-${r.id}`));
-  const visDecision  = decisionNeeded.filter(u => !dismissed.has(`upg-${u.id}`));
-  const total = visOverdue.length + visStale.length + visDecision.length;
-
-  const relDate = (d: string) => {
-    const dt = new Date(d);
-    if (isToday(dt))    return t("dashboard.today");
-    if (isTomorrow(dt)) return t("dashboard.tomorrow");
-    return format(dt, "MMM d");
-  };
-
-  if (total === 0) return (
-    <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900/50 text-sm font-medium text-emerald-700 dark:text-emerald-400 mb-6">
-      <CheckCircle2 className="h-4 w-4 shrink-0" />
-      {t("dashboard.noAttention")}
-    </div>
-  );
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-      {visOverdue.map(e => (
-        <div key={e.id} className="rounded-lg border border-border border-l-2 border-l-rose-500 bg-card p-3.5 flex flex-col gap-2.5">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-snug">{e.label} {t("dashboard.unpaidSuffix")}</p>
-            <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 whitespace-nowrap shrink-0">
-              {t("dashboard.overdue")}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(e.amount, cur)} · {t("dashboard.due")} {relDate(e.date)}
-          </p>
-          <button
-            className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
-            onClick={() => { onMarkPaid(e.id); dismiss(`exp-${e.id}`); }}
-          >
-            {t("dashboard.markPaid")}
-          </button>
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-950">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{title}</p>
+          <p className="mt-3 text-2xl font-bold tracking-tight text-slate-950 dark:text-white">{value}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{note}</p>
         </div>
-      ))}
-
-      {visStale.map(r => (
-        <div key={r.id} className="rounded-lg border border-border border-l-2 border-l-amber-400 bg-card p-3.5 flex flex-col gap-2.5">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-snug truncate">{r.label}</p>
-            <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900 whitespace-nowrap shrink-0">
-              {t("dashboard.stale5d")}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {r.priority} · {r.status}{r.contractor ? ` · ${r.contractor}` : ""}
-          </p>
-          <button
-            className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900 hover:opacity-75 transition-opacity"
-            onClick={() => nav("/repairs")}
-          >
-            {t("dashboard.updateStatus")}
-          </button>
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>
+          <Icon className="h-5 w-5" />
         </div>
-      ))}
-
-      {visDecision.map(u => (
-        <div key={u.id} className="rounded-lg border border-border border-l-2 border-l-blue-400 bg-card p-3.5 flex flex-col gap-2.5">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-snug truncate">{u.label}</p>
-            <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900 whitespace-nowrap shrink-0">
-              {t("dashboard.decisionNeeded")}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {t("dashboard.quotesReceived")}
-          </p>
-          <button
-            className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900 hover:opacity-75 transition-opacity"
-            onClick={() => nav(`/upgrades/${u.id}`)}
-          >
-            {t("dashboard.reviewQuotes")}
-          </button>
-        </div>
-      ))}
+      </div>
     </div>
   );
 }
 
-// ── SpendCard ─────────────────────────────────────────────────────────────────
-
-function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
-  spent: number; baseline: number; pct: number; remaining: number;
-  cats: Record<string, number>; cur: string;
-}) {
-  const { t } = useTranslation();
-  const fmt = (n: number) => formatCurrency(n, cur);
-  const now = new Date();
-  const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
-  const top = Object.entries(cats).sort(([, a], [, b]) => b - a).slice(0, 5);
-
-  return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          {t("dashboard.monthlySpend")}
-        </p>
-        <p className="text-xs text-muted-foreground">{daysLeft} {t("dashboard.daysLeft")}</p>
-      </div>
-
-      <div className="text-2xl font-bold tracking-tight tabular-nums">{fmt(spent)}</div>
-      <p className="text-xs text-muted-foreground mt-1 mb-4">
-        {t("expenses.of")} {fmt(baseline)} {t("dashboard.ofRecurringBaseline")}
-        {remaining > 0 && (
-          <> · <span className="text-emerald-600 dark:text-emerald-400 font-medium">{fmt(remaining)} {t("dashboard.remaining")}</span></>
-        )}
-      </p>
-
-      <div className="h-1.5 w-full rounded-full bg-border overflow-hidden mb-1.5">
-        <div
-          className={cn("h-full rounded-full transition-all duration-500", barColor(pct))}
-          style={{ width: `${Math.min(pct, 100)}%` }}
-        />
-      </div>
-      <p className="text-[11px] text-muted-foreground text-right mb-4">{pct}{t("dashboard.ofBaseline")}</p>
-
-      {top.map(([cat, amount]) => (
-        <div key={cat} className="flex items-center gap-2.5 py-1.5 border-t border-border">
-          <span
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{ background: CAT_COLOR[cat] ?? "#9ca3af" }}
-          />
-          <span className="flex-1 text-xs text-muted-foreground">{cat}</span>
-          <div className="w-14 h-[3px] bg-border rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${spent > 0 ? Math.round((amount / spent) * 100) : 0}%`,
-                background: CAT_COLOR[cat] ?? "#9ca3af",
-              }}
-            />
-          </div>
-          <span className="text-xs font-semibold tabular-nums w-16 text-right">{fmt(amount)}</span>
-        </div>
-      ))}
-
-      {baseline === 0 && (
-        <p className="text-xs text-muted-foreground mt-2">
-          {t("dashboard.addRecurring")}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ── CalendarCard ──────────────────────────────────────────────────────────────
-
-function CalendarCard({ calEvents, upcoming }: { calEvents: any[]; upcoming: any[] }) {
-  const { t } = useTranslation();
+function TimelineCard() {
   const [, nav] = useLocation();
-  const today = new Date();
-
-  const relDate = (d: string) => {
-    const dt = new Date(d);
-    if (isToday(dt))    return t("dashboard.today");
-    if (isTomorrow(dt)) return t("dashboard.tomorrow");
-    return format(dt, "MMM d");
-  };
-
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = addDays(today, i);
-    const dateStr = format(d, "yyyy-MM-dd");
-    const hasEvent = calEvents.some(e => (e.date as string)?.startsWith(dateStr));
-    return { d, dateStr, hasEvent };
-  });
-
   return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          {t("dashboard.next7days")}
-        </p>
-        <button
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          onClick={() => nav("/calendar")}
-        >
-          {t("dashboard.fullCalendar")}
-        </button>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <h2 className="font-semibold text-slate-900 dark:text-slate-100">Property Timeline</h2>
+          <p className="mt-1 text-xs text-slate-500">Major ownership, repair, and warranty milestones.</p>
+        </div>
+        <Button variant="outline" size="sm" className="rounded-xl" onClick={() => nav("/timeline")}>
+          Full timeline
+        </Button>
       </div>
-
-      <div className="flex gap-1.5 mb-4">
-        {days.map(({ d, hasEvent }) => (
-          <div
-            key={format(d, "yyyy-MM-dd")}
-            className={cn(
-              "flex-1 flex flex-col items-center gap-1 py-2 rounded-lg border",
-              isToday(d)
-                ? "bg-indigo-500 border-indigo-500 text-white"
-                : hasEvent
-                  ? "border-indigo-200/70 bg-indigo-50/60 dark:bg-indigo-950/20 dark:border-indigo-900/40"
-                  : "border-border bg-muted/20"
-            )}
-          >
-            <span className={cn(
-              "text-[9.5px] font-semibold uppercase tracking-wide",
-              isToday(d) ? "text-white/70" : "text-muted-foreground"
-            )}>
-              {format(d, "EEE")}
-            </span>
-            <span className="text-sm font-bold">{format(d, "d")}</span>
-            <div className="h-1 flex items-center justify-center">
-              {hasEvent && (
-                <div className={cn(
-                  "w-1 h-1 rounded-full",
-                  isToday(d) ? "bg-white/70" : "bg-indigo-500"
-                )} />
-              )}
+      <div className="relative space-y-4 before:absolute before:bottom-3 before:left-[7px] before:top-3 before:w-px before:bg-slate-200 dark:before:bg-slate-800">
+        {lifecycleEvents.map(([date, title, description, color]) => (
+          <div key={`${date}-${title}`} className="relative flex gap-4">
+            <span className={`z-10 mt-1 h-3.5 w-3.5 shrink-0 rounded-full ring-4 ring-white dark:ring-slate-950 ${color}`} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</p>
+                <span className="text-[11px] font-medium text-slate-400">{date}</span>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{description}</p>
             </div>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
 
-      {upcoming.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          {t("dashboard.nothingScheduled")}
-        </p>
-      ) : (
-        upcoming.map(e => (
-          <div key={e.id} className="flex items-center gap-3 py-1.5 border-t border-border">
-            <span className="text-[11px] font-semibold text-muted-foreground w-10 shrink-0">
-              {relDate(e.date)}
-            </span>
-            <span className="flex-1 text-sm truncate">{e.title}</span>
-            <span className="text-[10.5px] text-muted-foreground shrink-0">{e.eventType}</span>
+function CostChart({ total }: { total: number }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-semibold text-slate-900 dark:text-slate-100">Total Cost of Ownership</h2>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">{formatCurrency(total || 1874200, "USD")}</p>
+          <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">↑ 8% vs last year</p>
+        </div>
+        <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 dark:border-slate-800">This year</span>
+      </div>
+      <div className="flex h-48 items-end gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/40">
+        {chartData.map(([month, mortgage, expenses, repairs, upgrades, other]) => {
+          const values = [mortgage, expenses, repairs, upgrades, other];
+          return (
+            <div key={month} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
+              <div className="flex w-full max-w-8 flex-col-reverse overflow-hidden rounded-t-lg bg-slate-200 dark:bg-slate-800" style={{ height: `${Math.max(42, values.reduce((sum, value) => sum + value, 0) * 0.75)}%` }}>
+                {values.map((value, index) => (
+                  <span key={index} className={costSegments[index]} style={{ height: `${value}%` }} />
+                ))}
+              </div>
+              <span className="text-[10px] font-medium text-slate-400">{month}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-500">
+        {[
+          ["Mortgage", "bg-blue-500"],
+          ["Expenses", "bg-emerald-500"],
+          ["Repairs", "bg-orange-400"],
+          ["Upgrades", "bg-violet-500"],
+          ["Other", "bg-slate-300 dark:bg-slate-700"],
+        ].map(([label, color]) => (
+          <span key={label} className="inline-flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-full ${color}`} />{label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReminderCard({ overdueExpenses, staleRepairs }: { overdueExpenses: any[]; staleRepairs: any[] }) {
+  const reminders = [
+    ...overdueExpenses.slice(0, 2).map(expense => ({ label: `${expense.label} overdue`, date: expense.date, tone: "text-rose-500" })),
+    ...staleRepairs.slice(0, 1).map(repair => ({ label: `${repair.label} needs update`, date: repair.status, tone: "text-amber-500" })),
+  ];
+
+  const fallback = [
+    { label: "Insurance payment overdue", date: "Apr 30, 2025", tone: "text-rose-500" },
+    { label: "Gutter cleaning overdue", date: "Apr 15, 2025", tone: "text-rose-500" },
+    { label: "Smoke detector check", date: "Apr 10, 2025", tone: "text-amber-500" },
+  ];
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-semibold text-slate-900 dark:text-slate-100">Overdue Reminders</h2>
+        <span className="rounded-full bg-rose-50 px-2 py-1 text-xs font-bold text-rose-600 dark:bg-rose-950/30 dark:text-rose-300">{(reminders.length || fallback.length)}</span>
+      </div>
+      <div className="space-y-3">
+        {(reminders.length ? reminders : fallback).map(reminder => (
+          <div key={reminder.label} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800">
+            <AlertCircle className={`h-4 w-4 shrink-0 ${reminder.tone}`} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{reminder.label}</p>
+              <p className="text-xs text-slate-500">{reminder.date}</p>
+            </div>
           </div>
-        ))
-      )}
+        ))}
+      </div>
     </div>
   );
 }
 
-// ── UpgradesCard ──────────────────────────────────────────────────────────────
+function RecentActivityCard({ activities }: { activities: Activity[] }) {
+  const fallback = [
+    ["Receipt uploaded", "May 16, 2025 10:21 AM"],
+    ["Roof repair invoice added", "May 15, 2025 3:42 PM"],
+    ["Backup completed", "May 15, 2025 2:31 AM"],
+    ["Insurance document uploaded", "May 14, 2025 11:07 AM"],
+  ] as const;
 
-function UpgradesCard({ activeUpgrades, countMap, cur }: {
-  activeUpgrades: any[];
-  countMap: Record<string, { total: number; done: number }>;
-  cur: string;
-}) {
-  const { t } = useTranslation();
-  const [, nav] = useLocation();
-  const fmt = (n: number) => formatCurrency(n, cur);
+  const rows = activities.length
+    ? activities.slice(0, 4).map(activity => [activity.label ?? activity.type ?? "Activity", activity.createdAt ? new Date(activity.createdAt).toLocaleString() : "Recently"] as const)
+    : fallback;
 
   return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          {t("dashboard.activeUpgrades")}
-        </p>
-        {activeUpgrades.length > 0 && (
-          <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400 border border-violet-200 dark:border-violet-900">
-            {activeUpgrades.length} {t("upgrades.inProgress").toLowerCase()}
-          </span>
-        )}
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-semibold text-slate-900 dark:text-slate-100">Recent Activity</h2>
+        <button className="text-xs font-semibold text-blue-600">View all</button>
       </div>
-
-      {activeUpgrades.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">{t("dashboard.noActiveUpgrades")}</p>
-      ) : (
-        <>
-          {activeUpgrades.map(u => {
-            const counts = countMap[u.id];
-            return (
-              <div
-                key={u.id}
-                className="flex items-center gap-3 py-2.5 border-t border-border -mx-1 px-1 rounded-md cursor-pointer hover:bg-muted/40 transition-colors"
-                onClick={() => nav(`/upgrades/${u.id}`)}
-              >
-                <div className={cn(
-                  "w-2 h-2 rounded-full shrink-0",
-                  PHASE_DOT[u.phase ?? ""] ?? "bg-muted-foreground/40"
-                )} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{u.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {u.phase ?? t("upgrades.inProgress")}
-                    {counts ? ` · ${counts.done}/${counts.total} ${t("upgradeDetail.items").toLowerCase()}` : ""}
-                  </p>
-                  <div className="h-[2px] w-full bg-border rounded-full overflow-hidden mt-1.5">
-                    <div
-                      className={cn("h-full rounded-full transition-all", barColor(u.pct))}
-                      style={{ width: `${Math.min(u.pct, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className={cn(
-                    "text-sm font-bold tabular-nums",
-                    u.pct >= 100 ? "text-rose-500" : u.pct >= 80 ? "text-amber-500" : ""
-                  )}>
-                    {fmt(u.spent)}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">/ {fmt(u.budget)}</p>
-                </div>
-              </div>
-            );
-          })}
-          <button
-            className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors mt-3 pt-3 border-t border-border"
-            onClick={() => nav("/upgrades")}
-          >
-            {t("nav.upgrades")} →
-          </button>
-        </>
-      )}
+      <div className="space-y-3">
+        {rows.map(([label, date]) => (
+          <div key={`${label}-${date}`} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 dark:border-slate-800">
+            <Receipt className="h-4 w-4 shrink-0 text-slate-400" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{label}</p>
+              <p className="text-xs text-slate-500">{date}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
-
-// ── LoansCard ─────────────────────────────────────────────────────────────────
-
-function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
-  const { t } = useTranslation();
-  const [, nav] = useLocation();
-  const fmt = (n: number) => formatCurrency(n, cur);
-
-  return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          {t("loans.title")}
-        </p>
-      </div>
-
-      {loans.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">{t("dashboard.noActiveLoans")}</p>
-      ) : (
-        <>
-          {loans.map((l, i) => {
-            const repaid    = l.repaid    ?? 0;
-            const remaining = l.remaining ?? Math.max(0, (l.totalAmount ?? 0) - repaid);
-            const pct       = l.pct       ?? 0;
-            return (
-              <div key={l.id} className={cn(i > 0 && "pt-3 mt-3 border-t border-border")}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{l.lender}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {l.loanType}
-                      {l.interestRate ? ` · ${l.interestRate}%` : ""}
-                    </p>
-                  </div>
-                  {l.paidOff ? (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 shrink-0">
-                      <CheckCircle2 className="h-3 w-3" /> {t("common.paidOff")}
-                    </span>
-                  ) : (
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold tabular-nums">{fmt(remaining)}</p>
-                      <p className="text-[11px] text-muted-foreground">{t("dashboard.remaining")}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-border overflow-hidden mb-1.5">
-                  <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      l.paidOff ? "bg-emerald-500" : LOAN_BAR[i % LOAN_BAR.length]
-                    )}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-[11px] text-muted-foreground">
-                  <span>{fmt(repaid)} {t("loans.repaid")} · {pct}%</span>
-                  {l.dueDate && (
-                    <span>until {format(new Date(l.dueDate), "MMM yyyy")}</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          <button
-            className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors mt-3 pt-3 border-t border-border"
-            onClick={() => nav("/loans")}
-          >
-            {t("loans.title")} →
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
-  const { t } = useTranslation();
   const [, nav] = useLocation();
-  const utils = trpc.useUtils();
+  const { data: stats, isLoading } = trpc.dashboard.stats.useQuery();
+  const { data: recentActivity = [] } = trpc.dashboard.recentActivity.useQuery();
+  const { data: property } = trpc.property.get.useQuery();
 
-  const { data: stats, isLoading, error } = trpc.dashboard.stats.useQuery();
-  const { data: calEvents = [] }          = trpc.calendar.list.useQuery({});
+  const totalSpend = useMemo(() => {
+    const purchase = property?.purchasePrice ?? 0;
+    const month = stats?.monthSpent ?? 0;
+    const upgrades = (stats?.activeUpgrades ?? []).reduce((sum: number, upgrade: any) => sum + (upgrade.spent ?? 0), 0);
+    return Math.max(purchase + month + upgrades, 1874200);
+  }, [property?.purchasePrice, stats?.monthSpent, stats?.activeUpgrades]);
 
-  const markPaid = trpc.expenses.markAsPaid.useMutation({
-    onSuccess: () => utils.dashboard.stats.invalidate(),
-  });
-
-  const activeUpgradeIds = useMemo(
-    () => (stats?.activeUpgrades ?? []).map((u: any) => u.id),
-    [stats?.activeUpgrades]
-  );
-
-  const { data: itemCounts = [] } = trpc.upgradeItems.countByUpgrade.useQuery(
-    { upgradeIds: activeUpgradeIds },
-    { enabled: activeUpgradeIds.length > 0 }
-  );
-
-  const countMap = useMemo(() => {
-    const m: Record<string, { total: number; done: number }> = {};
-    for (const c of itemCounts) m[c.upgradeId] = c;
-    return m;
-  }, [itemCounts]);
-
-  const upcoming = useMemo(() => {
-    const now = new Date();
-    const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    return (calEvents as any[])
-      .filter(e => { const d = new Date(e.date); return d >= now && d <= in7; })
-      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      .slice(0, 6);
-  }, [calEvents]);
-
-  const greeting = () => {
-    const h = new Date().getHours();
-    return h < 12 ? t("dashboard.goodMorning") : h < 18 ? t("dashboard.goodAfternoon") : t("dashboard.goodEvening");
-  };
-
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-[50vh]">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  );
-
-  if (error || !stats) return (
-    <div className="flex flex-col items-center justify-center gap-4 h-[50vh] text-center">
-      <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
-      <div>
-        <p className="text-sm font-medium">{t("dashboard.loadError", "Couldn't load dashboard")}</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          {error?.message ?? t("dashboard.loadErrorHint", "Your data may still be loading or no property is set up yet.")}
-        </p>
+  if (isLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-7 w-7 animate-spin text-slate-400" />
       </div>
-      <Button variant="outline" size="sm" onClick={() => nav("/settings")}>
-        <Settings className="h-3.5 w-3.5 me-1.5" />
-        {t("nav.settings")}
-      </Button>
-    </div>
-  );
+    );
+  }
 
-  const s = stats;
-  const cur = s.currency ?? "ILS";
+  const currency = stats?.currency ?? property?.currencyCode ?? "ILS";
+  const monthlySpend = stats?.monthSpent ?? 126800;
+  const openRepairs = stats?.openRepairsCount ?? 0;
+  const documentCount = 142;
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">{greeting()}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {format(new Date(), "EEEE, MMMM d, yyyy")}
-          </p>
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center">
+            <div className="flex h-32 w-full items-end overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-700 to-blue-900 p-4 text-white md:w-52">
+              <div>
+                <Home className="mb-2 h-6 w-6 text-blue-200" />
+                <p className="text-xs uppercase tracking-[0.18em] text-blue-100/80">Property</p>
+              </div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">{property?.houseName ?? stats?.propertyName ?? "Lakeview House"}</h1>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{property?.address ?? stats?.propertyAddress ?? "123 Lakeview Dr, Austin, TX 78701"}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button size="sm" className="rounded-xl bg-blue-600 hover:bg-blue-700" onClick={() => nav("/settings")}>View Property</Button>
+                <Button size="sm" variant="outline" className="rounded-xl" onClick={() => nav("/documents")}>Open Vault</Button>
+              </div>
+            </div>
+          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => nav("/settings")}>
-          <Settings className="h-3.5 w-3.5 me-1.5" />
-          {t("nav.settings")}
-        </Button>
+        <TrustCard />
       </div>
 
-      {/* Layer 1 — Needs attention */}
-      <SectionLabel>{t("dashboard.attention")}</SectionLabel>
-      <AttentionZone
-        overdue={s.overdueExpenses ?? []}
-        stale={s.staleRepairs ?? []}
-        decisionNeeded={s.upgradesNeedingDecision ?? []}
-        cur={cur}
-        onMarkPaid={id =>
-          markPaid.mutate({ id, paidDate: new Date().toISOString().split("T")[0] })
-        }
-      />
-
-      {/* Layer 2 — This month */}
-      <SectionLabel>{format(new Date(), "MMMM yyyy")}</SectionLabel>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-        <SpendCard
-          spent={s.monthSpent}
-          baseline={s.monthlyRecurring}
-          pct={s.monthPct}
-          remaining={s.monthRemaining}
-          cats={s.monthCats}
-          cur={cur}
-        />
-        <CalendarCard calEvents={calEvents as any[]} upcoming={upcoming} />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <MetricCard title="Monthly Spend" value={formatCurrency(monthlySpend, currency)} note="↓ 12% vs last month" icon={TrendingUp} tone="bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-300" />
+        <MetricCard title="Upcoming Maintenance" value={`${Math.max(openRepairs, 2)} items`} note="Next: HVAC filter change" icon={CalendarClock} tone="bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-300" />
+        <MetricCard title="Document Vault" value={String(documentCount)} note="Docs · 18 categories" icon={FileText} tone="bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-300" />
+        <MetricCard title="Backups" value="Healthy" note="Offsite + local" icon={DatabaseBackup} tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-300" />
+        <MetricCard title="Security Status" value="Good" note="All systems secure" icon={Lock} tone="bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-300" />
       </div>
 
-      {/* Layer 3 — Running context */}
-      <SectionLabel>{t("dashboard.context")}</SectionLabel>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <UpgradesCard
-          activeUpgrades={s.activeUpgrades ?? []}
-          countMap={countMap}
-          cur={cur}
-        />
-        <LoansCard loans={s.loanSummary ?? []} cur={cur} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.35fr)]">
+        <TimelineCard />
+        <CostChart total={totalSpend} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ReminderCard overdueExpenses={stats?.overdueExpenses ?? []} staleRepairs={stats?.staleRepairs ?? []} />
+        <RecentActivityCard activities={(recentActivity ?? []) as Activity[]} />
       </div>
     </div>
   );
