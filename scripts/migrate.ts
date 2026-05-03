@@ -22,13 +22,16 @@ if (!DB_URL) throw new Error("DATABASE_URL is not set in .env");
 
 const MIGRATIONS_DIR = path.resolve("drizzle");
 
-// MySQL error codes that mean "already exists" — safe to ignore for idempotency
+// MySQL error codes that mean "already exists" or "incompatible but pre-existing"
+// — safe to ignore for idempotency
 const IGNORABLE = new Set([
-  "ER_DUP_FIELDNAME",          // column already exists
-  "ER_TABLE_EXISTS_ERROR",     // table already exists
-  "ER_DUP_KEYNAME",            // index already exists
-  "ER_FK_DUP_NAME",            // FK constraint name already exists
-  "ER_CANT_DROP_FIELD_OR_KEY", // dropping index/column that doesn't exist
+  "ER_DUP_FIELDNAME",           // column already exists
+  "ER_TABLE_EXISTS_ERROR",      // table already exists
+  "ER_DUP_KEYNAME",             // index already exists
+  "ER_FK_DUP_NAME",             // FK constraint name already exists
+  "ER_CANT_DROP_FIELD_OR_KEY",  // dropping index/column that doesn't exist
+  "ER_FK_INCOMPATIBLE_COLUMNS", // FK already exists with correct definition
+  "ER_DUP_CONSTRAINT_NAME",     // constraint name already taken (MySQL 8.0+)
 ]);
 
 async function run() {

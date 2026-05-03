@@ -3,6 +3,26 @@
 -- and the new schema.ts. All statements are safe to re-run (IF EXISTS / IF NOT EXISTS).
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- upgrades.id: old schema used int PK, new schema uses varchar(36).
+-- upgradeItems/upgradeOptions reference upgrades.id — FK fails until this is fixed.
+-- Step 1: drop the FK constraints that reference upgrades.id
+-- Step 2: modify upgrades.id to varchar(36)
+-- Step 3: re-add FKs (runner will skip if already exist)
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `upgradeItems` DROP FOREIGN KEY IF EXISTS `upgradeItems_upgradeId_upgrades_id_fk`;
+--> statement-breakpoint
+ALTER TABLE `upgradeOptions` DROP FOREIGN KEY IF EXISTS `upgradeOptions_upgradeId_upgrades_id_fk`;
+--> statement-breakpoint
+ALTER TABLE `upgrades` MODIFY COLUMN `id` varchar(36) NOT NULL;
+--> statement-breakpoint
+ALTER TABLE `upgradeItems` ADD CONSTRAINT `upgradeItems_upgradeId_upgrades_id_fk`
+  FOREIGN KEY (`upgradeId`) REFERENCES `upgrades`(`id`) ON DELETE CASCADE ON UPDATE NO ACTION;
+--> statement-breakpoint
+ALTER TABLE `upgradeOptions` ADD CONSTRAINT `upgradeOptions_upgradeId_upgrades_id_fk`
+  FOREIGN KEY (`upgradeId`) REFERENCES `upgrades`(`id`) ON DELETE CASCADE ON UPDATE NO ACTION;
+--> statement-breakpoint
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- calendarEvents: old schema had createdById/eventType/time/synced/linkedEntity*
 -- New schema has ownerId/description/endDate/category(enum)/isRecurring/etc.
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -17,7 +37,6 @@ ALTER TABLE `calendarEvents`
   ADD COLUMN IF NOT EXISTS `externalCalendarId` varchar(200);
 --> statement-breakpoint
 
--- Add FK for ownerId on calendarEvents (ignore if already exists)
 ALTER TABLE `calendarEvents`
   ADD CONSTRAINT `calendarEvents_ownerId_users_id_fk`
   FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`) ON DELETE NO ACTION ON UPDATE NO ACTION;
@@ -37,7 +56,6 @@ ALTER TABLE `expenses`
   ADD COLUMN IF NOT EXISTS `attachments` json;
 --> statement-breakpoint
 
--- Back-fill name from label where name is null
 UPDATE `expenses` SET `name` = `label` WHERE `name` IS NULL AND `label` IS NOT NULL;
 --> statement-breakpoint
 
@@ -53,7 +71,6 @@ ALTER TABLE `repairs`
   ADD COLUMN IF NOT EXISTS `cost` int;
 --> statement-breakpoint
 
--- Back-fill title from label
 UPDATE `repairs` SET `title` = `label` WHERE `title` IS NULL AND `label` IS NOT NULL;
 --> statement-breakpoint
 
@@ -68,7 +85,6 @@ ALTER TABLE `repairQuotes`
   ADD COLUMN IF NOT EXISTS `selected` boolean DEFAULT false;
 --> statement-breakpoint
 
--- Back-fill new columns from old columns
 UPDATE `repairQuotes`
   SET `contractor` = `contractorName`,
       `amount`     = `quotedPrice`,
@@ -78,7 +94,7 @@ UPDATE `repairQuotes`
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- upgrades: old schema had label/budget/spent/status(old enum)
--- New schema has title/category/status(new enum)/priority/phase/estimatedCost/actualCost/startDate/completedDate/contractor/roiEstimate
+-- New schema has title/category/priority/estimatedCost/actualCost/startDate/completedDate/contractor/roiEstimate
 -- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE `upgrades`
   ADD COLUMN IF NOT EXISTS `title` varchar(200),
@@ -110,9 +126,6 @@ UPDATE `upgradeOptions` SET `title` = `name`, `estimatedCost` = `totalPrice`, `s
   WHERE `title` IS NULL AND `name` IS NOT NULL;
 --> statement-breakpoint
 
--- upgradeItems: old schema had name/quantity/unit/estimatedCost/actualCost/store/purchased
--- New schema identical — no changes needed.
-
 -- ─────────────────────────────────────────────────────────────────────────────
 -- loans: old schema had lender/totalAmount/loanType/interestRate/startDate/dueDate/repayments
 -- New schema has name/lender/originalAmount/currentBalance/interestRate/monthlyPayment/startDate/endDate/nextPaymentDate/loanType(new enum)
@@ -126,7 +139,6 @@ ALTER TABLE `loans`
   ADD COLUMN IF NOT EXISTS `nextPaymentDate` varchar(20);
 --> statement-breakpoint
 
--- Back-fill from old columns
 UPDATE `loans`
   SET `name`           = `lender`,
       `originalAmount` = `totalAmount`,
@@ -153,8 +165,7 @@ UPDATE `wishlistItems`
 --> statement-breakpoint
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- purchaseCosts: old schema had label/amount/category/date
--- New schema has name/amount/category(new enum)/date
+-- purchaseCosts: add name column, back-fill from label
 -- ─────────────────────────────────────────────────────────────────────────────
 ALTER TABLE `purchaseCosts`
   ADD COLUMN IF NOT EXISTS `name` varchar(200);
@@ -164,7 +175,7 @@ UPDATE `purchaseCosts` SET `name` = `label` WHERE `name` IS NULL AND `label` IS 
 --> statement-breakpoint
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- inventoryItems: brand new table — only created if not already present
+-- inventoryItems: brand new table
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS `inventoryItems` (
   `id`             varchar(36)  NOT NULL,
