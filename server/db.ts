@@ -214,8 +214,8 @@ function parseJsonArray(value: unknown): any[] {
   return [];
 }
 
-/** Coerce an empty string to null — used to sanitise mockData fields that
- *  must never reach MySQL ENUM or nullable-varchar columns as "". */
+/** Coerce an empty string / undefined to null — prevents "" reaching ENUM or
+ *  nullable-varchar columns which MySQL strict mode rejects. */
 function emptyToNull<T>(v: T): T | null {
   return (v === "" || v === undefined) ? null : v;
 }
@@ -1020,24 +1020,28 @@ export async function seedMockProperty(userId: number): Promise<number> {
   const oid = userId;
   const pid = propertyId;
 
+  // ── Expenses — pre-process each row to avoid TS duplicate-key silent drop ──
+  // TypeScript silently discards duplicate keys in object literals, so the
+  // "post-spread override" pattern (set key before spread, then override after)
+  // is unreliable. Instead we pre-build a clean row with no duplicate keys.
   await db.insert(expenses).values(
-    mockExpenses.map(e => ({
-      id: nanoid(),
-      ownerId: oid,
-      propertyId: pid,
-      attachments: [] as any,
-      // Explicit safe defaults — overridden by spread only if mockData has a
-      // non-empty value. emptyToNull ensures "" never reaches ENUM/varchar cols.
-      recurringInterval: null as any,
-      nextDueDate:       null as any,
-      notes:             null as any,
-      ...e,
-      // Post-spread overrides: cast boolean → tinyint, coerce "" → null
-      isRecurring:        ((e as any).isRecurring ? 1 : 0) as any,
-      nextDueDate:        emptyToNull((e as any).nextDueDate) as any,
-      recurringInterval:  emptyToNull((e as any).recurringInterval) as any,
-      notes:              emptyToNull((e as any).notes) as any,
-    }))
+    mockExpenses.map(e => {
+      const raw = e as any;
+      return {
+        id:                nanoid(),
+        ownerId:           oid,
+        propertyId:        pid,
+        name:              raw.name,
+        amount:            raw.amount,
+        date:              raw.date,
+        category:          raw.category ?? null,
+        isRecurring:       (raw.isRecurring ? 1 : 0) as any,
+        recurringInterval: emptyToNull(raw.recurringInterval) as any,
+        nextDueDate:       emptyToNull(raw.nextDueDate) as any,
+        notes:             emptyToNull(raw.notes) as any,
+        attachments:       [] as any,
+      };
+    })
   );
 
   await db.insert(repairs).values(
@@ -1108,19 +1112,26 @@ export async function seedMockProperty(userId: number): Promise<number> {
     }))
   );
 
+  // ── Calendar events — same pre-process pattern as expenses ─────────────────
   await db.insert(calendarEvents).values(
-    mockCalendarEvents.map(e => ({
-      id: nanoid(),
-      ownerId: oid,
-      propertyId: pid,
-      // post-spread: coerce "" → null for ENUM and nullable varchar cols
-      recurringInterval: null as any,
-      notes: null as any,
-      ...e,
-      isRecurring:       ((e as any).isRecurring ? 1 : 0) as any,
-      recurringInterval: emptyToNull((e as any).recurringInterval) as any,
-      notes:             emptyToNull((e as any).notes) as any,
-    }))
+    mockCalendarEvents.map(e => {
+      const raw = e as any;
+      return {
+        id:                 nanoid(),
+        ownerId:            oid,
+        propertyId:         pid,
+        title:              raw.title,
+        date:               raw.date,
+        category:           raw.category ?? null,
+        isRecurring:        (raw.isRecurring ? 1 : 0) as any,
+        recurringInterval:  emptyToNull(raw.recurringInterval) as any,
+        notes:              emptyToNull(raw.notes) as any,
+        description:        emptyToNull(raw.description) as any,
+        endDate:            emptyToNull(raw.endDate) as any,
+        reminderDaysBefore: raw.reminderDaysBefore ?? null,
+        externalCalendarId: raw.externalCalendarId ?? null,
+      };
+    })
   );
 
   return propertyId;
