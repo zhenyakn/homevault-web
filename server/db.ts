@@ -1014,27 +1014,33 @@ export async function seedMockProperty(userId: number): Promise<number> {
   const oid = userId;
   const pid = propertyId;
 
-  // Normalise every expense row so all rows share identical keys.
-  // Drizzle mysql2 bulk insert requires a uniform key-set across all rows in
-  // the values() array. Rows that omit isRecurring / recurringInterval cause
-  // Drizzle to emit DEFAULT for those positions while neighbouring rows bind
-  // real values — MySQL then receives a mismatched parameter count and throws.
+  // Drizzle mysql2 serialises JS booleans as the strings "true"/"false".
+  // MySQL tinyint(1) rejects the string "true" with a data truncation error.
+  // Fix: cast every boolean tinyint field to 1/0 AFTER the ...spread so the
+  // explicit numeric value overrides the raw boolean from mockData.
   await db.insert(expenses).values(
     mockExpenses.map(e => ({
       id: nanoid(),
       ownerId: oid,
       propertyId: pid,
       attachments: [] as any,
-      isRecurring:       (e as any).isRecurring        ?? false,
-      recurringInterval: (e as any).recurringInterval  ?? null,
-      nextDueDate:       (e as any).nextDueDate         ?? null,
-      notes:             (e as any).notes               ?? null,
+      recurringInterval: null as any,
+      nextDueDate:       null as any,
+      notes:             null as any,
       ...e,
+      // cast after spread so the numeric value wins over the raw boolean
+      isRecurring: ((e as any).isRecurring ? 1 : 0) as any,
     }))
   );
 
   await db.insert(repairs).values(
-    mockRepairs.map(r => ({ id: nanoid(), ...r, ownerId: oid, propertyId: pid, attachments: [] as any }))
+    mockRepairs.map(r => ({
+      id: nanoid(),
+      ownerId: oid,
+      propertyId: pid,
+      attachments: [] as any,
+      ...r,
+    }))
   );
 
   for (const u of mockUpgrades) {
@@ -1043,12 +1049,26 @@ export async function seedMockProperty(userId: number): Promise<number> {
     await db.insert(upgrades).values({ id: upgradeId, ...upgradeCore, ownerId: oid, propertyId: pid, attachments: [] as any });
     if (options?.length) {
       await db.insert(upgradeOptions).values(
-        options.map((opt: any) => ({ id: nanoid(), upgradeId, ...opt, pros: (opt.pros ?? []) as any, cons: (opt.cons ?? []) as any }))
+        options.map((opt: any) => ({
+          id: nanoid(),
+          upgradeId,
+          ...opt,
+          pros: (opt.pros ?? []) as any,
+          cons: (opt.cons ?? []) as any,
+          // cast after spread
+          selected: (opt.selected ? 1 : 0) as any,
+        }))
       );
     }
     if (items?.length) {
       await db.insert(upgradeItems).values(
-        items.map((item: any) => ({ id: nanoid(), upgradeId, ...item }))
+        items.map((item: any) => ({
+          id: nanoid(),
+          upgradeId,
+          ...item,
+          // cast after spread
+          purchased: (item.purchased ? 1 : 0) as any,
+        }))
       );
     }
   }
