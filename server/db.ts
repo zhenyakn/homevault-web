@@ -2,7 +2,7 @@ import { eq, desc, gte, lte, and, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
   MOCK_PROPERTY_NAME, mockProperty, mockExpenses, mockRepairs,
-  mockUpgrades, mockLoans, mockWishlist, mockPurchaseCosts, mockCalendarEvents,
+  mockUpgrades, mockLoans, mockWishlist, mockPurchaseCosts, mockCalendarEvents, mockInventory,
 } from "./mockData.js";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
@@ -170,7 +170,40 @@ async function runSchemaUpgrades(pool: mysql.Pool) {
   await a(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`notes\` text COLLATE utf8mb4_unicode_ci`, "calendarEvents.notes");
   await a(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`, "calendarEvents.updatedAt");
 
-  // ── inventoryItems (new table — CREATE handles it, but guard columns too) ──
+  // ── inventoryItems — CREATE TABLE (covers fresh installs that never ran
+  //    the external migration script) then guard individual columns ──────────
+  await a(
+    `CREATE TABLE IF NOT EXISTS \`inventoryItems\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`propertyId\` int NOT NULL,
+      \`ownerId\` int NOT NULL,
+      \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`sku\` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`category\` enum('Appliance','Furniture','Electronics','Consumable','Tool','Valuable','Other') COLLATE utf8mb4_unicode_ci DEFAULT 'Other',
+      \`room\` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`quantity\` int NOT NULL DEFAULT 1,
+      \`minQuantity\` int DEFAULT 0,
+      \`unit\` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`purchasePrice\` int DEFAULT NULL,
+      \`purchaseDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`brand\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`store\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`warrantyExpiry\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`condition\` enum('New','Good','Fair','Poor') COLLATE utf8mb4_unicode_ci DEFAULT 'Good',
+      \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`tags\` json DEFAULT NULL,
+      \`photoUrl\` text COLLATE utf8mb4_unicode_ci,
+      \`serialNumber\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      KEY \`inventoryItem_property_idx\` (\`propertyId\`),
+      KEY \`inventoryItem_owner_idx\` (\`ownerId\`),
+      KEY \`inventoryItem_category_idx\` (\`category\`),
+      KEY \`inventoryItem_room_idx\` (\`room\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "inventoryItems (CREATE TABLE)"
+  );
   await a(`ALTER TABLE \`inventoryItems\` ADD COLUMN \`sku\` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "inventoryItems.sku");
   await a(`ALTER TABLE \`inventoryItems\` ADD COLUMN \`room\` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "inventoryItems.room");
   await a(`ALTER TABLE \`inventoryItems\` ADD COLUMN \`minQuantity\` int DEFAULT 0`, "inventoryItems.minQuantity");
@@ -214,19 +247,6 @@ function parseJsonArray(value: unknown): any[] {
   return [];
 }
 
-/**
- * Return v as-is when it is a non-empty string/non-null value, otherwise
- * return undefined so the key is omitted from the row object entirely.
- *
- * WHY: Drizzle's mysql2 bulk-insert driver serialises an explicit `null`
- * (and even `undefined`) for ENUM / nullable-varchar columns as the empty
- * string "" in the parameterised VALUES() array.  MySQL strict mode rejects
- * "" for ENUM columns with ER_TRUNCATED_WRONG_VALUE_FOR_FIELD.
- *
- * Omitting the key from the row object causes Drizzle to skip that position
- * entirely, so MySQL falls back to the column DEFAULT (NULL), which is
- * always valid for a nullable column.
- */
 function omitIfEmpty<T>(v: T): T | undefined {
   return (v === "" || v === null || v === undefined) ? undefined : v;
 }
@@ -1032,11 +1052,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
   const pid = propertyId;
 
   // ── Expenses ───────────────────────────────────────────────────────────────
-  // Build each row explicitly and OMIT nullable ENUM/varchar keys when the
-  // value is absent. Drizzle mysql2 bulk-insert coerces an explicit null (or
-  // undefined) for ENUM columns to "" in the parameterised query, which MySQL
-  // strict mode rejects. Omitting the key entirely causes Drizzle to skip that
-  // column, so MySQL uses the column DEFAULT (NULL).
   await db.insert(expenses).values(
     mockExpenses.map(e => {
       const raw = e as any;
@@ -1051,8 +1066,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
         isRecurring: (raw.isRecurring ? 1 : 0) as any,
         attachments: [] as any,
       };
-      // Only set these keys when they carry a real value — omitting them lets
-      // the column DEFAULT NULL apply, avoiding the Drizzle "" coercion bug.
       const ri = omitIfEmpty(raw.recurringInterval);
       if (ri !== undefined) row.recurringInterval = ri;
       const nd = omitIfEmpty(raw.nextDueDate);
@@ -1092,6 +1105,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
     })
   );
 
+  // ── Upgrades ───────────────────────────────────────────────────────────────
   for (const u of mockUpgrades) {
     const { options, items, ...upgradeCore } = u as any;
     const upgradeId = nanoid();
@@ -1120,6 +1134,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
     }
   }
 
+  // ── Loans ──────────────────────────────────────────────────────────────────
   await db.insert(loans).values(
     mockLoans.map(l => ({
       id: nanoid(),
@@ -1130,6 +1145,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
     }))
   );
 
+  // ── Wishlist ───────────────────────────────────────────────────────────────
   await db.insert(wishlistItems).values(
     mockWishlist.map(w => ({
       id: nanoid(),
@@ -1140,6 +1156,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
     }))
   );
 
+  // ── Purchase Costs ─────────────────────────────────────────────────────────
   await db.insert(purchaseCosts).values(
     mockPurchaseCosts.map(c => ({
       id: nanoid(),
@@ -1175,6 +1192,31 @@ export async function seedMockProperty(userId: number): Promise<number> {
       if (rdb !== null) row.reminderDaysBefore = rdb;
       const eci = omitIfEmpty(raw.externalCalendarId);
       if (eci !== undefined) row.externalCalendarId = eci;
+      return row;
+    })
+  );
+
+  // ── Inventory ──────────────────────────────────────────────────────────────
+  await db.insert(inventoryItems).values(
+    mockInventory.map(item => {
+      const raw = item as any;
+      const row: any = {
+        id:         nanoid(),
+        ownerId:    oid,
+        propertyId: pid,
+        name:       raw.name,
+        quantity:   raw.quantity ?? 1,
+        tags:       (raw.tags ?? []) as any,
+      };
+      const fields = [
+        "sku", "category", "room", "minQuantity", "unit", "purchasePrice",
+        "purchaseDate", "brand", "store", "warrantyExpiry", "condition",
+        "notes", "photoUrl", "serialNumber",
+      ] as const;
+      for (const f of fields) {
+        const v = omitIfEmpty(raw[f]);
+        if (v !== undefined) row[f] = v;
+      }
       return row;
     })
   );

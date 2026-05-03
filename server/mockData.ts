@@ -37,13 +37,8 @@ export const mockProperty = {
 };
 
 // ─── Expenses ─────────────────────────────────────────────────────────────────
-//
-// category enum: "Maintenance" | "Utilities" | "Insurance" | "Tax" |
-//                "Management"  | "Renovation" | "Other"
-// recurringInterval enum: "monthly" | "quarterly" | "yearly"
 
 export const mockExpenses = [
-  // ── Mortgage (monthly recurring) ──────────────────────────────────────────
   {
     name: "Mortgage — Bank Hapoalim",
     amount: ils(8_200),
@@ -77,8 +72,6 @@ export const mockExpenses = [
     isRecurring: true,
     recurringInterval: "monthly" as const,
   },
-
-  // ── Va'ad Bayit / HOA (monthly) ───────────────────────────────────────────
   {
     name: "Va'ad Bayit (HOA)",
     amount: ils(450),
@@ -104,8 +97,6 @@ export const mockExpenses = [
     isRecurring: true,
     recurringInterval: "monthly" as const,
   },
-
-  // ── Electricity — IEC (monthly) ───────────────────────────────────────────
   {
     name: "Electricity (IEC)",
     amount: ils(315),
@@ -131,8 +122,6 @@ export const mockExpenses = [
     isRecurring: true,
     recurringInterval: "monthly" as const,
   },
-
-  // ── Water & sewage (monthly) ──────────────────────────────────────────────
   {
     name: "Water & Sewage",
     amount: ils(175),
@@ -150,8 +139,6 @@ export const mockExpenses = [
     isRecurring: true,
     recurringInterval: "monthly" as const,
   },
-
-  // ── Arnona — municipal tax (quarterly) ────────────────────────────────────
   {
     name: "Arnona Q2 2026",
     amount: ils(920),
@@ -177,8 +164,6 @@ export const mockExpenses = [
     isRecurring: true,
     recurringInterval: "quarterly" as const,
   },
-
-  // ── Insurance (annual) ────────────────────────────────────────────────────
   {
     name: "Building Insurance — Clal",
     amount: ils(2_400),
@@ -197,8 +182,6 @@ export const mockExpenses = [
     recurringInterval: "yearly" as const,
     notes: "Home contents + personal liability · auto-renews Feb 1",
   },
-
-  // ── One-time maintenance ──────────────────────────────────────────────────
   {
     name: "Plumber — kitchen drain unclogging",
     amount: ils(850),
@@ -230,12 +213,6 @@ export const mockExpenses = [
 ];
 
 // ─── Repairs ──────────────────────────────────────────────────────────────────
-//
-// status enum: "open" | "in_progress" | "waiting_for_parts" |
-//              "waiting_for_contractor" | "completed" | "cancelled"
-// priority enum: "low" | "medium" | "high" | "urgent"
-// cost: single int field (no estimatedCost/actualCost split)
-// No contractorPhone column in schema.
 
 export const mockRepairs = [
   {
@@ -293,148 +270,125 @@ export const mockRepairs = [
     reportedDate: "2025-09-01",
     contractor: "Roni Waterproofing Ltd · 054-778-2233",
     cost: ils(4_800),
-    notes: "Applied new bitumen membrane + drainage mat. 5-year workmanship warranty. Tested through two rain events — no recurrence.",
+    notes: "Applied new bitumen membrane + drainage mat. 5-year workmanship warranty.",
   },
 ];
 
 // ─── Upgrades ─────────────────────────────────────────────────────────────────
-//
-// upgrades.status: "idea" | "planning" | "in_progress" | "completed" | "cancelled"
-//
-// upgradeOptions columns: id, upgradeId, title (notNull), description,
-//   estimatedCost, pros, cons, selected
-//
-// upgradeItems columns: id, upgradeId, name (notNull), quantity, unit,
-//   estimatedCost, actualCost, store, purchased, notes
 
 export const mockUpgrades = [
-  // ── 1. Kitchen renovation ─────────────────────────────────────────────────
   {
     title: "Kitchen renovation",
-    description: "Full gut-and-replace: new cabinets (Egger board), quartz countertop (Caesarstone Statuario), undermount sink, and backsplash tiles. Existing layout kept.",
+    description: "Full gut-and-replace: new cabinets (Egger board), quartz countertop (Caesarstone Statuario), undermount sink, and backsplash tiles.",
     status: "in_progress" as const,
     estimatedCost: ils(48_000),
     actualCost: ils(29_500),
-    notes: "Countertop delivery ETA May 8 — Rami can only start installation after it arrives. Electrician phase follows.",
-
+    notes: "Countertop delivery ETA May 8 — Rami can only start installation after it arrives.",
     options: [
       {
         title: "IKEA + Rami Installation",
         estimatedCost: ils(17_100),
-        description: "IKEA Metod cabinets supply, handles, full installation by Rami. Countertop and sink ordered separately. Timeline: 8 weeks. Warranty: 1 year.",
+        description: "IKEA Metod cabinets supply, handles, full installation by Rami.",
         selected: true,
-        notes: "Very professional. Rami does IKEA kitchen installs full-time. Phone: 052-344-1188",
+        notes: "Very professional. Phone: 052-344-1188",
       },
       {
         title: "Yossi Cabinets",
         estimatedCost: ils(16_200),
-        description: "Custom cabinets + installation. Countertop and handles excluded. Timeline: 8 weeks. Warranty: 1 year.",
+        description: "Custom cabinets + installation. Countertop and handles excluded.",
         selected: false,
-        notes: "Cheaper but slower communication. Didn't include handles in quote. Phone: 054-221-8800",
+        notes: "Phone: 054-221-8800",
       },
       {
         title: "Local Carpenter (Shlomo)",
         estimatedCost: ils(19_800),
-        description: "All-inclusive: custom cabinets, countertop, handles, installation, cleanup. Timeline: 6 weeks. Warranty: 2 years.",
+        description: "All-inclusive: custom cabinets, countertop, handles, installation.",
         selected: false,
-        notes: "Most expensive but best warranty and fastest timeline. Good reviews from neighbour. Phone: 050-987-6543",
+        notes: "Phone: 050-987-6543",
       },
     ],
-
     items: [
       { name: "Kitchen cabinets (IKEA Metod)", store: "IKEA", estimatedCost: ils(8_400), actualCost: ils(8_100), purchased: true },
       { name: "Backsplash tiles (Porcelanosa, 30×60)", store: "Porcelanosa", estimatedCost: ils(3_600), actualCost: ils(3_400), purchased: true },
       { name: "Cabinet handles ×24 (IKEA Eneryda)", store: "IKEA", estimatedCost: ils(400), actualCost: ils(380), purchased: true },
       { name: "Plumber — pipe relocation", store: "Avi Plumbing", estimatedCost: ils(1_800), actualCost: ils(1_800), purchased: true },
-      { name: "Countertop — Caesarstone Statuario", store: "Caesarstone", estimatedCost: ils(4_200), purchased: false, notes: "Ordered. ETA May 8. Must arrive before Rami starts installation" },
-      { name: "LED strip under cabinets (5m)", store: "Amazon", estimatedCost: ils(280), purchased: false, notes: "Ordered. ETA Apr 30" },
-      { name: "Undermount sink (Franke MRG 110-52)", estimatedCost: ils(1_100), purchased: false, notes: "Must fit 60cm cabinet. Check Hashkiya and Rami's supplier." },
-      { name: "Kitchen faucet (pull-out spray)", estimatedCost: ils(600), purchased: false, notes: "Coordinate finish colour with handles (brushed nickel)" },
-      { name: "Built-in oven (60cm)", estimatedCost: ils(3_200), purchased: false, notes: "Needs dedicated 32A circuit — confirm with electrician first" },
+      { name: "Countertop — Caesarstone Statuario", store: "Caesarstone", estimatedCost: ils(4_200), purchased: false, notes: "ETA May 8" },
+      { name: "LED strip under cabinets (5m)", store: "Amazon", estimatedCost: ils(280), purchased: false },
+      { name: "Undermount sink (Franke MRG 110-52)", estimatedCost: ils(1_100), purchased: false },
+      { name: "Kitchen faucet (pull-out spray)", estimatedCost: ils(600), purchased: false },
+      { name: "Built-in oven (60cm)", estimatedCost: ils(3_200), purchased: false },
     ],
   },
-
-  // ── 2. Main bathroom retiling ─────────────────────────────────────────────
   {
     title: "Main bathroom retiling",
-    description: "Remove all existing wall + floor tiles. Lay 60×60 large-format porcelain (Atlas Concorde). Include new vanity unit (IKEA Godmorgon).",
+    description: "Remove all existing wall + floor tiles. Lay 60×60 large-format porcelain (Atlas Concorde).",
     status: "planning" as const,
     estimatedCost: ils(22_000),
     actualCost: 0,
-    notes: "Starting after kitchen is fully done. Need to choose tile colour and vanity finish before deciding on contractor.",
-
+    notes: "Starting after kitchen is fully done.",
     options: [
       {
         title: "Roni Tiling Works",
         estimatedCost: ils(20_000),
-        description: "Full demo, waterproofing membrane, wall + floor tiles (supply & lay). Vanity installation excluded. Timeline: 3 weeks. Warranty: 1 year.",
+        description: "Full demo, waterproofing membrane, wall + floor tiles. Timeline: 3 weeks.",
         selected: false,
-        notes: "Did the balcony waterproofing — reliable. Will give discount as repeat customer. Phone: 052-771-4490",
+        notes: "Phone: 052-771-4490",
       },
       {
         title: "Dan Renovations",
         estimatedCost: ils(24_500),
-        description: "Full demo, waterproofing, wall + floor tiles, vanity + mirror installation included. Timeline: 2.5 weeks. Warranty: 2 years.",
+        description: "Full demo, waterproofing, wall + floor tiles, vanity included. Timeline: 2.5 weeks.",
         selected: false,
-        notes: "More expensive but includes vanity install and shorter timeline. Phone: 054-882-3311",
+        notes: "Phone: 054-882-3311",
       },
     ],
-
     items: [
-      { name: "Floor tiles — Atlas Concorde 60×60 (7 sqm)", store: "Porcelanosa", estimatedCost: ils(3_200), purchased: false, notes: "Grey marble-look. Got price from Porcelanosa — comparing online." },
+      { name: "Floor tiles — Atlas Concorde 60×60 (7 sqm)", store: "Porcelanosa", estimatedCost: ils(3_200), purchased: false },
       { name: "Wall tiles — Atlas Concorde 30×60 (18 sqm)", store: "Porcelanosa", estimatedCost: ils(2_800), purchased: false },
-      { name: "IKEA Godmorgon vanity 80cm (white)", store: "IKEA", estimatedCost: ils(2_400), purchased: false, notes: "Check if 80cm fits. Measure again before ordering." },
+      { name: "IKEA Godmorgon vanity 80cm (white)", store: "IKEA", estimatedCost: ils(2_400), purchased: false },
       { name: "Shower mixer (Grohe Euphoria)", estimatedCost: ils(1_800), purchased: false },
       { name: "Toilet (Roca Meridian)", estimatedCost: ils(1_600), purchased: false },
       { name: "Towel rail — heated electric", estimatedCost: ils(900), purchased: false },
     ],
   },
-
-  // ── 3. Smart lighting — Shelly relays ────────────────────────────────────
   {
     title: "Smart lighting — Shelly relays",
-    description: "Replace all switches with Shelly 1PM relays (behind existing switches, no rewiring needed). All rooms + kitchen + hallway. Google Home integration.",
+    description: "Replace all switches with Shelly 1PM relays. Google Home integration.",
     status: "in_progress" as const,
     estimatedCost: ils(4_500),
     actualCost: ils(1_120),
-    notes: "Shelly relays delivered. Electrician booked for May 15 to install during kitchen electrician phase.",
-
+    notes: "Shelly relays delivered. Electrician booked for May 15.",
     options: [
       {
         title: "DIY + Electrician (Eli)",
         estimatedCost: ils(1_800),
-        description: "Eli installs 8x Shelly relays + wires to existing switches. We supply parts. Timeline: 1 day.",
+        description: "Eli installs 8x Shelly relays + wires to existing switches.",
         selected: true,
-        notes: "Eli is licensed and familiar with Shelly. Half-day job. Phone: 053-600-1234",
+        notes: "Phone: 053-600-1234",
       },
     ],
-
     items: [
-      { name: "Shelly 1PM relays ×8", store: "AliExpress", estimatedCost: ils(1_120), actualCost: ils(1_120), purchased: true, notes: "Arrived. Tested 1 unit — works with Google Home." },
-      { name: "Electrician labour (Eli)", store: "Eli Electric", estimatedCost: ils(1_800), purchased: false, notes: "Booked May 15 during kitchen phase" },
-      { name: "Switch cover plates ×8 (white)", estimatedCost: ils(240), purchased: false, notes: "Current covers may not refit after relay — measure first" },
+      { name: "Shelly 1PM relays ×8", store: "AliExpress", estimatedCost: ils(1_120), actualCost: ils(1_120), purchased: true },
+      { name: "Electrician labour (Eli)", store: "Eli Electric", estimatedCost: ils(1_800), purchased: false },
+      { name: "Switch cover plates ×8 (white)", estimatedCost: ils(240), purchased: false },
     ],
   },
-
-  // ── 4. Hallway built-in storage ───────────────────────────────────────────
   {
     title: "Hallway built-in storage",
-    description: "Custom floor-to-ceiling wardrobe in entrance hallway (2.4m wide). Melamine board, push-to-open hinges.",
+    description: "Custom floor-to-ceiling wardrobe in entrance hallway (2.4m wide).",
     status: "completed" as const,
     estimatedCost: ils(8_500),
     actualCost: ils(8_200),
-    notes: "Completed April 2025. Very satisfied with result. Small scratch on top shelf was repaired on-site.",
-
+    notes: "Completed April 2025. Very satisfied with result.",
     options: [
       {
         title: "Yossi Amsalem Carpentry",
         estimatedCost: ils(8_200),
-        description: "Custom melamine wardrobe, push-to-open hinges, internal shelving, full installation. Timeline: 2 weeks. Warranty: 1 year.",
+        description: "Custom melamine wardrobe, push-to-open hinges, full installation.",
         selected: true,
-        notes: "Excellent work. Would use again. Finished 3 days ahead of schedule. Phone: 050-432-1188",
+        notes: "Excellent work. Phone: 050-432-1188",
       },
     ],
-
     items: [
       { name: "Custom wardrobe unit (2.4m)", store: "Yossi Amsalem", estimatedCost: ils(7_800), actualCost: ils(7_800), purchased: true },
       { name: "Push-to-open hinges ×6 (Blum)", estimatedCost: ils(280), actualCost: ils(280), purchased: true },
@@ -444,11 +398,6 @@ export const mockUpgrades = [
 ];
 
 // ─── Loans ────────────────────────────────────────────────────────────────────
-//
-// loans columns: id, propertyId, ownerId, name (notNull), lender,
-//   originalAmount (notNull), currentBalance (notNull), interestRate (decimal string),
-//   monthlyPayment, startDate, endDate, nextPaymentDate,
-//   loanType: "mortgage"|"heloc"|"personal"|"construction"|"other"
 
 export const mockLoans = [
   {
@@ -460,47 +409,39 @@ export const mockLoans = [
     loanType: "other" as const,
     startDate: "2022-02-01",
     endDate: "2027-02-01",
-    notes: "Down-payment supplement. Informal agreement — repay when possible. No fixed schedule. Repaid so far: ₪70,000 · Outstanding: ₪80,000",
+    notes: "Down-payment supplement. Repaid so far: ₪70,000 · Outstanding: ₪80,000",
   },
 ];
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────
-//
-// wishlistItems columns: id, propertyId, ownerId, name (notNull), category,
-//   estimatedPrice, priority: "low"|"medium"|"high", status, url, notes
 
 export const mockWishlist = [
   {
     name: "Split AC — bedroom 2",
-    description: "Second bedroom has no AC. Summer in Tel Aviv is unbearable without it. Target: 12,000 BTU inverter unit.",
     estimatedPrice: ils(6_500),
     priority: "high" as const,
     category: "Appliance" as const,
   },
   {
     name: "Dishwasher (Bosch Series 4, 60cm)",
-    description: "Built-under. Space was left during kitchen renovation. Just need to connect the pre-installed water line.",
     estimatedPrice: ils(3_800),
     priority: "high" as const,
     category: "Appliance" as const,
   },
   {
     name: "Robot vacuum (Roborock S8 Pro)",
-    description: "Stone floors throughout the apartment. Robot vacuum would handle daily dust easily.",
     estimatedPrice: ils(2_400),
     priority: "medium" as const,
     category: "Appliance" as const,
   },
   {
     name: "Mamad (safe room) shelving",
-    description: "Metal shelving system to turn the safe room into usable storage (tools, seasonal items, luggage).",
     estimatedPrice: ils(1_100),
     priority: "low" as const,
     category: "Other" as const,
   },
   {
     name: "Electric scooter (Xiaomi Pro 2)",
-    description: "For short commutes in Florentin. Avoids parking problems. Can charge on balcony.",
     estimatedPrice: ils(4_200),
     priority: "medium" as const,
     category: "Other" as const,
@@ -508,9 +449,6 @@ export const mockWishlist = [
 ];
 
 // ─── Purchase Costs ───────────────────────────────────────────────────────────
-//
-// purchaseCosts.category enum:
-//   "Tax" | "Legal" | "Inspection" | "Agency" | "Renovation" | "Moving" | "Other"
 
 export const mockPurchaseCosts = [
   {
@@ -553,7 +491,7 @@ export const mockPurchaseCosts = [
     amount: ils(4_800),
     date: "2022-05-20",
     category: "Moving" as const,
-    notes: "Full-service move from Ramat Gan (3-room) · 5-hour job including packing",
+    notes: "Full-service move from Ramat Gan · 5-hour job including packing",
   },
   {
     name: "Locksmith — new cylinders (3 locks)",
@@ -565,16 +503,13 @@ export const mockPurchaseCosts = [
 ];
 
 // ─── Calendar Events ──────────────────────────────────────────────────────────
-//
-// calendarEvents.category enum:
-//   "Maintenance" | "Payment" | "Inspection" | "Renovation" | "Legal" | "Other"
 
 export const mockCalendarEvents = [
   {
     title: "Arnona Q2 payment due",
     date: "2026-04-30",
     category: "Payment" as const,
-    notes: "Pay before April 30 to avoid late fee. Pay via municipal website or Bit.",
+    notes: "Pay before April 30 to avoid late fee.",
   },
   {
     title: "Kitchen countertop delivery (Caesarstone)",
@@ -592,7 +527,7 @@ export const mockCalendarEvents = [
     title: "Va'ad Bayit annual meeting",
     date: "2026-06-10",
     category: "Other" as const,
-    notes: "Building committee meeting. Agenda: elevator renovation budget vote (est. ₪180,000 total). Time: 19:00.",
+    notes: "Building committee meeting. Elevator renovation budget vote. Time: 19:00.",
   },
   {
     title: "Parents loan repayment",
@@ -605,5 +540,216 @@ export const mockCalendarEvents = [
     date: "2027-01-01",
     category: "Payment" as const,
     notes: "Get 2 competing quotes in December before auto-renewal date.",
+  },
+];
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+//
+// category enum: "Appliance" | "Furniture" | "Electronics" | "Consumable" |
+//                "Tool" | "Valuable" | "Other"
+// condition enum: "New" | "Good" | "Fair" | "Poor"
+
+export const mockInventory = [
+  // ── Appliances ────────────────────────────────────────────────────────────
+  {
+    name: "Samsung Washing Machine WW80T",
+    category: "Appliance" as const,
+    room: "Utility",
+    quantity: 1,
+    purchasePrice: ils(3_200),
+    purchaseDate: "2022-05-25",
+    brand: "Samsung",
+    condition: "Good" as const,
+    warrantyExpiry: "2027-05-25",
+    notes: "8kg drum · 1400 RPM · purchased from KSP Tel Aviv",
+  },
+  {
+    name: "Bosch Refrigerator KGN36",
+    category: "Appliance" as const,
+    room: "Kitchen",
+    quantity: 1,
+    purchasePrice: ils(4_100),
+    purchaseDate: "2022-05-25",
+    brand: "Bosch",
+    condition: "Good" as const,
+    warrantyExpiry: "2027-05-25",
+    notes: "NoFrost · 321L · model KGN36VLED",
+  },
+  {
+    name: "Electra Split AC 12000 BTU",
+    category: "Appliance" as const,
+    room: "Living Room",
+    quantity: 1,
+    purchasePrice: ils(3_800),
+    purchaseDate: "2022-06-10",
+    brand: "Electra",
+    condition: "Good" as const,
+    warrantyExpiry: "2027-06-10",
+    notes: "Inverter · serviced Aug 2025",
+  },
+  {
+    name: "Electra Split AC 9000 BTU",
+    category: "Appliance" as const,
+    room: "Bedroom",
+    quantity: 1,
+    purchasePrice: ils(2_900),
+    purchaseDate: "2022-06-10",
+    brand: "Electra",
+    condition: "Good" as const,
+    warrantyExpiry: "2027-06-10",
+    notes: "Inverter · master bedroom",
+  },
+  {
+    name: "Ariston Water Heater 60L",
+    category: "Appliance" as const,
+    room: "Utility",
+    quantity: 1,
+    purchasePrice: ils(1_400),
+    purchaseDate: "2023-01-15",
+    brand: "Ariston",
+    condition: "Fair" as const,
+    notes: "Pressure drop issue under investigation — see repair log",
+  },
+  {
+    name: "DeLonghi Espresso Machine EC685",
+    category: "Appliance" as const,
+    room: "Kitchen",
+    quantity: 1,
+    purchasePrice: ils(1_100),
+    purchaseDate: "2023-03-20",
+    brand: "DeLonghi",
+    condition: "Good" as const,
+  },
+  // ── Electronics ───────────────────────────────────────────────────────────
+  {
+    name: "LG OLED TV 55\" C3",
+    category: "Electronics" as const,
+    room: "Living Room",
+    quantity: 1,
+    purchasePrice: ils(6_200),
+    purchaseDate: "2023-11-24",
+    brand: "LG",
+    condition: "New" as const,
+    warrantyExpiry: "2026-11-24",
+    notes: "Black Friday deal · model OLED55C34LA",
+  },
+  {
+    name: "Google Nest Hub (2nd Gen)",
+    category: "Electronics" as const,
+    room: "Kitchen",
+    quantity: 1,
+    purchasePrice: ils(420),
+    purchaseDate: "2024-02-10",
+    brand: "Google",
+    condition: "Good" as const,
+    notes: "Smart home hub · controls Shelly relays and AC via Google Home",
+  },
+  {
+    name: "Shelly 1PM Smart Relay",
+    category: "Electronics" as const,
+    room: "Utility",
+    quantity: 8,
+    minQuantity: 0,
+    purchasePrice: ils(140),
+    purchaseDate: "2026-04-01",
+    brand: "Shelly",
+    condition: "New" as const,
+    notes: "For smart lighting upgrade — awaiting electrician installation May 15",
+    tags: ["smart-home", "lighting"],
+  },
+  // ── Furniture ─────────────────────────────────────────────────────────────
+  {
+    name: "IKEA Kivik Sofa (3-seat)",
+    category: "Furniture" as const,
+    room: "Living Room",
+    quantity: 1,
+    purchasePrice: ils(3_100),
+    purchaseDate: "2022-06-01",
+    brand: "IKEA",
+    condition: "Good" as const,
+    store: "IKEA Rishon LeZion",
+  },
+  {
+    name: "IKEA Malm Bed Frame (160cm)",
+    category: "Furniture" as const,
+    room: "Bedroom",
+    quantity: 1,
+    purchasePrice: ils(1_400),
+    purchaseDate: "2022-06-01",
+    brand: "IKEA",
+    condition: "Good" as const,
+    store: "IKEA Rishon LeZion",
+  },
+  {
+    name: "Hallway Built-in Wardrobe",
+    category: "Furniture" as const,
+    room: "Hallway",
+    quantity: 1,
+    purchasePrice: ils(8_200),
+    purchaseDate: "2025-04-15",
+    brand: "Yossi Amsalem Carpentry",
+    condition: "New" as const,
+    notes: "Custom 2.4m floor-to-ceiling · melamine · push-to-open hinges",
+  },
+  // ── Consumables ───────────────────────────────────────────────────────────
+  {
+    name: "Water Filter Cartridges (Omnipure)",
+    category: "Consumable" as const,
+    room: "Kitchen",
+    quantity: 2,
+    minQuantity: 1,
+    unit: "pcs",
+    purchasePrice: ils(85),
+    brand: "Omnipure",
+    condition: "New" as const,
+    notes: "Replace every 6 months · last replaced Jan 2026",
+    tags: ["maintenance"],
+  },
+  {
+    name: "AC Filter Replacements",
+    category: "Consumable" as const,
+    room: "Utility",
+    quantity: 4,
+    minQuantity: 2,
+    unit: "pcs",
+    purchasePrice: ils(45),
+    condition: "New" as const,
+    notes: "For both Electra units · clean/replace every season",
+    tags: ["maintenance"],
+  },
+  // ── Tools ─────────────────────────────────────────────────────────────────
+  {
+    name: "Bosch PSB 1800 LI-2 Drill",
+    category: "Tool" as const,
+    room: "Mamad",
+    quantity: 1,
+    purchasePrice: ils(620),
+    purchaseDate: "2022-07-01",
+    brand: "Bosch",
+    condition: "Good" as const,
+    notes: "18V cordless · comes with 2 batteries",
+  },
+  {
+    name: "Tool Kit (screwdrivers, pliers, wrench set)",
+    category: "Tool" as const,
+    room: "Mamad",
+    quantity: 1,
+    purchasePrice: ils(380),
+    purchaseDate: "2022-05-22",
+    condition: "Good" as const,
+    notes: "Stanley 94-piece set",
+  },
+  // ── Valuables ─────────────────────────────────────────────────────────────
+  {
+    name: "Trek FX3 Bicycle",
+    category: "Valuable" as const,
+    room: "Mamad",
+    quantity: 1,
+    purchasePrice: ils(4_500),
+    purchaseDate: "2023-05-01",
+    brand: "Trek",
+    condition: "Good" as const,
+    serialNumber: "WTU219B04321",
+    notes: "Registered with Tel Aviv bike registry · insured under Harel contents policy",
   },
 ];
