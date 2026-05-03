@@ -13,17 +13,17 @@ import {
 
 /**
  * Core user table backing auth flow.
- * Extended by open-id login: openId is the stable identifier from the HA OAuth provider.
+ * Extended by the addon via the `openId` field (from Home Assistant / OAuth).
  */
 export const users = mysqlTable(
   "users",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: int("id").primaryKey().autoincrement(),
     openId: varchar("openId", { length: 64 }).notNull().unique(),
     name: text("name"),
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
-    role: mysqlEnum("role", ["user", "admin"]).notNull().default("user"),
+    role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
     lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -33,9 +33,11 @@ export const users = mysqlTable(
   })
 );
 
-/** A single real-estate property owned/managed by a user. */
+export type InsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
+
 export const properties = mysqlTable("properties", {
-  id: int("id").autoincrement().primaryKey(),
+  id: int("id").primaryKey().autoincrement(),
   houseName: varchar("houseName", { length: 200 }).default("My Home"),
   houseNickname: varchar("houseNickname", { length: 200 }),
   address: text("address"),
@@ -66,103 +68,64 @@ export const properties = mysqlTable("properties", {
   userId: int("userId").notNull().default(1),
 });
 
-/** Recurring or one-off household expenses. */
+export type Property = typeof properties.$inferSelect;
+export type InsertProperty = typeof properties.$inferInsert;
+
 export const expenses = mysqlTable(
   "expenses",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
-    label: varchar("label", { length: 200 }).notNull(),
-    amount: int("amount").notNull(), // stored in smallest currency unit (agorot)
-    date: varchar("date", { length: 20 }).notNull(),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
+    ownerId: int("ownerId")
+      .notNull()
+      .references(() => users.id),
+    name: varchar("name", { length: 200 }).notNull(),
+    amount: int("amount").notNull(),
     category: mysqlEnum("category", [
-      "Mortgage",
-      "Utility",
+      "Maintenance",
+      "Utilities",
       "Insurance",
       "Tax",
-      "Maintenance",
+      "Management",
+      "Renovation",
       "Other",
-    ]).notNull(),
-    ownerId: int("ownerId")
-      .notNull()
-      .references(() => users.id),
-    isRecurring: boolean("isRecurring").default(false),
-    recurringFrequency: mysqlEnum("recurringFrequency", [
-      "Monthly",
-      "Quarterly",
-      "Annual",
     ]),
-    isPaid: boolean("isPaid").default(false),
-    paidDate: varchar("paidDate", { length: 20 }),
-    attachments: json("attachments").$type<string[]>(),
-    notes: text("notes"),
-    calendarEventId: varchar("calendarEventId", { length: 36 }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-    propertyId: int("propertyId").notNull().default(1),
-  },
-  (table) => ({
-    dateIdx: index("expense_date_idx").on(table.date),
-    ownerIdx: index("expense_owner_idx").on(table.ownerId),
-    categoryIdx: index("expense_category_idx").on(table.category),
-  })
-);
-
-/** Home loans (mortgage, personal, family). */
-export const loans = mysqlTable(
-  "loans",
-  {
-    id: varchar("id", { length: 36 }).primaryKey(),
-    lender: varchar("lender", { length: 200 }).notNull(),
-    totalAmount: int("totalAmount").notNull(),
-    loanType: mysqlEnum("loanType", ["Family", "Bank", "Friend", "Other"]).notNull(),
-    interestRate: decimal("interestRate", { precision: 5, scale: 2 }).default("0.00"),
-    startDate: varchar("startDate", { length: 20 }).notNull(),
-    dueDate: varchar("dueDate", { length: 20 }),
-    ownerId: int("ownerId")
-      .notNull()
-      .references(() => users.id),
-    repayments: json("repayments").$type<{ date: string; amount: number; note?: string }[]>(),
-    notes: text("notes"),
-    calendarEventId: varchar("calendarEventId", { length: 36 }),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-    propertyId: int("propertyId").notNull().default(1),
-  },
-  (table) => ({
-    ownerIdx: index("loan_owner_idx").on(table.ownerId),
-  })
-);
-
-/** One-off costs associated with purchasing a property (legal, agent, tax, etc.). */
-export const purchaseCosts = mysqlTable(
-  "purchaseCosts",
-  {
-    id: varchar("id", { length: 36 }).primaryKey(),
-    label: varchar("label", { length: 200 }).notNull(),
-    amount: int("amount").notNull(),
     date: varchar("date", { length: 20 }).notNull(),
-    category: varchar("category", { length: 100 }),
-    ownerId: int("ownerId")
-      .notNull()
-      .references(() => users.id),
-    attachments: json("attachments").$type<string[]>(),
+    nextDueDate: varchar("nextDueDate", { length: 20 }),
+    isRecurring: boolean("isRecurring").default(false),
+    recurringInterval: mysqlEnum("recurringInterval", [
+      "monthly",
+      "quarterly",
+      "yearly",
+    ]),
     notes: text("notes"),
-    calendarEventId: varchar("calendarEventId", { length: 36 }),
+    attachments: json("attachments").$type<string[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-    propertyId: int("propertyId").notNull().default(1),
   },
   (table) => ({
-    ownerIdx: index("purchase_cost_owner_idx").on(table.ownerId),
+    propertyIdx: index("expense_property_idx").on(table.propertyId),
+    ownerIdx: index("expense_owner_idx").on(table.ownerId),
   })
 );
 
-/** Maintenance / repair tasks tracked through a pipeline. */
+export type Expense = typeof expenses.$inferSelect;
+export type InsertExpense = typeof expenses.$inferInsert;
+
 export const repairs = mysqlTable(
   "repairs",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
+    ownerId: int("ownerId")
+      .notNull()
+      .references(() => users.id),
     title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
     category: mysqlEnum("category", [
       "Plumbing",
       "Electrical",
@@ -171,48 +134,38 @@ export const repairs = mysqlTable(
       "Appliance",
       "Cosmetic",
       "Other",
+    ]),
+    status: mysqlEnum("status", [
+      "open",
+      "in_progress",
+      "waiting_for_parts",
+      "waiting_for_contractor",
+      "completed",
+      "cancelled",
     ])
-      .notNull()
-      .default("Other"),
-    status: mysqlEnum("status", ["Open", "In Progress", "Resolved", "Cancelled"])
-      .notNull()
-      .default("Open"),
-    priority: mysqlEnum("priority", ["Low", "Medium", "High", "Critical"])
-      .notNull()
-      .default("Medium"),
-    description: text("description"),
-    reportedById: int("reportedById")
-      .notNull()
-      .references(() => users.id),
-    assignedToId: int("assignedToId"),
-    estimatedCost: int("estimatedCost"),
-    actualCost: int("actualCost"),
-    scheduledDate: varchar("scheduledDate", { length: 20 }),
+      .default("open")
+      .notNull(),
+    priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default(
+      "medium"
+    ),
+    reportedDate: varchar("reportedDate", { length: 20 }),
     completedDate: varchar("completedDate", { length: 20 }),
-    attachments: json("attachments").$type<string[]>(),
+    cost: int("cost"),
+    contractor: varchar("contractor", { length: 200 }),
     notes: text("notes"),
-    calendarEventId: varchar("calendarEventId", { length: 36 }),
+    attachments: json("attachments").$type<string[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-    propertyId: int("propertyId").notNull().default(1),
-    phase: mysqlEnum("phase", [
-      "Planning",
-      "Quoting",
-      "Scheduled",
-      "InProgress",
-      "Review",
-      "Done",
-      "Cancelled",
-    ]).default("Planning"),
   },
   (table) => ({
-    statusIdx: index("repair_status_idx").on(table.status),
-    priorityIdx: index("repair_priority_idx").on(table.priority),
-    reportedByIdx: index("repair_reported_by_idx").on(table.reportedById),
+    propertyIdx: index("repair_property_idx").on(table.propertyId),
+    ownerIdx: index("repair_owner_idx").on(table.ownerId),
   })
 );
 
-/** Vendor quotes attached to a repair job. */
+export type Repair = typeof repairs.$inferSelect;
+export type InsertRepair = typeof repairs.$inferInsert;
+
 export const repairQuotes = mysqlTable(
   "repairQuotes",
   {
@@ -220,125 +173,281 @@ export const repairQuotes = mysqlTable(
     repairId: varchar("repairId", { length: 36 })
       .notNull()
       .references(() => repairs.id),
-    vendorName: varchar("vendorName", { length: 200 }).notNull(),
+    contractor: varchar("contractor", { length: 200 }).notNull(),
     amount: int("amount").notNull(),
-    date: varchar("date", { length: 20 }).notNull(),
     notes: text("notes"),
-    isSelected: boolean("isSelected").default(false),
+    date: varchar("date", { length: 20 }),
+    selected: boolean("selected").default(false),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   (table) => ({
-    repairIdx: index("repair_quote_repair_idx").on(table.repairId),
+    repairIdx: index("quote_repair_idx").on(table.repairId),
   })
 );
 
-/** Planned or completed home improvement projects. */
+export type RepairQuote = typeof repairQuotes.$inferSelect;
+export type InsertRepairQuote = typeof repairQuotes.$inferInsert;
+
 export const upgrades = mysqlTable(
   "upgrades",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
+    ownerId: int("ownerId")
+      .notNull()
+      .references(() => users.id),
     title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
     category: mysqlEnum("category", [
       "Kitchen",
       "Bathroom",
       "Bedroom",
-      "LivingRoom",
-      "Exterior",
-      "Garden",
-      "Office",
+      "Living Room",
+      "Outdoor",
+      "Structural",
+      "Technology",
       "Other",
-    ])
-      .notNull()
-      .default("Other"),
+    ]),
     status: mysqlEnum("status", [
-      "Idea",
-      "Planning",
-      "In Progress",
-      "Completed",
-      "On Hold",
-      "Cancelled",
+      "idea",
+      "planning",
+      "in_progress",
+      "completed",
+      "cancelled",
     ])
-      .notNull()
-      .default("Idea"),
-    priority: mysqlEnum("priority", ["Low", "Medium", "High"]).notNull().default("Medium"),
-    description: text("description"),
+      .default("idea")
+      .notNull(),
+    priority: mysqlEnum("priority", ["low", "medium", "high"]).default("medium"),
+    phase: varchar("phase", { length: 100 }),
     estimatedCost: int("estimatedCost"),
     actualCost: int("actualCost"),
     startDate: varchar("startDate", { length: 20 }),
     completedDate: varchar("completedDate", { length: 20 }),
     contractor: varchar("contractor", { length: 200 }),
-    attachments: json("attachments").$type<string[]>(),
     notes: text("notes"),
-    calendarEventId: varchar("calendarEventId", { length: 36 }),
+    attachments: json("attachments").$type<string[]>(),
+    roiEstimate: int("roiEstimate"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-    ownerId: int("ownerId").notNull().default(1),
-    propertyId: int("propertyId").notNull().default(1),
   },
   (table) => ({
-    statusIdx: index("upgrade_status_idx").on(table.status),
-    priorityIdx: index("upgrade_priority_idx").on(table.priority),
+    propertyIdx: index("upgrade_property_idx").on(table.propertyId),
+    ownerIdx: index("upgrade_owner_idx").on(table.ownerId),
   })
 );
 
-/** Items the household wants to buy eventually. */
-export const wishlist = mysqlTable(
-  "wishlist",
+export type Upgrade = typeof upgrades.$inferSelect;
+export type InsertUpgrade = typeof upgrades.$inferInsert;
+
+export const upgradeOptions = mysqlTable(
+  "upgradeOptions",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
-    name: varchar("name", { length: 200 }).notNull(),
+    upgradeId: varchar("upgradeId", { length: 36 })
+      .notNull()
+      .references(() => upgrades.id),
+    title: varchar("title", { length: 200 }).notNull(),
     description: text("description"),
-    estimatedPrice: int("estimatedPrice"),
-    priority: mysqlEnum("priority", ["Low", "Medium", "High"]).notNull().default("Medium"),
-    status: mysqlEnum("status", ["Wanted", "Saved", "Purchased"]).notNull().default("Wanted"),
-    url: text("url"),
+    estimatedCost: int("estimatedCost"),
+    pros: json("pros").$type<string[]>(),
+    cons: json("cons").$type<string[]>(),
+    selected: boolean("selected").default(false),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    upgradeIdx: index("option_upgrade_idx").on(table.upgradeId),
+  })
+);
+
+export type UpgradeOption = typeof upgradeOptions.$inferSelect;
+export type InsertUpgradeOption = typeof upgradeOptions.$inferInsert;
+
+export const upgradeItems = mysqlTable(
+  "upgradeItems",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    upgradeId: varchar("upgradeId", { length: 36 })
+      .notNull()
+      .references(() => upgrades.id),
+    name: varchar("name", { length: 200 }).notNull(),
+    quantity: int("quantity").default(1),
+    unit: varchar("unit", { length: 50 }),
+    estimatedCost: int("estimatedCost"),
+    actualCost: int("actualCost"),
+    store: varchar("store", { length: 200 }),
+    purchased: boolean("purchased").default(false),
     notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    upgradeIdx: index("item_upgrade_idx").on(table.upgradeId),
+  })
+);
+
+export type UpgradeItem = typeof upgradeItems.$inferSelect;
+export type InsertUpgradeItem = typeof upgradeItems.$inferInsert;
+
+export const loans = mysqlTable(
+  "loans",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
     ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
+    name: varchar("name", { length: 200 }).notNull(),
+    lender: varchar("lender", { length: 200 }),
+    originalAmount: int("originalAmount").notNull(),
+    currentBalance: int("currentBalance").notNull(),
+    interestRate: decimal("interestRate", { precision: 5, scale: 2 }),
+    monthlyPayment: int("monthlyPayment"),
+    startDate: varchar("startDate", { length: 20 }),
+    endDate: varchar("endDate", { length: 20 }),
+    nextPaymentDate: varchar("nextPaymentDate", { length: 20 }),
+    loanType: mysqlEnum("loanType", [
+      "mortgage",
+      "heloc",
+      "personal",
+      "construction",
+      "other",
+    ]).default("mortgage"),
+    notes: text("notes"),
+    attachments: json("attachments").$type<string[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-    propertyId: int("propertyId").notNull().default(1),
   },
   (table) => ({
+    propertyIdx: index("loan_property_idx").on(table.propertyId),
+    ownerIdx: index("loan_owner_idx").on(table.ownerId),
+  })
+);
+
+export type Loan = typeof loans.$inferSelect;
+export type InsertLoan = typeof loans.$inferInsert;
+
+export const wishlistItems = mysqlTable(
+  "wishlistItems",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
+    ownerId: int("ownerId")
+      .notNull()
+      .references(() => users.id),
+    name: varchar("name", { length: 200 }).notNull(),
+    category: mysqlEnum("category", [
+      "Furniture",
+      "Appliance",
+      "Electronics",
+      "Decor",
+      "Renovation",
+      "Other",
+    ]),
+    estimatedPrice: int("estimatedPrice"),
+    priority: mysqlEnum("priority", ["low", "medium", "high"]).default("medium"),
+    status: mysqlEnum("status", ["wanted", "saved", "purchased"]).default(
+      "wanted"
+    ),
+    url: text("url"),
+    notes: text("notes"),
+    attachments: json("attachments").$type<string[]>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    propertyIdx: index("wishlist_property_idx").on(table.propertyId),
     ownerIdx: index("wishlist_owner_idx").on(table.ownerId),
   })
 );
 
-/** Calendar events linked optionally to other entities. */
+export type WishlistItem = typeof wishlistItems.$inferSelect;
+export type InsertWishlistItem = typeof wishlistItems.$inferInsert;
+
+export const purchaseCosts = mysqlTable(
+  "purchaseCosts",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
+    ownerId: int("ownerId")
+      .notNull()
+      .references(() => users.id),
+    name: varchar("name", { length: 200 }).notNull(),
+    amount: int("amount").notNull(),
+    category: mysqlEnum("category", [
+      "Tax",
+      "Legal",
+      "Inspection",
+      "Agency",
+      "Renovation",
+      "Moving",
+      "Other",
+    ]),
+    date: varchar("date", { length: 20 }),
+    notes: text("notes"),
+    attachments: json("attachments").$type<string[]>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    propertyIdx: index("purchaseCost_property_idx").on(table.propertyId),
+    ownerIdx: index("purchaseCost_owner_idx").on(table.ownerId),
+  })
+);
+
+export type PurchaseCost = typeof purchaseCosts.$inferSelect;
+export type InsertPurchaseCost = typeof purchaseCosts.$inferInsert;
+
 export const calendarEvents = mysqlTable(
   "calendarEvents",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
-    title: varchar("title", { length: 200 }).notNull(),
-    date: varchar("date", { length: 20 }).notNull(),
-    time: varchar("time", { length: 20 }),
-    eventType: mysqlEnum("eventType", ["Expense", "Repair", "Upgrade", "Loan", "Other"]).notNull(),
-    createdById: int("createdById")
+    propertyId: int("propertyId")
+      .notNull()
+      .references(() => properties.id),
+    ownerId: int("ownerId")
       .notNull()
       .references(() => users.id),
-    linkedEntityId: varchar("linkedEntityId", { length: 36 }),
-    linkedEntityType: mysqlEnum("linkedEntityType", [
-      "Expense",
-      "Repair",
-      "Upgrade",
-      "Loan",
-      "PurchaseCost",
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
+    date: varchar("date", { length: 20 }).notNull(),
+    endDate: varchar("endDate", { length: 20 }),
+    category: mysqlEnum("category", [
+      "Maintenance",
+      "Payment",
+      "Inspection",
+      "Renovation",
+      "Legal",
+      "Other",
     ]),
-    synced: boolean("synced").default(false),
+    isRecurring: boolean("isRecurring").default(false),
+    recurringInterval: mysqlEnum("recurringInterval", [
+      "monthly",
+      "quarterly",
+      "yearly",
+    ]),
+    reminderDaysBefore: int("reminderDaysBefore"),
+    externalCalendarId: varchar("externalCalendarId", { length: 200 }),
     notes: text("notes"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-    propertyId: int("propertyId").notNull().default(1),
   },
   (table) => ({
-    dateIdx: index("calendar_date_idx").on(table.date),
-    createdByIdx: index("calendar_created_by_idx").on(table.createdById),
+    propertyIdx: index("calendar_property_idx").on(table.propertyId),
+    ownerIdx: index("calendar_owner_idx").on(table.ownerId),
   })
 );
 
-/** Household inventory — appliances, furniture, valuables, consumables. */
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
+
+// ── Inventory ─────────────────────────────────────────────────────────────────
 export const inventoryItems = mysqlTable(
   "inventoryItems",
   {
@@ -364,7 +473,7 @@ export const inventoryItems = mysqlTable(
     quantity: int("quantity").default(1).notNull(),
     minQuantity: int("minQuantity").default(0),
     unit: varchar("unit", { length: 50 }),
-    purchasePrice: int("purchasePrice"), // In cents
+    purchasePrice: int("purchasePrice"),
     purchaseDate: varchar("purchaseDate", { length: 20 }),
     brand: varchar("brand", { length: 200 }),
     store: varchar("store", { length: 200 }),
