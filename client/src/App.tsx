@@ -1,217 +1,89 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
-import { Route, Switch, Router as WouterRouter } from "wouter";
-import { useHashLocation } from "wouter/use-hash-location";
-import ErrorBoundary from "./components/ErrorBoundary";
-import { ThemeProvider } from "./contexts/ThemeContext";
-import { LanguageProvider } from "./contexts/LanguageContext";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./_core/hooks/useAuth";
-import { trpc } from "./lib/trpc";
-import { getLoginUrl } from "./const";
 import DashboardLayout from "./components/DashboardLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Calendar from "./pages/Calendar";
 import Dashboard from "./pages/Dashboard";
 import Expenses from "./pages/Expenses";
-import Repairs from "./pages/Repairs";
-import Upgrades from "./pages/Upgrades";
+import Inventory from "./pages/Inventory";
 import Loans from "./pages/Loans";
-import Wishlist from "./pages/Wishlist";
+import Login from "./pages/Login";
+import MockLogin from "./pages/MockLogin";
+import PropertyDashboard from "./pages/PropertyDashboard";
 import PurchaseCosts from "./pages/PurchaseCosts";
-import Calendar from "./pages/Calendar";
-import PropertySettings from "./pages/PropertySettings";
+import Repairs from "./pages/Repairs";
 import Settings from "./pages/Settings";
-import Portfolio from "./pages/Portfolio";
-import UpgradeDetail from "./pages/UpgradeDetail";
-import RepairDetail from "./pages/RepairDetail";
-import { Home, Loader2, LogIn, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SearchModal } from "./components/SearchModal";
-import { useSearch } from "./hooks/useSearch";
+import Upgrades from "./pages/Upgrades";
+import Wishlist from "./pages/Wishlist";
 
-// ─── Sign-in page ────────────────────────────────────────────────────────────
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30_000,
+    },
+  },
+});
 
-function SignInPage() {
-  const oauthUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
-  const appId = import.meta.env.VITE_APP_ID;
-  const isConfigured = Boolean(oauthUrl && appId);
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 mb-4 shadow-lg">
-            <Home className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">HomeVault</h1>
-          <p className="text-muted-foreground mt-2">Your property, fully managed</p>
-        </div>
-
-        <div className="bg-card rounded-2xl shadow-sm border p-8 space-y-6">
-          {isConfigured ? (
-            <>
-              <div className="text-center space-y-1">
-                <h2 className="text-xl font-semibold">Welcome back</h2>
-                <p className="text-sm text-muted-foreground">
-                  Sign in to access your property dashboard
-                </p>
-              </div>
-              <Button
-                className="w-full h-11 text-base"
-                onClick={() => { window.location.href = getLoginUrl(); }}
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Sign in
-              </Button>
-            </>
-          ) : import.meta.env.DEV ? (
-            <div className="space-y-4">
-              <div className="text-center space-y-1">
-                <h2 className="text-xl font-semibold">Local Development</h2>
-                <p className="text-sm text-muted-foreground">
-                  Sign in with the built-in dev account
-                </p>
-              </div>
-              <Button
-                className="w-full h-11 text-base"
-                onClick={async () => {
-                  await fetch("api/dev/login", { method: "POST" });
-                  window.location.reload();
-                }}
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Dev Login
-              </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                Only available in development mode
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                    Authentication not configured
-                  </p>
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    Add the following to your{" "}
-                    <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 rounded">.env</code>{" "}file:
-                  </p>
-                </div>
-              </div>
-              <pre className="text-xs bg-muted rounded-lg p-4 overflow-x-auto font-mono">
-{`VITE_OAUTH_PORTAL_URL=https://your-oauth-server
-VITE_APP_ID=your-app-id
-OAUTH_SERVER_URL=https://your-oauth-server
-OWNER_OPEN_ID=your-open-id`}
-              </pre>
-              <p className="text-xs text-muted-foreground text-center">
-                <a
-                  href="https://github.com/zhenyakn/homevault-web#quick-start"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-foreground"
-                >
-                  See setup guide
-                </a>
-              </p>
-            </div>
-          )}
-        </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          HomeVault — private property management
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Spinner ─────────────────────────────────────────────────────────────────
-
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Loader2 className="animate-spin w-8 h-8 text-muted-foreground" />
-    </div>
-  );
-}
-
-// ─── Router ──────────────────────────────────────────────────────────────────
-
-function AppRouter() {
-  const { isAuthenticated, loading } = useAuth();
-  const search = useSearch();
-
-  const { data: noAuthData } = trpc.system.noAuth.useQuery(undefined, {
-    retry: 1,
-    retryDelay: 300,
-    refetchOnWindowFocus: false,
-  });
+function AppRoutes() {
+  const { user, loading } = useAuth();
+  const isMockMode = import.meta.env.VITE_MOCK_MODE === "true";
 
   if (loading) {
-    return <Spinner />;
-  }
-
-  if (isAuthenticated) {
     return (
-      <>
-        <SearchModal
-          open={search.open}
-          onClose={search.close}
-          query={search.query}
-          onQueryChange={search.setQuery}
-          results={search.results}
-          isFetching={search.isFetching}
-        />
-        <DashboardLayout onSearchOpen={() => search.setOpen(true)}>
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/expenses" component={Expenses} />
-            <Route path="/repairs" component={Repairs} />
-            <Route path="/repairs/:id" component={RepairDetail} />
-            <Route path="/upgrades" component={Upgrades} />
-            <Route path="/upgrades/:id" component={UpgradeDetail} />
-            <Route path="/loans" component={Loans} />
-            <Route path="/wishlist" component={Wishlist} />
-            <Route path="/purchase-costs" component={PurchaseCosts} />
-            <Route path="/calendar" component={Calendar} />
-            <Route path="/portfolio" component={Portfolio} />
-            <Route path="/settings" component={Settings} />
-            <Route path="/settings/:section" component={Settings} />
-            <Route path="/property-settings" component={PropertySettings} />
-            <Route path="/404" component={NotFound} />
-            <Route component={NotFound} />
-          </Switch>
-        </DashboardLayout>
-      </>
+      <div className="flex h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
     );
   }
 
-  if (noAuthData?.noAuth === true) {
-    return <Spinner />;
-  }
-
-  return <SignInPage />;
-}
-
-// ─── App ─────────────────────────────────────────────────────────────────────
-
-function App() {
   return (
-    <ErrorBoundary>
-      <ThemeProvider defaultTheme="system">
-        <LanguageProvider>
-          <TooltipProvider>
-            <Toaster />
-            <WouterRouter hook={useHashLocation}>
-              <AppRouter />
-            </WouterRouter>
-          </TooltipProvider>
-        </LanguageProvider>
-      </ThemeProvider>
-    </ErrorBoundary>
+    <Routes>
+      {/* Auth */}
+      <Route path="/login" element={<Login />} />
+      {isMockMode && <Route path="/mock-login" element={<MockLogin />} />}
+
+      {/* App */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="property" element={<PropertyDashboard />} />
+        <Route path="expenses" element={<Expenses />} />
+        <Route path="loans" element={<Loans />} />
+        <Route path="purchase-costs" element={<PurchaseCosts />} />
+        <Route path="repairs" element={<Repairs />} />
+        <Route path="upgrades" element={<Upgrades />} />
+        <Route path="wishlist" element={<Wishlist />} />
+        <Route path="calendar" element={<Calendar />} />
+        <Route path="inventory" element={<Inventory />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
+
+      {/* Catch-all */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <BrowserRouter>
+          <AppRoutes />
+          <Toaster richColors position="top-right" />
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
