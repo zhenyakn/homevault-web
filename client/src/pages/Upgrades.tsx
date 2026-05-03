@@ -19,21 +19,28 @@ import { toast } from "sonner";
 
 // ─── Types & constants ────────────────────────────────────────────────────────
 
-type UpgradeStatus = "Planned" | "In Progress" | "Done";
-type Phase = "Planning" | "Sourcing" | "Building" | "Done";
+// Backend status enum: idea | planning | in_progress | completed | cancelled
+type UpgradeStatus = "idea" | "planning" | "in_progress" | "completed" | "cancelled";
 
-const PHASE_ORDER: Record<string, number> = { Building: 0, Sourcing: 1, Planning: 2, Done: 3 };
-
-const PHASE_BADGE: Record<string, string> = {
-  Planning: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  Sourcing: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  Building: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-  Done:     "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+const STATUS_BADGE: Record<string, string> = {
+  idea:        "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  planning:    "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  in_progress: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+  completed:   "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+  cancelled:   "bg-zinc-100 text-zinc-400 dark:bg-zinc-900 dark:text-zinc-500",
 };
 
-function barColor(spent: number, budget: number) {
-  if (budget === 0) return "bg-primary";
-  const pct = spent / budget;
+const STATUS_LABEL: Record<string, string> = {
+  idea:        "Idea",
+  planning:    "Planning",
+  in_progress: "In Progress",
+  completed:   "Completed",
+  cancelled:   "Cancelled",
+};
+
+function barColor(actual: number, estimated: number) {
+  if (estimated === 0) return "bg-primary";
+  const pct = actual / estimated;
   if (pct >= 1)   return "bg-red-500";
   if (pct >= 0.8) return "bg-amber-400";
   return "bg-primary";
@@ -53,7 +60,7 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
     onError: e => toast.error(`${t("upgrades.failedCreate")}: ${e.message}`),
   });
 
-  const blank = { label: "", description: "", budget: "", notes: "" };
+  const blank = { title: "", description: "", estimatedCost: "", notes: "", status: "planning" as UpgradeStatus };
   const [f, setF] = useState(blank);
 
   useEffect(() => { if (!open) setF(blank); }, [open]);
@@ -61,13 +68,12 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate({
-      label: f.label,
+      title: f.title,
       description: f.description || undefined,
-      status: "Planned",
-      phase: "Planning",
-      budget: Math.round(parseFloat(f.budget) * 100),
+      status: f.status,
+      estimatedCost: f.estimatedCost ? Math.round(parseFloat(f.estimatedCost) * 100) : undefined,
       notes: f.notes || undefined,
-    } as any);
+    });
   };
 
   return (
@@ -78,13 +84,13 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="label">{t("upgradeDetail.projectName")}</Label>
+            <Label htmlFor="title">{t("upgradeDetail.projectName")}</Label>
             <Input
-              id="label"
+              id="title"
               required
               placeholder={t("upgrades.placeholderName")}
-              value={f.label}
-              onChange={e => setF({ ...f, label: e.target.value })}
+              value={f.title}
+              onChange={e => setF({ ...f, title: e.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -98,15 +104,27 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="budget">{t("upgradeDetail.budgetField")}</Label>
+            <Label htmlFor="status">Status</Label>
+            <Select value={f.status} onValueChange={v => setF({ ...f, status: v as UpgradeStatus })}>
+              <SelectTrigger id="status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="idea">Idea</SelectItem>
+                <SelectItem value="planning">Planning</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="estimatedCost">{t("upgradeDetail.budgetField")}</Label>
             <Input
-              id="budget"
+              id="estimatedCost"
               type="number"
               step="0.01"
-              required
               placeholder="0"
-              value={f.budget}
-              onChange={e => setF({ ...f, budget: e.target.value })}
+              value={f.estimatedCost}
+              onChange={e => setF({ ...f, estimatedCost: e.target.value })}
             />
             <p className="text-xs text-muted-foreground">{t("upgrades.budgetHint")}</p>
           </div>
@@ -141,10 +159,10 @@ function UpgradeRow({
   onClick: () => void;
 }) {
   const { t } = useTranslation();
-  const phase: Phase = (upgrade.phase as Phase) || "Planning";
-  const spent = upgrade.spent ?? 0;
-  const budget = upgrade.budget;
-  const progress = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+  const status: UpgradeStatus = (upgrade.status as UpgradeStatus) || "planning";
+  const actual    = upgrade.actualCost ?? 0;
+  const estimated = upgrade.estimatedCost ?? 0;
+  const progress  = estimated > 0 ? Math.min(100, (actual / estimated) * 100) : 0;
 
   return (
     <div
@@ -157,8 +175,10 @@ function UpgradeRow({
       <div className="flex-1 min-w-0">
         {/* Title row */}
         <div className="flex items-center gap-2 flex-wrap">
-          <p className={cn("text-sm font-medium", isDone && "text-muted-foreground")}>{upgrade.label}</p>
-          <Badge className={cn("text-xs h-5 border-0 shrink-0", PHASE_BADGE[phase])}>{t(`phases.${phase}`)}</Badge>
+          <p className={cn("text-sm font-medium", isDone && "text-muted-foreground")}>{upgrade.title}</p>
+          <Badge className={cn("text-xs h-5 border-0 shrink-0", STATUS_BADGE[status])}>
+            {STATUS_LABEL[status] ?? status}
+          </Badge>
         </div>
 
         {/* Description */}
@@ -187,18 +207,18 @@ function UpgradeRow({
         )}
 
         {/* Budget bar */}
-        {!isDone && (
+        {!isDone && estimated > 0 && (
           <div className="mt-2 space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span className="tabular-nums">
-                {formatCurrency(spent)} {t("dashboard.paid")}
-                {spent > budget && <span className="text-red-500 font-medium ms-1">· {t("dashboard.overBudget")}</span>}
+                {formatCurrency(actual)} {t("dashboard.paid")}
+                {actual > estimated && <span className="text-red-500 font-medium ms-1">· {t("dashboard.overBudget")}</span>}
               </span>
-              <span className="tabular-nums">{formatCurrency(budget)} {t("dashboard.envelope")}</span>
+              <span className="tabular-nums">{formatCurrency(estimated)} {t("dashboard.envelope")}</span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
               <div
-                className={cn("h-full transition-all rounded-full", barColor(spent, budget))}
+                className={cn("h-full transition-all rounded-full", barColor(actual, estimated))}
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -206,9 +226,9 @@ function UpgradeRow({
         )}
 
         {/* Done: show final spend */}
-        {isDone && (
+        {isDone && actual > 0 && (
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-            {formatCurrency(spent)} {t("dashboard.invested")}
+            {formatCurrency(actual)} {t("dashboard.invested")}
           </p>
         )}
       </div>
@@ -276,12 +296,13 @@ export default function Upgrades() {
 
   const handleExportCSV = () => {
     if (!upgrades.length) { toast.error(t("upgrades.nothingToExport")); return; }
-    const headers = ["Name", "Phase", "Status", "Budget", "Paid", "Remaining", "Notes"];
+    const headers = ["Name", "Status", "Estimated Cost", "Actual Cost", "Remaining", "Notes"];
     const rows = upgrades.map((u: any) => [
-      u.label, u.phase || "Planning", u.status,
-      (u.budget / 100).toFixed(2),
-      ((u.spent || 0) / 100).toFixed(2),
-      ((u.budget - (u.spent || 0)) / 100).toFixed(2),
+      u.title,
+      u.status || "",
+      u.estimatedCost != null ? (u.estimatedCost / 100).toFixed(2) : "",
+      u.actualCost    != null ? (u.actualCost    / 100).toFixed(2) : "",
+      u.estimatedCost != null ? (((u.estimatedCost ?? 0) - (u.actualCost ?? 0)) / 100).toFixed(2) : "",
       u.notes || "",
     ]);
     const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -300,22 +321,15 @@ export default function Upgrades() {
   );
 
   // ── Sections ────────────────────────────────────────────────────────────────
-  const inProgress = upgrades
-    .filter(u => u.status === "In Progress")
-    .sort((a, b) => (PHASE_ORDER[(a as any).phase] ?? 3) - (PHASE_ORDER[(b as any).phase] ?? 3));
-
-  const planned = upgrades
-    .filter(u => u.status === "Planned")
-    .sort((a, b) => b.budget - a.budget);
-
-  const done = upgrades
-    .filter(u => u.status === "Done");
+  const inProgress = upgrades.filter(u => u.status === "in_progress");
+  const planned    = upgrades.filter(u => u.status === "idea" || u.status === "planning")
+                             .sort((a, b) => (b.estimatedCost ?? 0) - (a.estimatedCost ?? 0));
+  const done       = upgrades.filter(u => u.status === "completed" || u.status === "cancelled");
 
   // ── Stats ───────────────────────────────────────────────────────────────────
-  const activeBudget  = inProgress.reduce((s, u) => s + u.budget, 0);
-  const activePaid    = inProgress.reduce((s, u) => s + (u.spent ?? 0), 0);
-  const investedTotal = done.reduce((s, u) => s + (u.spent ?? 0), 0);
-  const doneTotalInvestment = done.reduce((s, u) => s + (u.spent ?? 0), 0);
+  const activeBudget    = inProgress.reduce((s, u) => s + (u.estimatedCost ?? 0), 0);
+  const activePaid      = inProgress.reduce((s, u) => s + (u.actualCost    ?? 0), 0);
+  const investedTotal   = done.reduce((s, u) => s + (u.actualCost ?? 0), 0);
 
   // ── Empty state ─────────────────────────────────────────────────────────────
   if (!upgrades.length) {
@@ -407,14 +421,14 @@ export default function Upgrades() {
         </Section>
       )}
 
-      {/* Planned */}
+      {/* Planned / Idea */}
       {planned.length > 0 && (
         <Section
           title={t("upgrades.planned")}
           count={planned.length}
           extra={
             <p className="text-xs text-muted-foreground tabular-nums">
-              {formatCurrency(planned.reduce((s, u) => s + u.budget, 0))} {t("upgrades.activeBudget").toLowerCase()}
+              {formatCurrency(planned.reduce((s, u) => s + (u.estimatedCost ?? 0), 0))} {t("upgrades.activeBudget").toLowerCase()}
             </p>
           }
         >
@@ -431,14 +445,14 @@ export default function Upgrades() {
         </Section>
       )}
 
-      {/* Done */}
+      {/* Done / Cancelled */}
       {done.length > 0 && (
         <Section
           title={t("upgrades.done")}
           count={done.length}
           extra={
-            doneTotalInvestment > 0
-              ? <p className="text-xs text-muted-foreground tabular-nums">{formatCurrency(doneTotalInvestment)} {t("upgrades.invested")}</p>
+            investedTotal > 0
+              ? <p className="text-xs text-muted-foreground tabular-nums">{formatCurrency(investedTotal)} {t("upgrades.invested")}</p>
               : undefined
           }
           empty={null}
@@ -456,7 +470,7 @@ export default function Upgrades() {
         </Section>
       )}
 
-      {/* Show "no active projects" only when there are some upgrades but none active */}
+      {/* Show "no active projects" only when there are some upgrades but none active/planned */}
       {inProgress.length === 0 && planned.length === 0 && (
         <div className="border border-dashed border-border rounded-lg px-4 py-8 text-center space-y-2">
           <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
