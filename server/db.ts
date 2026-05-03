@@ -60,11 +60,9 @@ async function safeAlter(pool: mysql.Pool, sql: string, label: string) {
       msg.includes("Duplicate") ||
       msg.includes("exists")
     ) {
-      // already applied — fine
       return;
     }
     console.error(`[db] schema upgrade failed (${label}):`, e?.message);
-    // non-fatal — log and continue so the server still starts
   }
 }
 
@@ -72,8 +70,6 @@ async function runSchemaUpgrades(pool: mysql.Pool) {
   const a = (sql: string, label: string) => safeAlter(pool, sql, label);
 
   // ── wishlistItems ─────────────────────────────────────────────────────────
-  // Legacy table had: label, description, estimatedCost, priority (enum 'Low/Medium/High')
-  // New schema needs: name, category, estimatedPrice, status, url, attachments, propertyId, ownerId, updatedAt
   await a(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''`, "wishlistItems.name");
   await a(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`ownerId\` int NOT NULL DEFAULT 1`, "wishlistItems.ownerId");
   await a(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`propertyId\` int NOT NULL DEFAULT 1`, "wishlistItems.propertyId");
@@ -202,8 +198,6 @@ export async function getDb() {
         queueLimit: 0,
       });
       _db = drizzle(_pool);
-      // Run schema upgrades once on first connection so legacy DBs are
-      // automatically patched without needing a manual migration re-run.
       await runSchemaUpgrades(_pool);
     } catch (error) {
       throw new Error(`[Database] Failed to connect: ${error}`);
@@ -270,7 +264,7 @@ export async function getAllUsers() {
   return await db.select().from(users);
 }
 
-// ─── Property ────────────────────────────────────────────────────────────────────────────
+// ─── Property ─────────────────────────────────────────────────────────────────
 
 export async function getProperty(propertyId: number = 1) {
   const db = await getDb();
@@ -301,7 +295,7 @@ export async function deleteProperty(propertyId: number) {
   return true;
 }
 
-// ─── Expenses ───────────────────────────────────────────────────────────────────────
+// ─── Expenses ─────────────────────────────────────────────────────────────────
 
 export async function getExpenses(userId: number, propertyId: number) {
   const db = await getDb();
@@ -336,7 +330,7 @@ export async function deleteExpense(id: string) {
   return true;
 }
 
-// ─── Repairs ──────────────────────────────────────────────────────────────────────────
+// ─── Repairs ──────────────────────────────────────────────────────────────────
 
 export async function getRepairs(userId: number, propertyId: number) {
   const db = await getDb();
@@ -371,7 +365,7 @@ export async function deleteRepair(id: string) {
   return true;
 }
 
-// ─── Repair Quotes ────────────────────────────────────────────────────────────────
+// ─── Repair Quotes ────────────────────────────────────────────────────────────
 
 export async function getRepairQuotes(repairId: string) {
   const db = await getDb();
@@ -421,7 +415,7 @@ export async function deleteRepairQuote(id: string) {
   return true;
 }
 
-// ─── Upgrades ───────────────────────────────────────────────────────────────────────
+// ─── Upgrades ─────────────────────────────────────────────────────────────────
 
 export async function getUpgrades(userId: number, propertyId: number) {
   const db = await getDb();
@@ -456,7 +450,7 @@ export async function deleteUpgrade(id: string) {
   return true;
 }
 
-// ─── Loans ──────────────────────────────────────────────────────────────────────────────
+// ─── Loans ────────────────────────────────────────────────────────────────────
 
 export async function getLoans(userId: number, propertyId: number) {
   const db = await getDb();
@@ -494,7 +488,7 @@ export async function deleteLoan(id: string) {
   return true;
 }
 
-// ─── Wishlist ─────────────────────────────────────────────────────────────────────────
+// ─── Wishlist ─────────────────────────────────────────────────────────────────
 
 export async function getWishlistItems(userId: number, propertyId: number) {
   const db = await getDb();
@@ -529,7 +523,7 @@ export async function deleteWishlistItem(id: string) {
   return true;
 }
 
-// ─── Purchase Costs ───────────────────────────────────────────────────────────────────
+// ─── Purchase Costs ───────────────────────────────────────────────────────────
 
 export async function getPurchaseCosts(userId: number, propertyId: number) {
   const db = await getDb();
@@ -564,7 +558,7 @@ export async function deletePurchaseCost(id: string) {
   return true;
 }
 
-// ─── Calendar Events ────────────────────────────────────────────────────────────────────
+// ─── Calendar Events ──────────────────────────────────────────────────────────
 
 export async function getCalendarEvents(propertyId: number, startDate?: string, endDate?: string) {
   const db = await getDb();
@@ -632,7 +626,7 @@ export async function deleteInventoryItem(id: string) {
   return true;
 }
 
-// ─── Dashboard ─────────────────────────────────────────────────────────────────────────────
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export async function getRecentActivity(propertyId: number) {
   const db = await getDb();
@@ -799,7 +793,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   };
 }
 
-// ─── Upgrade Options ────────────────────────────────────────────────────────────────
+// ─── Upgrade Options ──────────────────────────────────────────────────────────
 
 export async function getUpgradeOptions(upgradeId: string) {
   const db = await getDb();
@@ -853,7 +847,7 @@ export async function deleteUpgradeOption(id: string) {
   return true;
 }
 
-// ─── Upgrade Items ────────────────────────────────────────────────────────────────────
+// ─── Upgrade Items ────────────────────────────────────────────────────────────
 
 export async function getUpgradeItems(upgradeId: string) {
   const db = await getDb();
@@ -895,7 +889,7 @@ export async function deleteUpgradeItem(id: string) {
   return true;
 }
 
-// ─── Portfolio ────────────────────────────────────────────────────────────────────────────
+// ─── Portfolio ────────────────────────────────────────────────────────────────
 
 export async function getPortfolioSummary(userId: number) {
   const props = await getPropertiesByUser(userId);
@@ -922,7 +916,6 @@ export async function getPortfolioSummary(userId: number) {
       .reduce((s, e) => s + e.amount, 0);
 
     const openRepairsCount = allRepairs.filter(r => r.status !== "completed" && r.status !== "cancelled").length;
-
     const outstandingLoanBalance = allLoans.reduce((sum, l) => sum + Math.max(0, l.currentBalance), 0);
 
     return {
@@ -940,7 +933,7 @@ export async function getPortfolioSummary(userId: number) {
   }));
 }
 
-// ─── Data Management ────────────────────────────────────────────────────────────────────
+// ─── Data Management ──────────────────────────────────────────────────────────
 
 export async function deleteAllUserData(userId: number) {
   const db = await getDb();
@@ -976,7 +969,7 @@ export async function deleteAllUserData(userId: number) {
   return true;
 }
 
-// ─── Mock / Demo Seed ────────────────────────────────────────────────────────────────────────────
+// ─── Mock / Demo Seed ─────────────────────────────────────────────────────────
 
 export async function seedMockProperty(userId: number): Promise<number> {
   const db = await getDb();
@@ -1021,8 +1014,23 @@ export async function seedMockProperty(userId: number): Promise<number> {
   const oid = userId;
   const pid = propertyId;
 
+  // Normalise every expense row so all rows share identical keys.
+  // Drizzle mysql2 bulk insert requires a uniform key-set across all rows in
+  // the values() array. Rows that omit isRecurring / recurringInterval cause
+  // Drizzle to emit DEFAULT for those positions while neighbouring rows bind
+  // real values — MySQL then receives a mismatched parameter count and throws.
   await db.insert(expenses).values(
-    mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid, attachments: [] as any }))
+    mockExpenses.map(e => ({
+      id: nanoid(),
+      ownerId: oid,
+      propertyId: pid,
+      attachments: [] as any,
+      isRecurring:       (e as any).isRecurring        ?? false,
+      recurringInterval: (e as any).recurringInterval  ?? null,
+      nextDueDate:       (e as any).nextDueDate         ?? null,
+      notes:             (e as any).notes               ?? null,
+      ...e,
+    }))
   );
 
   await db.insert(repairs).values(
