@@ -1,0 +1,212 @@
+-- 0007_schema_v2_alignment.sql
+-- Bridges the gap between the old column definitions (from 0001/0005)
+-- and the new schema.ts. All statements are safe to re-run (IF EXISTS / IF NOT EXISTS).
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- calendarEvents: old schema had createdById/eventType/time/synced/linkedEntity*
+-- New schema has ownerId/description/endDate/category(enum)/isRecurring/etc.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `calendarEvents`
+  ADD COLUMN IF NOT EXISTS `ownerId` int NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS `description` text,
+  ADD COLUMN IF NOT EXISTS `endDate` varchar(20),
+  ADD COLUMN IF NOT EXISTS `category` enum('Maintenance','Payment','Inspection','Renovation','Legal','Other'),
+  ADD COLUMN IF NOT EXISTS `isRecurring` boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS `recurringInterval` enum('monthly','quarterly','yearly'),
+  ADD COLUMN IF NOT EXISTS `reminderDaysBefore` int,
+  ADD COLUMN IF NOT EXISTS `externalCalendarId` varchar(200);
+--> statement-breakpoint
+
+-- Add FK for ownerId on calendarEvents (ignore if already exists)
+ALTER TABLE `calendarEvents`
+  ADD CONSTRAINT `calendarEvents_ownerId_users_id_fk`
+  FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`) ON DELETE NO ACTION ON UPDATE NO ACTION;
+--> statement-breakpoint
+
+CREATE INDEX IF NOT EXISTS `calendar_owner_idx` ON `calendarEvents` (`ownerId`);
+--> statement-breakpoint
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- expenses: old schema had label/category(old enum)/isPaid/paidDate/calendarEventId/recurringFrequency
+-- New schema has name/category(new enum)/nextDueDate/recurringInterval
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `expenses`
+  ADD COLUMN IF NOT EXISTS `name` varchar(200),
+  ADD COLUMN IF NOT EXISTS `nextDueDate` varchar(20),
+  ADD COLUMN IF NOT EXISTS `recurringInterval` enum('monthly','quarterly','yearly'),
+  ADD COLUMN IF NOT EXISTS `attachments` json;
+--> statement-breakpoint
+
+-- Back-fill name from label where name is null
+UPDATE `expenses` SET `name` = `label` WHERE `name` IS NULL AND `label` IS NOT NULL;
+--> statement-breakpoint
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- repairs: old schema had label/contractor/contractorPhone/estimatedCost/actualCost/dateLogged
+-- New schema has title/category(new enum)/status(new enum)/priority(new enum)/reportedDate/completedDate/cost
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `repairs`
+  ADD COLUMN IF NOT EXISTS `title` varchar(200),
+  ADD COLUMN IF NOT EXISTS `category` enum('Plumbing','Electrical','HVAC','Structural','Appliance','Cosmetic','Other'),
+  ADD COLUMN IF NOT EXISTS `reportedDate` varchar(20),
+  ADD COLUMN IF NOT EXISTS `completedDate` varchar(20),
+  ADD COLUMN IF NOT EXISTS `cost` int;
+--> statement-breakpoint
+
+-- Back-fill title from label
+UPDATE `repairs` SET `title` = `label` WHERE `title` IS NULL AND `label` IS NOT NULL;
+--> statement-breakpoint
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- repairQuotes: old schema had contractorName/contractorPhone/quotedPrice/timeline/guarantee/scope/isSelected/payments
+-- New schema has contractor/amount/date/selected
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `repairQuotes`
+  ADD COLUMN IF NOT EXISTS `contractor` varchar(200),
+  ADD COLUMN IF NOT EXISTS `amount` int,
+  ADD COLUMN IF NOT EXISTS `date` varchar(20),
+  ADD COLUMN IF NOT EXISTS `selected` boolean DEFAULT false;
+--> statement-breakpoint
+
+-- Back-fill new columns from old columns
+UPDATE `repairQuotes`
+  SET `contractor` = `contractorName`,
+      `amount`     = `quotedPrice`,
+      `selected`   = `isSelected`
+  WHERE `contractor` IS NULL AND `contractorName` IS NOT NULL;
+--> statement-breakpoint
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- upgrades: old schema had label/budget/spent/status(old enum)
+-- New schema has title/category/status(new enum)/priority/phase/estimatedCost/actualCost/startDate/completedDate/contractor/roiEstimate
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `upgrades`
+  ADD COLUMN IF NOT EXISTS `title` varchar(200),
+  ADD COLUMN IF NOT EXISTS `category` enum('Kitchen','Bathroom','Bedroom','Living Room','Outdoor','Structural','Technology','Other'),
+  ADD COLUMN IF NOT EXISTS `priority` enum('low','medium','high') DEFAULT 'medium',
+  ADD COLUMN IF NOT EXISTS `estimatedCost` int,
+  ADD COLUMN IF NOT EXISTS `actualCost` int,
+  ADD COLUMN IF NOT EXISTS `startDate` varchar(20),
+  ADD COLUMN IF NOT EXISTS `completedDate` varchar(20),
+  ADD COLUMN IF NOT EXISTS `contractor` varchar(200),
+  ADD COLUMN IF NOT EXISTS `roiEstimate` int;
+--> statement-breakpoint
+
+UPDATE `upgrades` SET `title` = `label` WHERE `title` IS NULL AND `label` IS NOT NULL;
+--> statement-breakpoint
+
+-- upgradeOptions: old schema had name/vendorPhone/totalPrice/timeline/warranty/scope/isSelected/payments
+-- New schema has title/description/estimatedCost/pros/cons/selected
+ALTER TABLE `upgradeOptions`
+  ADD COLUMN IF NOT EXISTS `title` varchar(200),
+  ADD COLUMN IF NOT EXISTS `description` text,
+  ADD COLUMN IF NOT EXISTS `estimatedCost` int,
+  ADD COLUMN IF NOT EXISTS `pros` json,
+  ADD COLUMN IF NOT EXISTS `cons` json,
+  ADD COLUMN IF NOT EXISTS `selected` boolean DEFAULT false;
+--> statement-breakpoint
+
+UPDATE `upgradeOptions` SET `title` = `name`, `estimatedCost` = `totalPrice`, `selected` = `isSelected`
+  WHERE `title` IS NULL AND `name` IS NOT NULL;
+--> statement-breakpoint
+
+-- upgradeItems: old schema had name/quantity/unit/estimatedCost/actualCost/store/purchased
+-- New schema identical — no changes needed.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- loans: old schema had lender/totalAmount/loanType/interestRate/startDate/dueDate/repayments
+-- New schema has name/lender/originalAmount/currentBalance/interestRate/monthlyPayment/startDate/endDate/nextPaymentDate/loanType(new enum)
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `loans`
+  ADD COLUMN IF NOT EXISTS `name` varchar(200),
+  ADD COLUMN IF NOT EXISTS `originalAmount` int,
+  ADD COLUMN IF NOT EXISTS `currentBalance` int,
+  ADD COLUMN IF NOT EXISTS `monthlyPayment` int,
+  ADD COLUMN IF NOT EXISTS `endDate` varchar(20),
+  ADD COLUMN IF NOT EXISTS `nextPaymentDate` varchar(20);
+--> statement-breakpoint
+
+-- Back-fill from old columns
+UPDATE `loans`
+  SET `name`           = `lender`,
+      `originalAmount` = `totalAmount`,
+      `currentBalance` = `totalAmount`
+  WHERE `name` IS NULL AND `lender` IS NOT NULL;
+--> statement-breakpoint
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- wishlistItems: old schema had label/estimatedCost/priority
+-- New schema has name/category/estimatedPrice/priority/status/url
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `wishlistItems`
+  ADD COLUMN IF NOT EXISTS `name` varchar(200),
+  ADD COLUMN IF NOT EXISTS `category` enum('Furniture','Appliance','Electronics','Decor','Renovation','Other'),
+  ADD COLUMN IF NOT EXISTS `estimatedPrice` int,
+  ADD COLUMN IF NOT EXISTS `status` enum('wanted','saved','purchased') DEFAULT 'wanted',
+  ADD COLUMN IF NOT EXISTS `url` text;
+--> statement-breakpoint
+
+UPDATE `wishlistItems`
+  SET `name`           = `label`,
+      `estimatedPrice` = `estimatedCost`
+  WHERE `name` IS NULL AND `label` IS NOT NULL;
+--> statement-breakpoint
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- purchaseCosts: old schema had label/amount/category/date
+-- New schema has name/amount/category(new enum)/date
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE `purchaseCosts`
+  ADD COLUMN IF NOT EXISTS `name` varchar(200);
+--> statement-breakpoint
+
+UPDATE `purchaseCosts` SET `name` = `label` WHERE `name` IS NULL AND `label` IS NOT NULL;
+--> statement-breakpoint
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- inventoryItems: brand new table — only created if not already present
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS `inventoryItems` (
+  `id`             varchar(36)  NOT NULL,
+  `propertyId`     int          NOT NULL,
+  `ownerId`        int          NOT NULL,
+  `name`           varchar(200) NOT NULL,
+  `sku`            varchar(100),
+  `category`       enum('Appliance','Furniture','Electronics','Consumable','Tool','Valuable','Other') DEFAULT 'Other',
+  `room`           varchar(100),
+  `quantity`       int          NOT NULL DEFAULT 1,
+  `minQuantity`    int          DEFAULT 0,
+  `unit`           varchar(50),
+  `purchasePrice`  int,
+  `purchaseDate`   varchar(20),
+  `brand`          varchar(200),
+  `store`          varchar(200),
+  `warrantyExpiry` varchar(20),
+  `condition`      enum('New','Good','Fair','Poor') DEFAULT 'Good',
+  `notes`          text,
+  `tags`           json,
+  `photoUrl`       text,
+  `serialNumber`   varchar(200),
+  `createdAt`      timestamp    NOT NULL DEFAULT (now()),
+  `updatedAt`      timestamp    NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `inventoryItems_id` PRIMARY KEY (`id`)
+);
+--> statement-breakpoint
+
+ALTER TABLE `inventoryItems`
+  ADD CONSTRAINT `inventoryItems_propertyId_fk`
+  FOREIGN KEY (`propertyId`) REFERENCES `properties`(`id`) ON DELETE NO ACTION ON UPDATE NO ACTION;
+--> statement-breakpoint
+
+ALTER TABLE `inventoryItems`
+  ADD CONSTRAINT `inventoryItems_ownerId_fk`
+  FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`) ON DELETE NO ACTION ON UPDATE NO ACTION;
+--> statement-breakpoint
+
+CREATE INDEX IF NOT EXISTS `inventoryItem_property_idx` ON `inventoryItems` (`propertyId`);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `inventoryItem_owner_idx`    ON `inventoryItems` (`ownerId`);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `inventoryItem_category_idx` ON `inventoryItems` (`category`);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `inventoryItem_room_idx`     ON `inventoryItems` (`room`);
