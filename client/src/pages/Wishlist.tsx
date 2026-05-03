@@ -12,13 +12,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 
-type Priority = "Low" | "Medium" | "High";
+type Priority = "low" | "medium" | "high";
 
 interface WishlistItem {
   id: string;
-  label: string;
-  description?: string | null;
-  estimatedCost: number;
+  name: string;
+  notes?: string | null;
+  estimatedPrice?: number | null;
   priority: Priority;
   [key: string]: any;
 }
@@ -28,10 +28,10 @@ export default function Wishlist() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    label: "",
-    description: "",
-    estimatedCost: "",
-    priority: "Medium" as Priority,
+    name: "",
+    notes: "",
+    estimatedPrice: "",
+    priority: "medium" as Priority,
   });
 
   const utils = trpc.useUtils();
@@ -72,21 +72,24 @@ export default function Wishlist() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.label) {
+    if (!formData.name.trim()) {
       toast.error(t("wishlist.labelRequired"));
       return;
     }
 
-    const estimatedCostCents = Math.round(parseFloat(formData.estimatedCost) * 100);
-    if (isNaN(estimatedCostCents)) {
+    const estimatedPriceCents = formData.estimatedPrice
+      ? Math.round(parseFloat(formData.estimatedPrice) * 100)
+      : undefined;
+
+    if (formData.estimatedPrice && (isNaN(estimatedPriceCents!) || estimatedPriceCents! < 0)) {
       toast.error(t("wishlist.validCostRequired"));
       return;
     }
 
-    const data = {
-      label: formData.label,
-      description: formData.description || undefined,
-      estimatedCost: estimatedCostCents,
+    const data: any = {
+      name: formData.name,
+      notes: formData.notes || undefined,
+      estimatedPrice: estimatedPriceCents,
       priority: formData.priority,
     };
 
@@ -99,9 +102,9 @@ export default function Wishlist() {
 
   const handleEdit = (item: WishlistItem) => {
     setFormData({
-      label: item.label,
-      description: item.description || "",
-      estimatedCost: (item.estimatedCost / 100).toString(),
+      name: item.name,
+      notes: item.notes || "",
+      estimatedPrice: item.estimatedPrice ? (item.estimatedPrice / 100).toString() : "",
       priority: item.priority,
     });
     setEditingId(item.id);
@@ -118,36 +121,51 @@ export default function Wishlist() {
     setIsDialogOpen(false);
     setEditingId(null);
     setFormData({
-      label: "",
-      description: "",
-      estimatedCost: "",
-      priority: "Medium",
+      name: "",
+      notes: "",
+      estimatedPrice: "",
+      priority: "medium",
     });
   };
 
-  const priorityWeight = { High: 3, Medium: 2, Low: 1 };
-  const sortedItems = [...items].sort((a, b) => priorityWeight[b.priority] - priorityWeight[a.priority]);
+  const priorityWeight: Record<Priority, number> = { high: 3, medium: 2, low: 1 };
+  const sortedItems = [...(items as WishlistItem[])].sort(
+    (a, b) => (priorityWeight[b.priority] ?? 2) - (priorityWeight[a.priority] ?? 2)
+  );
 
   const totalItems = items.length;
-  const totalEstimatedCost = items.reduce((sum, item) => sum + item.estimatedCost, 0);
-  const highPriorityCount = items.filter(item => item.priority === "High").length;
+  const totalEstimatedCost = (items as WishlistItem[]).reduce(
+    (sum, item) => sum + (item.estimatedPrice || 0),
+    0
+  );
+  const highPriorityCount = (items as WishlistItem[]).filter(
+    (item) => item.priority === "high"
+  ).length;
 
   const getPriorityColor = (priority: Priority) => {
     switch (priority) {
-      case "High": return "bg-orange-500 hover:bg-orange-600 text-white";
-      case "Medium": return "bg-yellow-500 hover:bg-yellow-600 text-white";
-      case "Low": return "bg-slate-500 hover:bg-slate-600 text-white";
-      default: return "bg-slate-500 hover:bg-slate-600 text-white";
+      case "high":   return "bg-orange-500 hover:bg-orange-600 text-white";
+      case "medium": return "bg-yellow-500 hover:bg-yellow-600 text-white";
+      case "low":    return "bg-slate-500 hover:bg-slate-600 text-white";
+      default:       return "bg-slate-500 hover:bg-slate-600 text-white";
     }
+  };
+
+  const getPriorityLabel = (priority: Priority) => {
+    const map: Record<Priority, string> = { high: "High", medium: "Medium", low: "Low" };
+    return t(`priority.${map[priority] ?? priority}`, { defaultValue: priority });
   };
 
   const handleExportCSV = () => {
     if (!items || items.length === 0) { toast.error(t("wishlist.nothingToExport")); return; }
-    const headers = ["Label", "Priority", "Estimated Cost", "Description"];
-    const rows = sortedItems.map((i: any) => [
-      i.label, i.priority, (i.estimatedCost / 100).toFixed(2), i.description || "",
+    const headers = ["Name", "Priority", "Estimated Cost", "Notes"];
+    const rows = sortedItems.map((i) => [
+      i.name,
+      i.priority,
+      i.estimatedPrice ? (i.estimatedPrice / 100).toFixed(2) : "",
+      i.notes || "",
     ]);
-    const csv = [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = [headers, ...rows].map(row => row.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `wishlist_${new Date().toISOString().split("T")[0]}.csv`; a.click();
@@ -178,73 +196,72 @@ export default function Wishlist() {
             <DialogTrigger asChild>
               <Button size="sm"><Plus className="h-3.5 w-3.5 me-1.5" />{t("wishlist.addItem")}</Button>
             </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingId ? t("wishlist.editItem") : t("wishlist.addItem")}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="label">{t("common.label")}</Label>
-                <Input
-                  id="label"
-                  value={formData.label}
-                  onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-                  placeholder={t("wishlist.placeholderLabel")}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">{t("common.description")} ({t("common.optional")})</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder={t("wishlist.placeholderDesc")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="estimatedCost">{t("wishlist.estimatedCost")}</Label>
-                <Input
-                  id="estimatedCost"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.estimatedCost}
-                  onChange={(e) => setFormData({ ...formData, estimatedCost: e.target.value })}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="priority">{t("common.priority")}</Label>
-                <Select
-                  value={formData.priority}
-                  onValueChange={(value: Priority) => setFormData({ ...formData, priority: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("common.select") + " " + t("common.priority")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Low">{t("priority.Low")}</SelectItem>
-                    <SelectItem value="Medium">{t("priority.Medium")}</SelectItem>
-                    <SelectItem value="High">{t("priority.High")}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button type="button" variant="outline" onClick={closeDialog}>
-                  {t("common.cancel")}
-                </Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {(createMutation.isPending || updateMutation.isPending) && (
-                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                  )}
-                  {editingId ? t("common.update") : t("common.create")}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingId ? t("wishlist.editItem") : t("wishlist.addItem")}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="item-name">{t("common.name")}</Label>
+                  <Input
+                    id="item-name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder={t("wishlist.placeholderLabel")}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="item-notes">{t("common.notes")} ({t("common.optional")})</Label>
+                  <Textarea
+                    id="item-notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    placeholder={t("wishlist.placeholderDesc")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="estimatedPrice">{t("wishlist.estimatedCost")} ({t("common.optional")})</Label>
+                  <Input
+                    id="estimatedPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.estimatedPrice}
+                    onChange={(e) => setFormData({ ...formData, estimatedPrice: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="priority">{t("common.priority")}</Label>
+                  <Select
+                    value={formData.priority}
+                    onValueChange={(value: Priority) => setFormData({ ...formData, priority: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">{t("priority.Low")}</SelectItem>
+                      <SelectItem value="medium">{t("priority.Medium")}</SelectItem>
+                      <SelectItem value="high">{t("priority.High")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button type="button" variant="outline" onClick={closeDialog}>
+                    {t("common.cancel")}
+                  </Button>
+                  <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                    {(createMutation.isPending || updateMutation.isPending) && (
+                      <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                    )}
+                    {editingId ? t("common.update") : t("common.create")}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -264,12 +281,16 @@ export default function Wishlist() {
             <div key={item.id} className="flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{item.label}</p>
-                  <Badge className={`text-xs h-5 border-0 ${getPriorityColor(item.priority)}`}>{t(`priority.${item.priority}`)}</Badge>
+                  <p className="text-sm font-medium">{item.name}</p>
+                  <Badge className={`text-xs h-5 border-0 ${getPriorityColor(item.priority)}`}>
+                    {getPriorityLabel(item.priority)}
+                  </Badge>
                 </div>
-                {item.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>}
+                {item.notes && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.notes}</p>}
               </div>
-              <p className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(item.estimatedCost)}</p>
+              <p className="text-sm font-semibold tabular-nums shrink-0">
+                {item.estimatedPrice ? formatCurrency(item.estimatedPrice) : "—"}
+              </p>
               <div className="flex gap-1 shrink-0">
                 <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleEdit(item)}><Pencil className="h-3.5 w-3.5" /></Button>
                 <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
