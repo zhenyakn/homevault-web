@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { uploadRouter } from "../uploadRoute";
+import { paperlessUploadRouter } from "../paperlessUploadRoute";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
@@ -79,6 +80,7 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.use(uploadRouter);
+  app.use(paperlessUploadRouter);
 
   // Dev-only login bypass — keeps existing dev-server behavior unchanged
   if (process.env.NODE_ENV === "development") {
