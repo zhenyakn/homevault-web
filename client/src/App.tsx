@@ -18,6 +18,7 @@ import Loans from "./pages/Loans";
 import Wishlist from "./pages/Wishlist";
 import PurchaseCosts from "./pages/PurchaseCosts";
 import Calendar from "./pages/Calendar";
+import Documents from "./pages/Documents";
 import PropertySettings from "./pages/PropertySettings";
 import Settings from "./pages/Settings";
 import Portfolio from "./pages/Portfolio";
@@ -176,6 +177,7 @@ function AppRouter() {
             <Route path="/wishlist" component={Wishlist} />
             <Route path="/purchase-costs" component={PurchaseCosts} />
             <Route path="/calendar" component={Calendar} />
+            <Route path="/documents" component={Documents} />
             <Route path="/portfolio" component={Portfolio} />
             <Route path="/settings" component={Settings} />
             <Route path="/settings/:section" component={Settings} />
