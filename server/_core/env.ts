@@ -9,4 +9,6 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   noAuth: process.env.NO_AUTH === "true",
   seedMockData: process.env.SEED_MOCK_DATA === "true",
+  paperlessUrl: process.env.PAPERLESS_URL ?? "",
+  paperlessToken: process.env.PAPERLESS_TOKEN ?? "",
 };
