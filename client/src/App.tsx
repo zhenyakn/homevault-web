@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Route, Router, Switch } from "wouter";
 import { useAuth } from "./_core/hooks/useAuth";
 import DashboardLayout from "./components/DashboardLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -41,37 +41,34 @@ function AppRoutes() {
   }
 
   return (
-    <Routes>
+    <Switch>
       {/* Auth */}
-      <Route path="/login" element={<Login />} />
-      {isMockMode && <Route path="/mock-login" element={<MockLogin />} />}
+      <Route path="/login" component={Login} />
+      {isMockMode && <Route path="/mock-login" component={MockLogin} />}
 
-      {/* App */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="property" element={<PropertyDashboard />} />
-        <Route path="expenses" element={<Expenses />} />
-        <Route path="loans" element={<Loans />} />
-        <Route path="purchase-costs" element={<PurchaseCosts />} />
-        <Route path="repairs" element={<Repairs />} />
-        <Route path="upgrades" element={<Upgrades />} />
-        <Route path="wishlist" element={<Wishlist />} />
-        <Route path="calendar" element={<Calendar />} />
-        <Route path="inventory" element={<Inventory />} />
-        <Route path="settings" element={<Settings />} />
+      {/* App — all dashboard routes share the DashboardLayout */}
+      <Route path="/:rest*">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <Switch>
+              <Route path="/" component={() => { window.location.replace("/dashboard"); return null; }} />
+              <Route path="/dashboard" component={Dashboard} />
+              <Route path="/property" component={PropertyDashboard} />
+              <Route path="/expenses" component={Expenses} />
+              <Route path="/loans" component={Loans} />
+              <Route path="/purchase-costs" component={PurchaseCosts} />
+              <Route path="/repairs" component={Repairs} />
+              <Route path="/upgrades" component={Upgrades} />
+              <Route path="/wishlist" component={Wishlist} />
+              <Route path="/calendar" component={Calendar} />
+              <Route path="/inventory" component={Inventory} />
+              <Route path="/settings" component={Settings} />
+              <Route component={() => { window.location.replace("/dashboard"); return null; }} />
+            </Switch>
+          </DashboardLayout>
+        </ProtectedRoute>
       </Route>
-
-      {/* Catch-all */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+    </Switch>
   );
 }
 
@@ -79,10 +76,10 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <BrowserRouter>
+        <Router>
           <AppRoutes />
           <Toaster richColors position="top-right" />
-        </BrowserRouter>
+        </Router>
       </TooltipProvider>
     </QueryClientProvider>
   );

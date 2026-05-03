@@ -25,9 +25,9 @@ import {
   Wallet,
   Wrench,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "wouter";
 
 const navItems = [
   { path: "/dashboard", icon: LayoutDashboard, labelKey: "nav.dashboard" },
@@ -43,11 +43,14 @@ const navItems = [
   { path: "/settings", icon: Settings, labelKey: "nav.settings" },
 ];
 
-export default function DashboardLayout() {
+interface DashboardLayoutProps {
+  children: ReactNode;
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [location] = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const isRtl = i18n.language === "he";
 
@@ -60,7 +63,7 @@ export default function DashboardLayout() {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    window.location.href = "/login";
   };
 
   const initials = user?.name
@@ -120,11 +123,11 @@ export default function DashboardLayout() {
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto py-2">
           {navItems.map(({ path, icon: Icon, labelKey }) => {
-            const active = location.pathname === path || location.pathname.startsWith(path + "/");
+            const active = location === path || location.startsWith(path + "/");
             return (
               <Link
                 key={path}
-                to={path}
+                href={path}
                 className={`flex items-center gap-3 rounded-md mx-2 px-3 py-2 text-sm transition-colors ${
                   active
                     ? "bg-primary/10 text-primary font-medium"
@@ -177,7 +180,7 @@ export default function DashboardLayout() {
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        <Outlet />
+        {children}
       </main>
     </div>
   );
