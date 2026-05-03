@@ -36,6 +36,22 @@ function ensureConfigured() {
   }
 }
 
+function parseTagIds(tags?: string) {
+  if (!tags?.trim()) return [];
+
+  return tags
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .map((tag) => {
+      const parsed = Number.parseInt(tag, 10);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        throw new Error("Paperless tags must be numeric tag IDs separated by commas.");
+      }
+      return String(parsed);
+    });
+}
+
 async function paperlessFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   ensureConfigured();
 
@@ -43,6 +59,7 @@ async function paperlessFetch<T>(path: string, init: RequestInit = {}): Promise<
     ...init,
     headers: {
       Authorization: `Token ${ENV.paperlessToken}`,
+      Accept: "application/json",
       ...(init.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...init.headers,
     },
@@ -95,8 +112,8 @@ export async function uploadPaperlessDocument(input: { file: Express.Multer.File
     form.append("title", input.title.trim());
   }
 
-  if (input.tags?.trim()) {
-    form.append("tags", input.tags.trim());
+  for (const tagId of parseTagIds(input.tags)) {
+    form.append("tags", tagId);
   }
 
   return paperlessFetch<{ task_id?: string; document?: number }>("/api/documents/post_document/", {
