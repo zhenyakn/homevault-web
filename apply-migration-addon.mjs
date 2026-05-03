@@ -251,7 +251,7 @@ async function main() {
       \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`propertyId\` int NOT NULL,
       \`ownerId\` int NOT NULL,
-      \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
       \`lender\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`originalAmount\` int NOT NULL,
       \`currentBalance\` int NOT NULL,
@@ -270,6 +270,29 @@ async function main() {
       KEY \`loan_owner_idx\` (\`ownerId\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "loans"
+  );
+
+  // ── loans: upgrade pre-existing tables missing columns ───────────────────────
+  // These ALTER statements are safe to re-run — ER_DUP_FIELDNAME is caught above.
+  await run(
+    `ALTER TABLE \`loans\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' FIRST`,
+    "loans.name column"
+  );
+  await run(
+    `ALTER TABLE \`loans\` ADD COLUMN \`lender\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER \`name\``,
+    "loans.lender column"
+  );
+  await run(
+    `ALTER TABLE \`loans\` ADD COLUMN \`nextPaymentDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL AFTER \`endDate\``,
+    "loans.nextPaymentDate column"
+  );
+  await run(
+    `ALTER TABLE \`loans\` ADD COLUMN \`loanType\` enum('mortgage','heloc','personal','construction','other') COLLATE utf8mb4_unicode_ci DEFAULT 'mortgage' AFTER \`nextPaymentDate\``,
+    "loans.loanType column"
+  );
+  await run(
+    `ALTER TABLE \`loans\` ADD COLUMN \`attachments\` json DEFAULT NULL AFTER \`notes\``,
+    "loans.attachments column"
   );
 
   // ── wishlistItems ────────────────────────────────────────────────────────────
