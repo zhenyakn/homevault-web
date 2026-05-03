@@ -64,185 +64,185 @@ export const mockProperty = {
 export const mockExpenses = [
   // ── Mortgage (monthly recurring) ──────────────────────────────────────────
   {
-    label: "Mortgage — Bank Hapoalim",
+    name: "Mortgage — Bank Hapoalim",
     amount: ils(8_200),                     // 8,200 ₪/month
     date: "2026-04-01",
     category: "Mortgage" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: false,
     notes: "Loan #74-382910 · 25-year fixed · linked to prime rate",
   },
   {
-    label: "Mortgage — Bank Hapoalim",
+    name: "Mortgage — Bank Hapoalim",
     amount: ils(8_200),
     date: "2026-03-01",
     category: "Mortgage" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-03-03",
   },
   {
-    label: "Mortgage — Bank Hapoalim",
+    name: "Mortgage — Bank Hapoalim",
     amount: ils(8_200),
     date: "2026-02-01",
     category: "Mortgage" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-02-04",
   },
   {
-    label: "Mortgage — Bank Hapoalim",
+    name: "Mortgage — Bank Hapoalim",
     amount: ils(8_200),
     date: "2026-01-01",
     category: "Mortgage" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-01-05",
   },
 
   // ── Va'ad Bayit / HOA (monthly) ───────────────────────────────────────────
   {
-    label: "Va'ad Bayit (HOA)",
+    name: "Va'ad Bayit (HOA)",
     amount: ils(450),                        // 450 ₪/month
     date: "2026-04-01",
     category: "Other" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: false,
     notes: "Building committee fee · covers elevator, cleaning, garden, intercom",
   },
   {
-    label: "Va'ad Bayit (HOA)",
+    name: "Va'ad Bayit (HOA)",
     amount: ils(450),
     date: "2026-03-01",
     category: "Other" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-03-06",
   },
   {
-    label: "Va'ad Bayit (HOA)",
+    name: "Va'ad Bayit (HOA)",
     amount: ils(450),
     date: "2026-02-01",
     category: "Other" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-02-08",
   },
 
   // ── Electricity — IEC (monthly) ───────────────────────────────────────────
   {
-    label: "Electricity (IEC)",
+    name: "Electricity (IEC)",
     amount: ils(315),
     date: "2026-03-15",
     category: "Utility" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-03-18",
     notes: "Israel Electric Corporation · bimonthly billed, split to monthly here",
   },
   {
-    label: "Electricity (IEC)",
+    name: "Electricity (IEC)",
     amount: ils(295),
     date: "2026-02-15",
     category: "Utility" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-02-19",
   },
   {
-    label: "Electricity (IEC)",
+    name: "Electricity (IEC)",
     amount: ils(345),
     date: "2026-01-15",
     category: "Utility" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-01-17",
   },
 
   // ── Water & sewage (monthly) ──────────────────────────────────────────────
   {
-    label: "Water & Sewage",
+    name: "Water & Sewage",
     amount: ils(175),
     date: "2026-03-01",
     category: "Utility" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-03-10",
     notes: "Tel Aviv municipality · meter reading 1st of month",
   },
   {
-    label: "Water & Sewage",
+    name: "Water & Sewage",
     amount: ils(162),
     date: "2026-02-01",
     category: "Utility" as const,
     isRecurring: true,
-    recurringFrequency: "Monthly" as const,
+    recurringInterval: "Monthly" as const,
     isPaid: true,
     paidDate: "2026-02-11",
   },
 
   // ── Arnona — municipal tax (quarterly) ────────────────────────────────────
   {
-    label: "Arnona Q2 2026",
+    name: "Arnona Q2 2026",
     amount: ils(920),                        // 920 ₪/quarter · 3-room reduced rate
     date: "2026-04-01",
     category: "Tax" as const,
     isRecurring: true,
-    recurringFrequency: "Quarterly" as const,
+    recurringInterval: "Quarterly" as const,
     isPaid: false,
     notes: "Tel Aviv-Yafo municipal tax · reduced rate (toshav) · due by 30 Apr",
   },
   {
-    label: "Arnona Q1 2026",
+    name: "Arnona Q1 2026",
     amount: ils(920),
     date: "2026-01-01",
     category: "Tax" as const,
     isRecurring: true,
-    recurringFrequency: "Quarterly" as const,
+    recurringInterval: "Quarterly" as const,
     isPaid: true,
     paidDate: "2026-01-15",
   },
   {
-    label: "Arnona Q4 2025",
+    name: "Arnona Q4 2025",
     amount: ils(920),
     date: "2025-10-01",
     category: "Tax" as const,
     isRecurring: true,
-    recurringFrequency: "Quarterly" as const,
+    recurringInterval: "Quarterly" as const,
     isPaid: true,
     paidDate: "2025-10-12",
   },
 
   // ── Insurance (annual) ────────────────────────────────────────────────────
   {
-    label: "Building Insurance — Clal",
+    name: "Building Insurance — Clal",
     amount: ils(2_400),                      // 2,400 ₪/year
     date: "2026-01-01",
     category: "Insurance" as const,
     isRecurring: true,
-    recurringFrequency: "Annual" as const,
+    recurringInterval: "Annual" as const,
     isPaid: true,
     paidDate: "2026-01-08",
     notes: "Policy #CL-2024-48821 · structure only · auto-renews Jan 1",
   },
   {
-    label: "Contents & Liability Insurance — Harel",
+    name: "Contents & Liability Insurance — Harel",
     amount: ils(1_850),                      // 1,850 ₪/year
     date: "2026-02-01",
     category: "Insurance" as const,
     isRecurring: true,
-    recurringFrequency: "Annual" as const,
+    recurringInterval: "Annual" as const,
     isPaid: true,
     paidDate: "2026-02-03",
     notes: "Home contents + personal liability · auto-renews Feb 1",
@@ -250,28 +250,28 @@ export const mockExpenses = [
 
   // ── One-time maintenance ──────────────────────────────────────────────────
   {
-    label: "Plumber — kitchen drain unclogging",
+    name: "Plumber — kitchen drain unclogging",
     amount: ils(850),
     date: "2026-02-20",
     category: "Maintenance" as const,
     notes: "Avi Plumbing Services · 052-344-5566 · 2-hour job",
   },
   {
-    label: "Electrician — new grounded outlet (kitchen)",
+    name: "Electrician — new grounded outlet (kitchen)",
     amount: ils(680),
     date: "2025-12-10",
     category: "Maintenance" as const,
     notes: "Added outlet near counter for future dishwasher",
   },
   {
-    label: "AC units — annual service & cleaning",
+    name: "AC units — annual service & cleaning",
     amount: ils(480),
     date: "2025-08-25",
     category: "Maintenance" as const,
     notes: "2 units serviced before summer peak",
   },
   {
-    label: "Exterior roller shutter repair",
+    name: "Exterior roller shutter repair",
     amount: ils(1_200),
     date: "2025-11-05",
     category: "Maintenance" as const,
@@ -283,60 +283,60 @@ export const mockExpenses = [
 
 export const mockRepairs = [
   {
-    label: "Kitchen sink — slow drain after descaling",
+    title: "Kitchen sink — slow drain after descaling",
     description: "Water drains slowly. May need pipe replacement section. Plumber did temporary fix in Feb but issue returned.",
     priority: "High" as const,
-    status: "In Progress" as const,
-    dateLogged: "2026-03-15",
+    status: "in_progress" as const,
+    reportedDate: "2026-03-15",
     contractor: "Avi Plumbing Services",
     contractorPhone: "052-344-5566",
     estimatedCost: ils(1_200),
     notes: "Second visit scheduled. Contractor suspects partial blockage 80cm in.",
   },
   {
-    label: "Bathroom wall tiles — hairline cracks (3 tiles)",
+    title: "Bathroom wall tiles — hairline cracks (3 tiles)",
     description: "Hairline cracks above the shower surround. Not leaking yet, but risk of water ingress if not fixed.",
     priority: "Medium" as const,
-    status: "Pending" as const,
-    dateLogged: "2026-01-20",
+    status: "pending" as const,
+    reportedDate: "2026-01-20",
     estimatedCost: ils(2_800),
     notes: "Got 1 quote (₪2,800). Need a second quote. Low urgency for now.",
   },
   {
-    label: "Water heater — pressure drop when multiple taps open",
+    title: "Water heater — pressure drop when multiple taps open",
     description: "Hot water pressure drops noticeably when shower and kitchen tap are both open. Likely mixing valve.",
     priority: "Medium" as const,
-    status: "Pending" as const,
-    dateLogged: "2025-12-01",
+    status: "pending" as const,
+    reportedDate: "2025-12-01",
     contractor: "Avi Plumbing Services",
     contractorPhone: "052-344-5566",
     estimatedCost: ils(900),
     notes: "Contractor said it's likely the pressure-balancing valve. Parts on order.",
   },
   {
-    label: "AC outdoor unit — unusual noise when starting",
+    title: "AC outdoor unit — unusual noise when starting",
     description: "Compressor makes a grinding sound for the first 30 seconds when starting from off. Worse in cold mornings.",
     priority: "Low" as const,
-    status: "Pending" as const,
-    dateLogged: "2026-02-10",
+    status: "pending" as const,
+    reportedDate: "2026-02-10",
     estimatedCost: ils(1_500),
     notes: "Technician visit booked for May service — will diagnose then.",
   },
   {
-    label: "Master bedroom door — stiff latch",
+    title: "Master bedroom door — stiff latch",
     description: "Latch didn't retract smoothly, sometimes jammed.",
     priority: "Low" as const,
-    status: "Resolved" as const,
-    dateLogged: "2025-10-05",
+    status: "resolved" as const,
+    reportedDate: "2025-10-05",
     actualCost: ils(180),
     notes: "Replaced latch mechanism. Works fine now.",
   },
   {
-    label: "Balcony — water seepage into ceiling below",
+    title: "Balcony — water seepage into ceiling below",
     description: "Water stain appeared on ceiling of ground-floor storage after heavy rain. Traced to balcony membrane failure.",
     priority: "High" as const,
-    status: "Resolved" as const,
-    dateLogged: "2025-09-01",
+    status: "resolved" as const,
+    reportedDate: "2025-09-01",
     contractor: "Roni Waterproofing Ltd",
     contractorPhone: "054-778-2233",
     estimatedCost: ils(5_500),
@@ -351,19 +351,18 @@ export const mockRepairs = [
 //   options[] — vendor quotes. Set isSelected: true on the chosen one.
 //               payments[] logs actual transfers to that vendor.
 //   items[]   — individual products / tasks. Status advances left → right:
-//               "Need to find" → "Researching" → "Quoted" → "Ordered" → "Delivered" → "Installed"
+//               "need_to_find" → "researching" → "quoted" → "ordered" → "delivered" → "installed"
 //
-// phase: "Planning" | "Sourcing" | "Building" | "Done"
+// status: "idea" | "planning" | "in_progress" | "completed" | "cancelled"
 
 export const mockUpgrades = [
   // ── 1. Kitchen renovation ─────────────────────────────────────────────────
   {
-    label: "Kitchen renovation",
+    title: "Kitchen renovation",
     description: "Full gut-and-replace: new cabinets (Egger board), quartz countertop (Caesarstone Statuario), undermount sink, and backsplash tiles. Existing layout kept.",
-    status: "In Progress" as const,
-    phase: "Building" as const,
-    budget: ils(48_000),
-    spent: ils(29_500),
+    status: "in_progress" as const,
+    estimatedCost: ils(48_000),
+    actualCost: ils(29_500),
     notes: "Countertop delivery ETA May 8 — Rami can only start installation after it arrives. Electrician phase follows.",
 
     options: [
@@ -404,26 +403,25 @@ export const mockUpgrades = [
     ],
 
     items: [
-      { name: "Kitchen cabinets (IKEA Metod)", vendorName: "IKEA", estimatedCost: ils(8_400), actualCost: ils(8_100), status: "Installed" as const },
-      { name: "Backsplash tiles (Porcelanosa, 30×60)", vendorName: "Porcelanosa", estimatedCost: ils(3_600), actualCost: ils(3_400), status: "Installed" as const },
-      { name: "Cabinet handles ×24 (IKEA Eneryda)", vendorName: "IKEA", estimatedCost: ils(400), actualCost: ils(380), status: "Installed" as const },
-      { name: "Plumber — pipe relocation", vendorName: "Avi Plumbing", estimatedCost: ils(1_800), actualCost: ils(1_800), status: "Installed" as const },
-      { name: "Countertop — Caesarstone Statuario", vendorName: "Caesarstone", estimatedCost: ils(4_200), status: "Ordered" as const, eta: "2026-05-08", notes: "Must arrive before Rami starts installation" },
-      { name: "LED strip under cabinets (5m)", vendorName: "Amazon", estimatedCost: ils(280), status: "Ordered" as const, eta: "2026-04-30" },
-      { name: "Undermount sink (Franke MRG 110-52)", estimatedCost: ils(1_100), status: "Researching" as const, notes: "Must fit 60cm cabinet. Check Hashkiya and Rami's supplier." },
-      { name: "Kitchen faucet (pull-out spray)", estimatedCost: ils(600), status: "Need to find" as const, notes: "Coordinate finish colour with handles (brushed nickel)" },
-      { name: "Built-in oven (60cm)", estimatedCost: ils(3_200), status: "Researching" as const, notes: "Needs dedicated 32A circuit — confirm with electrician first" },
+      { name: "Kitchen cabinets (IKEA Metod)", vendorName: "IKEA", estimatedCost: ils(8_400), actualCost: ils(8_100), status: "installed" as const },
+      { name: "Backsplash tiles (Porcelanosa, 30×60)", vendorName: "Porcelanosa", estimatedCost: ils(3_600), actualCost: ils(3_400), status: "installed" as const },
+      { name: "Cabinet handles ×24 (IKEA Eneryda)", vendorName: "IKEA", estimatedCost: ils(400), actualCost: ils(380), status: "installed" as const },
+      { name: "Plumber — pipe relocation", vendorName: "Avi Plumbing", estimatedCost: ils(1_800), actualCost: ils(1_800), status: "installed" as const },
+      { name: "Countertop — Caesarstone Statuario", vendorName: "Caesarstone", estimatedCost: ils(4_200), status: "ordered" as const, eta: "2026-05-08", notes: "Must arrive before Rami starts installation" },
+      { name: "LED strip under cabinets (5m)", vendorName: "Amazon", estimatedCost: ils(280), status: "ordered" as const, eta: "2026-04-30" },
+      { name: "Undermount sink (Franke MRG 110-52)", estimatedCost: ils(1_100), status: "researching" as const, notes: "Must fit 60cm cabinet. Check Hashkiya and Rami's supplier." },
+      { name: "Kitchen faucet (pull-out spray)", estimatedCost: ils(600), status: "need_to_find" as const, notes: "Coordinate finish colour with handles (brushed nickel)" },
+      { name: "Built-in oven (60cm)", estimatedCost: ils(3_200), status: "researching" as const, notes: "Needs dedicated 32A circuit — confirm with electrician first" },
     ],
   },
 
   // ── 2. Main bathroom retiling ─────────────────────────────────────────────
   {
-    label: "Main bathroom retiling",
+    title: "Main bathroom retiling",
     description: "Remove all existing wall + floor tiles. Lay 60×60 large-format porcelain (Atlas Concorde). Include new vanity unit (IKEA Godmorgon).",
-    status: "Planned" as const,
-    phase: "Sourcing" as const,
-    budget: ils(22_000),
-    spent: 0,
+    status: "planning" as const,
+    estimatedCost: ils(22_000),
+    actualCost: 0,
     notes: "Starting after kitchen is fully done. Need to choose tile colour and vanity finish before deciding on contractor.",
 
     options: [
@@ -450,23 +448,22 @@ export const mockUpgrades = [
     ],
 
     items: [
-      { name: "Floor tiles — Atlas Concorde 60×60 (7 sqm)", vendorName: "Porcelanosa", estimatedCost: ils(3_200), status: "Quoted" as const, notes: "Grey marble-look. Got price from Porcelanosa — comparing online." },
-      { name: "Wall tiles — Atlas Concorde 30×60 (18 sqm)", vendorName: "Porcelanosa", estimatedCost: ils(2_800), status: "Quoted" as const },
-      { name: "IKEA Godmorgon vanity 80cm (white)", vendorName: "IKEA", estimatedCost: ils(2_400), status: "Need to find" as const, notes: "Check if 80cm fits. Measure again before ordering." },
-      { name: "Shower mixer (Grohe Euphoria)", estimatedCost: ils(1_800), status: "Researching" as const },
-      { name: "Toilet (Roca Meridian)", estimatedCost: ils(1_600), status: "Need to find" as const },
-      { name: "Towel rail — heated electric", estimatedCost: ils(900), status: "Need to find" as const },
+      { name: "Floor tiles — Atlas Concorde 60×60 (7 sqm)", vendorName: "Porcelanosa", estimatedCost: ils(3_200), status: "quoted" as const, notes: "Grey marble-look. Got price from Porcelanosa — comparing online." },
+      { name: "Wall tiles — Atlas Concorde 30×60 (18 sqm)", vendorName: "Porcelanosa", estimatedCost: ils(2_800), status: "quoted" as const },
+      { name: "IKEA Godmorgon vanity 80cm (white)", vendorName: "IKEA", estimatedCost: ils(2_400), status: "need_to_find" as const, notes: "Check if 80cm fits. Measure again before ordering." },
+      { name: "Shower mixer (Grohe Euphoria)", estimatedCost: ils(1_800), status: "researching" as const },
+      { name: "Toilet (Roca Meridian)", estimatedCost: ils(1_600), status: "need_to_find" as const },
+      { name: "Towel rail — heated electric", estimatedCost: ils(900), status: "need_to_find" as const },
     ],
   },
 
   // ── 3. Smart lighting — Shelly relays ────────────────────────────────────
   {
-    label: "Smart lighting — Shelly relays",
+    title: "Smart lighting — Shelly relays",
     description: "Replace all switches with Shelly 1PM relays (behind existing switches, no rewiring needed). All rooms + kitchen + hallway. Google Home integration.",
-    status: "In Progress" as const,
-    phase: "Building" as const,
-    budget: ils(4_500),
-    spent: ils(1_120),
+    status: "in_progress" as const,
+    estimatedCost: ils(4_500),
+    actualCost: ils(1_120),
     notes: "Shelly relays delivered. Electrician booked for May 15 to install during kitchen electrician phase.",
 
     options: [
@@ -485,20 +482,19 @@ export const mockUpgrades = [
     ],
 
     items: [
-      { name: "Shelly 1PM relays ×8", vendorName: "AliExpress", estimatedCost: ils(1_120), actualCost: ils(1_120), status: "Delivered" as const, notes: "Arrived. Tested 1 unit — works with Google Home." },
-      { name: "Electrician labour (Eli)", vendorName: "Eli Electric", estimatedCost: ils(1_800), status: "Quoted" as const, notes: "Booked May 15 during kitchen phase" },
-      { name: "Switch cover plates ×8 (white)", estimatedCost: ils(240), status: "Need to find" as const, notes: "Current covers may not refit after relay — measure first" },
+      { name: "Shelly 1PM relays ×8", vendorName: "AliExpress", estimatedCost: ils(1_120), actualCost: ils(1_120), status: "delivered" as const, notes: "Arrived. Tested 1 unit — works with Google Home." },
+      { name: "Electrician labour (Eli)", vendorName: "Eli Electric", estimatedCost: ils(1_800), status: "quoted" as const, notes: "Booked May 15 during kitchen phase" },
+      { name: "Switch cover plates ×8 (white)", estimatedCost: ils(240), status: "need_to_find" as const, notes: "Current covers may not refit after relay — measure first" },
     ],
   },
 
   // ── 4. Hallway built-in storage ───────────────────────────────────────────
   {
-    label: "Hallway built-in storage",
+    title: "Hallway built-in storage",
     description: "Custom floor-to-ceiling wardrobe in entrance hallway (2.4m wide). Melamine board, push-to-open hinges.",
-    status: "Done" as const,
-    phase: "Done" as const,
-    budget: ils(8_500),
-    spent: ils(8_200),
+    status: "completed" as const,
+    estimatedCost: ils(8_500),
+    actualCost: ils(8_200),
     notes: "Completed April 2025. Very satisfied with result. Small scratch on top shelf was repaired on-site.",
 
     options: [
@@ -519,9 +515,9 @@ export const mockUpgrades = [
     ],
 
     items: [
-      { name: "Custom wardrobe unit (2.4m)", vendorName: "Yossi Amsalem", estimatedCost: ils(7_800), actualCost: ils(7_800), status: "Installed" as const },
-      { name: "Push-to-open hinges ×6 (Blum)", estimatedCost: ils(280), actualCost: ils(280), status: "Installed" as const },
-      { name: "Internal shelving hardware", estimatedCost: ils(120), actualCost: ils(120), status: "Installed" as const },
+      { name: "Custom wardrobe unit (2.4m)", vendorName: "Yossi Amsalem", estimatedCost: ils(7_800), actualCost: ils(7_800), status: "installed" as const },
+      { name: "Push-to-open hinges ×6 (Blum)", estimatedCost: ils(280), actualCost: ils(280), status: "installed" as const },
+      { name: "Internal shelving hardware", estimatedCost: ils(120), actualCost: ils(120), status: "installed" as const },
     ],
   },
 ];
@@ -553,31 +549,31 @@ export const mockLoans = [
 
 export const mockWishlist = [
   {
-    label: "Split AC — bedroom 2",
+    name: "Split AC — bedroom 2",
     description: "Second bedroom has no AC. Summer in Tel Aviv is unbearable without it. Target: 12,000 BTU inverter unit.",
     estimatedCost: ils(6_500),
     priority: "High" as const,
   },
   {
-    label: "Dishwasher (Bosch Series 4, 60cm)",
+    name: "Dishwasher (Bosch Series 4, 60cm)",
     description: "Built-under. Space was left during kitchen renovation. Just need to connect the pre-installed water line.",
     estimatedCost: ils(3_800),
     priority: "High" as const,
   },
   {
-    label: "Robot vacuum (Roborock S8 Pro)",
+    name: "Robot vacuum (Roborock S8 Pro)",
     description: "Stone floors throughout the apartment. Robot vacuum would handle daily dust easily.",
     estimatedCost: ils(2_400),
     priority: "Medium" as const,
   },
   {
-    label: "Mamad (safe room) shelving",
+    name: "Mamad (safe room) shelving",
     description: "Metal shelving system to turn the safe room into usable storage (tools, seasonal items, luggage).",
     estimatedCost: ils(1_100),
     priority: "Low" as const,
   },
   {
-    label: "Electric scooter (Xiaomi Pro 2)",
+    name: "Electric scooter (Xiaomi Pro 2)",
     description: "For short commutes in Florentin. Avoids parking problems. Can charge on balcony.",
     estimatedCost: ils(4_200),
     priority: "Medium" as const,
@@ -588,49 +584,49 @@ export const mockWishlist = [
 
 export const mockPurchaseCosts = [
   {
-    label: "Real estate agent fee",
+    name: "Real estate agent fee",
     amount: ils(56_000),                     // 2% of 2,800,000 ₪
     date: "2022-03-15",
     category: "Agent",
     notes: "Standard 2% buyer-side agent fee",
   },
   {
-    label: "Mas Rechisha (purchase tax)",
+    name: "Mas Rechisha (purchase tax)",
     amount: ils(38_500),
     date: "2022-04-10",
     category: "Tax",
     notes: "First-apartment reduced-rate bracket · paid via lawyer to tax authority",
   },
   {
-    label: "Lawyer fee — conveyancing (Adv. Michal Levi)",
+    name: "Lawyer fee — conveyancing (Adv. Michal Levi)",
     amount: ils(9_200),
     date: "2022-03-28",
     category: "Legal",
     notes: "Includes purchase agreement, title search, and tabu registration",
   },
   {
-    label: "Mortgage registration — Land Registry (tabu)",
+    name: "Mortgage registration — Land Registry (tabu)",
     amount: ils(1_380),
     date: "2022-05-02",
     category: "Legal",
     notes: "Bank lien registration with Israel Land Authority",
   },
   {
-    label: "Bank appraisal (shuma)",
+    name: "Bank appraisal (shuma)",
     amount: ils(2_500),
     date: "2022-02-20",
     category: "Other",
     notes: "Bank Hapoalim-required valuation before mortgage approval",
   },
   {
-    label: "Moving company (Rahav Moving)",
+    name: "Moving company (Rahav Moving)",
     amount: ils(4_800),
     date: "2022-05-20",
     category: "Other",
     notes: "Full-service move from Ramat Gan (3-room) · 5-hour job including packing",
   },
   {
-    label: "Locksmith — new cylinders (3 locks)",
+    name: "Locksmith — new cylinders (3 locks)",
     amount: ils(1_200),
     date: "2022-05-21",
     category: "Other",
