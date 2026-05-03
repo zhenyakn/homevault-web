@@ -214,6 +214,12 @@ function parseJsonArray(value: unknown): any[] {
   return [];
 }
 
+/** Coerce an empty string to null — used to sanitise mockData fields that
+ *  must never reach MySQL ENUM or nullable-varchar columns as "". */
+function emptyToNull<T>(v: T): T | null {
+  return (v === "" || v === undefined) ? null : v;
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -1014,22 +1020,23 @@ export async function seedMockProperty(userId: number): Promise<number> {
   const oid = userId;
   const pid = propertyId;
 
-  // Drizzle mysql2 serialises JS booleans as the strings "true"/"false".
-  // MySQL tinyint(1) rejects the string "true" with a data truncation error.
-  // Fix: cast every boolean tinyint field to 1/0 AFTER the ...spread so the
-  // explicit numeric value overrides the raw boolean from mockData.
   await db.insert(expenses).values(
     mockExpenses.map(e => ({
       id: nanoid(),
       ownerId: oid,
       propertyId: pid,
       attachments: [] as any,
+      // Explicit safe defaults — overridden by spread only if mockData has a
+      // non-empty value. emptyToNull ensures "" never reaches ENUM/varchar cols.
       recurringInterval: null as any,
       nextDueDate:       null as any,
       notes:             null as any,
       ...e,
-      // cast after spread so the numeric value wins over the raw boolean
-      isRecurring: ((e as any).isRecurring ? 1 : 0) as any,
+      // Post-spread overrides: cast boolean → tinyint, coerce "" → null
+      isRecurring:        ((e as any).isRecurring ? 1 : 0) as any,
+      nextDueDate:        emptyToNull((e as any).nextDueDate) as any,
+      recurringInterval:  emptyToNull((e as any).recurringInterval) as any,
+      notes:              emptyToNull((e as any).notes) as any,
     }))
   );
 
@@ -1055,7 +1062,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
           ...opt,
           pros: (opt.pros ?? []) as any,
           cons: (opt.cons ?? []) as any,
-          // cast after spread
           selected: (opt.selected ? 1 : 0) as any,
         }))
       );
@@ -1066,7 +1072,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
           id: nanoid(),
           upgradeId,
           ...item,
-          // cast after spread
           purchased: (item.purchased ? 1 : 0) as any,
         }))
       );
@@ -1104,7 +1109,18 @@ export async function seedMockProperty(userId: number): Promise<number> {
   );
 
   await db.insert(calendarEvents).values(
-    mockCalendarEvents.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid }))
+    mockCalendarEvents.map(e => ({
+      id: nanoid(),
+      ownerId: oid,
+      propertyId: pid,
+      // post-spread: coerce "" → null for ENUM and nullable varchar cols
+      recurringInterval: null as any,
+      notes: null as any,
+      ...e,
+      isRecurring:       ((e as any).isRecurring ? 1 : 0) as any,
+      recurringInterval: emptyToNull((e as any).recurringInterval) as any,
+      notes:             emptyToNull((e as any).notes) as any,
+    }))
   );
 
   return propertyId;
