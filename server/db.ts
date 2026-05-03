@@ -62,8 +62,6 @@ export async function getDb() {
   return _db;
 }
 
-// MySQL returns JSON columns as raw strings via the mysql2 driver.
-// Always run through this before calling array methods or returning to clients.
 function parseJsonArray(value: unknown): any[] {
   if (Array.isArray(value)) return value;
   if (typeof value === "string") {
@@ -227,15 +225,14 @@ export async function deleteRepair(id: string) {
 
 export async function getRepairQuotes(repairId: string) {
   const db = await getDb();
-  const rows = await db.select().from(repairQuotes).where(eq(repairQuotes.repairId, repairId)).orderBy(repairQuotes.createdAt);
-  return rows.map(r => ({ ...r, payments: parseJsonArray(r.payments) }));
+  return await db.select().from(repairQuotes).where(eq(repairQuotes.repairId, repairId)).orderBy(repairQuotes.createdAt);
 }
 
 export async function getRepairQuoteCounts(repairIds: string[]) {
   if (repairIds.length === 0) return [];
   const db = await getDb();
   const rows = await db
-    .select({ repairId: repairQuotes.repairId, isSelected: repairQuotes.isSelected })
+    .select({ repairId: repairQuotes.repairId, selected: repairQuotes.selected })
     .from(repairQuotes)
     .where(inArray(repairQuotes.repairId, repairIds));
 
@@ -243,55 +240,29 @@ export async function getRepairQuoteCounts(repairIds: string[]) {
   for (const row of rows) {
     if (!map[row.repairId]) map[row.repairId] = { total: 0, hasSelected: false };
     map[row.repairId].total++;
-    if (row.isSelected) map[row.repairId].hasSelected = true;
+    if (row.selected) map[row.repairId].hasSelected = true;
   }
   return Object.entries(map).map(([repairId, c]) => ({ repairId, ...c }));
 }
 
 export async function createRepairQuote(data: typeof repairQuotes.$inferInsert) {
   const db = await getDb();
-  await db.insert(repairQuotes).values({ ...data, payments: (data.payments ?? []) as any });
+  await db.insert(repairQuotes).values(data);
   return data;
 }
 
 export async function updateRepairQuote(id: string, data: Partial<RepairQuote>) {
   const db = await getDb();
-  const normalized: any = { ...data };
-  if ("payments" in normalized) normalized.payments = normalized.payments ?? [];
-  await db.update(repairQuotes).set(normalized).where(eq(repairQuotes.id, id));
+  await db.update(repairQuotes).set(data).where(eq(repairQuotes.id, id));
   return data;
 }
 
 export async function selectRepairQuote(repairId: string, quoteId: string) {
   const db = await getDb();
   await db.transaction(async (tx) => {
-    await tx.update(repairQuotes).set({ isSelected: false }).where(eq(repairQuotes.repairId, repairId));
-    await tx.update(repairQuotes).set({ isSelected: true }).where(eq(repairQuotes.id, quoteId));
+    await tx.update(repairQuotes).set({ selected: false }).where(eq(repairQuotes.repairId, repairId));
+    await tx.update(repairQuotes).set({ selected: true }).where(eq(repairQuotes.id, quoteId));
   });
-}
-
-export async function logRepairQuotePayment(quoteId: string, payment: { date: string; amount: number; notes?: string; receipt?: string }) {
-  const db = await getDb();
-  const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
-  if (!existing) throw new Error("Quote not found");
-  const payments = [...parseJsonArray(existing.payments), payment];
-  await db.update(repairQuotes).set({ payments: payments as any }).where(eq(repairQuotes.id, quoteId));
-  if (existing.isSelected) {
-    const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
-    await db.update(repairs).set({ actualCost: totalPaid }).where(eq(repairs.id, existing.repairId));
-  }
-}
-
-export async function deleteRepairQuotePayment(quoteId: string, paymentIndex: number) {
-  const db = await getDb();
-  const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
-  if (!existing) throw new Error("Quote not found");
-  const payments = parseJsonArray(existing.payments).filter((_: any, i: number) => i !== paymentIndex);
-  await db.update(repairQuotes).set({ payments: payments as any }).where(eq(repairQuotes.id, quoteId));
-  if (existing.isSelected) {
-    const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
-    await db.update(repairs).set({ actualCost: totalPaid }).where(eq(repairs.id, existing.repairId));
-  }
 }
 
 export async function deleteRepairQuote(id: string) {
@@ -339,17 +310,15 @@ export async function deleteUpgrade(id: string) {
 
 export async function getLoans(userId: number, propertyId: number) {
   const db = await getDb();
-  const rows = await db.select().from(loans)
+  return await db.select().from(loans)
     .where(and(eq(loans.ownerId, userId), eq(loans.propertyId, propertyId)))
     .orderBy(desc(loans.createdAt));
-  return rows.map(l => ({ ...l, repayments: parseJsonArray(l.repayments) }));
 }
 
 export async function getLoanById(id: string) {
   const db = await getDb();
   const result = await db.select().from(loans).where(eq(loans.id, id)).limit(1);
-  if (!result[0]) return null;
-  return { ...result[0], repayments: parseJsonArray(result[0].repayments) };
+  return result[0] ?? null;
 }
 
 export async function createLoan(data: typeof loans.$inferInsert) {
@@ -357,7 +326,6 @@ export async function createLoan(data: typeof loans.$inferInsert) {
   await db.insert(loans).values({
     ...data,
     attachments: (data.attachments ?? []) as any,
-    repayments: (data.repayments ?? []) as any,
   });
   return data;
 }
@@ -365,7 +333,6 @@ export async function createLoan(data: typeof loans.$inferInsert) {
 export async function updateLoan(id: string, data: Partial<Loan>) {
   const db = await getDb();
   const normalized: any = { ...data };
-  if ("repayments" in normalized) normalized.repayments = normalized.repayments ?? [];
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
   await db.update(loans).set(normalized).where(eq(loans.id, id));
   return data;
@@ -522,21 +489,21 @@ export async function getRecentActivity(propertyId: number) {
 
   const [recentExpenses, recentRepairs, recentUpgrades] = await Promise.all([
     db
-      .select({ id: expenses.id, label: expenses.label, ownerId: expenses.ownerId, createdAt: expenses.createdAt, ownerName: users.name })
+      .select({ id: expenses.id, label: expenses.name, ownerId: expenses.ownerId, createdAt: expenses.createdAt, ownerName: users.name })
       .from(expenses)
       .leftJoin(users, eq(expenses.ownerId, users.id))
       .where(eq(expenses.propertyId, propertyId))
       .orderBy(desc(expenses.createdAt))
       .limit(5),
     db
-      .select({ id: repairs.id, label: repairs.label, ownerId: repairs.ownerId, createdAt: repairs.createdAt, ownerName: users.name })
+      .select({ id: repairs.id, label: repairs.title, ownerId: repairs.ownerId, createdAt: repairs.createdAt, ownerName: users.name })
       .from(repairs)
       .leftJoin(users, eq(repairs.ownerId, users.id))
       .where(eq(repairs.propertyId, propertyId))
       .orderBy(desc(repairs.createdAt))
       .limit(5),
     db
-      .select({ id: upgrades.id, label: upgrades.label, ownerId: upgrades.ownerId, createdAt: upgrades.createdAt, ownerName: users.name })
+      .select({ id: upgrades.id, label: upgrades.title, ownerId: upgrades.ownerId, createdAt: upgrades.createdAt, ownerName: users.name })
       .from(upgrades)
       .leftJoin(users, eq(upgrades.ownerId, users.id))
       .where(eq(upgrades.propertyId, propertyId))
@@ -563,42 +530,40 @@ function calcMonthlyStats(allExpenses: Expense[], monthStart: string, monthEnd: 
   const thisMonthExp = allExpenses.filter(e => e.date >= monthStart && e.date <= monthEnd);
   const monthSpent = thisMonthExp.reduce((s, e) => s + e.amount, 0);
   const monthlyRecurring = allExpenses
-    .filter(e => e.isRecurring && e.recurringFrequency === "Monthly")
+    .filter(e => e.isRecurring && e.recurringInterval === "monthly")
     .reduce((s, e) => s + e.amount, 0);
   const monthCats: Record<string, number> = {};
-  for (const e of thisMonthExp) monthCats[e.category] = (monthCats[e.category] || 0) + e.amount;
+  for (const e of thisMonthExp) {
+    const cat = e.category ?? "Other";
+    monthCats[cat] = (monthCats[cat] || 0) + e.amount;
+  }
   return { monthSpent, monthlyRecurring, monthCats };
-}
-
-function getOverdueExpenses(allExpenses: Expense[], today: string) {
-  return allExpenses
-    .filter(e => e.isRecurring && !e.isPaid && e.date <= today)
-    .map(e => ({ id: e.id, label: e.label, amount: e.amount, date: e.date }));
 }
 
 function getStaleRepairs(allRepairs: Repair[], staleCutoff: string) {
   return allRepairs
-    .filter(r => r.status !== "Resolved" &&
-      (r.priority === "Critical" || r.priority === "High") &&
+    .filter(r =>
+      r.status !== "completed" && r.status !== "cancelled" &&
+      (r.priority === "urgent" || r.priority === "high") &&
       (r.updatedAt
         ? new Date(r.updatedAt).toISOString().split("T")[0] <= staleCutoff
-        : r.dateLogged <= staleCutoff))
-    .map(r => ({ id: r.id, label: r.label, priority: r.priority, status: r.status, contractor: r.contractor }));
+        : (r.reportedDate ?? "") <= staleCutoff))
+    .map(r => ({ id: r.id, label: r.title, priority: r.priority, status: r.status, contractor: r.contractor }));
 }
 
-function buildLoanSummary(allLoans: (Loan & { repayments: any[] })[]) {
-  return allLoans.map(l => {
-    const repaid = l.repayments.reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
-    const remaining = Math.max(0, l.totalAmount - repaid);
-    return {
-      id: l.id, lender: l.lender, loanType: l.loanType,
-      totalAmount: l.totalAmount, repaid, remaining,
-      pct: l.totalAmount > 0 ? Math.round((repaid / l.totalAmount) * 100) : 0,
-      paidOff: repaid >= l.totalAmount,
-      interestRate: l.interestRate,
-      dueDate: l.dueDate,
-    };
-  });
+function buildLoanSummary(allLoans: Loan[]) {
+  return allLoans.map(l => ({
+    id: l.id,
+    lender: l.lender,
+    loanType: l.loanType,
+    originalAmount: l.originalAmount,
+    currentBalance: l.currentBalance,
+    pct: l.originalAmount > 0 ? Math.round(((l.originalAmount - l.currentBalance) / l.originalAmount) * 100) : 0,
+    paidOff: l.currentBalance <= 0,
+    interestRate: l.interestRate,
+    nextPaymentDate: l.nextPaymentDate,
+    monthlyPayment: l.monthlyPayment,
+  }));
 }
 
 export async function getDashboardStats(userId: number, propertyId: number) {
@@ -609,15 +574,13 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const currentYear  = now.getFullYear();
   const monthStart   = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-01`;
   const monthEnd     = new Date(currentYear, currentMonth + 1, 0).toISOString().split("T")[0];
-  const today        = now.toISOString().split("T")[0];
   const staleCutoff  = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-  const ownerPropFilter = <T extends { ownerId: ReturnType<typeof eq>; propertyId: ReturnType<typeof eq> }>(
-    col: { ownerId: any; propertyId: any }
-  ) => and(eq(col.ownerId, userId), eq(col.propertyId, propertyId));
+  const ownerPropFilter = (col: { ownerId: any; propertyId: any }) =>
+    and(eq(col.ownerId, userId), eq(col.propertyId, propertyId));
 
   const [
-    allExpenses, allRepairs, allUpgrades, allLoansRaw, allPurchaseCosts, prop,
+    allExpenses, allRepairs, allUpgrades, allLoans, allPurchaseCosts, prop,
   ] = await Promise.all([
     db.select().from(expenses).where(ownerPropFilter(expenses)),
     db.select().from(repairs).where(ownerPropFilter(repairs)),
@@ -627,22 +590,19 @@ export async function getDashboardStats(userId: number, propertyId: number) {
     getProperty(propertyId),
   ]);
 
-  const allLoans = allLoansRaw.map(l => ({ ...l, repayments: parseJsonArray(l.repayments) }));
-
   const { monthSpent, monthlyRecurring, monthCats } = calcMonthlyStats(allExpenses, monthStart, monthEnd);
-  const overdueExpenses = getOverdueExpenses(allExpenses, today);
-  const staleRepairs    = getStaleRepairs(allRepairs, staleCutoff);
+  const staleRepairs = getStaleRepairs(allRepairs, staleCutoff);
 
-  const priOrder: Record<string, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+  const priOrder: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
   const openRepairs = allRepairs
-    .filter(r => r.status !== "Resolved")
-    .sort((a, b) => (priOrder[a.priority] ?? 3) - (priOrder[b.priority] ?? 3))
+    .filter(r => r.status !== "completed" && r.status !== "cancelled")
+    .sort((a, b) => (priOrder[a.priority ?? "medium"] ?? 2) - (priOrder[b.priority ?? "medium"] ?? 2))
     .slice(0, 5)
-    .map(r => ({ id: r.id, label: r.label, priority: r.priority, status: r.status, contractor: r.contractor }));
+    .map(r => ({ id: r.id, label: r.title, priority: r.priority, status: r.status, contractor: r.contractor }));
 
-  const activeIds = allUpgrades.filter(u => u.status === "In Progress").map(u => u.id);
+  const activeIds = allUpgrades.filter(u => u.status === "in_progress").map(u => u.id);
   const activeOpts = activeIds.length > 0
-    ? await db.select({ upgradeId: upgradeOptions.upgradeId, isSelected: upgradeOptions.isSelected })
+    ? await db.select({ upgradeId: upgradeOptions.upgradeId, selected: upgradeOptions.selected })
         .from(upgradeOptions).where(inArray(upgradeOptions.upgradeId, activeIds))
     : [];
 
@@ -650,19 +610,24 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const hasOptsSet = new Set<string>();
   for (const o of activeOpts) {
     hasOptsSet.add(o.upgradeId);
-    if (o.isSelected) selMap[o.upgradeId] = true;
+    if (o.selected) selMap[o.upgradeId] = true;
   }
 
   const upgradesNeedingDecision = allUpgrades
-    .filter(u => u.status === "In Progress" && hasOptsSet.has(u.id) && !selMap[u.id])
-    .map(u => ({ id: u.id, label: u.label }));
+    .filter(u => u.status === "in_progress" && hasOptsSet.has(u.id) && !selMap[u.id])
+    .map(u => ({ id: u.id, label: u.title }));
 
   const activeUpgrades = allUpgrades
-    .filter(u => u.status === "In Progress")
+    .filter(u => u.status === "in_progress")
     .map(u => ({
-      id: u.id, label: u.label, budget: u.budget, spent: u.spent || 0,
+      id: u.id,
+      label: u.title,
+      estimatedCost: u.estimatedCost,
+      actualCost: u.actualCost || 0,
       phase: u.phase,
-      pct: u.budget > 0 ? Math.round(((u.spent || 0) / u.budget) * 100) : 0,
+      pct: u.estimatedCost && u.estimatedCost > 0
+        ? Math.round(((u.actualCost || 0) / u.estimatedCost) * 100)
+        : 0,
     }));
 
   const loanSummary = buildLoanSummary(allLoans);
@@ -672,9 +637,10 @@ export async function getDashboardStats(userId: number, propertyId: number) {
     monthPct:       monthlyRecurring > 0 ? Math.round((monthSpent / monthlyRecurring) * 100) : 0,
     monthRemaining: Math.max(0, monthlyRecurring - monthSpent),
     monthCats,
-    overdueExpenses, staleRepairs, upgradesNeedingDecision,
+    staleRepairs,
+    upgradesNeedingDecision,
     openRepairs,
-    openRepairsCount: allRepairs.filter(r => r.status !== "Resolved").length,
+    openRepairsCount: allRepairs.filter(r => r.status !== "completed" && r.status !== "cancelled").length,
     activeUpgrades,
     loanSummary,
     currency:        prop?.currencyCode || "ILS",
@@ -687,15 +653,14 @@ export async function getDashboardStats(userId: number, propertyId: number) {
 
 export async function getUpgradeOptions(upgradeId: string) {
   const db = await getDb();
-  const rows = await db.select().from(upgradeOptions).where(eq(upgradeOptions.upgradeId, upgradeId)).orderBy(upgradeOptions.createdAt);
-  return rows.map(r => ({ ...r, payments: parseJsonArray(r.payments) }));
+  return await db.select().from(upgradeOptions).where(eq(upgradeOptions.upgradeId, upgradeId)).orderBy(upgradeOptions.createdAt);
 }
 
 export async function getUpgradeOptionCounts(upgradeIds: string[]) {
   if (upgradeIds.length === 0) return [];
   const db = await getDb();
   const rows = await db
-    .select({ upgradeId: upgradeOptions.upgradeId, isSelected: upgradeOptions.isSelected })
+    .select({ upgradeId: upgradeOptions.upgradeId, selected: upgradeOptions.selected })
     .from(upgradeOptions)
     .where(inArray(upgradeOptions.upgradeId, upgradeIds));
 
@@ -703,55 +668,33 @@ export async function getUpgradeOptionCounts(upgradeIds: string[]) {
   for (const row of rows) {
     if (!map[row.upgradeId]) map[row.upgradeId] = { total: 0, hasSelected: false };
     map[row.upgradeId].total++;
-    if (row.isSelected) map[row.upgradeId].hasSelected = true;
+    if (row.selected) map[row.upgradeId].hasSelected = true;
   }
   return Object.entries(map).map(([upgradeId, c]) => ({ upgradeId, ...c }));
 }
 
 export async function createUpgradeOption(data: typeof upgradeOptions.$inferInsert) {
   const db = await getDb();
-  await db.insert(upgradeOptions).values({ ...data, payments: (data.payments ?? []) as any });
+  await db.insert(upgradeOptions).values({
+    ...data,
+    pros: (data.pros ?? []) as any,
+    cons: (data.cons ?? []) as any,
+  });
   return data;
 }
 
 export async function updateUpgradeOption(id: string, data: Partial<UpgradeOption>) {
   const db = await getDb();
-  const normalized: any = { ...data };
-  if ("payments" in normalized) normalized.payments = normalized.payments ?? [];
-  await db.update(upgradeOptions).set(normalized).where(eq(upgradeOptions.id, id));
+  await db.update(upgradeOptions).set(data).where(eq(upgradeOptions.id, id));
   return data;
 }
 
 export async function selectUpgradeOption(upgradeId: string, optionId: string) {
   const db = await getDb();
   await db.transaction(async (tx) => {
-    await tx.update(upgradeOptions).set({ isSelected: false }).where(eq(upgradeOptions.upgradeId, upgradeId));
-    await tx.update(upgradeOptions).set({ isSelected: true }).where(eq(upgradeOptions.id, optionId));
+    await tx.update(upgradeOptions).set({ selected: false }).where(eq(upgradeOptions.upgradeId, upgradeId));
+    await tx.update(upgradeOptions).set({ selected: true }).where(eq(upgradeOptions.id, optionId));
   });
-}
-
-export async function logUpgradeOptionPayment(optionId: string, payment: { date: string; amount: number; notes?: string; receipt?: string }) {
-  const db = await getDb();
-  const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
-  if (!existing) throw new Error("Option not found");
-  const payments = [...parseJsonArray(existing.payments), payment];
-  await db.update(upgradeOptions).set({ payments: payments as any }).where(eq(upgradeOptions.id, optionId));
-  if (existing.isSelected) {
-    const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
-    await db.update(upgrades).set({ spent: totalPaid }).where(eq(upgrades.id, existing.upgradeId));
-  }
-}
-
-export async function deleteUpgradeOptionPayment(optionId: string, paymentIndex: number) {
-  const db = await getDb();
-  const [existing] = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, optionId)).limit(1);
-  if (!existing) throw new Error("Option not found");
-  const payments = parseJsonArray(existing.payments).filter((_: any, i: number) => i !== paymentIndex);
-  await db.update(upgradeOptions).set({ payments: payments as any }).where(eq(upgradeOptions.id, optionId));
-  if (existing.isSelected) {
-    const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
-    await db.update(upgrades).set({ spent: totalPaid }).where(eq(upgrades.id, existing.upgradeId));
-  }
 }
 
 export async function deleteUpgradeOption(id: string) {
@@ -771,16 +714,15 @@ export async function getUpgradeItemCounts(upgradeIds: string[]) {
   if (upgradeIds.length === 0) return [];
   const db = await getDb();
   const rows = await db
-    .select({ upgradeId: upgradeItems.upgradeId, status: upgradeItems.status })
+    .select({ upgradeId: upgradeItems.upgradeId, purchased: upgradeItems.purchased })
     .from(upgradeItems)
     .where(inArray(upgradeItems.upgradeId, upgradeIds));
 
-  const map: Record<string, { total: number; done: number; needsAction: number }> = {};
+  const map: Record<string, { total: number; done: number }> = {};
   for (const row of rows) {
-    if (!map[row.upgradeId]) map[row.upgradeId] = { total: 0, done: 0, needsAction: 0 };
+    if (!map[row.upgradeId]) map[row.upgradeId] = { total: 0, done: 0 };
     map[row.upgradeId].total++;
-    if (row.status && ["Delivered", "Installed"].includes(row.status)) map[row.upgradeId].done++;
-    if (row.status && ["Need to find", "Researching"].includes(row.status)) map[row.upgradeId].needsAction++;
+    if (row.purchased) map[row.upgradeId].done++;
   }
   return Object.entries(map).map(([upgradeId, c]) => ({ upgradeId, ...c }));
 }
@@ -816,25 +758,22 @@ export async function getPortfolioSummary(userId: number) {
 
   return await Promise.all(props.map(async (prop) => {
     const pid = prop.id;
-    const propFilter = <T extends { ownerId: any; propertyId: any }>(col: T) =>
+    const propFilter = (col: { ownerId: any; propertyId: any }) =>
       and(eq(col.ownerId, userId), eq(col.propertyId, pid));
 
     const [allExpenses, allRepairs, allLoans] = await Promise.all([
       db.select({ amount: expenses.amount, date: expenses.date }).from(expenses).where(propFilter(expenses)),
       db.select({ status: repairs.status }).from(repairs).where(propFilter(repairs)),
-      db.select({ totalAmount: loans.totalAmount, repayments: loans.repayments }).from(loans).where(propFilter(loans)),
+      db.select({ originalAmount: loans.originalAmount, currentBalance: loans.currentBalance }).from(loans).where(propFilter(loans)),
     ]);
 
     const monthSpent = allExpenses
       .filter(e => e.date >= monthStart && e.date <= monthEnd)
       .reduce((s, e) => s + e.amount, 0);
 
-    const openRepairsCount = allRepairs.filter(r => r.status !== "Resolved").length;
+    const openRepairsCount = allRepairs.filter(r => r.status !== "completed" && r.status !== "cancelled").length;
 
-    const outstandingLoanBalance = allLoans.reduce((sum, l) => {
-      const repaid = parseJsonArray(l.repayments).reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
-      return sum + Math.max(0, l.totalAmount - repaid);
-    }, 0);
+    const outstandingLoanBalance = allLoans.reduce((sum, l) => sum + Math.max(0, l.currentBalance), 0);
 
     return {
       id: prop.id,
@@ -880,7 +819,7 @@ export async function deleteAllUserData(userId: number) {
       tx.delete(loans).where(eq(loans.ownerId, userId)),
       tx.delete(wishlistItems).where(eq(wishlistItems.ownerId, userId)),
       tx.delete(purchaseCosts).where(eq(purchaseCosts.ownerId, userId)),
-      tx.delete(calendarEvents).where(eq(calendarEvents.createdById, userId)),
+      tx.delete(calendarEvents).where(eq(calendarEvents.ownerId, userId)),
       tx.delete(inventoryItems).where(eq(inventoryItems.ownerId, userId)),
     ]);
   });
@@ -946,12 +885,12 @@ export async function seedMockProperty(userId: number): Promise<number> {
     await db.insert(upgrades).values({ id: upgradeId, ...upgradeCore, ownerId: oid, propertyId: pid, attachments: [] as any });
     if (options?.length) {
       await db.insert(upgradeOptions).values(
-        options.map((opt: any) => ({ id: nanoid(), upgradeId, ...opt, payments: (opt.payments ?? []) as any }))
+        options.map((opt: any) => ({ id: nanoid(), upgradeId, ...opt, pros: (opt.pros ?? []) as any, cons: (opt.cons ?? []) as any }))
       );
     }
     if (items?.length) {
       await db.insert(upgradeItems).values(
-        items.map((item: any) => ({ id: nanoid(), upgradeId, ownerId: oid, propertyId: pid, ...item }))
+        items.map((item: any) => ({ id: nanoid(), upgradeId, ...item }))
       );
     }
   }
@@ -960,7 +899,6 @@ export async function seedMockProperty(userId: number): Promise<number> {
     mockLoans.map(l => ({
       id: nanoid(),
       ...l,
-      repayments: l.repayments.map((r: any) => ({ ...r, ownerId: oid })) as any,
       attachments: [] as any,
       ownerId: oid,
       propertyId: pid,
@@ -988,7 +926,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
   );
 
   await db.insert(calendarEvents).values(
-    mockCalendarEvents.map(e => ({ id: nanoid(), ...e, createdById: oid, propertyId: pid }))
+    mockCalendarEvents.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid }))
   );
 
   return propertyId;
