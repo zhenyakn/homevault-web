@@ -239,7 +239,6 @@ async function main() {
       \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
       \`propertyId\` int NOT NULL DEFAULT '1',
       PRIMARY KEY (\`id\`),
-      KEY \`purchase_cost_date_idx\` (\`date\`),
       KEY \`purchase_cost_owner_idx\` (\`ownerId\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "purchaseCosts"
@@ -262,124 +261,47 @@ async function main() {
   await run(
     `CREATE TABLE IF NOT EXISTS \`repairs\` (
       \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`label\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`category\` enum('Plumbing','Electrical','HVAC','Structural','Appliance','Cosmetic','Other') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Other',
+      \`status\` enum('Open','In Progress','Resolved','Cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Open',
+      \`priority\` enum('Low','Medium','High','Critical') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Medium',
       \`description\` text COLLATE utf8mb4_unicode_ci,
-      \`priority\` enum('Low','Medium','High','Critical') COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`status\` enum('Pending','In Progress','Resolved') COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`dateLogged\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`contractor\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-      \`contractorPhone\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`reportedById\` int NOT NULL,
+      \`assignedToId\` int DEFAULT NULL,
       \`estimatedCost\` int DEFAULT NULL,
       \`actualCost\` int DEFAULT NULL,
-      \`ownerId\` int NOT NULL,
+      \`scheduledDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`completedDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`attachments\` json DEFAULT NULL,
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`calendarEventId\` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT (now()),
       \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
       \`propertyId\` int NOT NULL DEFAULT '1',
-      \`phase\` enum('Assessment','Quoting','Scheduled','In Progress','Resolved') COLLATE utf8mb4_unicode_ci DEFAULT 'Assessment',
+      \`phase\` enum('Planning','Quoting','Scheduled','InProgress','Review','Done','Cancelled') COLLATE utf8mb4_unicode_ci DEFAULT 'Planning',
       PRIMARY KEY (\`id\`),
       KEY \`repair_status_idx\` (\`status\`),
       KEY \`repair_priority_idx\` (\`priority\`),
-      KEY \`repair_owner_idx\` (\`ownerId\`)
+      KEY \`repair_reported_by_idx\` (\`reportedById\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "repairs"
   );
 
   await run(
     `ALTER TABLE \`repairs\`
-       ADD CONSTRAINT \`repairs_ownerId_users_id_fk\`
-       FOREIGN KEY (\`ownerId\`) REFERENCES \`users\`(\`id\`)`,
-    "FK repairs.ownerId → users.id"
+       ADD CONSTRAINT \`repairs_reportedById_users_id_fk\`
+       FOREIGN KEY (\`reportedById\`) REFERENCES \`users\`(\`id\`)`,
+    "FK repairs.reportedById → users.id"
   );
 
-  // Legacy upgrade: ensure propertyId and phase exist on older repairs tables
+  // Legacy upgrades
   await run(
     "ALTER TABLE `repairs` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
     "repairs.propertyId"
   );
   await run(
-    "ALTER TABLE `repairs` ADD COLUMN `phase` enum('Assessment','Quoting','Scheduled','In Progress','Resolved') DEFAULT 'Assessment'",
+    "ALTER TABLE `repairs` ADD COLUMN `phase` enum('Planning','Quoting','Scheduled','InProgress','Review','Done','Cancelled') DEFAULT 'Planning'",
     "repairs.phase"
-  );
-
-  // ── upgrades ────────────────────────────────────────────────────────────────
-  await run(
-    `CREATE TABLE IF NOT EXISTS \`upgrades\` (
-      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`label\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`description\` text COLLATE utf8mb4_unicode_ci,
-      \`status\` enum('Planned','In Progress','Done') COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`budget\` int NOT NULL,
-      \`spent\` int DEFAULT '0',
-      \`ownerId\` int NOT NULL,
-      \`attachments\` json DEFAULT NULL,
-      \`notes\` text COLLATE utf8mb4_unicode_ci,
-      \`calendarEventId\` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-      \`createdAt\` timestamp NOT NULL DEFAULT (now()),
-      \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-      \`propertyId\` int NOT NULL DEFAULT '1',
-      \`phase\` enum('Planning','Sourcing','Building','Done') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Planning',
-      PRIMARY KEY (\`id\`),
-      KEY \`upgrade_status_idx\` (\`status\`),
-      KEY \`upgrade_owner_idx\` (\`ownerId\`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
-    "upgrades"
-  );
-
-  await run(
-    `ALTER TABLE \`upgrades\`
-       ADD CONSTRAINT \`upgrades_ownerId_users_id_fk\`
-       FOREIGN KEY (\`ownerId\`) REFERENCES \`users\`(\`id\`)`,
-    "FK upgrades.ownerId → users.id"
-  );
-
-  // Legacy upgrade: ensure propertyId and phase exist on older upgrades tables
-  await run(
-    "ALTER TABLE `upgrades` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
-    "upgrades.propertyId"
-  );
-  await run(
-    "ALTER TABLE `upgrades` ADD COLUMN `phase` enum('Planning','Sourcing','Building','Done') NOT NULL DEFAULT 'Planning'",
-    "upgrades.phase"
-  );
-
-  // ── wishlistItems ───────────────────────────────────────────────────────────
-  await run(
-    `CREATE TABLE IF NOT EXISTS \`wishlistItems\` (
-      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`label\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`description\` text COLLATE utf8mb4_unicode_ci,
-      \`estimatedCost\` int NOT NULL,
-      \`priority\` enum('Low','Medium','High') COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`ownerId\` int NOT NULL,
-      \`attachments\` json DEFAULT NULL,
-      \`createdAt\` timestamp NOT NULL DEFAULT (now()),
-      \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
-      \`propertyId\` int NOT NULL DEFAULT '1',
-      PRIMARY KEY (\`id\`),
-      KEY \`wishlist_priority_idx\` (\`priority\`),
-      KEY \`wishlist_owner_idx\` (\`ownerId\`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
-    "wishlistItems"
-  );
-
-  await run(
-    `ALTER TABLE \`wishlistItems\`
-       ADD CONSTRAINT \`wishlistItems_ownerId_users_id_fk\`
-       FOREIGN KEY (\`ownerId\`) REFERENCES \`users\`(\`id\`)`,
-    "FK wishlistItems.ownerId → users.id"
-  );
-
-  // Legacy upgrade: ensure propertyId and attachments exist on older wishlistItems tables
-  await run(
-    "ALTER TABLE `wishlistItems` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
-    "wishlistItems.propertyId"
-  );
-  await run(
-    "ALTER TABLE `wishlistItems` ADD COLUMN `attachments` json DEFAULT NULL",
-    "wishlistItems.attachments"
   );
 
   // ── repairQuotes ────────────────────────────────────────────────────────────
@@ -387,72 +309,130 @@ async function main() {
     `CREATE TABLE IF NOT EXISTS \`repairQuotes\` (
       \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`repairId\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`contractorName\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
-      \`contractorPhone\` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-      \`quotedPrice\` int DEFAULT NULL,
-      \`timeline\` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-      \`guarantee\` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-      \`scope\` text COLLATE utf8mb4_unicode_ci,
-      \`isSelected\` tinyint(1) NOT NULL DEFAULT '0',
+      \`vendorName\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`amount\` int NOT NULL,
+      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`notes\` text COLLATE utf8mb4_unicode_ci,
-      \`payments\` json DEFAULT NULL,
-      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      \`isSelected\` tinyint(1) DEFAULT '0',
+      \`createdAt\` timestamp NOT NULL DEFAULT (now()),
+      \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
-      KEY \`repairQuote_repairId_idx\` (\`repairId\`)
+      KEY \`repair_quote_repair_idx\` (\`repairId\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "repairQuotes"
   );
 
-  // ── upgradeOptions ──────────────────────────────────────────────────────────
   await run(
-    `CREATE TABLE IF NOT EXISTS \`upgradeOptions\` (
-      \`id\` varchar(36) NOT NULL,
-      \`upgradeId\` varchar(36) NOT NULL,
-      \`name\` varchar(200) NOT NULL,
-      \`vendorPhone\` varchar(30) DEFAULT NULL,
-      \`totalPrice\` int DEFAULT NULL,
-      \`timeline\` varchar(100) DEFAULT NULL,
-      \`warranty\` varchar(100) DEFAULT NULL,
-      \`scope\` text,
-      \`isSelected\` tinyint(1) NOT NULL DEFAULT '0',
-      \`notes\` text,
-      \`payments\` json DEFAULT NULL,
-      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      PRIMARY KEY (\`id\`),
-      KEY \`idx_upgradeOptions_upgradeId\` (\`upgradeId\`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
-    "upgradeOptions"
+    `ALTER TABLE \`repairQuotes\`
+       ADD CONSTRAINT \`repairQuotes_repairId_repairs_id_fk\`
+       FOREIGN KEY (\`repairId\`) REFERENCES \`repairs\`(\`id\`)`,
+    "FK repairQuotes.repairId → repairs.id"
   );
 
-  // ── upgradeItems ────────────────────────────────────────────────────────────
+  // ── upgrades ────────────────────────────────────────────────────────────────
   await run(
-    `CREATE TABLE IF NOT EXISTS \`upgradeItems\` (
-      \`id\` varchar(36) NOT NULL,
-      \`upgradeId\` varchar(36) NOT NULL,
-      \`propertyId\` int NOT NULL DEFAULT '1',
-      \`ownerId\` int NOT NULL,
-      \`name\` varchar(200) NOT NULL,
-      \`vendorName\` varchar(200) DEFAULT NULL,
+    `CREATE TABLE IF NOT EXISTS \`upgrades\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`category\` enum('Kitchen','Bathroom','Bedroom','LivingRoom','Exterior','Garden','Office','Other') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Other',
+      \`status\` enum('Idea','Planning','In Progress','Completed','On Hold','Cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Idea',
+      \`priority\` enum('Low','Medium','High') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Medium',
+      \`description\` text COLLATE utf8mb4_unicode_ci,
       \`estimatedCost\` int DEFAULT NULL,
       \`actualCost\` int DEFAULT NULL,
-      \`status\` enum('Need to find','Researching','Quoted','Ordered','Delivered','Installed') NOT NULL DEFAULT 'Need to find',
-      \`eta\` varchar(20) DEFAULT NULL,
-      \`notes\` text,
+      \`startDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`completedDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`contractor\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`attachments\` json DEFAULT NULL,
+      \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`calendarEventId\` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT (now()),
+      \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+      \`ownerId\` int NOT NULL DEFAULT '1',
+      \`propertyId\` int NOT NULL DEFAULT '1',
+      PRIMARY KEY (\`id\`),
+      KEY \`upgrade_status_idx\` (\`status\`),
+      KEY \`upgrade_priority_idx\` (\`priority\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "upgrades"
+  );
+
+  // Legacy upgrade
+  await run(
+    "ALTER TABLE `upgrades` ADD COLUMN `ownerId` int NOT NULL DEFAULT 1",
+    "upgrades.ownerId"
+  );
+  await run(
+    "ALTER TABLE `upgrades` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "upgrades.propertyId"
+  );
+
+  // ── wishlist ────────────────────────────────────────────────────────────────
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`wishlist\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`description\` text COLLATE utf8mb4_unicode_ci,
+      \`estimatedPrice\` int DEFAULT NULL,
+      \`priority\` enum('Low','Medium','High') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Medium',
+      \`status\` enum('Wanted','Saved','Purchased') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Wanted',
+      \`url\` text COLLATE utf8mb4_unicode_ci,
+      \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`ownerId\` int NOT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT (now()),
+      \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+      \`propertyId\` int NOT NULL DEFAULT '1',
+      PRIMARY KEY (\`id\`),
+      KEY \`wishlist_owner_idx\` (\`ownerId\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "wishlist"
+  );
+
+  await run(
+    `ALTER TABLE \`wishlist\`
+       ADD CONSTRAINT \`wishlist_ownerId_users_id_fk\`
+       FOREIGN KEY (\`ownerId\`) REFERENCES \`users\`(\`id\`)`,
+    "FK wishlist.ownerId → users.id"
+  );
+
+  // Legacy upgrade: ensure propertyId exists on older wishlist tables
+  await run(
+    "ALTER TABLE `wishlist` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
+    "wishlist.propertyId"
+  );
+
+  // ── inventoryItems ──────────────────────────────────────────────────────────
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`inventoryItems\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`propertyId\` int NOT NULL,
+      \`ownerId\` int NOT NULL,
+      \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`sku\` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`category\` enum('Appliance','Furniture','Electronics','Consumable','Tool','Valuable','Other') COLLATE utf8mb4_unicode_ci DEFAULT 'Other',
+      \`room\` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`quantity\` int NOT NULL DEFAULT 1,
+      \`minQuantity\` int DEFAULT 0,
+      \`unit\` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`purchasePrice\` int DEFAULT NULL,
+      \`purchaseDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`brand\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`store\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`warrantyExpiry\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`condition\` enum('New','Good','Fair','Poor') COLLATE utf8mb4_unicode_ci DEFAULT 'Good',
+      \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`tags\` json DEFAULT NULL,
+      \`photoUrl\` text COLLATE utf8mb4_unicode_ci,
+      \`serialNumber\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
-      KEY \`idx_upgradeItems_upgradeId\` (\`upgradeId\`),
-      KEY \`idx_upgradeItems_propertyId\` (\`propertyId\`)
+      KEY \`inventoryItem_property_idx\` (\`propertyId\`),
+      KEY \`inventoryItem_owner_idx\` (\`ownerId\`),
+      KEY \`inventoryItem_category_idx\` (\`category\`),
+      KEY \`inventoryItem_room_idx\` (\`room\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
-    "upgradeItems"
-  );
-
-  // Legacy upgrade: ensure propertyId exists on older upgradeItems tables
-  await run(
-    "ALTER TABLE `upgradeItems` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1",
-    "upgradeItems.propertyId"
+    "inventoryItems"
   );
 
   console.log("Unified HomeVault migration complete.");
