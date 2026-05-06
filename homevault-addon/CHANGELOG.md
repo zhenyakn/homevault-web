@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.2.2
+## 0.2.3
+- fix(addon): v1 schema reset — drop legacy tables before CREATE TABLE recreates them
 - fix(addon): add loans.attachments and wishlistItems.attachments to convergence
 - docs: log v0.2.1 hotfix and HA migration lesson in trace + lessonslearned
 - fix(addon): add complete v1→v2 column convergence to repair existing installations
@@ -202,6 +203,9 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.2.2
+- fix(addon): v1 schema reset — drop legacy tables before CREATE TABLE recreates them
 
 ## 0.2.1
 - fix(addon): add loans.attachments and wishlistItems.attachments to convergence
