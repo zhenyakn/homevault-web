@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
+import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
@@ -14,6 +15,24 @@ import { getSessionCookieOptions } from "./cookies";
 import * as db from "../db";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./env";
+
+// Auth endpoints: strict — 20 requests per 15 minutes (brute force protection)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many authentication attempts, please try again later." },
+});
+
+// General API: generous — 300 requests per minute per IP (single-household usage)
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please slow down." },
+});
 
 // ── Seed-only mode (called from run.sh before the HTTP server starts) ─────────
 // Usage: node dist/index.js --seed-mock-only
@@ -76,13 +95,16 @@ async function startServer() {
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+  app.use("/api/trpc/auth", authLimiter);
+  app.use("/api/trpc", apiLimiter);
+
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.use(uploadRouter);
 
   // Dev-only login bypass — keeps existing dev-server behavior unchanged
   if (process.env.NODE_ENV === "development") {
-    app.post("/api/dev/login", async (req, res) => {
+    app.post("/api/dev/login", authLimiter, async (req, res) => {
       try {
         const openId = ENV.ownerOpenId || "local-admin";
         await db.upsertUser({
