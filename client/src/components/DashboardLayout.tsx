@@ -35,29 +35,33 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTranslation } from "react-i18next";
 import {
+  Calendar,
   Check,
   ChevronDown,
+  DollarSign,
+  Heart,
   Home,
   LayoutGrid,
   LogOut,
   Monitor,
   Moon,
+  Package,
   PanelLeft,
   PanelRight,
   Plus,
   Receipt,
+  Search,
   Settings,
   ShoppingCart,
   Sun,
   TrendingUp,
-  DollarSign,
-  Heart,
-  Calendar,
   Wrench,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
+import { SearchModal } from "./SearchModal";
+import { useSearch } from "@/hooks/useSearch";
 
 const coreMenuPaths = [
   { icon: Home,         key: "nav.dashboard",     path: "/" },
@@ -65,10 +69,11 @@ const coreMenuPaths = [
   { icon: Wrench,       key: "nav.repairs",        path: "/repairs" },
   { icon: TrendingUp,   key: "nav.upgrades",       path: "/upgrades" },
   { icon: DollarSign,   key: "nav.loans",          path: "/loans" },
-  { icon: Heart,        key: "nav.wishlist",        path: "/wishlist" },
+  { icon: Heart,        key: "nav.wishlist",       path: "/wishlist" },
   { icon: ShoppingCart, key: "nav.purchaseCosts",  path: "/purchase-costs" },
-  { icon: Calendar,     key: "nav.calendar",        path: "/calendar" },
-  { icon: Settings,     key: "nav.settings",        path: "/settings" },
+  { icon: Package,      key: "nav.inventory",      path: "/inventory" },
+  { icon: Calendar,     key: "nav.calendar",       path: "/calendar" },
+  { icon: Settings,     key: "nav.settings",       path: "/settings" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -241,7 +246,7 @@ function ThemeToggle() {
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({ children, onSearchOpen }: { children: React.ReactNode; onSearchOpen?: () => void }) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
@@ -269,7 +274,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth}>
+      <DashboardLayoutContent setSidebarWidth={setSidebarWidth} onSearchOpen={onSearchOpen}>
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
@@ -279,9 +284,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 function DashboardLayoutContent({
   children,
   setSidebarWidth,
+  onSearchOpen,
 }: {
   children: React.ReactNode;
   setSidebarWidth: (width: number) => void;
+  onSearchOpen?: () => void;
 }) {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
@@ -297,9 +304,15 @@ function DashboardLayoutContent({
   const { data: properties } = trpc.property.list.useQuery();
   const hasMultipleProperties = (properties?.length ?? 0) > 1;
 
+  const search = useSearch();
+
+  const handleSearchOpen = () => {
+    search.setOpen(true);
+    onSearchOpen?.();
+  };
+
   const coreMenuItems = coreMenuPaths.map(item => ({ ...item, label: t(item.key) }));
 
-  // Insert Portfolio before Settings
   const orderedItems = hasMultipleProperties
     ? [
         ...coreMenuItems.slice(0, -1),
@@ -346,7 +359,7 @@ function DashboardLayoutContent({
         <Sidebar collapsible="icon" side={isRTL ? "right" : "left"} className={isRTL ? "border-l" : "border-r"} disableTransition={isResizing}>
           <SidebarHeader className="h-14 justify-center">
             <div className="flex items-center gap-2 px-2 w-full">
-                  {isCollapsed ? (
+              {isCollapsed ? (
                 <button
                   onClick={toggleSidebar}
                   className="flex items-center justify-center w-full focus:outline-none"
@@ -375,6 +388,35 @@ function DashboardLayoutContent({
           </SidebarHeader>
 
           <SidebarContent className="gap-0">
+            {!isCollapsed ? (
+              <div className="px-2 pb-2">
+                <button
+                  type="button"
+                  onClick={handleSearchOpen}
+                  className="flex h-8 w-full items-center gap-2 rounded-md border bg-background px-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  aria-label={t("search.dialogTitle")}
+                >
+                  <Search className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 text-start text-xs">{t("search.placeholder")}</span>
+                  <kbd className="hidden sm:inline-flex items-center rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                    ⌘K
+                  </kbd>
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-center pb-2">
+                <button
+                  type="button"
+                  onClick={handleSearchOpen}
+                  className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
+                  aria-label={t("search.dialogTitle")}
+                  title={`${t("search.dialogTitle")} (⌘K)`}
+                >
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
+            )}
+
             <SidebarMenu className="px-2 py-1">
               {orderedItems.map(item => {
                 const isActive = item.path === "/"
@@ -484,10 +526,27 @@ function DashboardLayoutContent({
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <span className="tracking-tight text-foreground">{activeMenuItem?.label ?? "Menu"}</span>
             </div>
+            <button
+              type="button"
+              onClick={handleSearchOpen}
+              className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-accent transition-colors"
+              aria-label={t("search.dialogTitle")}
+            >
+              <Search className="h-4 w-4" />
+            </button>
           </div>
         )}
         <main className="flex-1 p-4">{children}</main>
       </SidebarInset>
+
+      <SearchModal
+        open={search.open}
+        onClose={search.close}
+        query={search.query}
+        onQueryChange={search.setQuery}
+        results={search.results}
+        isFetching={search.isFetching}
+      />
     </>
   );
 }

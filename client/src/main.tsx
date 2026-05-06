@@ -47,6 +47,8 @@ const trpcClient = trpc.createClient({
           credentials: "include",
           headers: {
             ...(init?.headers ?? {}),
+            // Read from localStorage on every fetch so that switchProperty()
+            // takes effect immediately without requiring a page reload first.
             "x-property-id": String(getStoredPropertyId()),
           },
         });

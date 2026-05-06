@@ -18,25 +18,22 @@ interface CalendarEvent {
   id: string;
   title: string;
   date: string;
-  time?: string | null;
-  eventType: EventType;
+  category: string | null;
   notes?: string | null;
   [key: string]: any;
 }
 
-const EVENT_COLORS: Record<EventType, string> = {
-  Expense: "bg-green-500",
-  Repair: "bg-red-500",
-  Upgrade: "bg-blue-500",
-  Loan: "bg-purple-500",
+const EVENT_COLORS: Record<string, string> = {
+  Payment: "bg-green-500",
+  Maintenance: "bg-red-500",
+  Renovation: "bg-blue-500",
   Other: "bg-gray-500",
 };
 
-const EVENT_BADGE_COLORS: Record<EventType, string> = {
-  Expense: "bg-green-100 text-green-800 hover:bg-green-200",
-  Repair: "bg-red-100 text-red-800 hover:bg-red-200",
-  Upgrade: "bg-blue-100 text-blue-800 hover:bg-blue-200",
-  Loan: "bg-purple-100 text-purple-800 hover:bg-purple-200",
+const EVENT_BADGE_COLORS: Record<string, string> = {
+  Payment: "bg-green-100 text-green-800 hover:bg-green-200",
+  Maintenance: "bg-red-100 text-red-800 hover:bg-red-200",
+  Renovation: "bg-blue-100 text-blue-800 hover:bg-blue-200",
   Other: "bg-gray-100 text-gray-800 hover:bg-gray-200",
 };
 
@@ -258,7 +255,7 @@ export default function Calendar() {
                       {dayEvents.slice(0, 3).map((event) => (
                         <div
                           key={event.id}
-                          className={`w-2 h-2 rounded-full ${EVENT_COLORS[event.eventType]}`}
+                          className={`w-2 h-2 rounded-full ${EVENT_COLORS[event.category ?? "Other"] ?? EVENT_COLORS["Other"]}`}
                           title={event.title}
                         />
                       ))}
@@ -284,22 +281,16 @@ export default function Calendar() {
               {upcomingEvents.map((event) => (
                 <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-start gap-4">
-                    <div className={`w-3 h-3 mt-1.5 rounded-full ${EVENT_COLORS[event.eventType]}`} />
+                    <div className={`w-3 h-3 mt-1.5 rounded-full ${EVENT_COLORS[event.category ?? "Other"] ?? EVENT_COLORS["Other"]}`} />
                     <div>
                       <h4 className="font-semibold">{event.title}</h4>
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
                         <span>{formatDate(event.date)}</span>
-                        {event.time && (
-                          <>
-                            <span>•</span>
-                            <span>{event.time}</span>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>
-                  <Badge className={EVENT_BADGE_COLORS[event.eventType]} variant="outline">
-                    {t(`calendar.eventTypes.${event.eventType}`)}
+                  <Badge className={EVENT_BADGE_COLORS[event.category ?? "Other"] ?? EVENT_BADGE_COLORS["Other"]} variant="outline">
+                    {t(`calendar.eventTypes.${event.category ?? "Other"}`, { defaultValue: event.category ?? "Other" })}
                   </Badge>
                 </div>
               ))}
@@ -321,15 +312,10 @@ export default function Calendar() {
                 <div key={event.id} className="p-4 border rounded-lg space-y-2">
                   <div className="flex justify-between items-start">
                     <h4 className="font-semibold">{event.title}</h4>
-                    <Badge className={EVENT_BADGE_COLORS[event.eventType]} variant="outline">
-                      {t(`calendar.eventTypes.${event.eventType}`)}
+                    <Badge className={EVENT_BADGE_COLORS[event.category ?? "Other"] ?? EVENT_BADGE_COLORS["Other"]} variant="outline">
+                      {t(`calendar.eventTypes.${event.category ?? "Other"}`, { defaultValue: event.category ?? "Other" })}
                     </Badge>
                   </div>
-                  {event.time && (
-                    <div className="text-sm text-muted-foreground flex items-center">
-                      <Clock className="me-1 h-3 w-3" /> {event.time}
-                    </div>
-                  )}
                   {event.notes && (
                     <div className="text-sm flex items-start mt-2">
                       <AlignLeft className="me-1 h-3 w-3 mt-0.5 text-muted-foreground" />

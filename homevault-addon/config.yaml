@@ -1,5 +1,5 @@
 name: HomeVault
-version: "0.1.37"
+version: "0.2.0"
 slug: homevault
 description: A property management solution for homeowners and small investors.
 url: https://github.com/zhenyakn/homevault-web
@@ -36,6 +36,13 @@ options:
   NO_AUTH: true
   SEED_MOCK_DATA: false
   PORT: 3005
+  LOG_LEVEL: "info"
+  STORAGE_ENDPOINT: ""
+  STORAGE_BUCKET: ""
+  STORAGE_REGION: "auto"
+  STORAGE_ACCESS_KEY_ID: ""
+  STORAGE_SECRET_ACCESS_KEY: ""
+  STORAGE_PUBLIC_URL: ""
 
 schema:
   DATABASE_URL: "str?"
@@ -46,6 +53,13 @@ schema:
   NO_AUTH: "bool?"
   SEED_MOCK_DATA: "bool?"
   PORT: "int"
+  LOG_LEVEL: "str?"
+  STORAGE_ENDPOINT: "str?"
+  STORAGE_BUCKET: "str?"
+  STORAGE_REGION: "str?"
+  STORAGE_ACCESS_KEY_ID: "str?"
+  STORAGE_SECRET_ACCESS_KEY: "str?"
+  STORAGE_PUBLIC_URL: "str?"
 
 services:
   - mysql:want
@@ -59,5 +73,12 @@ environment:
   NO_AUTH: "{{NO_AUTH}}"
   SEED_MOCK_DATA: "{{SEED_MOCK_DATA}}"
   PORT: "{{PORT}}"
+  LOG_LEVEL: "{{LOG_LEVEL}}"
+  STORAGE_ENDPOINT: "{{STORAGE_ENDPOINT}}"
+  STORAGE_BUCKET: "{{STORAGE_BUCKET}}"
+  STORAGE_REGION: "{{STORAGE_REGION}}"
+  STORAGE_ACCESS_KEY_ID: "{{STORAGE_ACCESS_KEY_ID}}"
+  STORAGE_SECRET_ACCESS_KEY: "{{STORAGE_SECRET_ACCESS_KEY}}"
+  STORAGE_PUBLIC_URL: "{{STORAGE_PUBLIC_URL}}"
 
 image: "ghcr.io/zhenyakn/homevault-web-addon-{arch}"

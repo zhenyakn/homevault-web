@@ -3,7 +3,8 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
-import { ENV } from "./env"; // <-- NEW
+import { ENV } from "./env";
+import { logger } from "./logger";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -14,7 +15,7 @@ export function registerOAuthRoutes(app: Express) {
   // If we don't have an OAuth server configured, or we're in NO_AUTH mode,
   // skip registering the OAuth callback entirely.
   if (!ENV.oAuthServerUrl || ENV.noAuth) {
-    console.log("[OAuth] OAUTH_SERVER_URL not set or NO_AUTH enabled — OAuth routes disabled");
+    logger.info("[OAuth] OAUTH_SERVER_URL not set or NO_AUTH enabled — OAuth routes disabled");
     return;
   }
 
@@ -57,7 +58,7 @@ export function registerOAuthRoutes(app: Express) {
 
       res.redirect(302, "/");
     } catch (error) {
-      console.error("[OAuth] Callback failed", error);
+      logger.error({ error }, "[OAuth] Callback failed");
       res.status(500).json({ error: "OAuth callback failed" });
     }
   });

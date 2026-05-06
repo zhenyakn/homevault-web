@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { storagePut } from "./storage";
 import { createContext } from "./_core/context";
+import { logger } from "./_core/logger";
 import type { Request, Response } from "express";
 
 const ALLOWED_MIMETYPES = new Set([
@@ -60,7 +61,7 @@ router.post("/api/upload", (req: Request, res: Response) => {
         const isConfig = message.includes("No storage backend configured") ||
                          message.includes("STORAGE_ENDPOINT") ||
                          message.includes("BUILT_IN_FORGE");
-        console.error("[Upload] Storage error:", message);
+        logger.error({ message }, "[Upload] Storage error");
         res.status(503).json({
           error: isConfig
             ? "File storage is not configured. Set STORAGE_ENDPOINT (Cloudflare R2) or BUILT_IN_FORGE_API_URL in your .env file."
@@ -76,7 +77,7 @@ router.post("/api/upload", (req: Request, res: Response) => {
         size: file.size,
       });
     } catch (error: any) {
-      console.error("[Upload] Error:", error);
+      logger.error({ error }, "[Upload] Error");
       res.status(500).json({ error: error.message || "Upload failed" });
     }
   });

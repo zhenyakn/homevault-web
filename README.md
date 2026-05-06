@@ -1,176 +1,92 @@
-# HomeVault
+# 🏠 HomeVault
 
-> The operating system for your property — from the day you decide to buy to the day you sell.
-
-HomeVault is a full-stack property management app for homeowners and small investors. Track expenses, repairs, upgrades, family loans, a wish list, purchase costs, and calendar events — all in one place, for your whole household.
+**HomeVault** is a comprehensive, open-source property management platform designed to centralize everything about your home. From financial tracking to maintenance logs and future planning, HomeVault provides a unified dashboard to master your property's lifecycle.
 
 ---
 
-## Features
+## ✨ Key Features
 
-- **Overview dashboard** — KPIs, recent activity, property map
-- **Expenses** — recurring and one-time, with category filters and CSV export
-- **Repairs** — priority/status tracking, contractor details, photo uploads
-- **Upgrades** — project planning, budget vs. actual spend
-- **Family loans** — repayment history, per-lender progress
-- **Wish list** — prioritised future projects with cost estimates
-- **Purchase costs** — full acquisition cost breakdown
-- **Calendar** — month view with colour-coded event types
-- **Settings** — property details, currency, timezone, sync toggles
-- **Multi-profile** — per-entry ownership attribution for households
-- **Dark / light / system** theme
+### 📊 Intelligent Dashboard
+Get a high-level overview of your property's health. Monitor overdue expenses, monthly spending baselines, active upgrades, and loan statuses in a single, beautiful view.
+![Dashboard](./screenshots/01-dashboard.png)
 
-## Stack
+### 💸 Expense Management
+Track every cent spent on your property. Categorize expenses like mortgages, utilities, and taxes. Support for recurring payments ensures you never miss a baseline cost.
+![Expenses](./screenshots/02-expenses.png)
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, Vite, Tailwind v4, shadcn/ui, Radix UI |
-| Backend | Node.js, Express, tRPC |
-| Database | MySQL 8 / TiDB Cloud via Drizzle ORM |
-| Auth | OAuth / JWT (self-hosted) |
-| File storage | Cloudflare R2 / AWS S3 / any S3-compatible |
-| Language | TypeScript throughout |
+### 🛠️ Maintenance & Repairs
+Log issues, assign priorities, and track repair status from "Assessment" to "Resolved." Keep a detailed history of contractors and costs to maintain your property's value.
+![Repairs](./screenshots/03-repairs.png)
 
----
+### 🚀 Property Upgrades
+Plan renovations with precision. Manage project budgets, track actual spending, and monitor progress across planning, sourcing, and building phases.
+![Upgrades](./screenshots/04-upgrades.png)
 
-## Quick start
+### 🏦 Loan Tracking
+Stay on top of your property debt. Monitor multiple loans, track repayment history, and visualize your progress toward full ownership.
+![Loans](./screenshots/05-loans.png)
 
-### Prerequisites
+### 📋 Wishlist & Planning
+Dream and plan for the future. Keep a prioritized list of desired purchases or improvements with estimated costs and priority levels.
+![Wishlist](./screenshots/06-wishlist.png)
 
-- Node.js 22+
-- pnpm (`npm install -g pnpm`)
-- MySQL 8 database (local, TiDB Cloud, or PlanetScale)
-
-### 1. Clone and install
-
-```bash
-git clone https://github.com/zhenyakn/homevault-web.git
-cd homevault-web
-pnpm install
-```
-
-### 2. Configure environment
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and fill in at minimum:
-- `DATABASE_URL` — your MySQL connection string
-- Auth vars (`OAUTH_SERVER_URL`, `OWNER_OPEN_ID`) if using OAuth
-- Storage vars (`STORAGE_ENDPOINT`, `STORAGE_BUCKET`, etc.) for file uploads
-
-See `.env.example` for full documentation of every variable.
-
-### 3. Run the database migration
-
-```bash
-node apply-migration-v3.mjs
-```
-
-This creates all tables and seeds the default property row. Safe to run multiple times — every step is idempotent.
-
-### 4. Start the dev server
-
-```bash
-pnpm dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
+### 📅 Integrated Calendar
+A unified view of all property events. See upcoming maintenance, delivery dates, and expense deadlines in a clean, interactive calendar.
+![Calendar](./screenshots/07-calendar.png)
 
 ---
 
-## Deployment
+## 🛠️ Technical Setup
 
-### Docker Compose (recommended for self-hosted)
+### Local Deployment
 
-```bash
-cp .env.example .env
-# Edit .env — set MYSQL_PASSWORD and any auth/storage vars
-docker compose up -d
-```
+1.  **Clone the Repository**
+    ```bash
+    git clone https://github.com/zhenyakn/homevault-web.git
+    cd homevault-web
+    ```
 
-The `migrate` service runs automatically on first start.
+2.  **Install Dependencies**
+    HomeVault uses `pnpm`. If you don't have it, install it via `npm install -g pnpm`.
+    ```bash
+    pnpm install
+    ```
 
-### Proxmox / Ubuntu VM
+3.  **Database Configuration**
+    HomeVault requires a MySQL database. Create a database and user:
+    ```sql
+    CREATE DATABASE homevault;
+    CREATE USER 'homevault'@'localhost' IDENTIFIED BY 'your_password';
+    GRANT ALL PRIVILEGES ON homevault.* TO 'homevault'@'localhost';
+    ```
 
-See the full step-by-step guide including GitHub auto-deploy setup:
-→ `homevault-proxmox-deploy.md`
+4.  **Environment Variables**
+    Create a `.env` file in the root:
+    ```env
+    DATABASE_URL="mysql://homevault:your_password@localhost:3306/homevault"
+    JWT_SECRET="your_random_secret"
+    NO_AUTH="true" # For local development without OAuth
+    ```
 
-### Cloud (Railway / GCP Cloud Run)
+5.  **Initialize Database**
+    ```bash
+    pnpm drizzle-kit push
+    ```
 
-See the cloud deployment guide:
-→ `homevault-deployment-guide.md`
+6.  **Run the App**
+    ```bash
+    pnpm build
+    pnpm start
+    ```
+    Access the app at `http://localhost:3005`.
 
----
-
-## File storage setup (Cloudflare R2 — free)
-
-1. Sign up at [dash.cloudflare.com](https://dash.cloudflare.com)
-2. Go to **R2** → **Create bucket** → name it `homevault`
-3. **Settings → Public access → Allow access**
-4. **Manage API Tokens → Create Token** (Object Read & Write on `homevault`)
-5. Add to `.env`:
-
-```
-STORAGE_ENDPOINT=https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
-STORAGE_BUCKET=homevault
-STORAGE_REGION=auto
-STORAGE_ACCESS_KEY_ID=your-access-key
-STORAGE_SECRET_ACCESS_KEY=your-secret
-STORAGE_PUBLIC_URL=https://pub-XXXXXXXX.r2.dev
-```
-
-10 GB free storage, zero egress fees.
-
----
-
-## Project structure
-
-```
-├── client/src/
-│   ├── pages/          # One file per module (Dashboard, Expenses, Repairs…)
-│   ├── components/     # Shared components (DashboardLayout, FileUpload, Map…)
-│   └── lib/            # tRPC client, utilities
-├── server/
-│   ├── _core/          # Express server, auth, OAuth, tRPC setup
-│   ├── db.ts           # All database queries
-│   ├── routers.ts      # All tRPC procedures
-│   ├── storage.ts      # File storage (Forge / S3-compatible)
-│   └── uploadRoute.ts  # POST /api/upload endpoint
-├── drizzle/
-│   ├── schema.ts       # Drizzle table definitions + TypeScript types
-│   └── relations.ts    # Drizzle relation definitions
-├── apply-migration-v3.mjs  # Idempotent DB setup script
-├── Dockerfile
-├── docker-compose.yml
-└── .env.example
-```
+### Home Assistant Add-on
+HomeVault can be deployed as a Home Assistant add-on. Refer to the `homevault-addon` directory for specific configuration and installation steps.
 
 ---
 
-## Development commands
+## 🤝 Contributing
+Contributions are welcome! Please check our issues page or submit a pull request.
 
-```bash
-pnpm dev          # start dev server with hot reload
-pnpm build        # build for production (Vite + esbuild)
-pnpm start        # start production build
-pnpm check        # TypeScript type check
-pnpm test         # run tests (vitest)
-pnpm format       # format with prettier
-```
-
----
-
-## Roadmap
-
-See [todo.md](./todo.md) for the full feature roadmap across three phases:
-- **Phase 1** — personal app (stable daily use)
-- **Phase 2** — SaaS launch (multi-tenant, billing, integrations)
-- **Phase 3** — scale and AI features
-
----
-
-## License
-
-Private — all rights reserved.
+## 📄 License
+This project is licensed under the **HomeVault Personal Use License**. It is free for personal, non-commercial use. Commercial use, redistribution for profit, or incorporation into paid products is strictly prohibited. See the [LICENSE](./LICENSE) file for full details.

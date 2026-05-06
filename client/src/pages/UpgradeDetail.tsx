@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -23,16 +23,12 @@ import { FileUpload } from "@/components/FileUpload";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ItemStatus = "Need to find" | "Researching" | "Quoted" | "Ordered" | "Delivered" | "Installed";
-const ITEM_STATUSES: ItemStatus[] = ["Need to find", "Researching", "Quoted", "Ordered", "Delivered", "Installed"];
-const PHASES = ["Planning", "Sourcing", "Building", "Done"] as const;
-type Phase = typeof PHASES[number];
+type Upgrade = RouterOutputs["upgrades"]["list"][number];
+type UpgradeOption = RouterOutputs["upgradeOptions"]["list"][number];
+type UpgradeItem = RouterOutputs["upgradeItems"]["list"][number];
 
-function phaseToStatus(phase: Phase): "Planned" | "In Progress" | "Done" {
-  if (phase === "Planning") return "Planned";
-  if (phase === "Done") return "Done";
-  return "In Progress";
-}
+const UPGRADE_STATUSES = ["idea", "planning", "in_progress", "completed"] as const;
+type UpgradeStatusStep = typeof UPGRADE_STATUSES[number];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -52,17 +48,11 @@ function asArray<T = any>(value: unknown): T[] {
   return [];
 }
 
-const STATUS_COLORS: Record<ItemStatus, string> = {
-  "Need to find": "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  "Researching":  "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  "Quoted":       "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-  "Ordered":      "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400",
-  "Delivered":    "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400",
-  "Installed":    "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
-};
+const PURCHASED_BADGE = "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400";
+const PENDING_BADGE   = "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400";
 
-function statusBadge(status: ItemStatus, label: string) {
-  return <Badge className={cn("text-xs border-0 h-5", STATUS_COLORS[status])}>{label}</Badge>;
+function purchasedBadge(purchased: boolean, label: string) {
+  return <Badge className={cn("text-xs border-0 h-5", purchased ? PURCHASED_BADGE : PENDING_BADGE)}>{label}</Badge>;
 }
 
 // ─── Dialogs ──────────────────────────────────────────────────────────────────
@@ -70,7 +60,7 @@ function statusBadge(status: ItemStatus, label: string) {
 function EditUpgradeDialog({
   upgrade, open, onClose,
 }: {
-  upgrade: any; open: boolean; onClose: () => void;
+  upgrade: Upgrade; open: boolean; onClose: () => void;
 }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
@@ -79,15 +69,15 @@ function EditUpgradeDialog({
     onError: e => toast.error(e.message),
   });
 
-  const [f, setF] = useState({ label: "", description: "", budget: "", status: "" });
+  const [f, setF] = useState({ title: "", description: "", estimatedCost: "", status: "" });
 
   useEffect(() => {
     if (open) {
       setF({
-        label: upgrade.label,
+        title: upgrade.title ?? "",
         description: upgrade.description || "",
-        budget: String(upgrade.budget / 100),
-        status: upgrade.status,
+        estimatedCost: upgrade.estimatedCost ? String(upgrade.estimatedCost / 100) : "",
+        status: upgrade.status ?? "planning",
       });
     }
   }, [open, upgrade.id]);
@@ -99,7 +89,7 @@ function EditUpgradeDialog({
         <div className="space-y-3 pt-1">
           <div className="space-y-1">
             <Label>{t("upgradeDetail.projectName")}</Label>
-            <Input value={f.label} onChange={e => setF({ ...f, label: e.target.value })} />
+            <Input value={f.title} onChange={e => setF({ ...f, title: e.target.value })} />
           </div>
           <div className="space-y-1">
             <Label>{t("common.description")}</Label>
@@ -108,30 +98,32 @@ function EditUpgradeDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>{t("upgradeDetail.budgetField")}</Label>
-              <Input type="number" value={f.budget} onChange={e => setF({ ...f, budget: e.target.value })} placeholder="0" />
+              <Input type="number" value={f.estimatedCost} onChange={e => setF({ ...f, estimatedCost: e.target.value })} placeholder="0" />
             </div>
             <div className="space-y-1">
               <Label>{t("common.status")}</Label>
               <Select value={f.status} onValueChange={v => setF({ ...f, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Planned">{t("status.Planned")}</SelectItem>
-                  <SelectItem value="In Progress">{t("status.In Progress")}</SelectItem>
-                  <SelectItem value="Done">{t("status.Done")}</SelectItem>
+                  <SelectItem value="idea">{t("status.idea")}</SelectItem>
+                  <SelectItem value="planning">{t("status.planning")}</SelectItem>
+                  <SelectItem value="in_progress">{t("status.in_progress")}</SelectItem>
+                  <SelectItem value="completed">{t("status.completed")}</SelectItem>
+                  <SelectItem value="cancelled">{t("status.cancelled")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <Button
             className="w-full"
-            disabled={!f.label || !f.budget || mut.isPending}
+            disabled={!f.title || mut.isPending}
             onClick={() => mut.mutate({
               id: upgrade.id,
               data: {
-                label: f.label,
+                title: f.title,
                 description: f.description || undefined,
-                budget: Math.round(parseFloat(f.budget) * 100),
-                status: f.status as "Planned" | "In Progress" | "Done",
+                estimatedCost: f.estimatedCost ? Math.round(parseFloat(f.estimatedCost) * 100) : undefined,
+                status: f.status as UpgradeStatusStep,
               },
             })}
           >
@@ -146,7 +138,7 @@ function EditUpgradeDialog({
 function OptionDialog({
   upgradeId, open, onClose, editOption,
 }: {
-  upgradeId: string; open: boolean; onClose: () => void; editOption?: any;
+  upgradeId: string; open: boolean; onClose: () => void; editOption?: UpgradeOption;
 }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
@@ -165,13 +157,14 @@ function OptionDialog({
   useEffect(() => {
     if (open) {
       setF(editOption ? {
-        name: editOption.name,
-        vendorPhone: editOption.vendorPhone || "",
-        totalPrice: editOption.totalPrice ? String(editOption.totalPrice / 100) : "",
-        timeline: editOption.timeline || "",
-        warranty: editOption.warranty || "",
-        scope: editOption.scope || "",
-        notes: editOption.notes || "",
+        // DB stores title/estimatedCost/description; router UI fields (vendorPhone, timeline, warranty) are not persisted
+        name: editOption.title,
+        vendorPhone: "",
+        totalPrice: editOption.estimatedCost ? String(editOption.estimatedCost / 100) : "",
+        timeline: "",
+        warranty: "",
+        scope: editOption.description || "",
+        notes: "",
       } : blank);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -233,7 +226,7 @@ function OptionDialog({
   );
 }
 
-function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: string; open: boolean; onClose: () => void; editItem?: any }) {
+function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: string; open: boolean; onClose: () => void; editItem?: UpgradeItem }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const create = trpc.upgradeItems.create.useMutation({
@@ -245,18 +238,17 @@ function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: stri
     onError: e => toast.error(e.message),
   });
 
-  const blank = { name: "", vendorName: "", estimatedCost: "", actualCost: "", status: "Need to find" as ItemStatus, eta: "", notes: "" };
+  const blank = { name: "", store: "", estimatedCost: "", actualCost: "", purchased: false, notes: "" };
   const [f, setF] = useState(blank);
 
   useEffect(() => {
     if (open) {
       setF(editItem ? {
         name: editItem.name,
-        vendorName: editItem.vendorName || "",
+        store: editItem.store || "",
         estimatedCost: editItem.estimatedCost ? String(editItem.estimatedCost / 100) : "",
         actualCost: editItem.actualCost ? String(editItem.actualCost / 100) : "",
-        status: editItem.status as ItemStatus,
-        eta: editItem.eta || "",
+        purchased: editItem.purchased ?? false,
         notes: editItem.notes || "",
       } : blank);
     }
@@ -266,11 +258,10 @@ function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: stri
   const submit = () => {
     const payload = {
       name: f.name,
-      vendorName: f.vendorName || undefined,
+      store: f.store || undefined,
       estimatedCost: f.estimatedCost ? Math.round(parseFloat(f.estimatedCost) * 100) : undefined,
       actualCost: f.actualCost ? Math.round(parseFloat(f.actualCost) * 100) : undefined,
-      status: f.status,
-      eta: f.eta || undefined,
+      purchased: f.purchased,
       notes: f.notes || undefined,
     };
     if (editItem) update.mutate({ id: editItem.id, data: payload });
@@ -285,12 +276,6 @@ function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: stri
           <div className="space-y-1"><Label>{t("upgradeDetail.itemName")}</Label>
             <Input value={f.name} onChange={e => setF({ ...f, name: e.target.value })} placeholder={t("upgradeDetail.itemNamePlaceholder")} />
           </div>
-          <div className="space-y-1"><Label>{t("common.status")}</Label>
-            <Select value={f.status} onValueChange={v => setF({ ...f, status: v as ItemStatus })}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{ITEM_STATUSES.map(s => <SelectItem key={s} value={s}>{t(`itemStatus.${s}`)}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1"><Label>{t("upgradeDetail.estCost")}</Label>
               <Input type="number" value={f.estimatedCost} onChange={e => setF({ ...f, estimatedCost: e.target.value })} placeholder="0" />
@@ -301,10 +286,11 @@ function AddItemDialog({ upgradeId, open, onClose, editItem }: { upgradeId: stri
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1"><Label>{t("upgradeDetail.vendorField")}</Label>
-              <Input value={f.vendorName} onChange={e => setF({ ...f, vendorName: e.target.value })} placeholder={t("upgradeDetail.vendorPlaceholder")} />
+              <Input value={f.store} onChange={e => setF({ ...f, store: e.target.value })} placeholder={t("upgradeDetail.vendorPlaceholder")} />
             </div>
-            <div className="space-y-1"><Label>{t("common.eta")}</Label>
-              <Input type="date" value={f.eta} onChange={e => setF({ ...f, eta: e.target.value })} />
+            <div className="flex items-center gap-2 pt-5">
+              <input type="checkbox" id="purchased" checked={f.purchased} onChange={e => setF({ ...f, purchased: e.target.checked })} className="h-4 w-4" />
+              <Label htmlFor="purchased">{t("upgradeDetail.purchased")}</Label>
             </div>
           </div>
           <div className="space-y-1"><Label>{t("common.notes")}</Label>
@@ -381,11 +367,11 @@ function LogPaymentDialog({ optionId, optionName, open, onClose, upgradeId }: { 
 function OptionCard({
   option, upgradeId, onLogPayment, onEdit,
 }: {
-  option: any; upgradeId: string; onLogPayment: () => void; onEdit: () => void;
+  option: UpgradeOption; upgradeId: string; onLogPayment: () => void; onEdit: () => void;
 }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
-  const [expanded, setExpanded] = useState<boolean>(option.isSelected);
+  const [expanded, setExpanded] = useState<boolean>(option.selected ?? false);
   const selectMut = trpc.upgradeOptions.select.useMutation({
     onSuccess: () => { u.upgradeOptions.list.invalidate({ upgradeId }); u.upgrades.list.invalidate(); },
     onError: e => toast.error(e.message),
@@ -401,10 +387,10 @@ function OptionCard({
 
   // Normalize: MariaDB may return JSON columns as strings instead of parsed arrays
   const payments = asArray(option.payments);
-  const paid = payments.reduce((s: number, p: any) => s + p.amount, 0);
+  const paid = payments.reduce((s: number, p: any) => s + (p.amount ?? 0), 0);
 
   return (
-    <div className={cn("border rounded-xl overflow-hidden transition-colors", option.isSelected ? "border-primary" : "border-border")}>
+    <div className={cn("border rounded-xl overflow-hidden transition-colors", option.selected ? "border-primary" : "border-border")}>
       {/* Header */}
       <button
         className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
@@ -412,12 +398,11 @@ function OptionCard({
       >
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm">{option.name}</span>
-            {option.isSelected && <Badge className="bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400 border-0 text-xs h-5">{t("common.selected")} ✓</Badge>}
+            <span className="font-medium text-sm">{option.title}</span>
+            {option.selected && <Badge className="bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400 border-0 text-xs h-5">{t("common.selected")} ✓</Badge>}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {option.totalPrice ? formatCurrency(option.totalPrice) : t("upgradeDetail.noPrice")}{option.timeline ? ` · ${option.timeline}` : ""}
-            {option.warranty ? ` · ${option.warranty} ${t("upgradeDetail.warrantyLabel")}` : ""}
+            {option.estimatedCost ? formatCurrency(option.estimatedCost) : t("upgradeDetail.noPrice")}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -436,28 +421,18 @@ function OptionCard({
       {expanded && (
         <div className="border-t border-border">
           {/* Selected bar */}
-          {option.isSelected && (
+          {option.selected && (
             <div className="flex items-center justify-between px-4 py-2 bg-primary/5 border-b border-border">
-              {option.vendorPhone ? (
-                <a href={`tel:${option.vendorPhone}`} className="flex items-center gap-1.5 text-sm text-primary font-medium">
-                  <Phone className="h-3.5 w-3.5" />{option.vendorPhone}
-                </a>
-              ) : <span className="text-xs text-muted-foreground">{t("upgradeDetail.noPhone")}</span>}
+              <span className="text-xs text-muted-foreground">{t("common.selected")}</span>
               <span className="text-xs text-muted-foreground tabular-nums">
                 {t("upgradeDetail.paidLabel")} <span className="text-foreground font-semibold">{formatCurrency(paid)}</span>
-                {option.totalPrice ? ` / ${formatCurrency(option.totalPrice)}` : ""}
+                {option.estimatedCost ? ` / ${formatCurrency(option.estimatedCost)}` : ""}
               </span>
             </div>
           )}
 
           <div className="px-4 py-3 space-y-3">
-            {option.vendorPhone && !option.isSelected && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Phone className="h-3 w-3" />{option.vendorPhone}
-              </p>
-            )}
-            {option.scope && <p className="text-xs text-muted-foreground leading-relaxed"><span className="text-foreground font-medium">{t("upgradeDetail.scopeLabel")} </span>{option.scope}</p>}
-            {option.notes && <p className="text-xs text-muted-foreground leading-relaxed">{option.notes}</p>}
+            {option.description && <p className="text-xs text-muted-foreground leading-relaxed"><span className="text-foreground font-medium">{t("upgradeDetail.scopeLabel")} </span>{option.description}</p>}
 
             {/* Payments */}
             {payments.length > 0 && (
@@ -492,14 +467,14 @@ function OptionCard({
 
             {/* Actions */}
             <div className="flex gap-2 flex-wrap">
-              {!option.isSelected && (
+              {!option.selected && (
                 <Button size="sm" variant="outline" className="h-7 text-xs"
                   disabled={selectMut.isPending}
                   onClick={() => selectMut.mutate({ upgradeId, optionId: option.id })}>
                   <Check className="h-3 w-3 mr-1" />{t("common.select")}
                 </Button>
               )}
-              {option.isSelected && (
+              {option.selected && (
                 <Button size="sm" className="h-7 text-xs" onClick={onLogPayment}>
                   <CreditCard className="h-3 w-3 mr-1" />{t("upgradeDetail.logPayment")}
                 </Button>
@@ -520,21 +495,15 @@ function OptionCard({
 // ─── Item Row ─────────────────────────────────────────────────────────────────
 
 function ItemRow({ item, upgradeId, onEdit, onAllDone }: {
-  item: any; upgradeId: string; onEdit: () => void; onAllDone: (newStatus: string) => void;
+  item: UpgradeItem; upgradeId: string; onEdit: () => void; onAllDone: () => void;
 }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const updateMut = trpc.upgradeItems.update.useMutation({
-    onSuccess: async (_, vars) => {
+    onSuccess: async () => {
       await u.upgradeItems.list.invalidate({ upgradeId });
       const allItems = u.upgradeItems.list.getData({ upgradeId }) ?? [];
-      const newStatus = (vars.data as any).status as string | undefined;
-      if (newStatus && ["Delivered", "Installed"].includes(newStatus)) {
-        const othersDone = allItems
-          .filter((i: any) => i.id !== item.id)
-          .every((i: any) => ["Delivered", "Installed"].includes(i.status));
-        if (othersDone) onAllDone(newStatus);
-      }
+      if (allItems.length > 0 && allItems.every(i => i.purchased)) onAllDone();
     },
     onError: e => toast.error(e.message),
   });
@@ -543,7 +512,7 @@ function ItemRow({ item, upgradeId, onEdit, onAllDone }: {
     onError: e => toast.error(e.message),
   });
 
-  const isDone = ["Delivered", "Installed"].includes(item.status);
+  const isDone = item.purchased ?? false;
 
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-border/50 last:border-0">
@@ -551,43 +520,25 @@ function ItemRow({ item, upgradeId, onEdit, onAllDone }: {
       <div className="flex-1 min-w-0">
         <p className={cn("text-sm font-medium leading-snug", isDone && "text-muted-foreground line-through")}>{item.name}</p>
         <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
-          {item.vendorName && <span>{item.vendorName}</span>}
-          {item.eta && <span>{t("common.eta")} {item.eta}</span>}
+          {item.store && <span>{item.store}</span>}
           {item.notes && <span className="truncate max-w-[160px]">{item.notes}</span>}
         </p>
       </div>
 
-      {/* Right: cost + status dropdown + actions */}
+      {/* Right: cost + purchased toggle + actions */}
       <div className="flex items-center gap-2 shrink-0">
-        {item.actualCost || item.estimatedCost ? (
+        {(item.actualCost || item.estimatedCost) ? (
           <p className={cn("text-sm font-semibold tabular-nums", isDone && "text-muted-foreground")}>
-            {item.actualCost ? formatCurrency(item.actualCost) : formatCurrency(item.estimatedCost)}
+            {item.actualCost ? formatCurrency(item.actualCost) : formatCurrency(item.estimatedCost ?? 0)}
           </p>
         ) : null}
 
-        {/* Status dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="focus:outline-none">
-              {statusBadge(item.status, t(`itemStatus.${item.status}`))}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {ITEM_STATUSES.map(s => (
-              <DropdownMenuItem
-                key={s}
-                className={cn("text-xs gap-2", s === item.status && "font-semibold")}
-                onClick={() => {
-                  if (s !== item.status) updateMut.mutate({ id: item.id, data: { status: s } });
-                }}
-              >
-                <span className={cn("w-2 h-2 rounded-full shrink-0", STATUS_COLORS[s].split(" ")[0])} />
-                {t(`itemStatus.${s}`)}
-                {s === item.status && <Check className="h-3 w-3 ml-auto" />}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <button
+          className="focus:outline-none"
+          onClick={() => updateMut.mutate({ id: item.id, data: { purchased: !isDone } })}
+        >
+          {purchasedBadge(isDone, isDone ? t("upgradeDetail.purchased") : t("upgradeDetail.pending"))}
+        </button>
 
         {/* Always-visible actions */}
         <div className="flex gap-1">
@@ -629,47 +580,46 @@ export default function UpgradeDetail() {
 
   const [editUpgradeOpen, setEditUpgradeOpen] = useState(false);
   const [optionDialogOpen, setOptionDialogOpen] = useState(false);
-  const [editOption, setEditOption] = useState<any>(null);
+  const [editOption, setEditOption] = useState<UpgradeOption | null>(null);
   const [addItemOpen, setAddItemOpen] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
-  const [paymentFor, setPaymentFor] = useState<any>(null);
+  const [editItem, setEditItem] = useState<UpgradeItem | null>(null);
+  const [paymentFor, setPaymentFor] = useState<UpgradeOption | null>(null);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesValue, setNotesValue] = useState("");
-  const [savingPhase, setSavingPhase] = useState<Phase | null>(null);
+  const [savingStatus, setSavingStatus] = useState<UpgradeStatusStep | null>(null);
 
   if (loadingUpgrade) return <div className="flex h-full items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /></div>;
   if (!upgrade) return <div className="p-6 text-center text-muted-foreground">{t("upgradeDetail.notFound")} <button className="underline" onClick={() => navigate("/upgrades")}>{t("common.back")}</button></div>;
 
-  const selectedOption = options.find((o: any) => o.isSelected);
-  const committed = selectedOption?.totalPrice || 0;
+  const selectedOption = options.find(o => o.selected);
+  const committed = selectedOption?.estimatedCost || 0;
   // Normalize selectedOption.payments — may be a JSON string from MariaDB
   const selectedPayments = asArray(selectedOption?.payments);
   const paid = selectedPayments.reduce((s: number, p: any) => s + p.amount, 0);
-  const spentAmt = upgrade.spent ?? 0;
-  const progress = upgrade.budget > 0 ? Math.min(100, (spentAmt / upgrade.budget) * 100) : 0;
+  const spentAmt = upgrade.actualCost ?? 0;
+  const progress = (upgrade.estimatedCost ?? 0) > 0 ? Math.min(100, (spentAmt / upgrade.estimatedCost!) * 100) : 0;
 
-  const needsAction = items.filter((i: any) => ["Need to find", "Researching", "Quoted"].includes(i.status));
-  const orderedItems = items.filter((i: any) => i.status === "Ordered");
-  const doneItems = items.filter((i: any) => ["Delivered", "Installed"].includes(i.status));
+  const needsAction = items.filter(i => !i.purchased);
+  const doneItems = items.filter(i => i.purchased);
 
-  const currentPhase = ((upgrade as any).phase || "Planning") as Phase;
-  const phaseIdx = PHASES.indexOf(currentPhase);
+  const currentStatus = (upgrade.status || "planning") as UpgradeStatusStep;
+  const statusIdx = UPGRADE_STATUSES.indexOf(currentStatus);
 
-  const setPhase = (phase: Phase) => {
-    setSavingPhase(phase);
+  const setStatus = (status: UpgradeStatusStep) => {
+    setSavingStatus(status);
     updateUpgrade.mutate(
-      { id: upgradeId, data: { phase, status: phaseToStatus(phase) } },
-      { onSettled: () => setSavingPhase(null) },
+      { id: upgradeId, data: { status } },
+      { onSettled: () => setSavingStatus(null) },
     );
   };
 
   const handleAllDone = () => {
-    if (currentPhase === "Done") return;
+    if (currentStatus === "completed") return;
     toast(t("upgradeDetail.allItemsDoneTitle"), {
       description: t("upgradeDetail.allItemsDoneDesc"),
       action: {
         label: t("upgradeDetail.markDoneAction"),
-        onClick: () => setPhase("Done"),
+        onClick: () => setStatus("completed"),
       },
       duration: 8000,
     });
@@ -686,7 +636,7 @@ export default function UpgradeDetail() {
           </Button>
           <div className="flex items-start gap-2">
             <div className="min-w-0">
-              <h1 className="text-xl font-bold tracking-tight">{upgrade.label}</h1>
+              <h1 className="text-xl font-bold tracking-tight">{upgrade.title}</h1>
               {upgrade.description && <p className="text-sm text-muted-foreground mt-1">{upgrade.description}</p>}
             </div>
             <Button
@@ -700,46 +650,45 @@ export default function UpgradeDetail() {
           </div>
         </div>
 
-        {/* Phase stepper — top-right on wide screens */}
+        {/* Status stepper — top-right on wide screens */}
         <div className="hidden sm:flex items-center shrink-0 gap-0">
-          {PHASES.map((phase, idx) => (
-            <div key={phase} className="flex items-center">
+          {UPGRADE_STATUSES.map((s, idx) => (
+            <div key={s} className="flex items-center">
               <button
                 className="flex flex-col items-center gap-1 px-1 group"
-                onClick={() => setPhase(phase)}
-                title={t("upgradeDetail.setPhaseTitle", { phase: t(`phases.${phase}`) })}
+                onClick={() => setStatus(s)}
               >
                 <div className={cn(
                   "w-3 h-3 rounded-full transition-all flex items-center justify-center",
-                  idx < phaseIdx ? "bg-primary" :
-                  idx === phaseIdx ? "bg-primary ring-4 ring-primary/20" : "bg-border group-hover:bg-muted-foreground/30"
+                  idx < statusIdx ? "bg-primary" :
+                  idx === statusIdx ? "bg-primary ring-4 ring-primary/20" : "bg-border group-hover:bg-muted-foreground/30"
                 )}>
-                  {savingPhase === phase && <Loader2 className="h-2 w-2 animate-spin text-primary-foreground" />}
+                  {savingStatus === s && <Loader2 className="h-2 w-2 animate-spin text-primary-foreground" />}
                 </div>
                 <span className={cn(
                   "text-[10px] font-medium whitespace-nowrap",
-                  idx === phaseIdx ? "text-primary" : idx < phaseIdx ? "text-muted-foreground" : "text-muted-foreground/40 group-hover:text-muted-foreground"
-                )}>{t(`phases.${phase}`)}</span>
+                  idx === statusIdx ? "text-primary" : idx < statusIdx ? "text-muted-foreground" : "text-muted-foreground/40 group-hover:text-muted-foreground"
+                )}>{t(`status.${s}`, { defaultValue: s })}</span>
               </button>
-              {idx < PHASES.length - 1 && (
-                <div className={cn("w-8 h-0.5 mx-0.5 mb-3", idx < phaseIdx ? "bg-primary" : "bg-border")} />
+              {idx < UPGRADE_STATUSES.length - 1 && (
+                <div className={cn("w-8 h-0.5 mx-0.5 mb-3", idx < statusIdx ? "bg-primary" : "bg-border")} />
               )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Phase stepper — mobile */}
+      {/* Status stepper — mobile */}
       <div className="flex items-center sm:hidden">
-        {PHASES.map((phase, idx) => (
-          <div key={phase} className="flex items-center flex-1 last:flex-none">
-            <button className="flex flex-col items-center gap-1 w-full" onClick={() => setPhase(phase)}>
-              <div className={cn("w-3 h-3 rounded-full transition-all", idx < phaseIdx ? "bg-primary" : idx === phaseIdx ? "bg-primary ring-4 ring-primary/20" : "bg-border")}>
-                {savingPhase === phase && <Loader2 className="h-2 w-2 animate-spin text-primary-foreground" />}
+        {UPGRADE_STATUSES.map((s, idx) => (
+          <div key={s} className="flex items-center flex-1 last:flex-none">
+            <button className="flex flex-col items-center gap-1 w-full" onClick={() => setStatus(s)}>
+              <div className={cn("w-3 h-3 rounded-full transition-all", idx < statusIdx ? "bg-primary" : idx === statusIdx ? "bg-primary ring-4 ring-primary/20" : "bg-border")}>
+                {savingStatus === s && <Loader2 className="h-2 w-2 animate-spin text-primary-foreground" />}
               </div>
-              <span className={cn("text-[10px] font-medium whitespace-nowrap", idx === phaseIdx ? "text-primary" : idx < phaseIdx ? "text-muted-foreground" : "text-muted-foreground/40")}>{t(`phases.${phase}`)}</span>
+              <span className={cn("text-[10px] font-medium whitespace-nowrap", idx === statusIdx ? "text-primary" : idx < statusIdx ? "text-muted-foreground" : "text-muted-foreground/40")}>{t(`status.${s}`, { defaultValue: s })}</span>
             </button>
-            {idx < PHASES.length - 1 && <div className={cn("flex-1 h-0.5 mx-1 mb-3", idx < phaseIdx ? "bg-primary" : "bg-border")} />}
+            {idx < UPGRADE_STATUSES.length - 1 && <div className={cn("flex-1 h-0.5 mx-1 mb-3", idx < statusIdx ? "bg-primary" : "bg-border")} />}
           </div>
         ))}
       </div>
@@ -750,16 +699,16 @@ export default function UpgradeDetail() {
           <div>
             <p className="text-base font-bold tabular-nums">{formatCurrency(committed)}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{t("upgradeDetail.vendors").split(" ")[0]}</p>
-            {selectedOption && <p className="text-[10px] text-muted-foreground truncate">{selectedOption.name}</p>}
+            {selectedOption && <p className="text-[10px] text-muted-foreground truncate">{selectedOption.title}</p>}
           </div>
           <div>
             <p className="text-base font-bold tabular-nums">{formatCurrency(paid)}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{t("upgrades.paidSoFar")}</p>
           </div>
           <div>
-            <p className="text-base font-bold tabular-nums text-muted-foreground">{formatCurrency(upgrade.budget)}</p>
+            <p className="text-base font-bold tabular-nums text-muted-foreground">{formatCurrency(upgrade.estimatedCost ?? 0)}</p>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">{t("common.budget")}</p>
-            <p className="text-[10px] text-muted-foreground">{formatCurrency(Math.max(0, upgrade.budget - spentAmt))} {t("upgradeDetail.leftLabel")}</p>
+            <p className="text-[10px] text-muted-foreground">{formatCurrency(Math.max(0, (upgrade.estimatedCost ?? 0) - spentAmt))} {t("upgradeDetail.leftLabel")}</p>
           </div>
         </div>
         <div className="space-y-1">
@@ -792,7 +741,7 @@ export default function UpgradeDetail() {
             </button>
           ) : (
             <div className="space-y-2">
-              {[...options].sort((a: any, b: any) => (b.isSelected ? 1 : 0) - (a.isSelected ? 1 : 0)).map((opt: any) => (
+              {[...options].sort((a, b) => (b.selected ? 1 : 0) - (a.selected ? 1 : 0)).map(opt => (
                 <OptionCard
                   key={opt.id}
                   option={opt}
@@ -810,7 +759,7 @@ export default function UpgradeDetail() {
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
               {t("upgradeDetail.items")}
-              {items.length > 0 && <span className="ml-2 font-normal normal-case text-muted-foreground/70">{doneItems.length} {t("common.done").toLowerCase()} · {needsAction.length + orderedItems.length} {t("dashboard.remaining").toLowerCase()}</span>}
+              {items.length > 0 && <span className="ml-2 font-normal normal-case text-muted-foreground/70">{doneItems.length} {t("common.done").toLowerCase()} · {needsAction.length} {t("dashboard.remaining").toLowerCase()}</span>}
             </h2>
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-primary" onClick={() => { setEditItem(null); setAddItemOpen(true); }}>
               <Plus className="h-3.5 w-3.5" />{t("upgradeDetail.addItem")}
@@ -827,15 +776,7 @@ export default function UpgradeDetail() {
               {needsAction.length > 0 && (
                 <>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 pt-3 pb-1">⚠ {t("upgradeDetail.needsAction")}</p>
-                  {needsAction.map((item: any) => (
-                    <ItemRow key={item.id} item={item} upgradeId={upgradeId} onEdit={() => { setEditItem(item); setAddItemOpen(true); }} onAllDone={handleAllDone} />
-                  ))}
-                </>
-              )}
-              {orderedItems.length > 0 && (
-                <>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 pt-3 pb-1">⏳ {t("upgradeDetail.orderedInTransit")}</p>
-                  {orderedItems.map((item: any) => (
+                  {needsAction.map(item => (
                     <ItemRow key={item.id} item={item} upgradeId={upgradeId} onEdit={() => { setEditItem(item); setAddItemOpen(true); }} onAllDone={handleAllDone} />
                   ))}
                 </>
@@ -843,7 +784,7 @@ export default function UpgradeDetail() {
               {doneItems.length > 0 && (
                 <>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground pt-3 pb-1">✓ {t("upgradeDetail.doneSectionTitle")}</p>
-                  {doneItems.map((item: any) => (
+                  {doneItems.map(item => (
                     <ItemRow key={item.id} item={item} upgradeId={upgradeId} onEdit={() => { setEditItem(item); setAddItemOpen(true); }} onAllDone={handleAllDone} />
                   ))}
                 </>
@@ -886,19 +827,19 @@ export default function UpgradeDetail() {
         upgradeId={upgradeId}
         open={optionDialogOpen}
         onClose={() => { setOptionDialogOpen(false); setEditOption(null); }}
-        editOption={editOption}
+        editOption={editOption ?? undefined}
       />
       <AddItemDialog
         upgradeId={upgradeId}
         open={addItemOpen || !!editItem}
         onClose={() => { setAddItemOpen(false); setEditItem(null); }}
-        editItem={editItem}
+        editItem={editItem ?? undefined}
       />
       {paymentFor && (
         <LogPaymentDialog
           upgradeId={upgradeId}
           optionId={paymentFor.id}
-          optionName={paymentFor.name}
+          optionName={paymentFor.title}
           open={!!paymentFor}
           onClose={() => setPaymentFor(null)}
         />

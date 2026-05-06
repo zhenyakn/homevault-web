@@ -36,6 +36,13 @@
       "when": 1777441952575,
       "tag": "0004_slimy_bloodscream",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1777739884810,
+      "tag": "0005_happy_namorita",
+      "breakpoints": true
     }
   ]
 }

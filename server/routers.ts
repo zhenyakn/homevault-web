@@ -1,109 +1,107 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
+import type { inferRouterOutputs, inferRouterInputs } from "@trpc/server";
+import { createInsertSchema } from "drizzle-zod";
+import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import * as db from "./db";
+import { searchRouter } from "./searchRouter";
+import {
+  expenses, repairs, upgrades, loans,
+  wishlistItems, purchaseCosts, inventoryItems, properties,
+} from "../drizzle/schema";
+
+// Fields always assigned by the server — never accepted from the client
+const SERVER_FIELDS = { id: true, ownerId: true, propertyId: true, createdAt: true, updatedAt: true } as const;
 
 const attachmentSchema = z.array(z.string()).optional();
 
-const expenseSchema = z.object({
-  label: z.string().min(1),
-  amount: z.number().int().positive(),
-  date: z.string(),
-  category: z.enum(["Mortgage", "Utility", "Insurance", "Tax", "Maintenance", "Other"]),
-  isRecurring: z.boolean().optional(),
-  recurringFrequency: z.enum(["Monthly", "Quarterly", "Annual"]).optional(),
-  notes: z.string().optional(),
-  attachments: attachmentSchema,
-});
+const calendarCatMap: Record<string, string> = {
+  Expense: "Payment", Repair: "Maintenance", Upgrade: "Renovation",
+  Loan: "Payment", Other: "Other",
+};
 
-const repairSchema = z.object({
-  label: z.string().min(1),
-  description: z.string().optional(),
-  priority: z.enum(["Low", "Medium", "High", "Critical"]),
-  status: z.enum(["Pending", "In Progress", "Resolved"]),
-  phase: z.enum(["Assessment", "Quoting", "Scheduled", "In Progress", "Resolved"]).optional(),
-  dateLogged: z.string(),
-  contractor: z.string().optional(),
-  contractorPhone: z.string().optional(),
-  estimatedCost: z.number().int().optional(),
+const expenseSchema = createInsertSchema(expenses, {
+  name: z.string().min(1),
+  amount: z.number().int().positive(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  attachments: attachmentSchema,
+}).omit({ ...SERVER_FIELDS, isPaid: true, paidDate: true, nextDueDate: true });
+
+const repairSchema = createInsertSchema(repairs, {
+  title: z.string().min(1),
+  attachments: attachmentSchema,
+}).omit({ ...SERVER_FIELDS, completedDate: true });
+
+const upgradeSchema = createInsertSchema(upgrades, {
+  title: z.string().min(1),
+  estimatedCost: z.number().int().min(0).optional(),
   actualCost: z.number().int().optional(),
-  notes: z.string().optional(),
   attachments: attachmentSchema,
-});
+}).omit(SERVER_FIELDS);
 
-const upgradeSchema = z.object({
-  label: z.string().min(1),
-  description: z.string().optional(),
-  status: z.enum(["Planned", "In Progress", "Done"]),
-  phase: z.enum(["Planning", "Sourcing", "Building", "Done"]).optional(),
-  budget: z.number().int().positive(),
-  spent: z.number().int().optional(),
-  notes: z.string().optional(),
+const loanSchema = createInsertSchema(loans, {
+  // name and currentBalance are NOT NULL in DB but the server defaults them
+  name: z.string().optional(),
+  currentBalance: z.number().int().optional(),
+  originalAmount: z.number().int().positive(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD").optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   attachments: attachmentSchema,
-});
+}).omit({ ...SERVER_FIELDS, repayments: true });
 
-const loanSchema = z.object({
-  lender: z.string().min(1),
-  totalAmount: z.number().int().positive(),
-  loanType: z.enum(["Family", "Bank", "Friend", "Other"]),
-  interestRate: z.string().optional(),
-  startDate: z.string(),
-  dueDate: z.string().optional(),
-  notes: z.string().optional(),
+const inventoryItemSchema = createInsertSchema(inventoryItems, {
+  name: z.string().min(1),
+  quantity: z.number().int().min(0),
+  minQuantity: z.number().int().min(0).optional(),
+}).omit(SERVER_FIELDS);
+
+const wishlistSchema = createInsertSchema(wishlistItems, {
+  name: z.string().min(1),
+  estimatedPrice: z.number().int().min(0).optional(),
   attachments: attachmentSchema,
-});
+}).omit(SERVER_FIELDS);
 
-const wishlistSchema = z.object({
-  label: z.string().min(1),
-  description: z.string().optional(),
-  estimatedCost: z.number().int().positive(),
-  priority: z.enum(["Low", "Medium", "High"]),
-  attachments: attachmentSchema,
-});
-
-const purchaseCostSchema = z.object({
-  label: z.string().min(1),
+const purchaseCostSchema = createInsertSchema(purchaseCosts, {
+  name: z.string().min(1),
   amount: z.number().int().positive(),
-  date: z.string(),
-  category: z.string().optional(),
-  notes: z.string().optional(),
+  // date is nullable in the DB but required by the client
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
   attachments: attachmentSchema,
-});
+}).omit(SERVER_FIELDS);
 
-const propertySchema = z.object({
-  houseName: z.string().optional(),
-  houseNickname: z.string().optional(),
-  propertyType: z.string().optional(),
-  address: z.string().optional(),
-  latitude: z.string().optional(),
-  longitude: z.string().optional(),
-  purchaseDate: z.string().optional(),
-  purchasePrice: z.number().int().optional(),
-  squareMeters: z.number().int().optional(),
-  rooms: z.number().optional(),
-  yearBuilt: z.number().int().optional(),
-  floor: z.number().int().optional(),
-  parkingSpots: z.number().int().optional(),
-  hasStorage: z.boolean().optional(),
-  currency: z.string().optional(),
-  currencyCode: z.string().optional(),
-  timezone: z.string().optional(),
-  startOfWeek: z.string().optional(),
+const propertySchema = createInsertSchema(properties, {
   reminderDaysBefore: z.number().int().min(1).max(30).optional(),
-  calendarSyncEnabled: z.boolean().optional(),
   mapsProvider: z.enum(["google", "osm"]).optional(),
-  remindExpenses: z.boolean().optional(),
-  remindLoans: z.boolean().optional(),
-  remindRepairs: z.boolean().optional(),
-  remindCalendar: z.boolean().optional(),
-});
+}).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
+
+// ─── Ownership guard helpers ───────────────────────────────────────────────────
+// Used only for child entities (repairQuotes, upgradeOptions/Items) that have no
+// direct ownerId column — ownership is checked through the parent record.
+
+async function assertRepairOwner(id: string, userId: number) {
+  const record = await db.getRepairById(id);
+  if (!record || record.ownerId !== userId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised to modify this repair" });
+  }
+  return record;
+}
+
+async function assertUpgradeOwner(id: string, userId: number) {
+  const record = await db.getUpgradeById(id);
+  if (!record || record.ownerId !== userId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised to modify this upgrade" });
+  }
+  return record;
+}
 
 export const appRouter = router({
   system: systemRouter,
+  search: searchRouter,
   auth: router({
     // In NO_AUTH mode (HA addon) ctx.user may be null on the very first
     // request if ingress strips/delays the session cookie. Fall back to
@@ -148,6 +146,18 @@ export const appRouter = router({
       }),
   }),
 
+  onboarding: router({
+    // Moved out of dashboard.stats query — side-effects belong in mutations.
+    ensureProperty: protectedProcedure.mutation(async ({ ctx }) => {
+      const props = await db.getPropertiesByUser(ctx.user.id);
+      if (props.length === 0) {
+        const result = await db.createProperty(ctx.user.id, { houseName: "My Home" });
+        return { created: true, propertyId: (result as any).insertId ?? 1 };
+      }
+      return { created: false, propertyId: props[0].id };
+    }),
+  }),
+
   data: router({
     exportAll: protectedProcedure.query(async ({ ctx }) => {
       const pid = ctx.propertyId;
@@ -175,7 +185,10 @@ export const appRouter = router({
         const property = await db.getProperty(ctx.propertyId);
         const expected = property?.houseName ?? "My Home";
         if (input.confirmationPhrase !== expected) {
-          throw new Error(`Type "${expected}" to confirm deletion`);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Type "${expected}" to confirm deletion`,
+          });
         }
         await db.deleteAllUserData(ctx.user.id);
         return { success: true };
@@ -184,12 +197,6 @@ export const appRouter = router({
 
   dashboard: router({
     stats: protectedProcedure.query(async ({ ctx }) => {
-      // On a fresh addon install the DB has no property rows yet.
-      // Auto-create one so getDashboardStats never queries with a missing property.
-      const props = await db.getPropertiesByUser(ctx.user.id);
-      if (props.length === 0) {
-        await db.createProperty(ctx.user.id, { houseName: "My Home" });
-      }
       return await db.getDashboardStats(ctx.user.id, ctx.propertyId);
     }),
     recentActivity: protectedProcedure.query(async ({ ctx }) => {
@@ -201,42 +208,56 @@ export const appRouter = router({
   }),
 
   expenses: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getExpenses(ctx.user.id, ctx.propertyId);
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getExpenses(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
     create: protectedProcedure.input(expenseSchema).mutation(async ({ ctx, input }) => {
-      return await db.createExpense({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createExpense({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: expenseSchema.partial() }))
-      .mutation(async ({ input }) => {
-        return await db.updateExpense(input.id, input.data);
+      .mutation(async ({ ctx, input }) => {
+        return await db.updateExpense(input.id, ctx.user.id, input.data);
       }),
-    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
-      return await db.deleteExpense(input.id);
-    }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.deleteExpense(input.id, ctx.user.id);
+      }),
     markAsPaid: protectedProcedure
       .input(z.object({ id: z.string(), paidDate: z.string() }))
-      .mutation(async ({ input }) => {
-        return await db.updateExpense(input.id, { isPaid: true, paidDate: input.paidDate });
+      .mutation(async ({ ctx, input }) => {
+        return await db.updateExpense(input.id, ctx.user.id, { isPaid: true, paidDate: input.paidDate } as any);
       }),
   }),
 
   repairs: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return (await db.getRepairs(ctx.user.id, ctx.propertyId)) ?? [];
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return (await db.getRepairs(ctx.user.id, ctx.propertyId, input?.limit, input?.offset)) ?? [];
+      }),
     create: protectedProcedure.input(repairSchema).mutation(async ({ ctx, input }) => {
-      return await db.createRepair({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createRepair({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: repairSchema.partial() }))
-      .mutation(async ({ input }) => {
-        return await db.updateRepair(input.id, input.data);
+      .mutation(async ({ ctx, input }) => {
+        return await db.updateRepair(input.id, ctx.user.id, input.data);
       }),
-    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
-      return await db.deleteRepair(input.id);
-    }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.deleteRepair(input.id, ctx.user.id);
+      }),
   }),
 
   repairQuotes: router({
@@ -248,28 +269,35 @@ export const appRouter = router({
     }),
     create: protectedProcedure.input(z.object({
       repairId: z.string(),
-      contractorName: z.string().min(1),
-      contractorPhone: z.string().optional(),
-      quotedPrice: z.number().int().optional(),
-      timeline: z.string().optional(),
-      guarantee: z.string().optional(),
-      scope: z.string().optional(),
+      contractor: z.string().min(1),
+      amount: z.number().int().min(0).optional(),
+      date: z.string().optional(),
       notes: z.string().optional(),
-    })).mutation(async ({ input }) => {
-      return await db.createRepairQuote({ id: nanoid(), payments: [], ...input });
+    })).mutation(async ({ ctx, input }) => {
+      await assertRepairOwner(input.repairId, ctx.user.id);
+      return await db.createRepairQuote({
+        id: nanoid(), payments: [],
+        repairId: input.repairId,
+        contractor: input.contractor,
+        amount: input.amount ?? 0,
+        date: input.date,
+        notes: input.notes,
+      });
     }),
     update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
-      contractorName: z.string().optional(),
-      contractorPhone: z.string().optional(),
-      quotedPrice: z.number().int().optional(),
-      timeline: z.string().optional(),
-      guarantee: z.string().optional(),
-      scope: z.string().optional(),
+      contractor: z.string().optional(),
+      amount: z.number().int().optional(),
+      date: z.string().optional(),
       notes: z.string().optional(),
-    }) })).mutation(async ({ input }) => {
+    }) })).mutation(async ({ ctx, input }) => {
+      // Verify ownership through the parent repair
+      const quote = await db.getRepairQuoteById(input.id);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertRepairOwner(quote.repairId, ctx.user.id);
       return await db.updateRepairQuote(input.id, input.data);
     }),
-    select: protectedProcedure.input(z.object({ repairId: z.string(), quoteId: z.string() })).mutation(async ({ input }) => {
+    select: protectedProcedure.input(z.object({ repairId: z.string(), quoteId: z.string() })).mutation(async ({ ctx, input }) => {
+      await assertRepairOwner(input.repairId, ctx.user.id);
       await db.selectRepairQuote(input.repairId, input.quoteId);
       return { success: true };
     }),
@@ -290,7 +318,10 @@ export const appRouter = router({
       await db.deleteRepairQuotePayment(input.quoteId, input.paymentIndex);
       return { success: true };
     }),
-    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+      const quote = await db.getRepairQuoteById(input.id);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertRepairOwner(quote.repairId, ctx.user.id);
       return await db.deleteRepairQuote(input.id);
     }),
   }),
@@ -301,28 +332,34 @@ export const appRouter = router({
     }),
     create: protectedProcedure.input(z.object({
       upgradeId: z.string(),
-      name: z.string().min(1),
-      vendorPhone: z.string().optional(),
-      totalPrice: z.number().int().optional(),
-      timeline: z.string().optional(),
-      warranty: z.string().optional(),
-      scope: z.string().optional(),
+      title: z.string().min(1),
+      estimatedCost: z.number().int().min(0).optional(),
+      description: z.string().optional(),
       notes: z.string().optional(),
-    })).mutation(async ({ input }) => {
-      return await db.createUpgradeOption({ id: nanoid(), payments: [], ...input });
+    })).mutation(async ({ ctx, input }) => {
+      await assertUpgradeOwner(input.upgradeId, ctx.user.id);
+      return await db.createUpgradeOption({
+        id: nanoid(), payments: [],
+        upgradeId: input.upgradeId,
+        title: input.title,
+        estimatedCost: input.estimatedCost,
+        description: input.description ?? input.notes,
+      });
     }),
     update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
-      name: z.string().optional(),
-      vendorPhone: z.string().optional(),
-      totalPrice: z.number().int().optional(),
-      timeline: z.string().optional(),
-      warranty: z.string().optional(),
-      scope: z.string().optional(),
+      title: z.string().optional(),
+      estimatedCost: z.number().int().optional(),
+      description: z.string().optional(),
       notes: z.string().optional(),
-    }) })).mutation(async ({ input }) => {
-      return await db.updateUpgradeOption(input.id, input.data);
+    }) })).mutation(async ({ ctx, input }) => {
+      const option = await db.getUpgradeOptionById(input.id);
+      if (!option) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertUpgradeOwner(option.upgradeId, ctx.user.id);
+      const { notes, ...rest } = input.data;
+      return await db.updateUpgradeOption(input.id, { ...rest, description: rest.description ?? notes });
     }),
-    select: protectedProcedure.input(z.object({ upgradeId: z.string(), optionId: z.string() })).mutation(async ({ input }) => {
+    select: protectedProcedure.input(z.object({ upgradeId: z.string(), optionId: z.string() })).mutation(async ({ ctx, input }) => {
+      await assertUpgradeOwner(input.upgradeId, ctx.user.id);
       await db.selectUpgradeOption(input.upgradeId, input.optionId);
       return { success: true };
     }),
@@ -343,7 +380,10 @@ export const appRouter = router({
       await db.deleteUpgradeOptionPayment(input.optionId, input.paymentIndex);
       return { success: true };
     }),
-    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+      const option = await db.getUpgradeOptionById(input.id);
+      if (!option) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertUpgradeOwner(option.upgradeId, ctx.user.id);
       return await db.deleteUpgradeOption(input.id);
     }),
   }),
@@ -358,109 +398,145 @@ export const appRouter = router({
     create: protectedProcedure.input(z.object({
       upgradeId: z.string(),
       name: z.string().min(1),
-      vendorName: z.string().optional(),
+      store: z.string().optional(),
       estimatedCost: z.number().int().optional(),
       actualCost: z.number().int().optional(),
-      status: z.enum(["Need to find", "Researching", "Quoted", "Ordered", "Delivered", "Installed"]).optional(),
-      eta: z.string().optional(),
+      purchased: z.boolean().optional(),
       notes: z.string().optional(),
-    })).mutation(async ({ ctx, input }) => {
-      return await db.createUpgradeItem({ id: nanoid(), ownerId: ctx.user.id, propertyId: ctx.propertyId, ...input });
+    })).mutation(async ({ input }) => {
+      return await db.createUpgradeItem({ id: nanoid(), ...input, purchased: input.purchased ?? false });
     }),
     update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
       name: z.string().optional(),
-      vendorName: z.string().optional(),
+      store: z.string().optional(),
       estimatedCost: z.number().int().optional(),
       actualCost: z.number().int().optional(),
-      status: z.enum(["Need to find", "Researching", "Quoted", "Ordered", "Delivered", "Installed"]).optional(),
-      eta: z.string().optional(),
+      purchased: z.boolean().optional(),
       notes: z.string().optional(),
-    }) })).mutation(async ({ input }) => {
+    }) })).mutation(async ({ ctx, input }) => {
+      const item = await db.getUpgradeItemById(input.id);
+      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertUpgradeOwner(item.upgradeId, ctx.user.id);
       return await db.updateUpgradeItem(input.id, input.data);
     }),
-    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+      const item = await db.getUpgradeItemById(input.id);
+      if (!item) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertUpgradeOwner(item.upgradeId, ctx.user.id);
       return await db.deleteUpgradeItem(input.id);
     }),
   }),
 
   upgrades: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return (await db.getUpgrades(ctx.user.id, ctx.propertyId)) ?? [];
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return (await db.getUpgrades(ctx.user.id, ctx.propertyId, input?.limit, input?.offset)) ?? [];
+      }),
     create: protectedProcedure.input(upgradeSchema).mutation(async ({ ctx, input }) => {
-      return await db.createUpgrade({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createUpgrade({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: upgradeSchema.partial() }))
-      .mutation(async ({ input }) => {
-        return await db.updateUpgrade(input.id, input.data);
+      .mutation(async ({ ctx, input }) => {
+        return await db.updateUpgrade(input.id, ctx.user.id, input.data);
       }),
-    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
-      return await db.deleteUpgrade(input.id);
-    }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.deleteUpgrade(input.id, ctx.user.id);
+      }),
   }),
 
   loans: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getLoans(ctx.user.id, ctx.propertyId);
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getLoans(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
     create: protectedProcedure.input(loanSchema).mutation(async ({ ctx, input }) => {
-      return await db.createLoan({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createLoan({
+        id: nanoid(), ...input,
+        name: input.name ?? input.lender ?? "Loan",
+        currentBalance: input.currentBalance ?? input.originalAmount,
+        repayments: [],
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: loanSchema.partial() }))
-      .mutation(async ({ input }) => {
-        return await db.updateLoan(input.id, input.data);
+      .mutation(async ({ ctx, input }) => {
+        return await db.updateLoan(input.id, ctx.user.id, input.data);
       }),
-    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
-      return await db.deleteLoan(input.id);
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.deleteLoan(input.id, ctx.user.id);
       }),
     addRepayment: protectedProcedure
       .input(z.object({ loanId: z.string(), amount: z.number().int().positive(), date: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const allLoans = await db.getLoans(ctx.user.id, ctx.propertyId);
-        const targetLoan = allLoans.find((l) => l.id === input.loanId);
-        if (!targetLoan) throw new Error("Loan not found");
+        const targetLoan = await db.getLoanById(input.loanId);
+        if (!targetLoan || targetLoan.ownerId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised to modify this loan" });
+        }
         const updatedRepayments = [
-          ...(targetLoan.repayments || []),
+          ...((targetLoan as any).repayments || []),
           { date: input.date, amount: input.amount, ownerId: ctx.user.id },
         ];
-        return await db.updateLoan(input.loanId, { repayments: updatedRepayments });
+        return await db.updateLoan(input.loanId, ctx.user.id, { repayments: updatedRepayments });
       }),
   }),
 
   wishlist: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getWishlistItems(ctx.user.id, ctx.propertyId);
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getWishlistItems(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
     create: protectedProcedure.input(wishlistSchema).mutation(async ({ ctx, input }) => {
-      return await db.createWishlistItem({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createWishlistItem({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: wishlistSchema.partial() }))
-      .mutation(async ({ input }) => {
-        return await db.updateWishlistItem(input.id, input.data);
+      .mutation(async ({ ctx, input }) => {
+        return await db.updateWishlistItem(input.id, ctx.user.id, input.data);
       }),
-    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
-      return await db.deleteWishlistItem(input.id);
-    }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.deleteWishlistItem(input.id, ctx.user.id);
+      }),
   }),
 
   purchaseCosts: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getPurchaseCosts(ctx.user.id, ctx.propertyId);
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getPurchaseCosts(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
     create: protectedProcedure.input(purchaseCostSchema).mutation(async ({ ctx, input }) => {
-      return await db.createPurchaseCost({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createPurchaseCost({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: purchaseCostSchema.partial() }))
-      .mutation(async ({ input }) => {
-        return await db.updatePurchaseCost(input.id, input.data);
+      .mutation(async ({ ctx, input }) => {
+        return await db.updatePurchaseCost(input.id, ctx.user.id, input.data);
       }),
-    delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ input }) => {
-      return await db.deletePurchaseCost(input.id);
-    }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.deletePurchaseCost(input.id, ctx.user.id);
+      }),
   }),
 
   calendar: router({
@@ -478,7 +554,12 @@ export const appRouter = router({
         notes: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        return await db.createCalendarEvent({ id: nanoid(), ...input, createdById: ctx.user.id, propertyId: ctx.propertyId });
+        const { eventType, time, ...rest } = input as any;
+        return await db.createCalendarEvent({
+          id: nanoid(), ...rest,
+          category: calendarCatMap[eventType] ?? "Other",
+          ownerId: ctx.user.id, propertyId: ctx.propertyId,
+        });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
@@ -505,12 +586,37 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ propertyId: z.number().int() }))
       .mutation(async ({ ctx, input }) => {
-        if (input.propertyId === 1) throw new Error("Cannot delete the primary property");
+        if (input.propertyId === 1) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete the primary property" });
         const props = await db.getPropertiesByUser(ctx.user.id);
-        if (!props.find(p => p.id === input.propertyId)) throw new Error("Property not found");
+        if (!props.find(p => p.id === input.propertyId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Property not found" });
+        }
         return await db.deleteProperty(input.propertyId);
+      }),
+  }),
+
+  inventory: router({
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getInventoryItems(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
+    create: protectedProcedure.input(inventoryItemSchema).mutation(async ({ ctx, input }) => {
+      return await db.createInventoryItem({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+    }),
+    update: protectedProcedure
+      .input(z.object({ id: z.string(), data: inventoryItemSchema.partial() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.updateInventoryItem(input.id, ctx.user.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        return await db.deleteInventoryItem(input.id, ctx.user.id);
       }),
   }),
 });
 
 export type AppRouter = typeof appRouter;
+export type RouterOutputs = inferRouterOutputs<AppRouter>;
+export type RouterInputs = inferRouterInputs<AppRouter>;
