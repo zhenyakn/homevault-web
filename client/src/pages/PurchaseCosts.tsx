@@ -20,7 +20,7 @@ export default function PurchaseCosts() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    label: "",
+    name: "",
     amount: "",
     date: new Date().toISOString().split("T")[0],
     category: "Other",
@@ -67,7 +67,7 @@ export default function PurchaseCosts() {
 
   const resetForm = () => {
     setFormData({
-      label: "",
+      name: "",
       amount: "",
       date: new Date().toISOString().split("T")[0],
       category: "Other",
@@ -79,7 +79,7 @@ export default function PurchaseCosts() {
 
   const handleEdit = (cost: any) => {
     setFormData({
-      label: cost.label,
+      name: cost.name,
       amount: (cost.amount / 100).toString(),
       date: cost.date,
       category: cost.category || "Other",
@@ -123,7 +123,7 @@ export default function PurchaseCosts() {
     if (!costs || costs.length === 0) { toast.error(t("purchaseCosts.nothingToExport")); return; }
     const headers = ["Label", "Amount", "Date", "Category", "Notes"];
     const rows = costs.map((c: any) => [
-      c.label, (c.amount / 100).toFixed(2), c.date, c.category || "", c.notes || "",
+      c.name, (c.amount / 100).toFixed(2), c.date, c.category || "", c.notes || "",
     ]);
     const csv = [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -166,11 +166,11 @@ export default function PurchaseCosts() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="label">{t("common.label")}</Label>
+                <Label htmlFor="name">{t("common.label")}</Label>
                 <Input
-                  id="label"
-                  value={formData.label}
-                  onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
                 />
               </div>
@@ -254,10 +254,10 @@ export default function PurchaseCosts() {
             <div key={cost.id} className="flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-medium">{cost.label}</p>
+                  <p className="text-sm font-medium">{cost.name}</p>
                   {cost.category && <Badge variant="secondary" className="text-xs h-5">{t(`categories.${cost.category}`, { defaultValue: cost.category })}</Badge>}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{formatDate(cost.date)}{cost.notes && ` · ${cost.notes}`}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{cost.date ? formatDate(cost.date) : ""}{cost.notes && ` · ${cost.notes}`}</p>
               </div>
               <p className="text-sm font-semibold tabular-nums shrink-0 me-2">{formatCurrency(cost.amount)}</p>
               <div className="flex gap-1 shrink-0">

@@ -1,12 +1,14 @@
 {
   "nav": {
     "dashboard": "Dashboard",
+    "property": "Property",
     "expenses": "Expenses",
     "repairs": "Repairs",
     "upgrades": "Upgrades",
     "loans": "Loans",
-    "wishlist": "Wishlist",
     "purchaseCosts": "Purchase Costs",
+    "wishlist": "Wishlist",
+    "inventory": "Inventory",
     "calendar": "Calendar",
     "settings": "Settings",
     "portfolio": "Portfolio"
@@ -87,9 +89,14 @@
   "categories": {
     "Mortgage": "Mortgage",
     "Utility": "Utility",
+    "Utilities": "Utilities",
+    "Management": "Management",
+    "Renovation": "Renovation",
     "Insurance": "Insurance",
     "Tax": "Tax",
     "Maintenance": "Maintenance",
+    "Agency": "Agency",
+    "Legal": "Legal",
     "Lawyer": "Lawyer",
     "Moving": "Moving",
     "Inspection": "Inspection",
@@ -99,13 +106,21 @@
   "frequency": {
     "Monthly": "Monthly",
     "Quarterly": "Quarterly",
-    "Annual": "Annual"
+    "Annual": "Annual",
+    "monthly": "Monthly",
+    "quarterly": "Quarterly",
+    "yearly": "Yearly"
   },
   "loanType": {
     "Bank": "Bank",
     "Family": "Family",
     "Friend": "Friend",
-    "Other": "Other"
+    "Other": "Other",
+    "mortgage": "Mortgage",
+    "heloc": "HELOC",
+    "personal": "Personal",
+    "construction": "Construction",
+    "other": "Other"
   },
   "phases": {
     "Assessment": "Assessment",
@@ -122,14 +137,26 @@
     "Low": "Low",
     "Medium": "Medium",
     "High": "High",
-    "Critical": "Critical"
+    "Critical": "Critical",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "urgent": "Urgent"
   },
   "status": {
     "Pending": "Pending",
     "In Progress": "In Progress",
     "Resolved": "Resolved",
     "Planned": "Planned",
-    "Done": "Done"
+    "Done": "Done",
+    "open": "Open",
+    "in_progress": "In Progress",
+    "waiting_for_parts": "Waiting for Parts",
+    "waiting_for_contractor": "Waiting for Contractor",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "idea": "Idea",
+    "planning": "Planning"
   },
   "search": {
     "dialogTitle": "Global Search",
@@ -533,7 +560,10 @@
       "Repair": "Repair",
       "Upgrade": "Upgrade",
       "Loan": "Loan",
-      "Other": "Other"
+      "Other": "Other",
+      "Payment": "Payment",
+      "Maintenance": "Maintenance",
+      "Renovation": "Renovation"
     }
   },
   "dashboard": {

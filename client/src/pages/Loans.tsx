@@ -33,11 +33,11 @@ export default function Loans() {
 
   const [formData, setFormData] = useState({
     lender: "",
-    totalAmount: "",
-    loanType: "Bank",
+    originalAmount: "",
+    loanType: "mortgage",
     interestRate: "",
     startDate: new Date().toISOString().split("T")[0],
-    dueDate: "",
+    endDate: "",
     notes: "",
   });
 
@@ -101,11 +101,11 @@ export default function Loans() {
   const resetForm = () => {
     setFormData({
       lender: "",
-      totalAmount: "",
-      loanType: "Bank",
+      originalAmount: "",
+      loanType: "mortgage",
       interestRate: "",
       startDate: new Date().toISOString().split("T")[0],
-      dueDate: "",
+      endDate: "",
       notes: "",
     });
     setSelectedLoan(null);
@@ -114,12 +114,12 @@ export default function Loans() {
   const handleEdit = (loan: any) => {
     setSelectedLoan(loan);
     setFormData({
-      lender: loan.lender,
-      totalAmount: (loan.totalAmount / 100).toString(),
-      loanType: loan.loanType,
+      lender: loan.lender ?? "",
+      originalAmount: (loan.originalAmount / 100).toString(),
+      loanType: loan.loanType ?? "mortgage",
       interestRate: loan.interestRate || "",
-      startDate: loan.startDate,
-      dueDate: loan.dueDate || "",
+      startDate: loan.startDate ?? "",
+      endDate: loan.endDate || "",
       notes: loan.notes || "",
     });
     setIsEditDialogOpen(true);
@@ -133,7 +133,7 @@ export default function Loans() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const amountInCents = Math.round(parseFloat(formData.totalAmount) * 100);
+    const amountInCents = Math.round(parseFloat(formData.originalAmount) * 100);
 
     if (isNaN(amountInCents) || amountInCents <= 0) {
       toast.error(t("common.validAmount"));
@@ -142,8 +142,8 @@ export default function Loans() {
 
     const payload = {
       ...formData,
-      loanType: formData.loanType as "Family" | "Bank" | "Friend" | "Other",
-      totalAmount: amountInCents,
+      loanType: formData.loanType as "mortgage" | "heloc" | "personal" | "construction" | "other",
+      originalAmount: amountInCents,
     };
     if (selectedLoan) {
       updateMutation.mutate({
@@ -180,11 +180,11 @@ export default function Loans() {
       const repayments = l.repayments as any[] || [];
       const repaid = repayments.reduce((s: number, r: any) => s + r.amount, 0);
       return [
-        l.lender, l.loanType,
-        (l.totalAmount / 100).toFixed(2),
+        l.lender ?? "", l.loanType ?? "",
+        ((l.originalAmount ?? 0) / 100).toFixed(2),
         (repaid / 100).toFixed(2),
-        ((l.totalAmount - repaid) / 100).toFixed(2),
-        l.interestRate || "", l.startDate, l.dueDate || "", l.notes || "",
+        (((l.originalAmount ?? 0) - repaid) / 100).toFixed(2),
+        l.interestRate || "", l.startDate ?? "", l.endDate || "", l.notes || "",
       ];
     });
     const csv = [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -203,7 +203,7 @@ export default function Loans() {
     );
   }
 
-  const totalBorrowed = loans?.reduce((sum, loan) => sum + loan.totalAmount, 0) || 0;
+  const totalBorrowed = loans?.reduce((sum, loan) => sum + loan.originalAmount, 0) || 0;
   const totalRepaid = loans?.reduce((sum, loan) => {
     const repayments = loan.repayments as any[] || [];
     return sum + repayments.reduce((rSum, r) => rSum + r.amount, 0);
@@ -224,14 +224,14 @@ export default function Loans() {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="totalAmount">{t("loans.totalAmount")}</Label>
+          <Label htmlFor="originalAmount">{t("loans.totalAmount")}</Label>
           <Input
-            id="totalAmount"
+            id="originalAmount"
             type="number"
             step="0.01"
             required
-            value={formData.totalAmount}
-            onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
+            value={formData.originalAmount}
+            onChange={(e) => setFormData({ ...formData, originalAmount: e.target.value })}
             placeholder="0.00"
           />
         </div>
@@ -245,10 +245,11 @@ export default function Loans() {
               <SelectValue placeholder={t("common.select") + " " + t("common.type")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Bank">{t("loanType.Bank")}</SelectItem>
-              <SelectItem value="Family">{t("loanType.Family")}</SelectItem>
-              <SelectItem value="Friend">{t("loanType.Friend")}</SelectItem>
-              <SelectItem value="Other">{t("loanType.Other")}</SelectItem>
+              <SelectItem value="mortgage">{t("loanType.mortgage")}</SelectItem>
+              <SelectItem value="heloc">{t("loanType.heloc")}</SelectItem>
+              <SelectItem value="personal">{t("loanType.personal")}</SelectItem>
+              <SelectItem value="construction">{t("loanType.construction")}</SelectItem>
+              <SelectItem value="other">{t("loanType.other")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -259,18 +260,17 @@ export default function Loans() {
           <Input
             id="startDate"
             type="date"
-            required
             value={formData.startDate}
             onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="dueDate">{t("common.dueDate")} ({t("common.optional")})</Label>
+          <Label htmlFor="endDate">{t("common.dueDate")} ({t("common.optional")})</Label>
           <Input
-            id="dueDate"
+            id="endDate"
             type="date"
-            value={formData.dueDate}
-            onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+            value={formData.endDate}
+            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
           />
         </div>
       </div>
@@ -351,8 +351,8 @@ export default function Loans() {
           {loans?.map((loan) => {
             const repayments = loan.repayments as any[] || [];
             const repaidAmount = repayments.reduce((sum, r) => sum + r.amount, 0);
-            const progress = loan.totalAmount > 0 ? Math.min(100, (repaidAmount / loan.totalAmount) * 100) : 0;
-            const isFullyPaid = repaidAmount >= loan.totalAmount;
+            const progress = loan.originalAmount > 0 ? Math.min(100, (repaidAmount / loan.originalAmount) * 100) : 0;
+            const isFullyPaid = repaidAmount >= loan.originalAmount;
 
             return (
               <div key={loan.id} className="px-4 py-4 hover:bg-muted/30 transition-colors">
@@ -365,7 +365,7 @@ export default function Loans() {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatDate(loan.startDate)}{loan.dueDate && ` → ${formatDate(loan.dueDate)}`}
+                      {loan.startDate ? formatDate(loan.startDate) : ""}{loan.endDate ? ` → ${formatDate(loan.endDate)}` : ""}
                       {loan.interestRate && ` · ${loan.interestRate}% ${t("loans.interest")}`}
                     </p>
                   </div>
@@ -379,7 +379,7 @@ export default function Loans() {
                 </div>
                 <div className="mt-3 space-y-1.5">
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{t("loans.repaid")}: {formatCurrency(repaidAmount)} {t("loans.of")} {formatCurrency(loan.totalAmount)}</span>
+                    <span>{t("loans.repaid")}: {formatCurrency(repaidAmount)} {t("loans.of")} {formatCurrency(loan.originalAmount)}</span>
                     <span className="tabular-nums">{progress.toFixed(1)}%</span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-border overflow-hidden"><div className={`h-full transition-all ${isFullyPaid?"bg-green-500":"bg-foreground/70"}`} style={{width:`${progress}%`}} /></div>

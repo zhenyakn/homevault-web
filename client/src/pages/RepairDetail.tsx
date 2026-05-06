@@ -15,45 +15,35 @@ import { FileUpload } from "@/components/FileUpload";
 
 // ── Types & constants ─────────────────────────────────────────────────────────
 
-type Phase = "Assessment" | "Quoting" | "Scheduled" | "In Progress" | "Resolved";
-type Priority = "Low" | "Medium" | "High" | "Critical";
+const STATUSES = ["open", "in_progress", "waiting_for_parts", "waiting_for_contractor", "completed"] as const;
+type RepairStatus = typeof STATUSES[number];
 
-const PHASES: Phase[] = ["Assessment", "Quoting", "Scheduled", "In Progress", "Resolved"];
-
-const PHASE_STATUS: Record<Phase, "Pending" | "In Progress" | "Resolved"> = {
-  Assessment:   "Pending",
-  Quoting:      "Pending",
-  Scheduled:    "In Progress",
-  "In Progress":"In Progress",
-  Resolved:     "Resolved",
-};
-
-const PRIORITY_COLOR: Record<Priority, string> = {
-  Low:      "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  Medium:   "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400",
-  High:     "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
-  Critical: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400",
+const PRIORITY_COLOR: Record<string, string> = {
+  low:    "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  medium: "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400",
+  high:   "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
+  urgent: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400",
 };
 
 const ils = (n: number) => Math.round(n * 100);
 
-// ── Phase stepper ─────────────────────────────────────────────────────────────
+// ── Status stepper ────────────────────────────────────────────────────────────
 
-function PhaseStepper({ phase, onChange, loading }: {
-  phase: Phase; onChange: (p: Phase) => void; loading: boolean;
+function StatusStepper({ status, onChange, loading }: {
+  status: string; onChange: (s: RepairStatus) => void; loading: boolean;
 }) {
   const { t } = useTranslation();
-  const currentIdx = PHASES.indexOf(phase);
+  const currentIdx = STATUSES.indexOf(status as RepairStatus);
   return (
-    <div className="flex items-center gap-0">
-      {PHASES.map((p, i) => {
-        const done    = i < currentIdx;
-        const active  = i === currentIdx;
-        const isLast  = i === PHASES.length - 1;
+    <div className="flex items-center gap-0 flex-wrap gap-y-2">
+      {STATUSES.map((s, i) => {
+        const done   = i < currentIdx;
+        const active = s === status;
+        const isLast = i === STATUSES.length - 1;
         return (
-          <div key={p} className="flex items-center">
+          <div key={s} className="flex items-center">
             <button
-              onClick={() => !loading && onChange(p)}
+              onClick={() => !loading && onChange(s)}
               disabled={loading}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border",
@@ -64,7 +54,7 @@ function PhaseStepper({ phase, onChange, loading }: {
               )}
             >
               {done && <Check className="h-3 w-3" />}
-              {t(`phases.${p}`)}
+              {t(`status.${s}`, { defaultValue: s })}
             </button>
             {!isLast && (
               <div className={cn("h-px w-4 shrink-0", i < currentIdx ? "bg-indigo-200 dark:bg-indigo-900/50" : "bg-border")} />
@@ -364,26 +354,26 @@ function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpe
   const updateMut = trpc.repairs.update.useMutation({
     onSuccess: () => { utils.repairs.list.invalidate(); onOpenChange(false); toast.success("Updated"); },
   });
-  const [f, setF] = useState({ label: "", description: "", priority: "Medium", estimatedCost: "", notes: "" });
+  const [f, setF] = useState({ title: "", description: "", priority: "medium", cost: "", notes: "" });
 
   useEffect(() => {
     if (open && repair) setF({
-      label: repair.label ?? "",
+      title: repair.title ?? "",
       description: repair.description ?? "",
-      priority: repair.priority ?? "Medium",
-      estimatedCost: repair.estimatedCost ? String(repair.estimatedCost / 100) : "",
+      priority: repair.priority ?? "medium",
+      cost: repair.cost ? String(repair.cost / 100) : "",
       notes: repair.notes ?? "",
     });
   }, [open, repair?.id]);
 
   const save = async () => {
-    if (!f.label.trim()) { toast.error("Label required"); return; }
+    if (!f.title.trim()) { toast.error("Title required"); return; }
     try {
       await updateMut.mutateAsync({ id: repair.id, data: {
-        label: f.label.trim(),
+        title: f.title.trim(),
         description: f.description || undefined,
-        priority: f.priority as Priority,
-        estimatedCost: f.estimatedCost ? ils(parseFloat(f.estimatedCost)) : undefined,
+        priority: f.priority as any,
+        cost: f.cost ? ils(parseFloat(f.cost)) : undefined,
         notes: f.notes || undefined,
       }});
     } catch { toast.error("Failed to save"); }
@@ -396,7 +386,7 @@ function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpe
         <div className="space-y-3 pt-1">
           <div className="space-y-1.5">
             <Label>{t("repairs.description")} *</Label>
-            <Input value={f.label} onChange={e => setF(p => ({ ...p, label: e.target.value }))} />
+            <Input value={f.title} onChange={e => setF(p => ({ ...p, title: e.target.value }))} />
           </div>
           <div className="space-y-1.5">
             <Label>{t("repairs.details")}</Label>
@@ -406,12 +396,12 @@ function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpe
             <div className="space-y-1.5">
               <Label>{t("common.priority")}</Label>
               <select className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background" value={f.priority} onChange={e => setF(p => ({ ...p, priority: e.target.value }))}>
-                {["Low","Medium","High","Critical"].map(v => <option key={v}>{v}</option>)}
+                {["urgent","high","medium","low"].map(v => <option key={v} value={v}>{t(`priority.${v}`)}</option>)}
               </select>
             </div>
             <div className="space-y-1.5">
               <Label>{t("upgradeDetail.estCost")}</Label>
-              <Input type="number" min="0" value={f.estimatedCost} onChange={e => setF(p => ({ ...p, estimatedCost: e.target.value }))} placeholder="0" />
+              <Input type="number" min="0" value={f.cost} onChange={e => setF(p => ({ ...p, cost: e.target.value }))} placeholder="0" />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -452,18 +442,18 @@ export default function RepairDetail() {
     onSuccess: () => utils.repairs.list.invalidate(),
   });
 
-  const [quoteOpen, setQuoteOpen]   = useState(false);
-  const [editQuote, setEditQuote]   = useState<any>(null);
-  const [editOpen, setEditOpen]     = useState(false);
-  const [phaseLoading, setPhaseLoading] = useState(false);
+  const [quoteOpen, setQuoteOpen]     = useState(false);
+  const [editQuote, setEditQuote]     = useState<any>(null);
+  const [editOpen, setEditOpen]       = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
 
-  const handlePhaseChange = async (phase: Phase) => {
-    if (!repair || phase === repair.phase) return;
-    setPhaseLoading(true);
+  const handleStatusChange = async (status: RepairStatus) => {
+    if (!repair || status === repair.status) return;
+    setStatusLoading(true);
     try {
-      await updateMut.mutateAsync({ id: repair.id, data: { phase, status: PHASE_STATUS[phase] } });
-    } catch { toast.error("Failed to update phase"); }
-    finally { setPhaseLoading(false); }
+      await updateMut.mutateAsync({ id: repair.id, data: { status } });
+    } catch { toast.error("Failed to update status"); }
+    finally { setStatusLoading(false); }
   };
 
   if (isLoading) return (
@@ -479,7 +469,7 @@ export default function RepairDetail() {
     </div>
   );
 
-  const selectedQuote = quotes.find((q: any) => q.isSelected);
+  const selectedQuote = quotes.find((q: any) => q.selected);
   // Normalize: MariaDB may return JSON columns as strings instead of parsed arrays
   const totalPaid = asArray(selectedQuote?.payments).reduce((s: number, p: any) => s + p.amount, 0);
 
@@ -497,20 +487,17 @@ export default function RepairDetail() {
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap mb-1">
-              <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border", PRIORITY_COLOR[repair.priority as Priority])}>
+              <span className={cn("text-[11px] font-semibold px-2 py-0.5 rounded-full border", PRIORITY_COLOR[repair.priority as string] ?? PRIORITY_COLOR.medium)}>
                 {t(`priority.${repair.priority}`)}
               </span>
-              <span className="text-xs text-muted-foreground">{t("repairs.dateLogged")} {formatDate(repair.dateLogged)}</span>
-              {repair.estimatedCost && (
-                <span className="text-xs text-muted-foreground">{t("repairs.estCost")} {formatCurrency(repair.estimatedCost, "ILS")}</span>
-              )}
+              <span className="text-xs text-muted-foreground">{t("repairs.dateLogged")} {formatDate(repair.reportedDate ?? "")}</span>
               {totalPaid > 0 && (
                 <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
                   {formatCurrency(totalPaid, "ILS")} {t("repairs.paidCost")}
                 </span>
               )}
             </div>
-            <h1 className="text-xl font-bold tracking-tight">{repair.label}</h1>
+            <h1 className="text-xl font-bold tracking-tight">{repair.title}</h1>
             {repair.description && (
               <p className="text-sm text-muted-foreground mt-1">{repair.description}</p>
             )}
@@ -521,11 +508,11 @@ export default function RepairDetail() {
         </div>
       </div>
 
-      {/* Phase stepper */}
+      {/* Status stepper */}
       <div className="border border-border rounded-lg p-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-3">Progress</p>
         <div className="overflow-x-auto pb-1">
-          <PhaseStepper phase={(repair.phase as Phase) ?? "Assessment"} onChange={handlePhaseChange} loading={phaseLoading} />
+          <StatusStepper status={(repair as any).status ?? "open"} onChange={handleStatusChange} loading={statusLoading} />
         </div>
       </div>
 

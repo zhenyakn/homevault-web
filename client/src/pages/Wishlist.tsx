@@ -12,14 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 
-type Priority = "Low" | "Medium" | "High";
+type Priority = "low" | "medium" | "high";
 
 interface WishlistItem {
   id: string;
-  label: string;
-  description?: string | null;
-  estimatedCost: number;
-  priority: Priority;
+  name: string;
+  notes?: string | null;
+  estimatedPrice: number | null;
+  priority: string | null;
   [key: string]: any;
 }
 
@@ -28,10 +28,10 @@ export default function Wishlist() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    label: "",
-    description: "",
-    estimatedCost: "",
-    priority: "Medium" as Priority,
+    name: "",
+    notes: "",
+    estimatedPrice: "",
+    priority: "medium" as Priority,
   });
 
   const utils = trpc.useUtils();
@@ -72,21 +72,21 @@ export default function Wishlist() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.label) {
+    if (!formData.name) {
       toast.error(t("wishlist.labelRequired"));
       return;
     }
 
-    const estimatedCostCents = Math.round(parseFloat(formData.estimatedCost) * 100);
-    if (isNaN(estimatedCostCents)) {
+    const estimatedPriceCents = Math.round(parseFloat(formData.estimatedPrice) * 100);
+    if (isNaN(estimatedPriceCents)) {
       toast.error(t("wishlist.validCostRequired"));
       return;
     }
 
     const data = {
-      label: formData.label,
-      description: formData.description || undefined,
-      estimatedCost: estimatedCostCents,
+      name: formData.name,
+      notes: formData.notes || undefined,
+      estimatedPrice: estimatedPriceCents,
       priority: formData.priority,
     };
 
@@ -99,10 +99,10 @@ export default function Wishlist() {
 
   const handleEdit = (item: WishlistItem) => {
     setFormData({
-      label: item.label,
-      description: item.description || "",
-      estimatedCost: (item.estimatedCost / 100).toString(),
-      priority: item.priority,
+      name: item.name,
+      notes: item.notes || "",
+      estimatedPrice: ((item.estimatedPrice ?? 0) / 100).toString(),
+      priority: (item.priority as Priority) || "medium",
     });
     setEditingId(item.id);
     setIsDialogOpen(true);
@@ -118,25 +118,25 @@ export default function Wishlist() {
     setIsDialogOpen(false);
     setEditingId(null);
     setFormData({
-      label: "",
-      description: "",
-      estimatedCost: "",
-      priority: "Medium",
+      name: "",
+      notes: "",
+      estimatedPrice: "",
+      priority: "medium",
     });
   };
 
-  const priorityWeight = { High: 3, Medium: 2, Low: 1 };
-  const sortedItems = [...items].sort((a, b) => priorityWeight[b.priority] - priorityWeight[a.priority]);
+  const priorityWeight: Record<string, number> = { high: 3, medium: 2, low: 1 };
+  const sortedItems = [...items].sort((a, b) => (priorityWeight[b.priority ?? "low"] ?? 0) - (priorityWeight[a.priority ?? "low"] ?? 0));
 
   const totalItems = items.length;
-  const totalEstimatedCost = items.reduce((sum, item) => sum + item.estimatedCost, 0);
-  const highPriorityCount = items.filter(item => item.priority === "High").length;
+  const totalEstimatedCost = items.reduce((sum, item) => sum + (item.estimatedPrice ?? 0), 0);
+  const highPriorityCount = items.filter(item => item.priority === "high").length;
 
-  const getPriorityColor = (priority: Priority) => {
+  const getPriorityColor = (priority: string | null) => {
     switch (priority) {
-      case "High": return "bg-orange-500 hover:bg-orange-600 text-white";
-      case "Medium": return "bg-yellow-500 hover:bg-yellow-600 text-white";
-      case "Low": return "bg-slate-500 hover:bg-slate-600 text-white";
+      case "high": return "bg-orange-500 hover:bg-orange-600 text-white";
+      case "medium": return "bg-yellow-500 hover:bg-yellow-600 text-white";
+      case "low": return "bg-slate-500 hover:bg-slate-600 text-white";
       default: return "bg-slate-500 hover:bg-slate-600 text-white";
     }
   };
@@ -145,7 +145,7 @@ export default function Wishlist() {
     if (!items || items.length === 0) { toast.error(t("wishlist.nothingToExport")); return; }
     const headers = ["Label", "Priority", "Estimated Cost", "Description"];
     const rows = sortedItems.map((i: any) => [
-      i.label, i.priority, (i.estimatedCost / 100).toFixed(2), i.description || "",
+      i.name, i.priority, ((i.estimatedPrice ?? 0) / 100).toFixed(2), i.notes || "",
     ]);
     const csv = [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -184,33 +184,33 @@ export default function Wishlist() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="label">{t("common.label")}</Label>
+                <Label htmlFor="name">{t("common.label")}</Label>
                 <Input
-                  id="label"
-                  value={formData.label}
-                  onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder={t("wishlist.placeholderLabel")}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">{t("common.description")} ({t("common.optional")})</Label>
+                <Label htmlFor="notes">{t("common.description")} ({t("common.optional")})</Label>
                 <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder={t("wishlist.placeholderDesc")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="estimatedCost">{t("wishlist.estimatedCost")}</Label>
+                <Label htmlFor="estimatedPrice">{t("wishlist.estimatedCost")}</Label>
                 <Input
-                  id="estimatedCost"
+                  id="estimatedPrice"
                   type="number"
                   step="0.01"
                   min="0"
-                  value={formData.estimatedCost}
-                  onChange={(e) => setFormData({ ...formData, estimatedCost: e.target.value })}
+                  value={formData.estimatedPrice}
+                  onChange={(e) => setFormData({ ...formData, estimatedPrice: e.target.value })}
                   placeholder="0.00"
                   required
                 />
@@ -225,9 +225,9 @@ export default function Wishlist() {
                     <SelectValue placeholder={t("common.select") + " " + t("common.priority")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Low">{t("priority.Low")}</SelectItem>
-                    <SelectItem value="Medium">{t("priority.Medium")}</SelectItem>
-                    <SelectItem value="High">{t("priority.High")}</SelectItem>
+                    <SelectItem value="low">{t("priority.low")}</SelectItem>
+                    <SelectItem value="medium">{t("priority.medium")}</SelectItem>
+                    <SelectItem value="high">{t("priority.high")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -264,12 +264,12 @@ export default function Wishlist() {
             <div key={item.id} className="flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{item.label}</p>
+                  <p className="text-sm font-medium">{item.name}</p>
                   <Badge className={`text-xs h-5 border-0 ${getPriorityColor(item.priority)}`}>{t(`priority.${item.priority}`)}</Badge>
                 </div>
-                {item.description && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>}
+                {item.notes && <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.notes}</p>}
               </div>
-              <p className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(item.estimatedCost)}</p>
+              <p className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(item.estimatedPrice ?? 0)}</p>
               <div className="flex gap-1 shrink-0">
                 <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleEdit(item)}><Pencil className="h-3.5 w-3.5" /></Button>
                 <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(item.id)}><Trash2 className="h-3.5 w-3.5" /></Button>

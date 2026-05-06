@@ -22,7 +22,7 @@ export const searchRouter = router({
     .query(async ({ ctx, input }) => {
       const { query, propertyId } = input;
       const userId = ctx.user.id;
-      const db = await getDb();
+      const db = (await getDb())!;
       const pattern = `%${query}%`;
 
       const scopeFilter = (table: { ownerId: any; propertyId: any }) =>
@@ -39,19 +39,19 @@ export const searchRouter = router({
         db
           .select({
             id: expenses.id,
-            label: expenses.label,
+            label: expenses.name,
             category: expenses.category,
             amount: expenses.amount,
             date: expenses.date,
           })
           .from(expenses)
-          .where(and(scopeFilter(expenses), like(expenses.label, pattern)))
+          .where(and(scopeFilter(expenses), like(expenses.name, pattern)))
           .limit(5),
 
         db
           .select({
             id: repairs.id,
-            label: repairs.label,
+            label: repairs.title,
             status: repairs.status,
             priority: repairs.priority,
           })
@@ -60,7 +60,7 @@ export const searchRouter = router({
             and(
               scopeFilter(repairs),
               or(
-                like(repairs.label, pattern),
+                like(repairs.title, pattern),
                 like(repairs.description, pattern)
               )
             )
@@ -70,11 +70,11 @@ export const searchRouter = router({
         db
           .select({
             id: upgrades.id,
-            label: upgrades.label,
+            label: upgrades.title,
             status: upgrades.status,
           })
           .from(upgrades)
-          .where(and(scopeFilter(upgrades), like(upgrades.label, pattern)))
+          .where(and(scopeFilter(upgrades), like(upgrades.title, pattern)))
           .limit(5),
 
         db
@@ -82,7 +82,7 @@ export const searchRouter = router({
             id: loans.id,
             label: loans.lender,
             loanType: loans.loanType,
-            totalAmount: loans.totalAmount,
+            totalAmount: loans.originalAmount,
           })
           .from(loans)
           .where(and(scopeFilter(loans), like(loans.lender, pattern)))
@@ -91,26 +91,26 @@ export const searchRouter = router({
         db
           .select({
             id: wishlistItems.id,
-            label: wishlistItems.label,
+            label: wishlistItems.name,
             priority: wishlistItems.priority,
-            estimatedCost: wishlistItems.estimatedCost,
+            estimatedCost: wishlistItems.estimatedPrice,
           })
           .from(wishlistItems)
           .where(
-            and(scopeFilter(wishlistItems), like(wishlistItems.label, pattern))
+            and(scopeFilter(wishlistItems), like(wishlistItems.name, pattern))
           )
           .limit(5),
 
         db
           .select({
             id: purchaseCosts.id,
-            label: purchaseCosts.label,
+            label: purchaseCosts.name,
             amount: purchaseCosts.amount,
             date: purchaseCosts.date,
           })
           .from(purchaseCosts)
           .where(
-            and(scopeFilter(purchaseCosts), like(purchaseCosts.label, pattern))
+            and(scopeFilter(purchaseCosts), like(purchaseCosts.name, pattern))
           )
           .limit(5),
       ]);

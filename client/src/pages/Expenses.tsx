@@ -14,24 +14,25 @@ import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
 import { cn } from "@/lib/utils";
 
-const CATEGORIES = ["Mortgage", "Utility", "Insurance", "Tax", "Maintenance", "Other"] as const;
-const FREQUENCIES = ["Monthly", "Quarterly", "Annual"] as const;
+const CATEGORIES = ["Maintenance", "Utilities", "Insurance", "Tax", "Management", "Renovation", "Other"] as const;
+const FREQUENCIES = ["monthly", "quarterly", "yearly"] as const;
 
 const CAT_COLOR: Record<string, string> = {
-  Mortgage: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-  Utility: "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400",
-  Insurance: "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400",
-  Tax: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
-  Maintenance: "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
-  Other: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  Maintenance:  "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
+  Utilities:    "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400",
+  Insurance:    "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400",
+  Tax:          "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+  Management:   "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+  Renovation:   "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400",
+  Other:        "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
 };
 
 const emptyForm = () => ({
-  label: "", amount: "",
+  name: "", amount: "",
   date: new Date().toISOString().split("T")[0],
   category: "Maintenance" as typeof CATEGORIES[number],
   isRecurring: false,
-  recurringFrequency: "Monthly" as typeof FREQUENCIES[number],
+  recurringInterval: "monthly" as typeof FREQUENCIES[number],
   notes: "",
 });
 
@@ -53,13 +54,21 @@ export default function Expenses() {
 
   const handleEdit = (e: any) => {
     setEditingId(e.id);
-    setForm({ label: e.label, amount: String(e.amount / 100), date: e.date, category: e.category, isRecurring: e.isRecurring || false, recurringFrequency: e.recurringFrequency || "Monthly", notes: e.notes || "" });
+    setForm({
+      name: e.name,
+      amount: String(e.amount / 100),
+      date: e.date,
+      category: e.category,
+      isRecurring: e.isRecurring || false,
+      recurringInterval: e.recurringInterval || "monthly",
+      notes: e.notes || "",
+    });
     setAttachments((e.attachments || []).map((url: string) => ({ url, filename: url.split("/").pop() || "file", mimeType: "application/octet-stream", size: 0 })));
     setOpen(true);
   };
 
   const handleSubmit = async () => {
-    if (!form.label || !form.amount) { toast.error(t("common.description") + " and " + t("common.amount") + " are required"); return; }
+    if (!form.name || !form.amount) { toast.error(t("common.description") + " and " + t("common.amount") + " are required"); return; }
     try {
       const payload = { ...form, amount: Math.round(parseFloat(form.amount) * 100), attachments: attachments.map(a => a.url) };
       if (editingId) { await updateMutation.mutateAsync({ id: editingId, data: payload }); toast.success(t("expenses.editExpense")); }
@@ -81,12 +90,18 @@ export default function Expenses() {
 
   const filtered = useMemo(() => {
     if (!expenses) return [];
-    return categoryFilter === "all" ? expenses : expenses.filter((e: any) => e.category === categoryFilter);
+    const base = categoryFilter === "all" ? expenses : expenses.filter((e: any) => e.category === categoryFilter);
+    return [...base].sort((a: any, b: any) => {
+      const aPaid = !!a.isPaid;
+      const bPaid = !!b.isPaid;
+      if (aPaid === bPaid) return new Date(b.date).getTime() - new Date(a.date).getTime();
+      return aPaid ? 1 : -1;
+    });
   }, [expenses, categoryFilter]);
 
   const handleExportCSV = () => {
     if (!filtered.length) { toast.error(t("expenses.nothingToExport")); return; }
-    const rows = filtered.map((e: any) => [e.label, (e.amount/100).toFixed(2), e.date, e.category, e.isRecurring?"Yes":"No", e.recurringFrequency||"", e.isPaid?"Yes":"No", e.notes||""]);
+    const rows = filtered.map((e: any) => [e.name, (e.amount/100).toFixed(2), e.date, e.category, e.isRecurring?"Yes":"No", e.recurringInterval||"", e.isPaid?"Yes":"No", e.notes||""]);
     const csv = [["Description","Amount","Date","Category","Recurring","Frequency","Paid","Notes"], ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type:"text/csv" }));
     a.download = `expenses_${new Date().toISOString().split("T")[0]}.csv`; a.click();
@@ -118,7 +133,7 @@ export default function Expenses() {
               <div className="space-y-3 pt-1">
                 <div className="space-y-1.5">
                   <Label htmlFor="ex-label">{t("common.description")}</Label>
-                  <Input id="ex-label" value={form.label} onChange={e => setForm({...form, label: e.target.value})} placeholder={t("expenses.placeholderLabel")} />
+                  <Input id="ex-label" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder={t("expenses.placeholderLabel")} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -144,7 +159,7 @@ export default function Expenses() {
                 {form.isRecurring && (
                   <div className="space-y-1.5">
                     <Label>{t("common.frequency")}</Label>
-                    <Select value={form.recurringFrequency} onValueChange={(v: any) => setForm({...form, recurringFrequency: v})}>
+                    <Select value={form.recurringInterval} onValueChange={(v: any) => setForm({...form, recurringInterval: v})}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{FREQUENCIES.map(f => <SelectItem key={f} value={f}>{t(`frequency.${f}`)}</SelectItem>)}</SelectContent>
                     </Select>
@@ -168,10 +183,10 @@ export default function Expenses() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 border border-border rounded-lg divide-y md:divide-y-0 md:divide-x divide-border overflow-hidden">
         {[
-          { label: t("expenses.total"),          value: formatCurrency(total) },
+          { label: t("expenses.total"),            value: formatCurrency(total) },
           { label: t("expenses.recurringPerMonth"), value: formatCurrency(monthly) },
-          { label: t("common.entries"),          value: String(filtered.length) },
-          { label: t("expenses.paid"),           value: `${paidCount} / ${filtered.length}` },
+          { label: t("common.entries"),            value: String(filtered.length) },
+          { label: t("expenses.paid"),             value: `${paidCount} / ${filtered.length}` },
         ].map(({ label, value }) => (
           <div key={label} className="px-4 py-3.5">
             <p className="text-xs text-muted-foreground">{label}</p>
@@ -205,43 +220,60 @@ export default function Expenses() {
         </div>
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
-          {filtered.map((expense: any) => (
-            <div key={expense.id} className="flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-medium">{expense.label}</p>
-                  <Badge className={cn("text-xs h-5 border-0", CAT_COLOR[expense.category] ?? CAT_COLOR.Other)}>
-                    {t(`categories.${expense.category}`, { defaultValue: expense.category })}
-                  </Badge>
-                  {expense.isRecurring && (
-                    <span className="text-xs text-muted-foreground">{t(`frequency.${expense.recurringFrequency}`, { defaultValue: expense.recurringFrequency })}</span>
-                  )}
+          {filtered.map((expense: any, idx: number) => {
+            const isPaid = !!expense.isPaid;
+            const prevPaid = idx > 0 && !!(filtered[idx - 1] as any).isPaid;
+            const showDivider = isPaid && !prevPaid && filtered.some((e: any) => !e.isPaid);
+            return (
+              <div key={expense.id}>
+                {showDivider && (
+                  <div className="flex items-center gap-3 px-4 py-2 bg-muted/20">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">{t("expenses.paid")}</span>
+                    <div className="h-px flex-1 bg-border" />
+                  </div>
+                )}
+                <div className={cn(
+                  "flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors",
+                  isPaid && "opacity-60",
+                )}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className={cn("text-sm font-medium", isPaid && "text-muted-foreground")}>{expense.name}</p>
+                      <Badge className={cn("text-xs h-5 border-0", CAT_COLOR[expense.category] ?? CAT_COLOR.Other)}>
+                        {t(`categories.${expense.category}`, { defaultValue: expense.category })}
+                      </Badge>
+                      {expense.isRecurring && (
+                        <span className="text-xs text-muted-foreground">{t(`frequency.${expense.recurringInterval}`, { defaultValue: expense.recurringInterval })}</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{formatDate(expense.date)}{expense.notes && ` · ${expense.notes}`}</p>
+                  </div>
+                  <div className="shrink-0 text-end me-2">
+                    <p className={cn("text-sm font-semibold tabular-nums", isPaid && "text-muted-foreground")}>{formatCurrency(expense.amount)}</p>
+                    {isPaid && (
+                      <p className="text-xs text-green-600 dark:text-green-400 flex items-center justify-end gap-1 mt-0.5">
+                        <Check className="h-3 w-3" />{t("expenses.paid")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    {!isPaid && (
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title={t("expenses.markPaid")} onClick={() => handleMarkPaid(expense.id)}>
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleEdit(expense)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(expense.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{formatDate(expense.date)}{expense.notes && ` · ${expense.notes}`}</p>
               </div>
-              <div className="shrink-0 text-end me-2">
-                <p className="text-sm font-semibold tabular-nums">{formatCurrency(expense.amount)}</p>
-                {expense.isPaid && (
-                  <p className="text-xs text-green-600 dark:text-green-400 flex items-center justify-end gap-1 mt-0.5">
-                    <Check className="h-3 w-3" />{t("expenses.paid")}
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-1 shrink-0">
-                {!expense.isPaid && (
-                  <Button size="sm" variant="outline" className="h-7 w-7 p-0" title={t("expenses.markPaid")} onClick={() => handleMarkPaid(expense.id)}>
-                    <Check className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleEdit(expense)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(expense.id)}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

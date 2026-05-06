@@ -18,32 +18,32 @@ import { toast } from "sonner";
 
 // ─── Types & constants ────────────────────────────────────────────────────────
 
-type Priority = "Low" | "Medium" | "High" | "Critical";
-type Phase = "Assessment" | "Quoting" | "Scheduled" | "In Progress" | "Resolved";
-
-const PRIORITY_ORDER: Record<Priority, number> = { Critical: 0, High: 1, Medium: 2, Low: 3 };
-const PHASE_ORDER: Record<Phase, number> = { "In Progress": 0, Scheduled: 1, Quoting: 2, Assessment: 3, Resolved: 4 };
-
-const PRIORITY_BADGE: Record<Priority, string> = {
-  Low:      "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  Medium:   "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400",
-  High:     "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
-  Critical: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
+const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+const STATUS_ORDER: Record<string, number> = {
+  "in_progress": 0, "waiting_for_parts": 1, "waiting_for_contractor": 2, "open": 3, "cancelled": 4,
 };
 
-const PHASE_BADGE: Record<Phase, string> = {
-  Assessment:  "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  Quoting:     "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  Scheduled:   "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-  "In Progress": "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400",
-  Resolved:    "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+const PRIORITY_BADGE: Record<string, string> = {
+  low:    "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  medium: "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400",
+  high:   "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
+  urgent: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
 };
 
-const PRIORITY_ACCENT: Record<Priority, string> = {
-  Low:      "ltr:border-l-zinc-300 rtl:border-r-zinc-300 dark:ltr:border-l-zinc-600 dark:rtl:border-r-zinc-600",
-  Medium:   "ltr:border-l-yellow-400 rtl:border-r-yellow-400",
-  High:     "ltr:border-l-orange-400 rtl:border-r-orange-400",
-  Critical: "ltr:border-l-red-500 rtl:border-r-red-500",
+const STATUS_BADGE: Record<string, string> = {
+  "open":                   "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  "in_progress":            "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400",
+  "waiting_for_parts":      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  "waiting_for_contractor": "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+  "completed":              "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+  "cancelled":              "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500",
+};
+
+const PRIORITY_ACCENT: Record<string, string> = {
+  low:    "ltr:border-l-zinc-300 rtl:border-r-zinc-300 dark:ltr:border-l-zinc-600 dark:rtl:border-r-zinc-600",
+  medium: "ltr:border-l-yellow-400 rtl:border-r-yellow-400",
+  high:   "ltr:border-l-orange-400 rtl:border-r-orange-400",
+  urgent: "ltr:border-l-red-500 rtl:border-r-red-500",
 };
 
 // ─── Add repair dialog ────────────────────────────────────────────────────────
@@ -61,10 +61,10 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
   });
 
   const blank = {
-    label: "",
+    title: "",
     description: "",
-    priority: "Medium" as Priority,
-    dateLogged: new Date().toISOString().split("T")[0],
+    priority: "medium",
+    reportedDate: new Date().toISOString().split("T")[0],
   };
   const [f, setF] = useState(blank);
 
@@ -73,13 +73,12 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate({
-      label: f.label,
+      title: f.title,
       description: f.description || undefined,
-      priority: f.priority,
-      status: "Pending",
-      phase: "Assessment",
-      dateLogged: f.dateLogged,
-    } as any);
+      priority: f.priority as any,
+      status: "open",
+      reportedDate: f.reportedDate,
+    });
   };
 
   return (
@@ -90,13 +89,13 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="label">{t("repairs.description")} *</Label>
+            <Label htmlFor="title">{t("repairs.description")} *</Label>
             <Input
-              id="label"
+              id="title"
               required
               placeholder={t("repairs.placeholderLabel")}
-              value={f.label}
-              onChange={e => setF({ ...f, label: e.target.value })}
+              value={f.title}
+              onChange={e => setF({ ...f, title: e.target.value })}
             />
           </div>
           <div className="space-y-2">
@@ -112,10 +111,10 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>{t("repairs.priority")} *</Label>
-              <Select value={f.priority} onValueChange={(v: any) => setF({ ...f, priority: v })}>
+              <Select value={f.priority} onValueChange={v => setF({ ...f, priority: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(["Critical", "High", "Medium", "Low"] as Priority[]).map(p => (
+                  {(["urgent", "high", "medium", "low"]).map(p => (
                     <SelectItem key={p} value={p}>{t(`priority.${p}`)}</SelectItem>
                   ))}
                 </SelectContent>
@@ -125,8 +124,8 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
               <Label>{t("repairs.dateLogged")}</Label>
               <Input
                 type="date"
-                value={f.dateLogged}
-                onChange={e => setF({ ...f, dateLogged: e.target.value })}
+                value={f.reportedDate}
+                onChange={e => setF({ ...f, reportedDate: e.target.value })}
               />
             </div>
           </div>
@@ -159,14 +158,14 @@ function RepairRow({
   onClick: () => void;
 }) {
   const { t } = useTranslation();
-  const phase: Phase = (repair.phase as Phase) || "Assessment";
-  const priority: Priority = (repair.priority as Priority) || "Medium";
+  const status = (repair.status as string) || "open";
+  const priority = (repair.priority as string) || "medium";
 
   return (
     <div
       className={cn(
         "flex items-start gap-4 ltr:pl-3 ltr:pr-4 rtl:pr-3 rtl:pl-4 py-3.5 ltr:border-l-2 rtl:border-r-2 hover:bg-muted/30 transition-colors cursor-pointer",
-        PRIORITY_ACCENT[priority],
+        PRIORITY_ACCENT[priority] ?? PRIORITY_ACCENT.medium,
         isDone && "opacity-70",
       )}
       onClick={onClick}
@@ -174,9 +173,13 @@ function RepairRow({
       <div className="flex-1 min-w-0">
         {/* Title row */}
         <div className="flex items-center gap-2 flex-wrap">
-          <p className={cn("text-sm font-medium", isDone && "text-muted-foreground")}>{repair.label}</p>
-          <Badge className={cn("text-xs h-5 border-0 shrink-0", PHASE_BADGE[phase])}>{t(`phases.${phase}`)}</Badge>
-          <Badge className={cn("text-xs h-5 border-0 shrink-0", PRIORITY_BADGE[priority])}>{t(`priority.${priority}`)}</Badge>
+          <p className={cn("text-sm font-medium", isDone && "text-muted-foreground")}>{repair.title}</p>
+          <Badge className={cn("text-xs h-5 border-0 shrink-0", STATUS_BADGE[status] ?? STATUS_BADGE.open)}>
+            {t(`status.${status}`, { defaultValue: status })}
+          </Badge>
+          <Badge className={cn("text-xs h-5 border-0 shrink-0", PRIORITY_BADGE[priority] ?? PRIORITY_BADGE.medium)}>
+            {t(`priority.${priority}`, { defaultValue: priority })}
+          </Badge>
         </div>
 
         {/* Description */}
@@ -186,7 +189,7 @@ function RepairRow({
 
         {/* Meta row */}
         <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-          <span className="text-xs text-muted-foreground">{formatDate(repair.dateLogged)}</span>
+          <span className="text-xs text-muted-foreground">{formatDate(repair.reportedDate)}</span>
           {repair.contractor && (
             <span className="text-xs text-muted-foreground">{repair.contractor}</span>
           )}
@@ -208,16 +211,12 @@ function RepairRow({
           )}
         </div>
 
-        {/* Cost summary if available */}
-        {!isDone && repair.estimatedCost != null && (
+        {/* Cost if available */}
+        {repair.cost != null && (
           <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-            {t("repairs.estCost")}: {formatCurrency(repair.estimatedCost)}
-            {repair.actualCost != null && ` · ${t("repairs.paidCost")}: ${formatCurrency(repair.actualCost)}`}
-          </p>
-        )}
-        {isDone && repair.actualCost != null && (
-          <p className="text-xs text-muted-foreground mt-1 tabular-nums">
-            {formatCurrency(repair.actualCost)} {t("repairs.totalCost")}
+            {isDone
+              ? `${formatCurrency(repair.cost)} ${t("repairs.totalCost")}`
+              : `${t("repairs.estCost")}: ${formatCurrency(repair.cost)}`}
           </p>
         )}
       </div>
@@ -286,12 +285,11 @@ export default function Repairs() {
 
   const handleExportCSV = () => {
     if (!repairs.length) { toast.error(t("repairs.nothingToExport")); return; }
-    const headers = ["Description", "Phase", "Priority", "Date", "Contractor", "Est Cost", "Actual Cost", "Notes"];
+    const headers = ["Description", "Status", "Priority", "Date", "Contractor", "Cost", "Notes"];
     const rows = (repairs as any[]).map(r => [
-      r.label, r.phase || "Assessment", r.priority, r.dateLogged,
+      r.title, r.status || "open", r.priority || "medium", r.reportedDate || "",
       r.contractor || "",
-      r.estimatedCost != null ? (r.estimatedCost / 100).toFixed(2) : "",
-      r.actualCost != null ? (r.actualCost / 100).toFixed(2) : "",
+      r.cost != null ? (r.cost / 100).toFixed(2) : "",
       r.notes || "",
     ]);
     const csv = [headers, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
@@ -310,21 +308,24 @@ export default function Repairs() {
   );
 
   // ── Sections ─────────────────────────────────────────────────────────────────
-  const open = (repairs as any[])
-    .filter(r => (r.phase || "Assessment") !== "Resolved")
+  const openRepairs = (repairs as any[])
+    .filter(r => r.status !== "completed" && r.status !== "cancelled")
     .sort((a, b) => {
-      const pA = PRIORITY_ORDER[(a.priority as Priority)] ?? 2;
-      const pB = PRIORITY_ORDER[(b.priority as Priority)] ?? 2;
+      const pA = PRIORITY_ORDER[a.priority] ?? 2;
+      const pB = PRIORITY_ORDER[b.priority] ?? 2;
       if (pA !== pB) return pA - pB;
-      return (PHASE_ORDER[(a.phase as Phase)] ?? 3) - (PHASE_ORDER[(b.phase as Phase)] ?? 3);
+      return (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3);
     });
 
   const resolved = (repairs as any[])
-    .filter(r => (r.phase || "Assessment") === "Resolved")
-    .sort((a, b) => b.dateLogged.localeCompare(a.dateLogged));
+    .filter(r => r.status === "completed" || r.status === "cancelled")
+    .sort((a, b) => (b.reportedDate ?? "").localeCompare(a.reportedDate ?? ""));
 
-  const criticalCount = open.filter(r => r.priority === "Critical").length;
-  const totalCost = resolved.reduce((s: number, r: any) => s + (r.actualCost ?? 0), 0);
+  const urgentCount = openRepairs.filter(r => r.priority === "urgent").length;
+  const activeCount = openRepairs.filter(r =>
+    r.status === "in_progress" || r.status === "waiting_for_parts" || r.status === "waiting_for_contractor"
+  ).length;
+  const totalCost = resolved.reduce((s: number, r: any) => s + (r.cost ?? 0), 0);
 
   // ── Empty state ───────────────────────────────────────────────────────────────
   if (!repairs.length) {
@@ -377,16 +378,14 @@ export default function Repairs() {
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
         <div className="px-4 py-3.5">
           <p className="text-xs text-muted-foreground">{t("repairs.statOpen")}</p>
-          <p className="text-xl font-semibold tabular-nums mt-1">{open.length}</p>
-          {criticalCount > 0 && (
-            <p className="text-xs text-red-500 font-medium mt-0.5">{criticalCount} {t("common.critical")}</p>
+          <p className="text-xl font-semibold tabular-nums mt-1">{openRepairs.length}</p>
+          {urgentCount > 0 && (
+            <p className="text-xs text-red-500 font-medium mt-0.5">{urgentCount} {t("priority.urgent")}</p>
           )}
         </div>
         <div className="px-4 py-3.5">
           <p className="text-xs text-muted-foreground">{t("repairs.statInProgress")}</p>
-          <p className="text-xl font-semibold tabular-nums mt-1">
-            {open.filter(r => r.phase === "In Progress" || r.phase === "Scheduled").length}
-          </p>
+          <p className="text-xl font-semibold tabular-nums mt-1">{activeCount}</p>
         </div>
         <div className="px-4 py-3.5">
           <p className="text-xs text-muted-foreground">{t("repairs.statResolved")}</p>
@@ -398,9 +397,9 @@ export default function Repairs() {
       </div>
 
       {/* Open */}
-      {open.length > 0 && (
-        <Section title={t("repairs.open")} count={open.length}>
-          {open.map(r => (
+      {openRepairs.length > 0 && (
+        <Section title={t("repairs.open")} count={openRepairs.length}>
+          {openRepairs.map(r => (
             <RepairRow
               key={r.id}
               repair={r}
@@ -414,7 +413,7 @@ export default function Repairs() {
       )}
 
       {/* Empty open */}
-      {open.length === 0 && resolved.length > 0 && (
+      {openRepairs.length === 0 && resolved.length > 0 && (
         <div className="border border-dashed border-border rounded-lg px-4 py-8 text-center space-y-2">
           <p className="text-sm text-muted-foreground">{t("repairs.noOpen")}</p>
           <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>

@@ -10,11 +10,12 @@ import { format, isToday, isTomorrow, addDays } from "date-fns";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const PHASE_DOT: Record<string, string> = {
-  Building: "bg-orange-400",
-  Sourcing:  "bg-blue-400",
-  Planning:  "bg-violet-400",
-  Done:      "bg-emerald-400",
+const STATUS_DOT: Record<string, string> = {
+  idea:        "bg-slate-400",
+  planning:    "bg-violet-400",
+  in_progress: "bg-orange-400",
+  completed:   "bg-emerald-400",
+  cancelled:   "bg-rose-400",
 };
 
 const CAT_COLOR: Record<string, string> = {
@@ -335,12 +336,12 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
               >
                 <div className={cn(
                   "w-2 h-2 rounded-full shrink-0",
-                  PHASE_DOT[u.phase ?? ""] ?? "bg-muted-foreground/40"
+                  STATUS_DOT[u.status ?? ""] ?? "bg-muted-foreground/40"
                 )} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold truncate">{u.label}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {u.phase ?? t("upgrades.inProgress")}
+                    {t(`status.${u.status}`, { defaultValue: t("upgrades.inProgress") })}
                     {counts ? ` · ${counts.done}/${counts.total} ${t("upgradeDetail.items").toLowerCase()}` : ""}
                   </p>
                   <div className="h-[2px] w-full bg-border rounded-full overflow-hidden mt-1.5">

@@ -391,7 +391,7 @@ export default function Inventory() {
                           <p className="font-medium">{item.name}</p>
                           {item.brand && <p className="text-xs text-muted-foreground">{item.brand}</p>}
                         </div>
-                        {isLowStock && <AlertTriangle className="h-3.5 w-3.5 text-orange-500 shrink-0" title="Low stock" />}
+                        {isLowStock && <AlertTriangle className="h-3.5 w-3.5 text-orange-500 shrink-0" aria-label="Low stock" />}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{item.category || "—"}</td>

@@ -1,5 +1,7 @@
 import { nanoid } from "nanoid";
 import { z } from "zod";
+import type { inferRouterOutputs, inferRouterInputs } from "@trpc/server";
+import { createInsertSchema } from "drizzle-zod";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
@@ -8,101 +10,74 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import * as db from "./db";
 import { searchRouter } from "./searchRouter";
+import {
+  expenses, repairs, upgrades, loans,
+  wishlistItems, purchaseCosts, inventoryItems, properties,
+} from "../drizzle/schema";
+
+// Fields always assigned by the server — never accepted from the client
+const SERVER_FIELDS = { id: true, ownerId: true, propertyId: true, createdAt: true, updatedAt: true } as const;
 
 const attachmentSchema = z.array(z.string()).optional();
 
-const expenseSchema = z.object({
-  label: z.string().min(1),
+const calendarCatMap: Record<string, string> = {
+  Expense: "Payment", Repair: "Maintenance", Upgrade: "Renovation",
+  Loan: "Payment", Other: "Other",
+};
+
+const expenseSchema = createInsertSchema(expenses, {
+  name: z.string().min(1),
   amount: z.number().int().positive(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-  category: z.enum(["Mortgage", "Utility", "Insurance", "Tax", "Maintenance", "Other"]),
-  isRecurring: z.boolean().optional(),
-  recurringFrequency: z.enum(["Monthly", "Quarterly", "Annual"]).optional(),
-  notes: z.string().optional(),
   attachments: attachmentSchema,
-});
+}).omit({ ...SERVER_FIELDS, isPaid: true, paidDate: true, nextDueDate: true });
 
-const repairSchema = z.object({
-  label: z.string().min(1),
-  description: z.string().optional(),
-  priority: z.enum(["Low", "Medium", "High", "Critical"]),
-  status: z.enum(["Pending", "In Progress", "Resolved"]),
-  phase: z.enum(["Assessment", "Quoting", "Scheduled", "In Progress", "Resolved"]).optional(),
-  dateLogged: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-  contractor: z.string().optional(),
-  contractorPhone: z.string().optional(),
-  estimatedCost: z.number().int().optional(),
+const repairSchema = createInsertSchema(repairs, {
+  title: z.string().min(1),
+  attachments: attachmentSchema,
+}).omit({ ...SERVER_FIELDS, completedDate: true });
+
+const upgradeSchema = createInsertSchema(upgrades, {
+  title: z.string().min(1),
+  estimatedCost: z.number().int().min(0).optional(),
   actualCost: z.number().int().optional(),
-  notes: z.string().optional(),
   attachments: attachmentSchema,
-});
+}).omit(SERVER_FIELDS);
 
-const upgradeSchema = z.object({
-  label: z.string().min(1),
-  description: z.string().optional(),
-  status: z.enum(["Planned", "In Progress", "Done"]),
-  phase: z.enum(["Planning", "Sourcing", "Building", "Done"]).optional(),
-  budget: z.number().int().positive(),
-  spent: z.number().int().optional(),
-  notes: z.string().optional(),
+const loanSchema = createInsertSchema(loans, {
+  // name and currentBalance are NOT NULL in DB but the server defaults them
+  name: z.string().optional(),
+  currentBalance: z.number().int().optional(),
+  originalAmount: z.number().int().positive(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD").optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   attachments: attachmentSchema,
-});
+}).omit({ ...SERVER_FIELDS, repayments: true });
 
-const loanSchema = z.object({
-  lender: z.string().min(1),
-  totalAmount: z.number().int().positive(),
-  loanType: z.enum(["Family", "Bank", "Friend", "Other"]),
-  interestRate: z.string().optional(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  notes: z.string().optional(),
+const inventoryItemSchema = createInsertSchema(inventoryItems, {
+  name: z.string().min(1),
+  quantity: z.number().int().min(0),
+  minQuantity: z.number().int().min(0).optional(),
+}).omit(SERVER_FIELDS);
+
+const wishlistSchema = createInsertSchema(wishlistItems, {
+  name: z.string().min(1),
+  estimatedPrice: z.number().int().min(0).optional(),
   attachments: attachmentSchema,
-});
+}).omit(SERVER_FIELDS);
 
-const wishlistSchema = z.object({
-  label: z.string().min(1),
-  description: z.string().optional(),
-  estimatedCost: z.number().int().positive(),
-  priority: z.enum(["Low", "Medium", "High"]),
-  attachments: attachmentSchema,
-});
-
-const purchaseCostSchema = z.object({
-  label: z.string().min(1),
+const purchaseCostSchema = createInsertSchema(purchaseCosts, {
+  name: z.string().min(1),
   amount: z.number().int().positive(),
+  // date is nullable in the DB but required by the client
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
-  category: z.string().optional(),
-  notes: z.string().optional(),
   attachments: attachmentSchema,
-});
+}).omit(SERVER_FIELDS);
 
-const propertySchema = z.object({
-  houseName: z.string().optional(),
-  houseNickname: z.string().optional(),
-  propertyType: z.string().optional(),
-  address: z.string().optional(),
-  latitude: z.string().optional(),
-  longitude: z.string().optional(),
-  purchaseDate: z.string().optional(),
-  purchasePrice: z.number().int().optional(),
-  squareMeters: z.number().int().optional(),
-  rooms: z.number().optional(),
-  yearBuilt: z.number().int().optional(),
-  floor: z.number().int().optional(),
-  parkingSpots: z.number().int().optional(),
-  hasStorage: z.boolean().optional(),
-  currency: z.string().optional(),
-  currencyCode: z.string().optional(),
-  timezone: z.string().optional(),
-  startOfWeek: z.string().optional(),
+const propertySchema = createInsertSchema(properties, {
   reminderDaysBefore: z.number().int().min(1).max(30).optional(),
-  calendarSyncEnabled: z.boolean().optional(),
   mapsProvider: z.enum(["google", "osm"]).optional(),
-  remindExpenses: z.boolean().optional(),
-  remindLoans: z.boolean().optional(),
-  remindRepairs: z.boolean().optional(),
-  remindCalendar: z.boolean().optional(),
-});
+}).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 
 // ─── Ownership guard helpers ───────────────────────────────────────────────────
 // These throw FORBIDDEN before any DB write if the caller doesn't own the record.
@@ -135,6 +110,14 @@ async function assertLoanOwner(id: string, userId: number) {
   const record = await db.getLoanById(id);
   if (!record || record.ownerId !== userId) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised to modify this loan" });
+  }
+  return record;
+}
+
+async function assertInventoryOwner(id: string, userId: number) {
+  const record = await db.getInventoryItemById(id);
+  if (!record || record.ownerId !== userId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised to modify this inventory item" });
   }
   return record;
 }
@@ -268,7 +251,10 @@ export const appRouter = router({
       return await db.getExpenses(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(expenseSchema).mutation(async ({ ctx, input }) => {
-      return await db.createExpense({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createExpense({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: expenseSchema.partial() }))
@@ -286,7 +272,7 @@ export const appRouter = router({
       .input(z.object({ id: z.string(), paidDate: z.string() }))
       .mutation(async ({ ctx, input }) => {
         await assertExpenseOwner(input.id, ctx.user.id);
-        return await db.updateExpense(input.id, { isPaid: true, paidDate: input.paidDate });
+        return await db.updateExpense(input.id, { isPaid: true, paidDate: input.paidDate } as any);
       }),
   }),
 
@@ -295,7 +281,10 @@ export const appRouter = router({
       return (await db.getRepairs(ctx.user.id, ctx.propertyId)) ?? [];
     }),
     create: protectedProcedure.input(repairSchema).mutation(async ({ ctx, input }) => {
-      return await db.createRepair({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createRepair({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: repairSchema.partial() }))
@@ -329,7 +318,13 @@ export const appRouter = router({
       notes: z.string().optional(),
     })).mutation(async ({ ctx, input }) => {
       await assertRepairOwner(input.repairId, ctx.user.id);
-      return await db.createRepairQuote({ id: nanoid(), payments: [], ...input });
+      return await db.createRepairQuote({
+        id: nanoid(), payments: [],
+        repairId: input.repairId,
+        contractor: input.contractorName,
+        amount: input.quotedPrice ?? 0,
+        notes: input.notes,
+      });
     }),
     update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
       contractorName: z.string().optional(),
@@ -340,7 +335,11 @@ export const appRouter = router({
       scope: z.string().optional(),
       notes: z.string().optional(),
     }) })).mutation(async ({ input }) => {
-      return await db.updateRepairQuote(input.id, input.data);
+      const { contractorName, quotedPrice, contractorPhone, timeline, guarantee, scope, ...rest } = input.data;
+      const mapped: any = { ...rest };
+      if (contractorName !== undefined) mapped.contractor = contractorName;
+      if (quotedPrice !== undefined) mapped.amount = quotedPrice;
+      return await db.updateRepairQuote(input.id, mapped);
     }),
     select: protectedProcedure.input(z.object({ repairId: z.string(), quoteId: z.string() })).mutation(async ({ ctx, input }) => {
       await assertRepairOwner(input.repairId, ctx.user.id);
@@ -384,7 +383,13 @@ export const appRouter = router({
       notes: z.string().optional(),
     })).mutation(async ({ ctx, input }) => {
       await assertUpgradeOwner(input.upgradeId, ctx.user.id);
-      return await db.createUpgradeOption({ id: nanoid(), payments: [], ...input });
+      return await db.createUpgradeOption({
+        id: nanoid(), payments: [],
+        upgradeId: input.upgradeId,
+        title: input.name,
+        estimatedCost: input.totalPrice,
+        description: input.scope ?? input.notes,
+      });
     }),
     update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
       name: z.string().optional(),
@@ -395,7 +400,12 @@ export const appRouter = router({
       scope: z.string().optional(),
       notes: z.string().optional(),
     }) })).mutation(async ({ input }) => {
-      return await db.updateUpgradeOption(input.id, input.data);
+      const { name, totalPrice, vendorPhone, timeline, warranty, scope, ...rest } = input.data;
+      const mapped: any = { ...rest };
+      if (name !== undefined) mapped.title = name;
+      if (totalPrice !== undefined) mapped.estimatedCost = totalPrice;
+      if (scope !== undefined) mapped.description = scope;
+      return await db.updateUpgradeOption(input.id, mapped);
     }),
     select: protectedProcedure.input(z.object({ upgradeId: z.string(), optionId: z.string() })).mutation(async ({ ctx, input }) => {
       await assertUpgradeOwner(input.upgradeId, ctx.user.id);
@@ -434,22 +444,20 @@ export const appRouter = router({
     create: protectedProcedure.input(z.object({
       upgradeId: z.string(),
       name: z.string().min(1),
-      vendorName: z.string().optional(),
+      store: z.string().optional(),
       estimatedCost: z.number().int().optional(),
       actualCost: z.number().int().optional(),
-      status: z.enum(["Need to find", "Researching", "Quoted", "Ordered", "Delivered", "Installed"]).optional(),
-      eta: z.string().optional(),
+      purchased: z.boolean().optional(),
       notes: z.string().optional(),
-    })).mutation(async ({ ctx, input }) => {
-      return await db.createUpgradeItem({ id: nanoid(), ownerId: ctx.user.id, propertyId: ctx.propertyId, ...input });
+    })).mutation(async ({ input }) => {
+      return await db.createUpgradeItem({ id: nanoid(), ...input, purchased: input.purchased ?? false });
     }),
     update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
       name: z.string().optional(),
-      vendorName: z.string().optional(),
+      store: z.string().optional(),
       estimatedCost: z.number().int().optional(),
       actualCost: z.number().int().optional(),
-      status: z.enum(["Need to find", "Researching", "Quoted", "Ordered", "Delivered", "Installed"]).optional(),
-      eta: z.string().optional(),
+      purchased: z.boolean().optional(),
       notes: z.string().optional(),
     }) })).mutation(async ({ input }) => {
       return await db.updateUpgradeItem(input.id, input.data);
@@ -464,7 +472,10 @@ export const appRouter = router({
       return (await db.getUpgrades(ctx.user.id, ctx.propertyId)) ?? [];
     }),
     create: protectedProcedure.input(upgradeSchema).mutation(async ({ ctx, input }) => {
-      return await db.createUpgrade({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createUpgrade({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: upgradeSchema.partial() }))
@@ -485,7 +496,13 @@ export const appRouter = router({
       return await db.getLoans(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(loanSchema).mutation(async ({ ctx, input }) => {
-      return await db.createLoan({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createLoan({
+        id: nanoid(), ...input,
+        name: input.name ?? input.lender ?? "Loan",
+        currentBalance: input.currentBalance ?? input.originalAmount,
+        repayments: [],
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: loanSchema.partial() }))
@@ -517,7 +534,10 @@ export const appRouter = router({
       return await db.getWishlistItems(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(wishlistSchema).mutation(async ({ ctx, input }) => {
-      return await db.createWishlistItem({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createWishlistItem({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: wishlistSchema.partial() }))
@@ -538,7 +558,10 @@ export const appRouter = router({
       return await db.getPurchaseCosts(ctx.user.id, ctx.propertyId);
     }),
     create: protectedProcedure.input(purchaseCostSchema).mutation(async ({ ctx, input }) => {
-      return await db.createPurchaseCost({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+      return await db.createPurchaseCost({
+        id: nanoid(), ...input,
+        ownerId: ctx.user.id, propertyId: ctx.propertyId,
+      });
     }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: purchaseCostSchema.partial() }))
@@ -569,7 +592,12 @@ export const appRouter = router({
         notes: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        return await db.createCalendarEvent({ id: nanoid(), ...input, createdById: ctx.user.id, propertyId: ctx.propertyId });
+        const { eventType, time, ...rest } = input as any;
+        return await db.createCalendarEvent({
+          id: nanoid(), ...rest,
+          category: calendarCatMap[eventType] ?? "Other",
+          ownerId: ctx.user.id, propertyId: ctx.propertyId,
+        });
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
@@ -604,6 +632,29 @@ export const appRouter = router({
         return await db.deleteProperty(input.propertyId);
       }),
   }),
+
+  inventory: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getInventoryItems(ctx.user.id, ctx.propertyId);
+    }),
+    create: protectedProcedure.input(inventoryItemSchema).mutation(async ({ ctx, input }) => {
+      return await db.createInventoryItem({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
+    }),
+    update: protectedProcedure
+      .input(z.object({ id: z.string(), data: inventoryItemSchema.partial() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertInventoryOwner(input.id, ctx.user.id);
+        return await db.updateInventoryItem(input.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertInventoryOwner(input.id, ctx.user.id);
+        return await db.deleteInventoryItem(input.id);
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;
+export type RouterOutputs = inferRouterOutputs<AppRouter>;
+export type RouterInputs = inferRouterInputs<AppRouter>;

@@ -1,12 +1,14 @@
 {
   "nav": {
     "dashboard": "לוח בקרה",
+    "property": "נכס",
     "expenses": "הוצאות",
     "repairs": "תיקונים",
     "upgrades": "שיפוצים",
     "loans": "הלוואות",
-    "wishlist": "רשימת משאלות",
     "purchaseCosts": "עלויות רכישה",
+    "wishlist": "רשימת משאלות",
+    "inventory": "מלאי",
     "calendar": "יומן",
     "settings": "הגדרות",
     "portfolio": "תיק נכסים"
@@ -81,6 +83,11 @@
     "Insurance": "ביטוח",
     "Tax": "מס",
     "Maintenance": "תחזוקה",
+    "Utilities": "חשמל ומים",
+    "Management": "ניהול",
+    "Renovation": "שיפוץ",
+    "Agency": "עמלת תיווך",
+    "Legal": "עלויות משפטיות",
     "Lawyer": "עורך דין",
     "Moving": "הובלה",
     "Inspection": "בדיקה",
@@ -90,13 +97,21 @@
   "frequency": {
     "Monthly": "חודשי",
     "Quarterly": "רבעוני",
-    "Annual": "שנתי"
+    "Annual": "שנתי",
+    "monthly": "חודשי",
+    "quarterly": "רבעוני",
+    "yearly": "שנתי"
   },
   "loanType": {
     "Bank": "בנק",
     "Family": "משפחה",
     "Friend": "חבר",
-    "Other": "אחר"
+    "Other": "אחר",
+    "mortgage": "משכנתא",
+    "heloc": "הלוואת הון עצמי",
+    "personal": "אישי",
+    "construction": "בנייה",
+    "other": "אחר"
   },
   "phases": {
     "Assessment": "הערכה",
@@ -113,14 +128,26 @@
     "Low": "נמוכה",
     "Medium": "בינונית",
     "High": "גבוהה",
-    "Critical": "קריטית"
+    "Critical": "קריטית",
+    "low": "נמוכה",
+    "medium": "בינונית",
+    "high": "גבוהה",
+    "urgent": "דחוף"
   },
   "status": {
     "Pending": "ממתין",
     "In Progress": "בביצוע",
     "Resolved": "נפתר",
     "Planned": "מתוכנן",
-    "Done": "הושלם"
+    "Done": "הושלם",
+    "open": "פתוח",
+    "in_progress": "בטיפול",
+    "waiting_for_parts": "ממתין לחלקים",
+    "waiting_for_contractor": "ממתין לקבלן",
+    "completed": "הושלם",
+    "cancelled": "בוטל",
+    "idea": "רעיון",
+    "planning": "תכנון"
   },
   "search": {
     "dialogTitle": "חיפוש כללי",
@@ -524,7 +551,10 @@
       "Repair": "תיקון",
       "Upgrade": "שיפוץ",
       "Loan": "הלוואה",
-      "Other": "אחר"
+      "Other": "אחר",
+      "Payment": "תשלום",
+      "Maintenance": "תחזוקה",
+      "Renovation": "שיפוץ"
     }
   },
   "dashboard": {
