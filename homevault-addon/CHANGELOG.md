@@ -1,6 +1,36 @@
 # Changelog
 
-## 0.1.51
+## 0.2.0
+- test(addon): static-analysis tests for add-on migration/config sync
+- docs: log HA add-on alignment in trace.md
+- feat(addon): align HA add-on with v2 schema and recent hardening changes
+- docs: update trace.md and lessonslearned.md for session 2026-05-07
+- feat(logging): replace console.* with structured pino logging (P10)
+- feat(P9): add optional limit/offset pagination to all list procedures
+- feat(P8): add rate limiting to auth and API endpoints
+- refactor(P5): split db.ts into per-entity modules under server/db/
+- fix(P3): encode ownership in WHERE clauses, fix child-entity security holes
+- docs: session retro — input validation tests passed for wrong reasons
+- test: fix stale input validation tests and expand schema column guards
+- docs(retro): 2026-05-07 session lessons-learned — P1 field-name mismatches
+- feat(p1): type remaining page components via RouterOutputs
+- feat(p1): end-to-end type safety — drizzle-zod schemas, RouterOutputs, typed pages
+- test(schema): add column guard tests + document stale-server root cause
+- feat(types): type mock data against schema insert types
+- test(business-logic): unit tests for getOverdueExpenses, calcMonthlyStats, buildLoanSummary
+- chore(schema): drop orphaned upgrades.phase column
+- docs(trace): mark P2 ENV validation as done
+- docs(trace): log Phase 1 ENV validation changes
+- feat(env): validate required environment variables at startup
+- feat(inventory): add Inventory page component
+- feat: inventory management — schema, migration, mock data, DB functions, tRPC router
+- feat: Inventory Management — client, server, i18n, mock data (8 files)
+- feat: Inventory Management — schema, server, UI, i18n (10 files)
+- Docs: Update author name to Evgeni Konstantinovsky in LICENSE
+- Legal: Update license to Personal Use Only (Non-Commercial)
+- Docs: Final polish and synchronization
+- Docs: Redesign README with high-resolution full-page screenshots
+- docs: expand SKILL.md with architecture conventions and dev workflow
 - fix: add wishlistItems.attachments column to addon migration
 - i18n: translate search trigger label in sidebar
 - i18n: wire SearchModal strings through locale files
@@ -169,6 +199,38 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.1.51
+- test(addon): static-analysis tests for add-on migration/config sync
+- docs: log HA add-on alignment in trace.md
+- feat(addon): align HA add-on with v2 schema and recent hardening changes
+- docs: update trace.md and lessonslearned.md for session 2026-05-07
+- feat(logging): replace console.* with structured pino logging (P10)
+- feat(P9): add optional limit/offset pagination to all list procedures
+- feat(P8): add rate limiting to auth and API endpoints
+- refactor(P5): split db.ts into per-entity modules under server/db/
+- fix(P3): encode ownership in WHERE clauses, fix child-entity security holes
+- docs: session retro — input validation tests passed for wrong reasons
+- test: fix stale input validation tests and expand schema column guards
+- docs(retro): 2026-05-07 session lessons-learned — P1 field-name mismatches
+- feat(p1): type remaining page components via RouterOutputs
+- feat(p1): end-to-end type safety — drizzle-zod schemas, RouterOutputs, typed pages
+- test(schema): add column guard tests + document stale-server root cause
+- feat(types): type mock data against schema insert types
+- test(business-logic): unit tests for getOverdueExpenses, calcMonthlyStats, buildLoanSummary
+- chore(schema): drop orphaned upgrades.phase column
+- docs(trace): mark P2 ENV validation as done
+- docs(trace): log Phase 1 ENV validation changes
+- feat(env): validate required environment variables at startup
+- feat(inventory): add Inventory page component
+- feat: inventory management — schema, migration, mock data, DB functions, tRPC router
+- feat: Inventory Management — client, server, i18n, mock data (8 files)
+- feat: Inventory Management — schema, server, UI, i18n (10 files)
+- Docs: Update author name to Evgeni Konstantinovsky in LICENSE
+- Legal: Update license to Personal Use Only (Non-Commercial)
+- Docs: Final polish and synchronization
+- Docs: Redesign README with high-resolution full-page screenshots
+- docs: expand SKILL.md with architecture conventions and dev workflow
 
 ## 0.1.50
 - fix: add wishlistItems.attachments column to addon migration
