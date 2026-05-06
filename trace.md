@@ -566,12 +566,11 @@ server/db/
   seed.ts
 ```
 
-### P6 — Type mock data
+### ~~P6 — Type mock data~~ ✅ DONE (2026-05)
 
-```ts
-import type { InsertExpense } from "../../drizzle/schema"
-export const mockExpenses: InsertExpense[] = [...]
-```
+- `server/mockData.ts` — `Seed<T>` helper type strips server-assigned fields (`id`, `ownerId`, `propertyId`, `createdAt`, `updatedAt`)
+- All 9 mock arrays typed against `InsertExpense`, `InsertRepair`, etc. from `drizzle/schema.ts`
+- **Bug found and fixed by typing:** `upgradeOptions` objects had `notes` fields that were silently never persisted (column doesn't exist). Notes folded into `description`. 4 stale `phase:` fields also removed from `mockUpgrades`.
 
 ### ~~P7 — Drop orphaned `upgrades.phase` column~~ ✅ DONE (2026-05)
 
@@ -613,3 +612,4 @@ Replace `console.log/error` with `pino`. Log userId, propertyId, procedure name,
 | 2026-05 | ENV validation at startup — `server/_core/env.ts` rewritten with Zod schema | Missing DATABASE_URL or JWT_SECRET now causes a clear startup failure instead of silent misconfiguration. Added `server/test-setup.ts` and `vitest.config.ts` setupFiles so all tests have required env vars. 9 new tests in `env.test.ts`. |
 | 2026-05 | Dropped `upgrades.phase` column — migration `0009_drop_upgrade_phase.sql` | Column was never written to; Phase concept was removed in v2. Dead column removed from schema and DB. |
 | 2026-05 | Unit tests for business logic — `server/db.business.test.ts` | 19 tests for `getOverdueExpenses`, `calcMonthlyStats`, `buildLoanSummary`. Includes named regression test for the isPaid bug. Functions exported from db.ts to enable testing. |
+| 2026-05 | Typed mock data — `server/mockData.ts` | Added `Seed<T>` helper and typed all 9 mock arrays against schema insert types. Discovered and fixed: `upgradeOptions` had `notes` fields never persisted (no column); 4 stale `phase:` fields removed. |
