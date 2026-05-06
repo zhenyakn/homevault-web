@@ -4,7 +4,13 @@ import {
   calcMonthlyStats,
   buildLoanSummary,
 } from "./db";
-import { upgrades } from "../drizzle/schema";
+import {
+  upgrades,
+  repairQuotes,
+  upgradeOptions,
+  upgradeItems,
+  expenses,
+} from "../drizzle/schema";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -237,7 +243,6 @@ describe("schema column guards — upgrades", () => {
   it("defines expected status enum values after v2 rename", () => {
     const statusCol = upgrades.status;
     expect(statusCol).toBeDefined();
-    // Verify the column name maps to the correct DB column, not a renamed ghost
     expect((statusCol as any).name).toBe("status");
   });
 
@@ -246,5 +251,65 @@ describe("schema column guards — upgrades", () => {
     expect((upgrades as any).spent).toBeUndefined();
     expect(upgrades.estimatedCost).toBeDefined();
     expect(upgrades.actualCost).toBeDefined();
+  });
+});
+
+describe("schema column guards — repairQuotes", () => {
+  // P1 type safety pass revealed AI-generated code used contractorName/quotedPrice/isSelected.
+  // The real DB columns are contractor/amount/selected.
+  it("defines 'contractor', 'amount', 'selected'", () => {
+    expect(repairQuotes.contractor).toBeDefined();
+    expect(repairQuotes.amount).toBeDefined();
+    expect(repairQuotes.selected).toBeDefined();
+  });
+
+  it("does not define phantom columns 'contractorName', 'quotedPrice', 'isSelected'", () => {
+    expect((repairQuotes as any).contractorName).toBeUndefined();
+    expect((repairQuotes as any).quotedPrice).toBeUndefined();
+    expect((repairQuotes as any).isSelected).toBeUndefined();
+  });
+});
+
+describe("schema column guards — upgradeOptions", () => {
+  // AI-generated code used name/totalPrice/scope/isSelected.
+  // Real columns are title/estimatedCost/description/selected.
+  it("defines 'title', 'estimatedCost', 'description', 'selected'", () => {
+    expect(upgradeOptions.title).toBeDefined();
+    expect(upgradeOptions.estimatedCost).toBeDefined();
+    expect(upgradeOptions.description).toBeDefined();
+    expect(upgradeOptions.selected).toBeDefined();
+  });
+
+  it("does not define phantom columns 'name', 'totalPrice', 'scope', 'isSelected'", () => {
+    expect((upgradeOptions as any).name).toBeUndefined();
+    expect((upgradeOptions as any).totalPrice).toBeUndefined();
+    expect((upgradeOptions as any).scope).toBeUndefined();
+    expect((upgradeOptions as any).isSelected).toBeUndefined();
+  });
+});
+
+describe("schema column guards — upgradeItems", () => {
+  // AI-generated code sent vendorName/status/eta; real columns are store/purchased.
+  it("defines 'store' and 'purchased'", () => {
+    expect(upgradeItems.store).toBeDefined();
+    expect(upgradeItems.purchased).toBeDefined();
+  });
+
+  it("does not define phantom columns 'vendorName', 'status', 'eta'", () => {
+    expect((upgradeItems as any).vendorName).toBeUndefined();
+    expect((upgradeItems as any).status).toBeUndefined();
+    expect((upgradeItems as any).eta).toBeUndefined();
+  });
+});
+
+describe("schema column guards — expenses", () => {
+  it("defines 'isPaid' and 'paidDate'", () => {
+    expect(expenses.isPaid).toBeDefined();
+    expect(expenses.paidDate).toBeDefined();
+  });
+
+  it("defines 'name' (not legacy 'label')", () => {
+    expect(expenses.name).toBeDefined();
+    expect((expenses as any).label).toBeUndefined();
   });
 });
