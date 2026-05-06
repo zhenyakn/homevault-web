@@ -208,9 +208,11 @@ export const appRouter = router({
   }),
 
   expenses: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getExpenses(ctx.user.id, ctx.propertyId);
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getExpenses(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
     create: protectedProcedure.input(expenseSchema).mutation(async ({ ctx, input }) => {
       return await db.createExpense({
         id: nanoid(), ...input,
@@ -235,9 +237,11 @@ export const appRouter = router({
   }),
 
   repairs: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return (await db.getRepairs(ctx.user.id, ctx.propertyId)) ?? [];
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return (await db.getRepairs(ctx.user.id, ctx.propertyId, input?.limit, input?.offset)) ?? [];
+      }),
     create: protectedProcedure.input(repairSchema).mutation(async ({ ctx, input }) => {
       return await db.createRepair({
         id: nanoid(), ...input,
@@ -424,9 +428,11 @@ export const appRouter = router({
   }),
 
   upgrades: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return (await db.getUpgrades(ctx.user.id, ctx.propertyId)) ?? [];
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return (await db.getUpgrades(ctx.user.id, ctx.propertyId, input?.limit, input?.offset)) ?? [];
+      }),
     create: protectedProcedure.input(upgradeSchema).mutation(async ({ ctx, input }) => {
       return await db.createUpgrade({
         id: nanoid(), ...input,
@@ -446,9 +452,11 @@ export const appRouter = router({
   }),
 
   loans: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getLoans(ctx.user.id, ctx.propertyId);
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getLoans(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
     create: protectedProcedure.input(loanSchema).mutation(async ({ ctx, input }) => {
       return await db.createLoan({
         id: nanoid(), ...input,
@@ -484,9 +492,11 @@ export const appRouter = router({
   }),
 
   wishlist: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getWishlistItems(ctx.user.id, ctx.propertyId);
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getWishlistItems(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
     create: protectedProcedure.input(wishlistSchema).mutation(async ({ ctx, input }) => {
       return await db.createWishlistItem({
         id: nanoid(), ...input,
@@ -506,9 +516,11 @@ export const appRouter = router({
   }),
 
   purchaseCosts: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getPurchaseCosts(ctx.user.id, ctx.propertyId);
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getPurchaseCosts(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
     create: protectedProcedure.input(purchaseCostSchema).mutation(async ({ ctx, input }) => {
       return await db.createPurchaseCost({
         id: nanoid(), ...input,
@@ -584,9 +596,11 @@ export const appRouter = router({
   }),
 
   inventory: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getInventoryItems(ctx.user.id, ctx.propertyId);
-    }),
+    list: protectedProcedure
+      .input(z.object({ limit: z.number().int().min(1).max(500).optional(), offset: z.number().int().min(0).optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        return await db.getInventoryItems(ctx.user.id, ctx.propertyId, input?.limit, input?.offset);
+      }),
     create: protectedProcedure.input(inventoryItemSchema).mutation(async ({ ctx, input }) => {
       return await db.createInventoryItem({ id: nanoid(), ...input, ownerId: ctx.user.id, propertyId: ctx.propertyId });
     }),

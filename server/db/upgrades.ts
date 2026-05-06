@@ -5,11 +5,13 @@ import {
 } from "../../drizzle/schema";
 import { getDb, parseJsonArray } from "./client";
 
-export async function getUpgrades(userId: number, propertyId: number) {
+export async function getUpgrades(userId: number, propertyId: number, limit = 500, offset = 0) {
   const db = await getDb();
   return await db.select().from(upgrades)
     .where(and(eq(upgrades.ownerId, userId), eq(upgrades.propertyId, propertyId)))
-    .orderBy(desc(upgrades.createdAt));
+    .orderBy(desc(upgrades.createdAt))
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function getUpgradeById(id: string) {

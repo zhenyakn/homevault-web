@@ -2,11 +2,13 @@ import { eq, desc, and } from "drizzle-orm";
 import { loans, type Loan } from "../../drizzle/schema";
 import { getDb, parseJsonArray } from "./client";
 
-export async function getLoans(userId: number, propertyId: number) {
+export async function getLoans(userId: number, propertyId: number, limit = 500, offset = 0) {
   const db = await getDb();
   const rows = await db.select().from(loans)
     .where(and(eq(loans.ownerId, userId), eq(loans.propertyId, propertyId)))
-    .orderBy(desc(loans.createdAt));
+    .orderBy(desc(loans.createdAt))
+    .limit(limit)
+    .offset(offset);
   return rows.map(l => ({ ...l, repayments: parseJsonArray(l.repayments) }));
 }
 

@@ -2,11 +2,13 @@ import { eq, desc, and } from "drizzle-orm";
 import { wishlistItems, type WishlistItem } from "../../drizzle/schema";
 import { getDb } from "./client";
 
-export async function getWishlistItems(userId: number, propertyId: number) {
+export async function getWishlistItems(userId: number, propertyId: number, limit = 500, offset = 0) {
   const db = await getDb();
   return await db.select().from(wishlistItems)
     .where(and(eq(wishlistItems.ownerId, userId), eq(wishlistItems.propertyId, propertyId)))
-    .orderBy(desc(wishlistItems.createdAt));
+    .orderBy(desc(wishlistItems.createdAt))
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function getWishlistItemById(id: string) {

@@ -2,11 +2,13 @@ import { eq, desc, and } from "drizzle-orm";
 import { expenses, type Expense } from "../../drizzle/schema";
 import { getDb } from "./client";
 
-export async function getExpenses(userId: number, propertyId: number) {
+export async function getExpenses(userId: number, propertyId: number, limit = 500, offset = 0) {
   const db = await getDb();
   return await db.select().from(expenses)
     .where(and(eq(expenses.ownerId, userId), eq(expenses.propertyId, propertyId)))
-    .orderBy(desc(expenses.date));
+    .orderBy(desc(expenses.date))
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function getExpenseById(id: string) {

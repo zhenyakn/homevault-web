@@ -2,11 +2,13 @@ import { eq, desc, and, inArray } from "drizzle-orm";
 import { repairs, repairQuotes, type Repair, type RepairQuote } from "../../drizzle/schema";
 import { getDb, parseJsonArray } from "./client";
 
-export async function getRepairs(userId: number, propertyId: number) {
+export async function getRepairs(userId: number, propertyId: number, limit = 500, offset = 0) {
   const db = await getDb();
   return await db.select().from(repairs)
     .where(and(eq(repairs.ownerId, userId), eq(repairs.propertyId, propertyId)))
-    .orderBy(desc(repairs.createdAt));
+    .orderBy(desc(repairs.createdAt))
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function getRepairById(id: string) {

@@ -2,11 +2,13 @@ import { eq, desc, and } from "drizzle-orm";
 import { inventoryItems, type InventoryItem, type InsertInventoryItem } from "../../drizzle/schema";
 import { getDb } from "./client";
 
-export async function getInventoryItems(userId: number, propertyId: number) {
+export async function getInventoryItems(userId: number, propertyId: number, limit = 500, offset = 0) {
   const db = await getDb();
   return await db.select().from(inventoryItems)
     .where(and(eq(inventoryItems.ownerId, userId), eq(inventoryItems.propertyId, propertyId)))
-    .orderBy(desc(inventoryItems.createdAt));
+    .orderBy(desc(inventoryItems.createdAt))
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function getInventoryItemById(id: string) {
