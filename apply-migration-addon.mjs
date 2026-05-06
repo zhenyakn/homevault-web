@@ -46,8 +46,45 @@ const run = async (sql, label) => {
   }
 };
 
+/**
+ * If a table still carries a legacy v1 NOT NULL column (no default), it was
+ * created before the v2 schema alignment ran and will reject new INSERTs that
+ * omit that column.  Dropping the table lets the CREATE TABLE IF NOT EXISTS
+ * below recreate it with the correct, fully-nullable v2 schema.
+ *
+ * This fires only once: after recreation the canary column is gone or nullable,
+ * so subsequent restarts are no-ops.  No real data is stored in HA add-on
+ * installs, so dropping is safe.
+ */
+async function dropIfLegacyV1(table, canaryColumn) {
+  const [rows] = await conn.execute(
+    `SELECT IS_NULLABLE FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, canaryColumn]
+  );
+  if (rows.length > 0 && rows[0].IS_NULLABLE === "NO") {
+    console.log(`↻ ${table}: legacy NOT NULL '${canaryColumn}' detected — dropping for schema reset`);
+    await conn.execute(`DROP TABLE IF EXISTS \`${table}\``);
+  }
+}
+
 async function main() {
   console.log("Running unified HomeVault migration for add-on…");
+
+  // ── Phase 1: v1 schema reset ─────────────────────────────────────────────────
+  // Drop data tables that still have v1 NOT NULL legacy columns.  The CREATE
+  // TABLE IF NOT EXISTS blocks below recreate them with the correct v2 schema.
+  await dropIfLegacyV1("expenses",      "label");          // label NOT NULL → name
+  await dropIfLegacyV1("repairs",       "label");          // label NOT NULL → title
+  await dropIfLegacyV1("repairQuotes",  "contractorName"); // contractorName NOT NULL → contractor
+  await dropIfLegacyV1("upgrades",      "label");          // label NOT NULL → title
+  await dropIfLegacyV1("upgradeOptions","name");           // name NOT NULL → title
+  await dropIfLegacyV1("loans",         "lender");         // lender NOT NULL (totalAmount renamed too)
+  await dropIfLegacyV1("wishlistItems", "label");          // label NOT NULL → name
+  await dropIfLegacyV1("purchaseCosts", "label");          // label NOT NULL → name
+  await dropIfLegacyV1("calendarEvents","eventType");      // eventType NOT NULL (removed in v2)
+
+  // ── Phase 2: create tables ───────────────────────────────────────────────────
 
   // ── users ────────────────────────────────────────────────────────────────────
   await run(
@@ -377,11 +414,10 @@ async function main() {
     "inventoryItems"
   );
 
-  // ── Convergence: bring existing installations up to current schema ───────────
+  // ── Phase 3: convergence — bring v2+ installs up to current schema ───────────
   // Every ALTER is idempotent — ER_DUP_FIELDNAME is silently skipped.
-  // Covers two upgrade paths:
-  //   v1→v2  schema alignment (0007): column renames across all tables
-  //   v2→now post-release additions : isPaid/paidDate, repayments, payments, etc.
+  // Phase 1 handles v1→v2 resets. This section handles v2→now additions:
+  //   isPaid/paidDate, repayments, payments, attachments, etc.
 
   // ── expenses ──────────────────────────────────────────────────────────────────
   await run(`ALTER TABLE \`expenses\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "expenses.name");
