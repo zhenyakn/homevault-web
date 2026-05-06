@@ -545,12 +545,11 @@ Listed in priority order. Do not implement without updating this file.
 - Add `ownerId` / `propertyId` to every query WHERE clause
 - Single DB round-trip instead of two, and no separate ownership check that can be missed
 
-### P4 — Unit tests for business logic
+### ~~P4 — Unit tests for business logic~~ ✅ DONE (2026-05)
 
-- Test `getOverdueExpenses` — confirming paid items are excluded
-- Test `calcMonthlyStats` — date range boundaries
-- Test `buildLoanSummary` — repayment calculations
-- Run as part of `pnpm test`
+- `server/db.business.test.ts` — 19 tests covering `getOverdueExpenses`, `calcMonthlyStats`, `buildLoanSummary`
+- The three functions exported from `db.ts` to make them testable
+- Includes a named regression test: "excludes paid expenses — the critical bug that was fixed"
 
 ### P5 — Split `db.ts` into per-entity files
 
@@ -613,3 +612,4 @@ Replace `console.log/error` with `pino`. Log userId, propertyId, procedure name,
 | 2026-05 | `trace.md` created | Ground rule: all observations and changes documented in one place |
 | 2026-05 | ENV validation at startup — `server/_core/env.ts` rewritten with Zod schema | Missing DATABASE_URL or JWT_SECRET now causes a clear startup failure instead of silent misconfiguration. Added `server/test-setup.ts` and `vitest.config.ts` setupFiles so all tests have required env vars. 9 new tests in `env.test.ts`. |
 | 2026-05 | Dropped `upgrades.phase` column — migration `0009_drop_upgrade_phase.sql` | Column was never written to; Phase concept was removed in v2. Dead column removed from schema and DB. |
+| 2026-05 | Unit tests for business logic — `server/db.business.test.ts` | 19 tests for `getOverdueExpenses`, `calcMonthlyStats`, `buildLoanSummary`. Includes named regression test for the isPaid bug. Functions exported from db.ts to enable testing. |
