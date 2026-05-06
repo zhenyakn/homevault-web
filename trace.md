@@ -574,14 +574,10 @@ import type { InsertExpense } from "../../drizzle/schema"
 export const mockExpenses: InsertExpense[] = [...]
 ```
 
-### P7 — Drop orphaned `upgrades.phase` column
+### ~~P7 — Drop orphaned `upgrades.phase` column~~ ✅ DONE (2026-05)
 
-Write migration `0009_drop_upgrade_phase.sql`:
-```sql
-ALTER TABLE `upgrades` DROP COLUMN `phase`;
-```
-
-Update `drizzle/schema.ts` accordingly.
+- `drizzle/0009_drop_upgrade_phase.sql` — migration applied
+- `drizzle/schema.ts` — `phase` field removed from upgrades table definition
 
 ### P8 — Rate limiting
 
@@ -616,3 +612,4 @@ Replace `console.log/error` with `pino`. Log userId, propertyId, procedure name,
 | 2026-05 | DB patched live — 18 historical expenses set `isPaid = true` | Sync existing seeded data with the new mock data intent |
 | 2026-05 | `trace.md` created | Ground rule: all observations and changes documented in one place |
 | 2026-05 | ENV validation at startup — `server/_core/env.ts` rewritten with Zod schema | Missing DATABASE_URL or JWT_SECRET now causes a clear startup failure instead of silent misconfiguration. Added `server/test-setup.ts` and `vitest.config.ts` setupFiles so all tests have required env vars. 9 new tests in `env.test.ts`. |
+| 2026-05 | Dropped `upgrades.phase` column — migration `0009_drop_upgrade_phase.sql` | Column was never written to; Phase concept was removed in v2. Dead column removed from schema and DB. |

@@ -102,6 +102,8 @@ export const expenses = mysqlTable(
     ]),
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
+    isPaid: boolean("isPaid").default(false),
+    paidDate: varchar("paidDate", { length: 20 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -178,6 +180,7 @@ export const repairQuotes = mysqlTable(
     notes: text("notes"),
     date: varchar("date", { length: 20 }),
     selected: boolean("selected").default(false),
+    payments: json("payments").$type<any[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => ({
@@ -220,7 +223,6 @@ export const upgrades = mysqlTable(
       .default("idea")
       .notNull(),
     priority: mysqlEnum("priority", ["low", "medium", "high"]).default("medium"),
-    phase: varchar("phase", { length: 100 }),
     estimatedCost: int("estimatedCost"),
     actualCost: int("actualCost"),
     startDate: varchar("startDate", { length: 20 }),
@@ -254,6 +256,7 @@ export const upgradeOptions = mysqlTable(
     pros: json("pros").$type<string[]>(),
     cons: json("cons").$type<string[]>(),
     selected: boolean("selected").default(false),
+    payments: json("payments").$type<any[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => ({
@@ -317,6 +320,7 @@ export const loans = mysqlTable(
     ]).default("mortgage"),
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
+    repayments: json("repayments").$type<any[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
