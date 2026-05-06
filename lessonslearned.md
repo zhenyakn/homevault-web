@@ -146,3 +146,29 @@ The `apply-migration-addon.mjs` script runs first to bring the DB up to date, th
 3. **The convergence section must cover all migrations since the add-on was first shipped**, not just the latest one. Any time you add a column, also add it to the convergence section.
 
 ---
+
+## 2026-05-07 — HA add-on seed cascade: three separate NOT NULL failures (v0.2.2–v0.2.4)
+
+### What happened
+After v0.2.3's schema reset approach was introduced, three sequential seed failures uncovered a broader problem:
+
+1. **v0.2.2**: `loans.attachments` was in schema.ts and the CREATE TABLE but no drizzle migration ever added it to an existing table, and it wasn't in the ALTER TABLE convergence section. The seed INSERT (which includes `attachments: []`) failed. Because the seed inserts in table order and loans comes after expenses/repairs/upgrades, those three tables got seeded but everything after loans (wishlist, purchaseCosts, calendar, inventory) didn't.
+
+2. **v0.2.3**: `Field 'label' doesn't have a default value` on expenses INSERT. Migration 0008 made all v1 NOT NULL columns (label, contractorName, totalAmount, etc.) nullable via MODIFY COLUMN, but that was never replicated in the unified HA migration script. The convergence section only did ADD COLUMN, never MODIFY COLUMN.
+
+3. **v0.2.4**: After v0.2.3's new `dropIfLegacyV1()` approach reset 9 tables, `upgradeItems` was missed — it was the 10th table in migration 0008 and wasn't included in the reset list.
+
+### Root cause
+The unified HA migration script (`apply-migration-addon.mjs`) has been maintained by copying individual changes forward, but without a systematic audit against ALL sequential drizzle migrations. Migration 0008 (MODIFY COLUMN for NOT NULL removal) was never carried over at all.
+
+### What we changed
+- **v0.2.2**: Added `loans.attachments` and `wishlistItems.attachments` to the ALTER TABLE convergence section.
+- **v0.2.3**: Replaced the MODIFY COLUMN problem entirely with a `dropIfLegacyV1(table, canaryColumn)` helper. It queries `information_schema.COLUMNS` for columns that are still `NOT NULL`, drops the table, and lets `CREATE TABLE IF NOT EXISTS` recreate it clean. Safe because no real data is stored in HA installs. Fires exactly once per table — after recreation the canary is nullable or gone.
+- **v0.2.4**: Added `upgradeItems` (canary: `ownerId`) to complete all 10 tables from migration 0008.
+
+### Rules we carry forward
+1. **When a new drizzle migration runs, audit it against apply-migration-addon.mjs immediately.** Ask: does it ADD COLUMN? → add to convergence. Does it MODIFY COLUMN to make things nullable? → add a `dropIfLegacyV1` canary. Does it DROP COLUMN? → the unified script's CREATE TABLE won't include it, but old tables might still have it (harmless for SELECTs/INSERTs but worth noting).
+2. **The seed INSERT order determines which tables get data when a failure occurs.** If a seed fails on table N, tables 1…N-1 already have data. Check seed.ts insertion order when debugging partial data issues.
+3. **`dropIfLegacyV1` is the right pattern for schema version detection in the HA add-on.** Checking `information_schema` for a NOT NULL canary is cheap, precise, and idempotent. Prefer it over maintaining a list of MODIFY COLUMN statements.
+
+---
