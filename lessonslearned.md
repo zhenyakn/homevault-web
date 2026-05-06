@@ -90,3 +90,32 @@ The tests were AI-generated alongside the original schemas. When field names wer
 3. **Schema renames must propagate to tests.** Any time a DB field is renamed, search `*.test.ts` for the old name and update immediately. The schema guards now catch this at the schema object level; tests must also be kept in sync.
 
 ---
+
+## 2026-05-07 — Security hardening pass (P3/P5/P8/P9/P10)
+
+### What happened
+A full security and quality hardening pass across the server layer revealed several concrete issues:
+
+1. **Missing ownership checks on child entities (P3)**: `repairQuotes.update/delete`, `upgradeOptions.update/delete`, and `upgradeItems.update/delete` had NO ownership check. Any authenticated user could mutate any repair quote, upgrade option, or upgrade item by guessing the record UUID. The pattern was: look up the child by ID, get the parent ID, then assert parent ownership. The missing `getRepairQuoteById`, `getUpgradeOptionById`, `getUpgradeItemById` helpers were added to enable this.
+
+2. **Ownership enforced at application layer not DB layer**: The original pattern was SELECT-then-check: fetch the record, compare `ownerId` to `ctx.user.id` in application code, then run a separate UPDATE/DELETE. This means a race condition exists where another request could modify the record between the SELECT and the mutation. Moving `ownerId` into the WHERE clause of the UPDATE/DELETE makes it atomic and eliminates the round-trip.
+
+3. **API field mapping silently swallowed mistakes**: `repairQuotes.create` accepted `contractorName`/`quotedPrice` and mapped them to `contractor`/`amount`. `upgradeOptions.create` accepted `name`/`totalPrice`/`scope` and mapped to `title`/`estimatedCost`/`description`. This worked but meant the client was using wrong field names that could diverge from the schema over time. Eliminated all internal remapping.
+
+4. **tRPC createCaller returns a truthy Proxy for unknown routes**: When testing `caller.inventoryItems` (wrong router name — actual name is `inventory`), the test passed because tRPC's `createCaller` returns a Proxy-like object for any property access, not `undefined`. This means router structure assertions must be tested by calling procedures, not by checking `toBeDefined()` on the caller property.
+
+### What we changed
+- P3: Added `ownerId` to 14 update/delete DB function signatures; baked into WHERE clauses.
+- P3: Added ownership checks to all 6 previously unguarded child entity mutations.
+- P5: Split 600-line `server/db.ts` into 11 focused modules under `server/db/`. All imports unchanged.
+- P8: Added `express-rate-limit` with two tiers (auth: 20/15min, api: 300/min).
+- P9: Added optional `limit`/`offset` to all 9 list procedures (default limit=500, backwards-compatible).
+- P10: Added pino structured logging; replaced all `console.*` in server source with `logger.*`.
+
+### Rules we carry forward
+1. **Ownership checks belong in the SQL WHERE clause, not in application code.** An UPDATE/DELETE that includes `AND ownerId = ?` is atomic. Application-layer checks are a separate round-trip and can be racy.
+2. **Child entities with no `ownerId` column are the most common ownership gap.** Always ask: does this entity's parent have an `ownerId`? If so, the child mutations need a parent-lookup ownership check.
+3. **tRPC `createCaller` does not throw on unknown route names.** It returns a Proxy. Router structure tests must actually call a procedure (`.query()` / `.mutate()`) to prove the route exists; `.toBeDefined()` on the caller property proves nothing.
+4. **Internal field remapping in the API layer is a smell.** If the input schema accepts `contractorName` but the DB column is `contractor`, the client is silently wrong about the schema. Accept DB column names directly.
+
+---
