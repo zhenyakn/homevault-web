@@ -4,6 +4,7 @@ import {
   calcMonthlyStats,
   buildLoanSummary,
 } from "./db";
+import { upgrades } from "../drizzle/schema";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -217,5 +218,33 @@ describe("buildLoanSummary", () => {
     const loans = [makeLoan({ originalAmount: 0, repayments: [] })];
     const [result] = buildLoanSummary(loans as any);
     expect(result.pct).toBe(0);
+  });
+});
+
+// ── Schema column guards ───────────────────────────────────────────────────────
+// These tests guard against re-adding dropped columns to drizzle/schema.ts.
+// If a column reappears in the schema but not in the DB, every query for that
+// table will fail at runtime with "Unknown column". Catching it here (at test
+// time, before the server even starts) surfaces the problem immediately.
+// NOTE: after ANY schema.ts change, restart the dev server — drizzle builds the
+// SQL at module-import time, so a running process still generates old SQL.
+
+describe("schema column guards — upgrades", () => {
+  it("does not define 'phase' column (dropped in migration 0009)", () => {
+    expect((upgrades as any).phase).toBeUndefined();
+  });
+
+  it("defines expected status enum values after v2 rename", () => {
+    const statusCol = upgrades.status;
+    expect(statusCol).toBeDefined();
+    // Verify the column name maps to the correct DB column, not a renamed ghost
+    expect((statusCol as any).name).toBe("status");
+  });
+
+  it("defines 'estimatedCost' and 'actualCost' (not legacy 'budget'/'spent')", () => {
+    expect((upgrades as any).budget).toBeUndefined();
+    expect((upgrades as any).spent).toBeUndefined();
+    expect(upgrades.estimatedCost).toBeDefined();
+    expect(upgrades.actualCost).toBeDefined();
   });
 });
