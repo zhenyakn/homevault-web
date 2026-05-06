@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
+
+type Loan = RouterOutputs["loans"]["list"][number];
+type Repayment = { date: string; amount: number };
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +32,7 @@ export default function Loans() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isRepaymentDialogOpen, setIsRepaymentDialogOpen] = useState(false);
-  const [selectedLoan, setSelectedLoan] = useState<any>(null);
+  const [selectedLoan, setSelectedLoan] = useState<Loan | null>(null);
 
   const [formData, setFormData] = useState({
     lender: "",
@@ -111,7 +114,7 @@ export default function Loans() {
     setSelectedLoan(null);
   };
 
-  const handleEdit = (loan: any) => {
+  const handleEdit = (loan: Loan) => {
     setSelectedLoan(loan);
     setFormData({
       lender: loan.lender ?? "",
@@ -131,29 +134,19 @@ export default function Loans() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitLoanForm = () => {
     const amountInCents = Math.round(parseFloat(formData.originalAmount) * 100);
-
-    if (isNaN(amountInCents) || amountInCents <= 0) {
-      toast.error(t("common.validAmount"));
-      return;
-    }
-
+    if (isNaN(amountInCents) || amountInCents <= 0) { toast.error(t("common.validAmount")); return; }
     const payload = {
       ...formData,
       loanType: formData.loanType as "mortgage" | "heloc" | "personal" | "construction" | "other",
       originalAmount: amountInCents,
     };
-    if (selectedLoan) {
-      updateMutation.mutate({
-        id: selectedLoan.id,
-        data: payload,
-      });
-    } else {
-      createMutation.mutate(payload);
-    }
+    if (selectedLoan) updateMutation.mutate({ id: selectedLoan.id, data: payload });
+    else createMutation.mutate(payload);
   };
+
+  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); submitLoanForm(); };
 
   const handleRepaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,9 +169,9 @@ export default function Loans() {
   const handleExportCSV = () => {
     if (!loans || loans.length === 0) { toast.error(t("loans.nothingToExport")); return; }
     const headers = ["Lender", "Type", "Total Amount", "Total Repaid", "Outstanding", "Interest Rate", "Start Date", "Due Date", "Notes"];
-    const rows = loans.map((l: any) => {
-      const repayments = l.repayments as any[] || [];
-      const repaid = repayments.reduce((s: number, r: any) => s + r.amount, 0);
+    const rows = loans.map(l => {
+      const repayments = (l.repayments as Repayment[]) || [];
+      const repaid = repayments.reduce((s, r) => s + r.amount, 0);
       return [
         l.lender ?? "", l.loanType ?? "",
         ((l.originalAmount ?? 0) / 100).toFixed(2),
@@ -205,7 +198,7 @@ export default function Loans() {
 
   const totalBorrowed = loans?.reduce((sum, loan) => sum + loan.originalAmount, 0) || 0;
   const totalRepaid = loans?.reduce((sum, loan) => {
-    const repayments = loan.repayments as any[] || [];
+    const repayments = (loan.repayments as Repayment[]) || [];
     return sum + repayments.reduce((rSum, r) => rSum + r.amount, 0);
   }, 0) || 0;
   const outstandingBalance = totalBorrowed - totalRepaid;
@@ -322,7 +315,7 @@ export default function Loans() {
                 type="button"
                 className="w-full mt-2"
                 disabled={createMutation.isPending}
-                onClick={(e) => handleSubmit(e as any)}
+                onClick={submitLoanForm}
               >
                 {createMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
                 {t("loans.saveLoan")}
@@ -349,7 +342,7 @@ export default function Loans() {
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
           {loans?.map((loan) => {
-            const repayments = loan.repayments as any[] || [];
+            const repayments = (loan.repayments as Repayment[]) || [];
             const repaidAmount = repayments.reduce((sum, r) => sum + r.amount, 0);
             const progress = loan.originalAmount > 0 ? Math.min(100, (repaidAmount / loan.originalAmount) * 100) : 0;
             const isFullyPaid = repaidAmount >= loan.originalAmount;
@@ -440,7 +433,7 @@ export default function Loans() {
             type="button"
             className="w-full mt-2"
             disabled={updateMutation.isPending}
-            onClick={(e) => handleSubmit(e as any)}
+            onClick={submitLoanForm}
           >
             {updateMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
             {t("loans.updateLoan")}

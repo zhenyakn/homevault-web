@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
+
+type Upgrade = RouterOutputs["upgrades"]["list"][number];
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -129,7 +131,7 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
 function UpgradeRow({
   upgrade, counts, isDone, onDelete, onClick,
 }: {
-  upgrade: any;
+  upgrade: Upgrade;
   counts?: { total: number; done: number; needsAction: number };
   isDone: boolean;
   onDelete: () => void;

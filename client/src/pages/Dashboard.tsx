@@ -1,7 +1,15 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
+
+type Stats = NonNullable<RouterOutputs["dashboard"]["stats"]>;
+type OverdueExpense = Stats["overdueExpenses"][number];
+type StaleRepair = Stats["staleRepairs"][number];
+type DecisionUpgrade = Stats["upgradesNeedingDecision"][number];
+type ActiveUpgrade = Stats["activeUpgrades"][number];
+type LoanSummaryItem = Stats["loanSummary"][number];
+type CalEvent = RouterOutputs["calendar"]["list"][number];
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, Settings, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -51,9 +59,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 // ── AttentionZone ─────────────────────────────────────────────────────────────
 
 function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
-  overdue: any[];
-  stale: any[];
-  decisionNeeded: any[];
+  overdue: OverdueExpense[];
+  stale: StaleRepair[];
+  decisionNeeded: DecisionUpgrade[];
   cur: string;
   onMarkPaid: (id: string) => void;
 }) {
@@ -214,7 +222,7 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
 
 // ── CalendarCard ──────────────────────────────────────────────────────────────
 
-function CalendarCard({ calEvents, upcoming }: { calEvents: any[]; upcoming: any[] }) {
+function CalendarCard({ calEvents, upcoming }: { calEvents: CalEvent[]; upcoming: CalEvent[] }) {
   const { t } = useTranslation();
   const [, nav] = useLocation();
   const today = new Date();
@@ -290,7 +298,7 @@ function CalendarCard({ calEvents, upcoming }: { calEvents: any[]; upcoming: any
               {relDate(e.date)}
             </span>
             <span className="flex-1 text-sm truncate">{e.title}</span>
-            <span className="text-[10.5px] text-muted-foreground shrink-0">{e.eventType}</span>
+            <span className="text-[10.5px] text-muted-foreground shrink-0">{e.category}</span>
           </div>
         ))
       )}
@@ -301,7 +309,7 @@ function CalendarCard({ calEvents, upcoming }: { calEvents: any[]; upcoming: any
 // ── UpgradesCard ──────────────────────────────────────────────────────────────
 
 function UpgradesCard({ activeUpgrades, countMap, cur }: {
-  activeUpgrades: any[];
+  activeUpgrades: ActiveUpgrade[];
   countMap: Record<string, { total: number; done: number }>;
   cur: string;
 }) {
@@ -377,7 +385,7 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
 
 // ── LoansCard ─────────────────────────────────────────────────────────────────
 
-function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
+function LoansCard({ loans, cur }: { loans: LoanSummaryItem[]; cur: string }) {
   const { t } = useTranslation();
   const [, nav] = useLocation();
   const fmt = (n: number) => formatCurrency(n, cur);
@@ -430,8 +438,8 @@ function LoansCard({ loans, cur }: { loans: any[]; cur: string }) {
                 </div>
                 <div className="flex justify-between text-[11px] text-muted-foreground">
                   <span>{fmt(repaid)} {t("loans.repaid")} · {pct}%</span>
-                  {l.dueDate && (
-                    <span>until {format(new Date(l.dueDate), "MMM yyyy")}</span>
+                  {l.endDate && (
+                    <span>until {format(new Date(l.endDate), "MMM yyyy")}</span>
                   )}
                 </div>
               </div>
@@ -464,7 +472,7 @@ export default function Dashboard() {
   });
 
   const activeUpgradeIds = useMemo(
-    () => (stats?.activeUpgrades ?? []).map((u: any) => u.id),
+    () => (stats?.activeUpgrades ?? []).map(u => u.id),
     [stats?.activeUpgrades]
   );
 
@@ -482,9 +490,9 @@ export default function Dashboard() {
   const upcoming = useMemo(() => {
     const now = new Date();
     const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    return (calEvents as any[])
+    return calEvents
       .filter(e => { const d = new Date(e.date); return d >= now && d <= in7; })
-      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 6);
   }, [calEvents]);
 
@@ -557,7 +565,7 @@ export default function Dashboard() {
           cats={s.monthCats}
           cur={cur}
         />
-        <CalendarCard calEvents={calEvents as any[]} upcoming={upcoming} />
+        <CalendarCard calEvents={calEvents} upcoming={upcoming} />
       </div>
 
       {/* Layer 3 — Running context */}

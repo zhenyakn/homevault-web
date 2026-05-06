@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
+
+type Repair = RouterOutputs["repairs"]["list"][number];
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -75,7 +77,7 @@ function AddRepairDialog({ open, onClose }: { open: boolean; onClose: () => void
     createMutation.mutate({
       title: f.title,
       description: f.description || undefined,
-      priority: f.priority as any,
+      priority: f.priority as Repair["priority"],
       status: "open",
       reportedDate: f.reportedDate,
     });
@@ -151,7 +153,7 @@ function RepairRow({
   onDelete,
   onClick,
 }: {
-  repair: any;
+  repair: Repair;
   quoteCounts?: { total: number; hasSelected: boolean };
   isDone: boolean;
   onDelete: () => void;
@@ -189,7 +191,7 @@ function RepairRow({
 
         {/* Meta row */}
         <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-          <span className="text-xs text-muted-foreground">{formatDate(repair.reportedDate)}</span>
+          <span className="text-xs text-muted-foreground">{formatDate(repair.reportedDate ?? "")}</span>
           {repair.contractor && (
             <span className="text-xs text-muted-foreground">{repair.contractor}</span>
           )}
@@ -269,7 +271,7 @@ export default function Repairs() {
   const utils = trpc.useUtils();
   const { data: repairs = [], isLoading } = trpc.repairs.list.useQuery();
 
-  const repairIds = repairs.map((r: any) => r.id);
+  const repairIds = repairs.map(r => r.id);
   const { data: rawCounts = [] } = trpc.repairQuotes.countByRepair.useQuery(
     { repairIds },
     { enabled: repairIds.length > 0 },
@@ -286,13 +288,13 @@ export default function Repairs() {
   const handleExportCSV = () => {
     if (!repairs.length) { toast.error(t("repairs.nothingToExport")); return; }
     const headers = ["Description", "Status", "Priority", "Date", "Contractor", "Cost", "Notes"];
-    const rows = (repairs as any[]).map(r => [
+    const rows = repairs.map(r => [
       r.title, r.status || "open", r.priority || "medium", r.reportedDate || "",
       r.contractor || "",
       r.cost != null ? (r.cost / 100).toFixed(2) : "",
       r.notes || "",
     ]);
-    const csv = [headers, ...rows].map(r => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -308,16 +310,16 @@ export default function Repairs() {
   );
 
   // ── Sections ─────────────────────────────────────────────────────────────────
-  const openRepairs = (repairs as any[])
+  const openRepairs = repairs
     .filter(r => r.status !== "completed" && r.status !== "cancelled")
     .sort((a, b) => {
-      const pA = PRIORITY_ORDER[a.priority] ?? 2;
-      const pB = PRIORITY_ORDER[b.priority] ?? 2;
+      const pA = PRIORITY_ORDER[a.priority ?? ""] ?? 2;
+      const pB = PRIORITY_ORDER[b.priority ?? ""] ?? 2;
       if (pA !== pB) return pA - pB;
       return (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3);
     });
 
-  const resolved = (repairs as any[])
+  const resolved = repairs
     .filter(r => r.status === "completed" || r.status === "cancelled")
     .sort((a, b) => (b.reportedDate ?? "").localeCompare(a.reportedDate ?? ""));
 
@@ -325,7 +327,7 @@ export default function Repairs() {
   const activeCount = openRepairs.filter(r =>
     r.status === "in_progress" || r.status === "waiting_for_parts" || r.status === "waiting_for_contractor"
   ).length;
-  const totalCost = resolved.reduce((s: number, r: any) => s + (r.cost ?? 0), 0);
+  const totalCost = resolved.reduce((s, r) => s + (r.cost ?? 0), 0);
 
   // ── Empty state ───────────────────────────────────────────────────────────────
   if (!repairs.length) {

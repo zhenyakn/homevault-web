@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useParams } from "wouter";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
+
+type Repair = RouterOutputs["repairs"]["list"][number];
+type RepairQuote = RouterOutputs["repairQuotes"]["list"][number];
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,7 +73,7 @@ function StatusStepper({ status, onChange, loading }: {
 
 function QuoteDialog({ open, onOpenChange, repairId, editQuote }: {
   open: boolean; onOpenChange: (v: boolean) => void;
-  repairId: string; editQuote?: any;
+  repairId: string; editQuote?: RepairQuote;
 }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
@@ -81,12 +84,12 @@ function QuoteDialog({ open, onOpenChange, repairId, editQuote }: {
 
   useEffect(() => {
     if (open) setF({
-      contractorName: editQuote?.contractorName ?? "",
-      contractorPhone: editQuote?.contractorPhone ?? "",
-      quotedPrice: editQuote?.quotedPrice ? String(editQuote.quotedPrice / 100) : "",
-      timeline: editQuote?.timeline ?? "",
-      guarantee: editQuote?.guarantee ?? "",
-      scope: editQuote?.scope ?? "",
+      contractorName: editQuote?.contractor ?? "",
+      contractorPhone: "",
+      quotedPrice: editQuote?.amount ? String(editQuote.amount / 100) : "",
+      timeline: "",
+      guarantee: "",
+      scope: "",
       notes: editQuote?.notes ?? "",
     });
   }, [open, editQuote?.id]);
@@ -178,7 +181,7 @@ function LogPaymentDialog({ open, onOpenChange, quoteId, repairId }: {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState("");
-  const [receipt, setReceipt] = useState<any[]>([]);
+  const [receipt, setReceipt] = useState<{ url: string; filename: string; mimeType: string; size: number }[]>([]);
 
   useEffect(() => { if (!open) { setAmount(""); setDate(new Date().toISOString().split("T")[0]); setNotes(""); setReceipt([]); } }, [open]);
 
@@ -231,7 +234,7 @@ function LogPaymentDialog({ open, onOpenChange, quoteId, repairId }: {
 
 // ── QuoteCard ─────────────────────────────────────────────────────────────────
 
-function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; onEdit: () => void }) {
+function QuoteCard({ quote, repairId, onEdit }: { quote: RepairQuote; repairId: string; onEdit: () => void }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const selectMut  = trpc.repairQuotes.select.useMutation({ onSuccess: () => utils.repairQuotes.list.invalidate({ repairId }) });
@@ -241,28 +244,28 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
   const [logOpen, setLogOpen] = useState(false);
   // Normalize: MariaDB may return JSON columns as strings instead of parsed arrays
   const payments = asArray(quote.payments);
-  const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
+  const totalPaid = (payments as { amount: number }[]).reduce((s, p) => s + p.amount, 0);
 
   return (
     <div className={cn(
       "border rounded-lg overflow-hidden transition-all",
-      quote.isSelected ? "border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-200 dark:ring-indigo-900/50" : "border-border"
+      quote.selected ? "border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-200 dark:ring-indigo-900/50" : "border-border"
     )}>
       {/* Header */}
       <div className={cn("flex items-center justify-between gap-2 px-4 py-3",
-        quote.isSelected ? "bg-indigo-50/60 dark:bg-indigo-950/20" : "bg-muted/30"
+        quote.selected ? "bg-indigo-50/60 dark:bg-indigo-950/20" : "bg-muted/30"
       )}>
         <div className="flex items-center gap-2.5 min-w-0">
-          {quote.isSelected && <Check className="h-4 w-4 text-indigo-500 shrink-0" />}
-          <p className="font-semibold text-sm truncate">{quote.contractorName}</p>
-          {quote.isSelected && (
+          {quote.selected && <Check className="h-4 w-4 text-indigo-500 shrink-0" />}
+          <p className="font-semibold text-sm truncate">{quote.contractor}</p>
+          {quote.selected && (
             <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 shrink-0">
               {t("common.selected")}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {!quote.isSelected && (
+          {!quote.selected && (
             <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => selectMut.mutate({ repairId, quoteId: quote.id })}>
               {selectMut.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t("common.select")}
             </Button>
@@ -278,40 +281,30 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
 
       {/* Details */}
       <div className="px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm border-t border-border">
-        {quote.quotedPrice && (
+        {quote.amount > 0 && (
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <span className="font-semibold text-foreground">{formatCurrency(quote.quotedPrice, "ILS")}</span>
+            <span className="font-semibold text-foreground">{formatCurrency(quote.amount, "ILS")}</span>
             {t("repairDetail.quoted")}
           </div>
         )}
-        {quote.contractorPhone && (
+        {quote.date && (
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Phone className="h-3.5 w-3.5 shrink-0" />{quote.contractorPhone}
+            <Clock className="h-3.5 w-3.5 shrink-0" />{quote.date}
           </div>
         )}
-        {quote.timeline && (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Clock className="h-3.5 w-3.5 shrink-0" />{quote.timeline}
-          </div>
-        )}
-        {quote.guarantee && (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5 shrink-0" />{quote.guarantee}
-          </div>
-        )}
-        {quote.scope && (
+        {quote.notes && (
           <div className="col-span-2 flex items-start gap-1.5 text-muted-foreground">
-            <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" />{quote.scope}
+            <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" />{quote.notes}
           </div>
         )}
       </div>
 
       {/* Payments */}
-      {(payments.length > 0 || quote.isSelected) && (
+      {(payments.length > 0 || quote.selected) && (
         <div className="border-t border-border px-4 py-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">{t("repairDetail.payments")}</p>
-            {quote.isSelected && (
+            {quote.selected && (
               <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={() => setLogOpen(true)}>
                 <Plus className="h-3 w-3 me-1" />{t("repairDetail.logPayment")}
               </Button>
@@ -321,7 +314,7 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
             <p className="text-xs text-muted-foreground">{t("repairDetail.noPayments")}</p>
           ) : (
             <div className="space-y-1">
-              {payments.map((p: any, i: number) => (
+              {(payments as { date: string; amount: number; notes?: string }[]).map((p, i) => (
                 <div key={i} className="group/pay flex items-center gap-3 text-sm py-1">
                   <span className="text-muted-foreground text-xs w-20 shrink-0">{formatDate(p.date)}</span>
                   <span className="font-semibold flex-1">{formatCurrency(p.amount, "ILS")}</span>
@@ -348,7 +341,7 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: any; repairId: string; 
 
 // ── EditRepairDialog ──────────────────────────────────────────────────────────
 
-function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpenChange: (v: boolean) => void; repair: any }) {
+function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpenChange: (v: boolean) => void; repair: Repair }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const updateMut = trpc.repairs.update.useMutation({
@@ -372,7 +365,7 @@ function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpe
       await updateMut.mutateAsync({ id: repair.id, data: {
         title: f.title.trim(),
         description: f.description || undefined,
-        priority: f.priority as any,
+        priority: f.priority as Repair["priority"],
         cost: f.cost ? ils(parseFloat(f.cost)) : undefined,
         notes: f.notes || undefined,
       }});
@@ -436,14 +429,14 @@ export default function RepairDetail() {
   const repairs = Array.isArray(repairsRaw) ? repairsRaw : [];
   const quotes = Array.isArray(quotesRaw) ? quotesRaw : [];
 
-  const repair = useMemo(() => repairs.find((r: any) => r.id === id), [repairs, id]);
+  const repair = useMemo(() => repairs.find(r => r.id === id), [repairs, id]);
 
   const updateMut = trpc.repairs.update.useMutation({
     onSuccess: () => utils.repairs.list.invalidate(),
   });
 
   const [quoteOpen, setQuoteOpen]     = useState(false);
-  const [editQuote, setEditQuote]     = useState<any>(null);
+  const [editQuote, setEditQuote]     = useState<RepairQuote | null>(null);
   const [editOpen, setEditOpen]       = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
 
@@ -469,9 +462,8 @@ export default function RepairDetail() {
     </div>
   );
 
-  const selectedQuote = quotes.find((q: any) => q.selected);
-  // Normalize: MariaDB may return JSON columns as strings instead of parsed arrays
-  const totalPaid = asArray(selectedQuote?.payments).reduce((s: number, p: any) => s + p.amount, 0);
+  const selectedQuote = quotes.find(q => q.selected);
+  const totalPaid = (asArray(selectedQuote?.payments) as { amount: number }[]).reduce((s, p) => s + p.amount, 0);
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -512,7 +504,7 @@ export default function RepairDetail() {
       <div className="border border-border rounded-lg p-4">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-3">Progress</p>
         <div className="overflow-x-auto pb-1">
-          <StatusStepper status={(repair as any).status ?? "open"} onChange={handleStatusChange} loading={statusLoading} />
+          <StatusStepper status={repair.status ?? "open"} onChange={handleStatusChange} loading={statusLoading} />
         </div>
       </div>
 
@@ -545,7 +537,7 @@ export default function RepairDetail() {
           </div>
         ) : (
           <div className="space-y-3">
-            {[...quotes].sort((a: any, b: any) => (b.isSelected ? 1 : 0) - (a.isSelected ? 1 : 0)).map((q: any) => (
+            {[...quotes].sort((a, b) => (b.selected ? 1 : 0) - (a.selected ? 1 : 0)).map(q => (
               <QuoteCard
                 key={q.id}
                 quote={q}
@@ -569,7 +561,7 @@ export default function RepairDetail() {
         open={quoteOpen}
         onOpenChange={v => { setQuoteOpen(v); if (!v) setEditQuote(null); }}
         repairId={id!}
-        editQuote={editQuote}
+        editQuote={editQuote ?? undefined}
       />
       <EditRepairDialog open={editOpen} onOpenChange={setEditOpen} repair={repair} />
     </div>

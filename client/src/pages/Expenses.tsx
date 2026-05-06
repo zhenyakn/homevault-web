@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutputs } from "@/lib/trpc";
+
+type Expense = RouterOutputs["expenses"]["list"][number];
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,17 +50,17 @@ export default function Expenses() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [form, setForm] = useState(emptyForm());
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<{ url: string; filename: string; mimeType: string; size: number }[]>([]);
 
   const reset = () => { setForm(emptyForm()); setAttachments([]); setEditingId(null); };
 
-  const handleEdit = (e: any) => {
+  const handleEdit = (e: Expense) => {
     setEditingId(e.id);
     setForm({
       name: e.name,
       amount: String(e.amount / 100),
       date: e.date,
-      category: e.category,
+      category: (e.category ?? "Maintenance") as typeof CATEGORIES[number],
       isRecurring: e.isRecurring || false,
       recurringInterval: e.recurringInterval || "monthly",
       notes: e.notes || "",
@@ -90,8 +92,8 @@ export default function Expenses() {
 
   const filtered = useMemo(() => {
     if (!expenses) return [];
-    const base = categoryFilter === "all" ? expenses : expenses.filter((e: any) => e.category === categoryFilter);
-    return [...base].sort((a: any, b: any) => {
+    const base = categoryFilter === "all" ? expenses : expenses.filter(e => e.category === categoryFilter);
+    return [...base].sort((a, b) => {
       const aPaid = !!a.isPaid;
       const bPaid = !!b.isPaid;
       if (aPaid === bPaid) return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -101,7 +103,7 @@ export default function Expenses() {
 
   const handleExportCSV = () => {
     if (!filtered.length) { toast.error(t("expenses.nothingToExport")); return; }
-    const rows = filtered.map((e: any) => [e.name, (e.amount/100).toFixed(2), e.date, e.category, e.isRecurring?"Yes":"No", e.recurringInterval||"", e.isPaid?"Yes":"No", e.notes||""]);
+    const rows = filtered.map(e => [e.name, (e.amount/100).toFixed(2), e.date, e.category, e.isRecurring?"Yes":"No", e.recurringInterval||"", e.isPaid?"Yes":"No", e.notes||""]);
     const csv = [["Description","Amount","Date","Category","Recurring","Frequency","Paid","Notes"], ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type:"text/csv" }));
     a.download = `expenses_${new Date().toISOString().split("T")[0]}.csv`; a.click();
@@ -110,9 +112,9 @@ export default function Expenses() {
 
   if (isLoading) return <div className="flex items-center justify-center h-[50vh]"><Loader2 className="animate-spin h-6 w-6 text-muted-foreground" /></div>;
 
-  const total = filtered.reduce((s: number, e: any) => s + e.amount, 0);
-  const monthly = filtered.filter((e: any) => e.isRecurring).reduce((s: number, e: any) => s + e.amount, 0);
-  const paidCount = filtered.filter((e: any) => e.isPaid).length;
+  const total = filtered.reduce((s, e) => s + e.amount, 0);
+  const monthly = filtered.filter(e => e.isRecurring).reduce((s, e) => s + e.amount, 0);
+  const paidCount = filtered.filter(e => e.isPaid).length;
 
   return (
     <div className="space-y-5">
@@ -147,7 +149,7 @@ export default function Expenses() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t("common.category")}</Label>
-                  <Select value={form.category} onValueChange={(v: any) => setForm({...form, category: v})}>
+                  <Select value={form.category} onValueChange={v => setForm({...form, category: v as typeof CATEGORIES[number]})}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{t(`categories.${c}`)}</SelectItem>)}</SelectContent>
                   </Select>
@@ -159,7 +161,7 @@ export default function Expenses() {
                 {form.isRecurring && (
                   <div className="space-y-1.5">
                     <Label>{t("common.frequency")}</Label>
-                    <Select value={form.recurringInterval} onValueChange={(v: any) => setForm({...form, recurringInterval: v})}>
+                    <Select value={form.recurringInterval} onValueChange={v => setForm({...form, recurringInterval: v as typeof FREQUENCIES[number]})}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>{FREQUENCIES.map(f => <SelectItem key={f} value={f}>{t(`frequency.${f}`)}</SelectItem>)}</SelectContent>
                     </Select>
@@ -220,10 +222,10 @@ export default function Expenses() {
         </div>
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
-          {filtered.map((expense: any, idx: number) => {
+          {filtered.map((expense, idx) => {
             const isPaid = !!expense.isPaid;
-            const prevPaid = idx > 0 && !!(filtered[idx - 1] as any).isPaid;
-            const showDivider = isPaid && !prevPaid && filtered.some((e: any) => !e.isPaid);
+            const prevPaid = idx > 0 && !!filtered[idx - 1].isPaid;
+            const showDivider = isPaid && !prevPaid && filtered.some(e => !e.isPaid);
             return (
               <div key={expense.id}>
                 {showDivider && (
@@ -240,7 +242,7 @@ export default function Expenses() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className={cn("text-sm font-medium", isPaid && "text-muted-foreground")}>{expense.name}</p>
-                      <Badge className={cn("text-xs h-5 border-0", CAT_COLOR[expense.category] ?? CAT_COLOR.Other)}>
+                      <Badge className={cn("text-xs h-5 border-0", CAT_COLOR[expense.category ?? ""] ?? CAT_COLOR.Other)}>
                         {t(`categories.${expense.category}`, { defaultValue: expense.category })}
                       </Badge>
                       {expense.isRecurring && (
