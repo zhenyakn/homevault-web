@@ -171,6 +171,7 @@ async function main() {
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`selected\` tinyint(1) DEFAULT '0',
+      \`payments\` json DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
       KEY \`quote_repair_idx\` (\`repairId\`)
@@ -189,7 +190,6 @@ async function main() {
       \`category\` enum('Kitchen','Bathroom','Bedroom','Living Room','Outdoor','Structural','Technology','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`status\` enum('idea','planning','in_progress','completed','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'idea',
       \`priority\` enum('low','medium','high') COLLATE utf8mb4_unicode_ci DEFAULT 'medium',
-      \`phase\` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`estimatedCost\` int DEFAULT NULL,
       \`actualCost\` int DEFAULT NULL,
       \`startDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -218,6 +218,7 @@ async function main() {
       \`pros\` json DEFAULT NULL,
       \`cons\` json DEFAULT NULL,
       \`selected\` tinyint(1) DEFAULT '0',
+      \`payments\` json DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
       KEY \`option_upgrade_idx\` (\`upgradeId\`)
@@ -263,6 +264,7 @@ async function main() {
       \`loanType\` enum('mortgage','heloc','personal','construction','other') COLLATE utf8mb4_unicode_ci DEFAULT 'mortgage',
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`attachments\` json DEFAULT NULL,
+      \`repayments\` json DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
@@ -373,6 +375,88 @@ async function main() {
       KEY \`inventoryItem_room_idx\` (\`room\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "inventoryItems"
+  );
+
+  // ── Convergence: add columns that may be missing in existing installations ────
+  // Each ALTER is idempotent — ER_DUP_FIELDNAME is treated as "already applied".
+
+  // expenses: isPaid / paidDate (added in v2 schema alignment)
+  await run(
+    `ALTER TABLE \`expenses\` ADD COLUMN \`isPaid\` tinyint(1) NOT NULL DEFAULT 0`,
+    "expenses.isPaid"
+  );
+  await run(
+    `ALTER TABLE \`expenses\` ADD COLUMN \`paidDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "expenses.paidDate"
+  );
+
+  // loans: repayments (loan repayment tracking)
+  await run(
+    `ALTER TABLE \`loans\` ADD COLUMN \`repayments\` json DEFAULT NULL`,
+    "loans.repayments"
+  );
+
+  // repairQuotes: payments (payment schedule per quote)
+  await run(
+    `ALTER TABLE \`repairQuotes\` ADD COLUMN \`payments\` json DEFAULT NULL`,
+    "repairQuotes.payments"
+  );
+
+  // upgradeOptions: v2 column renames — existing installs created via migration v5
+  // had name/totalPrice/scope/isSelected; v2 uses title/estimatedCost/description/selected.
+  // We add the v2 columns alongside the old ones (old columns stay, just unused).
+  await run(
+    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''`,
+    "upgradeOptions.title"
+  );
+  await run(
+    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`description\` text COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "upgradeOptions.description"
+  );
+  await run(
+    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`estimatedCost\` int DEFAULT NULL`,
+    "upgradeOptions.estimatedCost"
+  );
+  await run(
+    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`pros\` json DEFAULT NULL`,
+    "upgradeOptions.pros"
+  );
+  await run(
+    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`cons\` json DEFAULT NULL`,
+    "upgradeOptions.cons"
+  );
+  await run(
+    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`selected\` tinyint(1) NOT NULL DEFAULT 0`,
+    "upgradeOptions.selected"
+  );
+  await run(
+    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`payments\` json DEFAULT NULL`,
+    "upgradeOptions.payments"
+  );
+
+  // Backfill title from legacy name column where title is still blank
+  await run(
+    `UPDATE \`upgradeOptions\` SET \`title\` = \`name\` WHERE \`title\` = '' AND \`name\` IS NOT NULL AND \`name\` != ''`,
+    "upgradeOptions.title backfill from name"
+  );
+
+  // upgradeItems: v2 column renames — existing installs created via migration v5
+  // had vendorName/status(enum)/eta; v2 uses store/purchased(bool)/quantity/unit.
+  await run(
+    `ALTER TABLE \`upgradeItems\` ADD COLUMN \`store\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "upgradeItems.store"
+  );
+  await run(
+    `ALTER TABLE \`upgradeItems\` ADD COLUMN \`purchased\` tinyint(1) NOT NULL DEFAULT 0`,
+    "upgradeItems.purchased"
+  );
+  await run(
+    `ALTER TABLE \`upgradeItems\` ADD COLUMN \`quantity\` int NOT NULL DEFAULT 1`,
+    "upgradeItems.quantity"
+  );
+  await run(
+    `ALTER TABLE \`upgradeItems\` ADD COLUMN \`unit\` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "upgradeItems.unit"
   );
 
   console.log("Unified HomeVault migration complete.");

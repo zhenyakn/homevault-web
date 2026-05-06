@@ -16,6 +16,13 @@ export OAUTH_SERVER_URL=$(jq -r '.OAUTH_SERVER_URL // ""' "$OPTIONS")
 export PORT=$(jq -r '.PORT // 3005' "$OPTIONS")
 export HOST="0.0.0.0"
 export NODE_ENV="production"
+export LOG_LEVEL=$(jq -r '.LOG_LEVEL // "info"' "$OPTIONS")
+export STORAGE_ENDPOINT=$(jq -r '.STORAGE_ENDPOINT // ""' "$OPTIONS")
+export STORAGE_BUCKET=$(jq -r '.STORAGE_BUCKET // ""' "$OPTIONS")
+export STORAGE_REGION=$(jq -r '.STORAGE_REGION // "auto"' "$OPTIONS")
+export STORAGE_ACCESS_KEY_ID=$(jq -r '.STORAGE_ACCESS_KEY_ID // ""' "$OPTIONS")
+export STORAGE_SECRET_ACCESS_KEY=$(jq -r '.STORAGE_SECRET_ACCESS_KEY // ""' "$OPTIONS")
+export STORAGE_PUBLIC_URL=$(jq -r '.STORAGE_PUBLIC_URL // ""' "$OPTIONS")
 
 # Read booleans as true/false strings
 if [ "$(jq -r '.NO_AUTH // false' "$OPTIONS")" = "true" ]; then
