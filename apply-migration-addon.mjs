@@ -377,87 +377,88 @@ async function main() {
     "inventoryItems"
   );
 
-  // ── Convergence: add columns that may be missing in existing installations ────
-  // Each ALTER is idempotent — ER_DUP_FIELDNAME is treated as "already applied".
+  // ── Convergence: bring existing installations up to current schema ───────────
+  // Every ALTER is idempotent — ER_DUP_FIELDNAME is silently skipped.
+  // Covers two upgrade paths:
+  //   v1→v2  schema alignment (0007): column renames across all tables
+  //   v2→now post-release additions : isPaid/paidDate, repayments, payments, etc.
 
-  // expenses: isPaid / paidDate (added in v2 schema alignment)
-  await run(
-    `ALTER TABLE \`expenses\` ADD COLUMN \`isPaid\` tinyint(1) NOT NULL DEFAULT 0`,
-    "expenses.isPaid"
-  );
-  await run(
-    `ALTER TABLE \`expenses\` ADD COLUMN \`paidDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
-    "expenses.paidDate"
-  );
+  // ── expenses ──────────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "expenses.name");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`nextDueDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "expenses.nextDueDate");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`recurringInterval\` enum('monthly','quarterly','yearly') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "expenses.recurringInterval");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`attachments\` json DEFAULT NULL`, "expenses.attachments");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`isPaid\` tinyint(1) NOT NULL DEFAULT 0`, "expenses.isPaid");
+  await run(`ALTER TABLE \`expenses\` ADD COLUMN \`paidDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "expenses.paidDate");
 
-  // loans: repayments (loan repayment tracking)
-  await run(
-    `ALTER TABLE \`loans\` ADD COLUMN \`repayments\` json DEFAULT NULL`,
-    "loans.repayments"
-  );
+  // ── repairs ───────────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairs.title");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`category\` enum('Plumbing','Electrical','HVAC','Structural','Appliance','Cosmetic','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairs.category");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`reportedDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairs.reportedDate");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`completedDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairs.completedDate");
+  await run(`ALTER TABLE \`repairs\` ADD COLUMN \`cost\` int DEFAULT NULL`, "repairs.cost");
 
-  // repairQuotes: payments (payment schedule per quote)
-  await run(
-    `ALTER TABLE \`repairQuotes\` ADD COLUMN \`payments\` json DEFAULT NULL`,
-    "repairQuotes.payments"
-  );
+  // ── repairQuotes ──────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`contractor\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairQuotes.contractor");
+  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`amount\` int DEFAULT NULL`, "repairQuotes.amount");
+  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairQuotes.date");
+  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`selected\` tinyint(1) NOT NULL DEFAULT 0`, "repairQuotes.selected");
+  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`payments\` json DEFAULT NULL`, "repairQuotes.payments");
 
-  // upgradeOptions: v2 column renames — existing installs created via migration v5
-  // had name/totalPrice/scope/isSelected; v2 uses title/estimatedCost/description/selected.
-  // We add the v2 columns alongside the old ones (old columns stay, just unused).
-  await run(
-    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''`,
-    "upgradeOptions.title"
-  );
-  await run(
-    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`description\` text COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
-    "upgradeOptions.description"
-  );
-  await run(
-    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`estimatedCost\` int DEFAULT NULL`,
-    "upgradeOptions.estimatedCost"
-  );
-  await run(
-    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`pros\` json DEFAULT NULL`,
-    "upgradeOptions.pros"
-  );
-  await run(
-    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`cons\` json DEFAULT NULL`,
-    "upgradeOptions.cons"
-  );
-  await run(
-    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`selected\` tinyint(1) NOT NULL DEFAULT 0`,
-    "upgradeOptions.selected"
-  );
-  await run(
-    `ALTER TABLE \`upgradeOptions\` ADD COLUMN \`payments\` json DEFAULT NULL`,
-    "upgradeOptions.payments"
-  );
+  // ── upgrades ──────────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.title");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`category\` enum('Kitchen','Bathroom','Bedroom','Living Room','Outdoor','Structural','Technology','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.category");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`priority\` enum('low','medium','high') COLLATE utf8mb4_unicode_ci DEFAULT 'medium'`, "upgrades.priority");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`estimatedCost\` int DEFAULT NULL`, "upgrades.estimatedCost");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`actualCost\` int DEFAULT NULL`, "upgrades.actualCost");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`startDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.startDate");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`completedDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.completedDate");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`contractor\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.contractor");
+  await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`roiEstimate\` int DEFAULT NULL`, "upgrades.roiEstimate");
 
-  // Backfill title from legacy name column where title is still blank
-  await run(
-    `UPDATE \`upgradeOptions\` SET \`title\` = \`name\` WHERE \`title\` = '' AND \`name\` IS NOT NULL AND \`name\` != ''`,
-    "upgradeOptions.title backfill from name"
-  );
+  // ── upgradeOptions ────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT ''`, "upgradeOptions.title");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`description\` text COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgradeOptions.description");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`estimatedCost\` int DEFAULT NULL`, "upgradeOptions.estimatedCost");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`pros\` json DEFAULT NULL`, "upgradeOptions.pros");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`cons\` json DEFAULT NULL`, "upgradeOptions.cons");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`selected\` tinyint(1) NOT NULL DEFAULT 0`, "upgradeOptions.selected");
+  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`payments\` json DEFAULT NULL`, "upgradeOptions.payments");
 
-  // upgradeItems: v2 column renames — existing installs created via migration v5
-  // had vendorName/status(enum)/eta; v2 uses store/purchased(bool)/quantity/unit.
-  await run(
-    `ALTER TABLE \`upgradeItems\` ADD COLUMN \`store\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
-    "upgradeItems.store"
-  );
-  await run(
-    `ALTER TABLE \`upgradeItems\` ADD COLUMN \`purchased\` tinyint(1) NOT NULL DEFAULT 0`,
-    "upgradeItems.purchased"
-  );
-  await run(
-    `ALTER TABLE \`upgradeItems\` ADD COLUMN \`quantity\` int NOT NULL DEFAULT 1`,
-    "upgradeItems.quantity"
-  );
-  await run(
-    `ALTER TABLE \`upgradeItems\` ADD COLUMN \`unit\` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
-    "upgradeItems.unit"
-  );
+  // ── upgradeItems ──────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`upgradeItems\` ADD COLUMN \`store\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgradeItems.store");
+  await run(`ALTER TABLE \`upgradeItems\` ADD COLUMN \`purchased\` tinyint(1) NOT NULL DEFAULT 0`, "upgradeItems.purchased");
+  await run(`ALTER TABLE \`upgradeItems\` ADD COLUMN \`quantity\` int NOT NULL DEFAULT 1`, "upgradeItems.quantity");
+  await run(`ALTER TABLE \`upgradeItems\` ADD COLUMN \`unit\` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgradeItems.unit");
+
+  // ── loans ─────────────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "loans.name");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`originalAmount\` int DEFAULT NULL`, "loans.originalAmount");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`currentBalance\` int DEFAULT NULL`, "loans.currentBalance");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`monthlyPayment\` int DEFAULT NULL`, "loans.monthlyPayment");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`endDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "loans.endDate");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`nextPaymentDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "loans.nextPaymentDate");
+  await run(`ALTER TABLE \`loans\` ADD COLUMN \`repayments\` json DEFAULT NULL`, "loans.repayments");
+
+  // ── wishlistItems ─────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "wishlistItems.name");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`category\` enum('Furniture','Appliance','Electronics','Decor','Renovation','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "wishlistItems.category");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`estimatedPrice\` int DEFAULT NULL`, "wishlistItems.estimatedPrice");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`status\` enum('wanted','saved','purchased') COLLATE utf8mb4_unicode_ci DEFAULT 'wanted'`, "wishlistItems.status");
+  await run(`ALTER TABLE \`wishlistItems\` ADD COLUMN \`url\` text COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "wishlistItems.url");
+
+  // ── purchaseCosts ─────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`purchaseCosts\` ADD COLUMN \`name\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "purchaseCosts.name");
+
+  // ── calendarEvents ────────────────────────────────────────────────────────────
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`ownerId\` int NOT NULL DEFAULT 1`, "calendarEvents.ownerId");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`description\` text COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.description");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`endDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.endDate");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`category\` enum('Maintenance','Payment','Inspection','Renovation','Legal','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.category");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`isRecurring\` tinyint(1) DEFAULT 0`, "calendarEvents.isRecurring");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`recurringInterval\` enum('monthly','quarterly','yearly') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.recurringInterval");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`reminderDaysBefore\` int DEFAULT NULL`, "calendarEvents.reminderDaysBefore");
+  await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`externalCalendarId\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.externalCalendarId");
 
   console.log("Unified HomeVault migration complete.");
   await conn.end();
