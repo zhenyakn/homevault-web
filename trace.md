@@ -533,10 +533,11 @@ Listed in priority order. Do not implement without updating this file.
 - Replace all `any` in page components with inferred types
 - **Effect:** Field renames in schema.ts produce TypeScript compile errors everywhere they're used. Bugs caught at build time, not runtime.
 
-### P2 — ENV validation at startup
+### ~~P2 — ENV validation at startup~~ ✅ DONE (2026-05)
 
-- Add Zod schema for `ENV` in `server/_core/env.ts`
-- Process exits with clear error message on missing or invalid required vars
+- `server/_core/env.ts` rewritten with Zod schema
+- `server/_core/env.test.ts` — 9 tests
+- `server/test-setup.ts` + `vitest.config.ts` setupFiles added
 
 ### P3 — Authorization: encode ownership in queries
 
