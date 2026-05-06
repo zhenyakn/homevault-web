@@ -79,6 +79,7 @@ async function main() {
   await dropIfLegacyV1("repairQuotes",  "contractorName"); // contractorName NOT NULL → contractor
   await dropIfLegacyV1("upgrades",      "label");          // label NOT NULL → title
   await dropIfLegacyV1("upgradeOptions","name");           // name NOT NULL → title
+  await dropIfLegacyV1("upgradeItems",  "ownerId");        // ownerId NOT NULL (removed from v2 schema)
   await dropIfLegacyV1("loans",         "lender");         // lender NOT NULL (totalAmount renamed too)
   await dropIfLegacyV1("wishlistItems", "label");          // label NOT NULL → name
   await dropIfLegacyV1("purchaseCosts", "label");          // label NOT NULL → name
