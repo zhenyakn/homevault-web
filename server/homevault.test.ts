@@ -41,7 +41,7 @@ describe("HomeVault Router Structure", () => {
     expect(caller.calendar).toBeDefined();
     expect(caller.property).toBeDefined();
     expect(caller.profiles).toBeDefined();
-    expect(caller.inventoryItems).toBeDefined();
+    expect(caller.inventory).toBeDefined();
   });
 
   it("auth.me returns the test user", async () => {
@@ -213,14 +213,14 @@ describe("Input Validation — inventoryItems", () => {
   it("rejects inventory item with empty name", async () => {
     const caller = appRouter.createCaller(createTestContext());
     await expect(
-      caller.inventoryItems.create({ name: "", quantity: 1 })
+      caller.inventory.create({ name: "", quantity: 1 })
     ).rejects.toThrow();
   });
 
   it("rejects inventory item with negative quantity", async () => {
     const caller = appRouter.createCaller(createTestContext());
     await expect(
-      caller.inventoryItems.create({ name: "Lightbulbs", quantity: -1 })
+      caller.inventory.create({ name: "Lightbulbs", quantity: -1 })
     ).rejects.toThrow();
   });
 });

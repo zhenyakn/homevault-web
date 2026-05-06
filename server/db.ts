@@ -174,17 +174,17 @@ export async function createExpense(data: typeof expenses.$inferInsert) {
   return data;
 }
 
-export async function updateExpense(id: string, data: Partial<Expense>) {
+export async function updateExpense(id: string, ownerId: number, data: Partial<Expense>) {
   const db = await getDb();
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
-  await db.update(expenses).set(normalized).where(eq(expenses.id, id));
+  await db.update(expenses).set(normalized).where(and(eq(expenses.id, id), eq(expenses.ownerId, ownerId)));
   return data;
 }
 
-export async function deleteExpense(id: string) {
+export async function deleteExpense(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(expenses).where(eq(expenses.id, id));
+  await db.delete(expenses).where(and(eq(expenses.id, id), eq(expenses.ownerId, ownerId)));
   return true;
 }
 
@@ -209,17 +209,17 @@ export async function createRepair(data: typeof repairs.$inferInsert) {
   return data;
 }
 
-export async function updateRepair(id: string, data: Partial<Repair>) {
+export async function updateRepair(id: string, ownerId: number, data: Partial<Repair>) {
   const db = await getDb();
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
-  await db.update(repairs).set(normalized).where(eq(repairs.id, id));
+  await db.update(repairs).set(normalized).where(and(eq(repairs.id, id), eq(repairs.ownerId, ownerId)));
   return data;
 }
 
-export async function deleteRepair(id: string) {
+export async function deleteRepair(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(repairs).where(eq(repairs.id, id));
+  await db.delete(repairs).where(and(eq(repairs.id, id), eq(repairs.ownerId, ownerId)));
   return true;
 }
 
@@ -246,6 +246,12 @@ export async function getRepairQuoteCounts(repairIds: string[]) {
     if (row.selected) map[row.repairId].hasSelected = true;
   }
   return Object.entries(map).map(([repairId, c]) => ({ repairId, ...c }));
+}
+
+export async function getRepairQuoteById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(repairQuotes).where(eq(repairQuotes.id, id)).limit(1);
+  return result[0] ?? null;
 }
 
 export async function createRepairQuote(data: typeof repairQuotes.$inferInsert) {
@@ -321,17 +327,17 @@ export async function createUpgrade(data: typeof upgrades.$inferInsert) {
   return data;
 }
 
-export async function updateUpgrade(id: string, data: Partial<Upgrade>) {
+export async function updateUpgrade(id: string, ownerId: number, data: Partial<Upgrade>) {
   const db = await getDb();
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
-  await db.update(upgrades).set(normalized).where(eq(upgrades.id, id));
+  await db.update(upgrades).set(normalized).where(and(eq(upgrades.id, id), eq(upgrades.ownerId, ownerId)));
   return data;
 }
 
-export async function deleteUpgrade(id: string) {
+export async function deleteUpgrade(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(upgrades).where(eq(upgrades.id, id));
+  await db.delete(upgrades).where(and(eq(upgrades.id, id), eq(upgrades.ownerId, ownerId)));
   return true;
 }
 
@@ -362,18 +368,18 @@ export async function createLoan(data: typeof loans.$inferInsert) {
   return data;
 }
 
-export async function updateLoan(id: string, data: Partial<Loan>) {
+export async function updateLoan(id: string, ownerId: number, data: Partial<Loan>) {
   const db = await getDb();
   const normalized: any = { ...data };
   if ("repayments" in normalized) normalized.repayments = normalized.repayments ?? [];
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
-  await db.update(loans).set(normalized).where(eq(loans.id, id));
+  await db.update(loans).set(normalized).where(and(eq(loans.id, id), eq(loans.ownerId, ownerId)));
   return data;
 }
 
-export async function deleteLoan(id: string) {
+export async function deleteLoan(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(loans).where(eq(loans.id, id));
+  await db.delete(loans).where(and(eq(loans.id, id), eq(loans.ownerId, ownerId)));
   return true;
 }
 
@@ -398,17 +404,17 @@ export async function createWishlistItem(data: typeof wishlistItems.$inferInsert
   return data;
 }
 
-export async function updateWishlistItem(id: string, data: Partial<WishlistItem>) {
+export async function updateWishlistItem(id: string, ownerId: number, data: Partial<WishlistItem>) {
   const db = await getDb();
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
-  await db.update(wishlistItems).set(normalized).where(eq(wishlistItems.id, id));
+  await db.update(wishlistItems).set(normalized).where(and(eq(wishlistItems.id, id), eq(wishlistItems.ownerId, ownerId)));
   return data;
 }
 
-export async function deleteWishlistItem(id: string) {
+export async function deleteWishlistItem(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(wishlistItems).where(eq(wishlistItems.id, id));
+  await db.delete(wishlistItems).where(and(eq(wishlistItems.id, id), eq(wishlistItems.ownerId, ownerId)));
   return true;
 }
 
@@ -433,17 +439,17 @@ export async function createPurchaseCost(data: typeof purchaseCosts.$inferInsert
   return data;
 }
 
-export async function updatePurchaseCost(id: string, data: Partial<PurchaseCost>) {
+export async function updatePurchaseCost(id: string, ownerId: number, data: Partial<PurchaseCost>) {
   const db = await getDb();
   const normalized: any = { ...data };
   if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
-  await db.update(purchaseCosts).set(normalized).where(eq(purchaseCosts.id, id));
+  await db.update(purchaseCosts).set(normalized).where(and(eq(purchaseCosts.id, id), eq(purchaseCosts.ownerId, ownerId)));
   return data;
 }
 
-export async function deletePurchaseCost(id: string) {
+export async function deletePurchaseCost(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(purchaseCosts).where(eq(purchaseCosts.id, id));
+  await db.delete(purchaseCosts).where(and(eq(purchaseCosts.id, id), eq(purchaseCosts.ownerId, ownerId)));
   return true;
 }
 
@@ -673,6 +679,12 @@ export async function getUpgradeOptionCounts(upgradeIds: string[]) {
   return Object.entries(map).map(([upgradeId, c]) => ({ upgradeId, ...c }));
 }
 
+export async function getUpgradeOptionById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(upgradeOptions).where(eq(upgradeOptions.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
 export async function createUpgradeOption(data: typeof upgradeOptions.$inferInsert) {
   const db = await getDb();
   await db.insert(upgradeOptions).values({ ...data, payments: (data.payments ?? []) as any });
@@ -747,6 +759,12 @@ export async function getUpgradeItemCounts(upgradeIds: string[]) {
     if (row.purchased) map[row.upgradeId].done++;
   }
   return Object.entries(map).map(([upgradeId, c]) => ({ upgradeId, ...c }));
+}
+
+export async function getUpgradeItemById(id: string) {
+  const db = await getDb();
+  const result = await db.select().from(upgradeItems).where(eq(upgradeItems.id, id)).limit(1);
+  return result[0] ?? null;
 }
 
 export async function createUpgradeItem(data: typeof upgradeItems.$inferInsert) {
@@ -836,15 +854,15 @@ export async function createInventoryItem(data: InsertInventoryItem) {
   return data;
 }
 
-export async function updateInventoryItem(id: string, data: Partial<InventoryItem>) {
+export async function updateInventoryItem(id: string, ownerId: number, data: Partial<InventoryItem>) {
   const db = await getDb();
-  await db.update(inventoryItems).set(data).where(eq(inventoryItems.id, id));
+  await db.update(inventoryItems).set(data).where(and(eq(inventoryItems.id, id), eq(inventoryItems.ownerId, ownerId)));
   return data;
 }
 
-export async function deleteInventoryItem(id: string) {
+export async function deleteInventoryItem(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(inventoryItems).where(eq(inventoryItems.id, id));
+  await db.delete(inventoryItems).where(and(eq(inventoryItems.id, id), eq(inventoryItems.ownerId, ownerId)));
   return true;
 }
 
