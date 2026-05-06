@@ -56,3 +56,37 @@ All generated code (Perplexity AI) used assumed/invented field names that didn't
 4. **Field name mismatches between DB and UI are extremely common in AI-generated code.** After any code generation, verify every field access against the schema before shipping.
 
 ---
+
+## 2026-05-07 — Input validation tests passed for the wrong reasons
+
+### What happened
+`homevault.test.ts` had 6 input validation tests, all passing, all misleading. Example:
+
+```ts
+it("rejects expense with empty label", async () => {
+  await expect(
+    caller.expenses.create({ label: "", amount: 1000, date: "2026-01-01", category: "Mortgage" })
+  ).rejects.toThrow();
+});
+```
+
+The field is `name`, not `label`. So Zod never saw an empty `name` — it saw a missing required `name` field, which triggered `ZodError: Required`. The test passed, but it was testing "missing required field" not "empty string is rejected".
+
+The same pattern repeated across all 6 tests: `label`/`budget`/`dateLogged`/`totalAmount` are all pre-v2 schema names that no longer exist. Every test passed by accident, not by design.
+
+### Root cause
+The tests were AI-generated alongside the original schemas. When field names were renamed during the v2 schema alignment pass, test inputs were never updated. Because both scenarios (`missing required field` and `invalid value`) raise `ZodError`, the tests stayed green.
+
+### What we changed
+- Rewrote all 6 validation tests with correct v2 field names.
+- Added new targeted tests for constraints that weren't previously tested: date regex format (`YYYY-MM-DD`), zero/negative numeric amounts, enum rejection, `inventoryItems` validation.
+- Added `inventoryItems` to the router structure test (new router added on this branch but missed in the assertion).
+- Expanded schema column guards in `db.business.test.ts` to cover `repairQuotes`, `upgradeOptions`, `upgradeItems`, and `expenses` — all tables where P1 revealed AI-invented field names.
+- 58 tests total, all passing.
+
+### Rules we carry forward
+1. **A test that passes for the wrong reason is worse than no test.** It creates false confidence and masks real regressions. When inheriting AI-generated tests, verify that each test actually exercises the stated constraint by reading the input field names against the current schema.
+2. **"Rejects.toThrow" is too broad.** If you only check that *something* throws, you can't tell whether Zod rejected a value or whether a missing required field triggered an unrelated validation error. For constraint-specific tests, consider asserting on the error message or testing the positive path too.
+3. **Schema renames must propagate to tests.** Any time a DB field is renamed, search `*.test.ts` for the old name and update immediately. The schema guards now catch this at the schema object level; tests must also be kept in sync.
+
+---
