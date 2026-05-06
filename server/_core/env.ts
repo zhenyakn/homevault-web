@@ -18,11 +18,11 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error("\n[ENV] Server cannot start — missing or invalid environment variables:");
+  process.stderr.write("\n[ENV] Server cannot start — missing or invalid environment variables:\n");
   for (const issue of parsed.error.issues) {
-    console.error(`  ✗ ${issue.path.join(".")}: ${issue.message}`);
+    process.stderr.write(`  ✗ ${issue.path.join(".")}: ${issue.message}\n`);
   }
-  console.error("\nCheck your .env file against .env.example\n");
+  process.stderr.write("\nCheck your .env file against .env.example\n\n");
   process.exit(1);
 }
 
