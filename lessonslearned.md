@@ -119,3 +119,30 @@ A full security and quality hardening pass across the server layer revealed seve
 4. **Internal field remapping in the API layer is a smell.** If the input schema accepts `contractorName` but the DB column is `contractor`, the client is silently wrong about the schema. Accept DB column names directly.
 
 ---
+
+## 2026-05-07 — Live HA add-on failure: `Unknown column 'name'` after schema migration
+
+### What happened
+After pushing v0.2.0 to GitHub and installing it as a Home Assistant add-on, the live server crashed immediately on startup with:
+
+```
+Error: Unknown column 'name' in 'INSERT INTO'
+  at expenses INSERT
+```
+
+The `apply-migration-addon.mjs` script runs first to bring the DB up to date, then `--seed-mock-only` seeds demo data. The seed INSERT used column `name`, but the existing HA database still had `label` (the v1 name). The add-on migration script's convergence section covered only post-v2 additions (isPaid, repayments…) but never included the v1→v2 renames from `drizzle/0007_schema_v2_alignment.sql`.
+
+### Root cause
+`apply-migration-addon.mjs` is NOT a sequential migration runner — it's a single unified idempotent script. When we added new tables or columns in sequential drizzle migrations (`0007_schema_v2_alignment.sql` and later), we updated the CREATE TABLE blocks in the add-on script but never added the corresponding ALTER TABLE statements to bring *existing* HA databases forward. Fresh installs worked; upgrades were broken.
+
+### What we changed
+- Added 50+ `ALTER TABLE … ADD COLUMN` statements in a "convergence section" at the bottom of `apply-migration-addon.mjs`, one for every column that was added or renamed from v1 onward across all 10 affected tables. `ER_DUP_FIELDNAME` is silently swallowed so the script stays idempotent.
+- Tagged `v0.2.1` to trigger a new Docker build.
+- Confirmed: no user data exists in the live installation, so no backfills were needed.
+
+### Rules we carry forward
+1. **The add-on migration script is a separate artifact from drizzle migrations.** Any change to `drizzle/schema.ts` requires a matching change in `apply-migration-addon.mjs` — both the CREATE TABLE block (for new installs) AND an ALTER TABLE in the convergence section (for upgrades).
+2. **Static analysis tests (`server/addon.test.ts`) catch this gap before CI.** They parse schema.ts and apply-migration-addon.mjs with regex and assert every column is present in the script. Always run `pnpm test` before pushing a new tag.
+3. **The convergence section must cover all migrations since the add-on was first shipped**, not just the latest one. Any time you add a column, also add it to the convergence section.
+
+---
