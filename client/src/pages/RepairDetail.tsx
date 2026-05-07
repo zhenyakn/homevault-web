@@ -110,7 +110,7 @@ function QuoteDialog({ open, onOpenChange, repairId, editQuote }: {
     try {
       if (editQuote) await updateMut.mutateAsync({ id: editQuote.id, data: payload });
       else await createMut.mutateAsync({ repairId, ...payload });
-    } catch { toast.error("Failed to save quote"); }
+    } catch { toast.error(t("repairDetail.failedSaveQuote")); }
   };
 
   return (
@@ -175,7 +175,7 @@ function LogPaymentDialog({ open, onOpenChange, quoteId, repairId }: {
       utils.repairQuotes.list.invalidate({ repairId });
       utils.repairs.list.invalidate();
       onOpenChange(false);
-      toast.success("Payment logged");
+      toast.success(t("repairDetail.paymentLogged"));
     },
   });
   const [amount, setAmount] = useState("");
@@ -186,10 +186,10 @@ function LogPaymentDialog({ open, onOpenChange, quoteId, repairId }: {
   useEffect(() => { if (!open) { setAmount(""); setDate(new Date().toISOString().split("T")[0]); setNotes(""); setReceipt([]); } }, [open]);
 
   const handleSave = async () => {
-    if (!amount || isNaN(parseFloat(amount))) { toast.error("Enter a valid amount"); return; }
+    if (!amount || isNaN(parseFloat(amount))) { toast.error(t("common.validAmount")); return; }
     try {
       await logMut.mutateAsync({ quoteId, amount: ils(parseFloat(amount)), date, notes: notes || undefined, receipt: receipt[0]?.url });
-    } catch { toast.error("Failed to log payment"); }
+    } catch { toast.error(t("repairDetail.failedLogPayment")); }
   };
 
   return (
@@ -238,7 +238,7 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: RepairQuote; repairId: 
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const selectMut  = trpc.repairQuotes.select.useMutation({ onSuccess: () => utils.repairQuotes.list.invalidate({ repairId }) });
-  const deleteMut  = trpc.repairQuotes.delete.useMutation({ onSuccess: () => { utils.repairQuotes.list.invalidate({ repairId }); toast.success("Quote removed"); } });
+  const deleteMut  = trpc.repairQuotes.delete.useMutation({ onSuccess: () => { utils.repairQuotes.list.invalidate({ repairId }); toast.success(t("repairDetail.quoteRemoved")); } });
   const delPayMut  = trpc.repairQuotes.deletePayment.useMutation({ onSuccess: () => { utils.repairQuotes.list.invalidate({ repairId }); utils.repairs.list.invalidate(); } });
 
   const [logOpen, setLogOpen] = useState(false);
@@ -345,7 +345,7 @@ function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpe
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const updateMut = trpc.repairs.update.useMutation({
-    onSuccess: () => { utils.repairs.list.invalidate(); onOpenChange(false); toast.success("Updated"); },
+    onSuccess: () => { utils.repairs.list.invalidate(); onOpenChange(false); toast.success(t("repairDetail.updated")); },
   });
   const [f, setF] = useState({ title: "", description: "", priority: "medium", cost: "", notes: "" });
 
@@ -360,7 +360,7 @@ function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpe
   }, [open, repair?.id]);
 
   const save = async () => {
-    if (!f.title.trim()) { toast.error("Title required"); return; }
+    if (!f.title.trim()) { toast.error(t("repairDetail.titleRequired")); return; }
     try {
       await updateMut.mutateAsync({ id: repair.id, data: {
         title: f.title.trim(),
@@ -369,7 +369,7 @@ function EditRepairDialog({ open, onOpenChange, repair }: { open: boolean; onOpe
         cost: f.cost ? ils(parseFloat(f.cost)) : undefined,
         notes: f.notes || undefined,
       }});
-    } catch { toast.error("Failed to save"); }
+    } catch { toast.error(t("common.failedSave")); }
   };
 
   return (
@@ -445,7 +445,7 @@ export default function RepairDetail() {
     setStatusLoading(true);
     try {
       await updateMut.mutateAsync({ id: repair.id, data: { status } });
-    } catch { toast.error("Failed to update status"); }
+    } catch { toast.error(t("repairDetail.failedUpdateStatus")); }
     finally { setStatusLoading(false); }
   };
 
@@ -457,7 +457,7 @@ export default function RepairDetail() {
 
   if (!repair) return (
     <div className="flex flex-col items-center justify-center h-[50vh] gap-3">
-      <p className="text-muted-foreground">Repair not found</p>
+      <p className="text-muted-foreground">{t("repairDetail.notFound")}</p>
       <Button variant="outline" size="sm" onClick={() => nav("/repairs")}>{t("common.back")}</Button>
     </div>
   );
@@ -502,7 +502,7 @@ export default function RepairDetail() {
 
       {/* Status stepper */}
       <div className="border border-border rounded-lg p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-3">Progress</p>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-3">{t("repairDetail.progress")}</p>
         <div className="overflow-x-auto pb-1">
           <StatusStepper status={repair.status ?? "open"} onChange={handleStatusChange} loading={statusLoading} />
         </div>

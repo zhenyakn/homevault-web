@@ -340,7 +340,16 @@
     "deletePaymentConfirm": "Delete this payment?",
     "quoted": "quoted",
     "saveChanges": "Save changes",
-    "amountRequired": "Amount (₪) *"
+    "amountRequired": "Amount (₪) *",
+    "paymentLogged": "Payment logged",
+    "quoteRemoved": "Quote removed",
+    "updated": "Updated",
+    "failedSaveQuote": "Failed to save quote",
+    "failedLogPayment": "Failed to log payment",
+    "failedUpdateStatus": "Failed to update status",
+    "notFound": "Repair not found",
+    "progress": "Progress",
+    "titleRequired": "Title required"
   },
   "upgrades": {
     "title": "Upgrades",
@@ -431,7 +440,9 @@
     "vendorPlaceholder": "IKEA, Amazon…",
     "paymentNotesPlaceholder": "e.g. Deposit payment",
     "deleteItemTitle": "Delete item",
-    "setPhaseTitle": "Set phase: {{phase}}"
+    "setPhaseTitle": "Set phase: {{phase}}",
+    "purchased": "Purchased",
+    "pending": "Pending"
   },
   "itemStatus": {
     "Need to find": "Need to find",

@@ -331,7 +331,16 @@
     "deletePaymentConfirm": "למחוק את התשלום?",
     "quoted": "הוצע",
     "saveChanges": "שמור שינויים",
-    "amountRequired": "סכום (₪) *"
+    "amountRequired": "סכום (₪) *",
+    "paymentLogged": "התשלום נרשם",
+    "quoteRemoved": "ההצעה הוסרה",
+    "updated": "עודכן",
+    "failedSaveQuote": "שגיאה בשמירת הצעה",
+    "failedLogPayment": "שגיאה בתיעוד תשלום",
+    "failedUpdateStatus": "שגיאה בעדכון סטטוס",
+    "notFound": "התיקון לא נמצא",
+    "progress": "התקדמות",
+    "titleRequired": "כותרת חובה"
   },
   "upgrades": {
     "title": "שיפוצים",
@@ -422,7 +431,9 @@
     "vendorPlaceholder": "IKEA, אמזון…",
     "paymentNotesPlaceholder": "לדוגמה: תשלום מקדמה",
     "deleteItemTitle": "מחק פריט",
-    "setPhaseTitle": "הגדר שלב: {{phase}}"
+    "setPhaseTitle": "הגדר שלב: {{phase}}",
+    "purchased": "נרכש",
+    "pending": "ממתין"
   },
   "itemStatus": {
     "Need to find": "יש למצוא",
