@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5
+- fix(i18n): add missing upgradeDetail.purchased/pending locale keys (were rendering as raw key strings)
+- fix(i18n): replace hardcoded English strings in RepairDetail with t() calls (toast messages, labels)
+
 ## 0.2.4
 - fix(addon): add upgradeItems to v1 schema reset (ownerId was NOT NULL)
 - fix(addon): v1 schema reset — drop legacy tables before CREATE TABLE recreates them
