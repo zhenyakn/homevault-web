@@ -314,13 +314,13 @@ function QuoteCard({ quote, repairId, onEdit }: { quote: RepairQuote; repairId: 
             <p className="text-xs text-muted-foreground">{t("repairDetail.noPayments")}</p>
           ) : (
             <div className="space-y-1">
-              {(payments as { date: string; amount: number; notes?: string }[]).map((p, i) => (
-                <div key={i} className="group/pay flex items-center gap-3 text-sm py-1">
+              {(payments as { id: string; date: string; amount: number; notes?: string }[]).map((p) => (
+                <div key={p.id} className="group/pay flex items-center gap-3 text-sm py-1">
                   <span className="text-muted-foreground text-xs w-20 shrink-0">{formatDate(p.date)}</span>
                   <span className="font-semibold flex-1">{formatCurrency(p.amount, "ILS")}</span>
                   {p.notes && <span className="text-xs text-muted-foreground truncate">{p.notes}</span>}
                   <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/pay:opacity-100 text-destructive hover:text-destructive shrink-0"
-                    onClick={() => delPayMut.mutate({ quoteId: quote.id, paymentIndex: i })}>
+                    onClick={() => delPayMut.mutate({ quoteId: quote.id, paymentId: p.id })}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>

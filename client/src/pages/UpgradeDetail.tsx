@@ -438,8 +438,8 @@ function OptionCard({
             {payments.length > 0 && (
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">{t("upgradeDetail.payments")}</p>
-                {payments.map((p: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between text-xs gap-2 group/payment">
+                {payments.map((p: any) => (
+                  <div key={p.id} className="flex items-center justify-between text-xs gap-2 group/payment">
                     <span className="text-muted-foreground truncate">{p.date}{p.notes ? ` · ${p.notes}` : ""}</span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {p.receipt && (
@@ -453,7 +453,7 @@ function OptionCard({
                         title={t("upgradeDetail.deletePaymentConfirm")}
                         onClick={() => {
                           if (confirm(t("upgradeDetail.deletePaymentConfirm"))) {
-                            deletePaymentMut.mutate({ optionId: option.id, paymentIndex: i });
+                            deletePaymentMut.mutate({ optionId: option.id, paymentId: p.id });
                           }
                         }}
                       >

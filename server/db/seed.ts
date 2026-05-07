@@ -6,8 +6,8 @@ import {
 } from "../mockData.js";
 import {
   properties, expenses, repairs, repairQuotes,
-  upgrades, upgradeOptions, upgradeItems,
-  loans, wishlistItems, purchaseCosts, calendarEvents, inventoryItems,
+  upgrades, upgradeOptions, upgradeOptionPayments, upgradeItems,
+  loans, loanRepayments, wishlistItems, purchaseCosts, calendarEvents, inventoryItems,
 } from "../../drizzle/schema";
 import { getDb } from "./client";
 
@@ -101,9 +101,19 @@ export async function seedMockProperty(userId: number): Promise<number> {
     const upgradeId = nanoid();
     await db.insert(upgrades).values({ id: upgradeId, ...upgradeCore, ownerId: oid, propertyId: pid, attachments: [] as any });
     if (options?.length) {
-      await db.insert(upgradeOptions).values(
-        options.map((opt: any) => ({ id: nanoid(), upgradeId, ...opt, payments: (opt.payments ?? []) as any }))
-      );
+      const optRows = options.map((opt: any) => {
+        const { payments: _p, ...optCore } = opt;
+        return { id: nanoid(), upgradeId, ...optCore };
+      });
+      await db.insert(upgradeOptions).values(optRows);
+      for (let i = 0; i < options.length; i++) {
+        const pyms: any[] = options[i].payments ?? [];
+        if (pyms.length) {
+          await db.insert(upgradeOptionPayments).values(
+            pyms.map((p: any) => ({ id: nanoid(), optionId: optRows[i].id, ...p }))
+          );
+        }
+      }
     }
     if (items?.length) {
       await db.insert(upgradeItems).values(
@@ -112,16 +122,16 @@ export async function seedMockProperty(userId: number): Promise<number> {
     }
   }
 
-  await db.insert(loans).values(
-    mockLoans.map(l => ({
-      id: nanoid(),
-      ...l,
-      repayments: l.repayments.map((r: any) => ({ ...r, ownerId: oid })) as any,
-      attachments: [] as any,
-      ownerId: oid,
-      propertyId: pid,
-    }))
-  );
+  for (const l of mockLoans) {
+    const { repayments, ...loanCore } = l as any;
+    const loanId = nanoid();
+    await db.insert(loans).values({ id: loanId, ...loanCore, attachments: [] as any, ownerId: oid, propertyId: pid });
+    if (repayments?.length) {
+      await db.insert(loanRepayments).values(
+        repayments.map((r: any) => ({ id: nanoid(), loanId, ...r }))
+      );
+    }
+  }
 
   await db.insert(wishlistItems).values(
     mockWishlist.map(w => ({

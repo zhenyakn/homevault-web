@@ -52,7 +52,7 @@ const loanSchema = createInsertSchema(loans, {
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD").optional(),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   attachments: attachmentSchema,
-}).omit({ ...SERVER_FIELDS, repayments: true });
+}).omit({ ...SERVER_FIELDS });
 
 const inventoryItemSchema = createInsertSchema(inventoryItems, {
   name: z.string().min(1),
@@ -307,15 +307,34 @@ export const appRouter = router({
       date: z.string(),
       notes: z.string().optional(),
       receipt: z.string().optional(),
-    })).mutation(async ({ input }) => {
-      await db.logRepairQuotePayment(input.quoteId, { date: input.date, amount: input.amount, notes: input.notes, receipt: input.receipt });
-      return { success: true };
+    })).mutation(async ({ ctx, input }) => {
+      const quote = await db.getRepairQuoteById(input.quoteId);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertRepairOwner(quote.repairId, ctx.user.id);
+      const payment = await db.createRepairQuotePayment({
+        id: nanoid(), quoteId: input.quoteId,
+        amount: input.amount, date: input.date, notes: input.notes, receipt: input.receipt,
+      });
+      if (quote.selected) {
+        const allPayments = await db.getRepairQuotePayments(input.quoteId);
+        const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
+        await db.updateRepair(quote.repairId, ctx.user.id, { cost: totalPaid });
+      }
+      return payment;
     }),
     deletePayment: protectedProcedure.input(z.object({
+      paymentId: z.string(),
       quoteId: z.string(),
-      paymentIndex: z.number().int().min(0),
-    })).mutation(async ({ input }) => {
-      await db.deleteRepairQuotePayment(input.quoteId, input.paymentIndex);
+    })).mutation(async ({ ctx, input }) => {
+      const quote = await db.getRepairQuoteById(input.quoteId);
+      if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertRepairOwner(quote.repairId, ctx.user.id);
+      await db.deleteRepairQuotePayment(input.paymentId, input.quoteId);
+      if (quote.selected) {
+        const allPayments = await db.getRepairQuotePayments(input.quoteId);
+        const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
+        await db.updateRepair(quote.repairId, ctx.user.id, { cost: totalPaid });
+      }
       return { success: true };
     }),
     delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
@@ -369,15 +388,34 @@ export const appRouter = router({
       date: z.string(),
       notes: z.string().optional(),
       receipt: z.string().optional(),
-    })).mutation(async ({ input }) => {
-      await db.logUpgradeOptionPayment(input.optionId, { date: input.date, amount: input.amount, notes: input.notes, receipt: input.receipt });
-      return { success: true };
+    })).mutation(async ({ ctx, input }) => {
+      const option = await db.getUpgradeOptionById(input.optionId);
+      if (!option) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertUpgradeOwner(option.upgradeId, ctx.user.id);
+      const payment = await db.createUpgradeOptionPayment({
+        id: nanoid(), optionId: input.optionId,
+        amount: input.amount, date: input.date, notes: input.notes, receipt: input.receipt,
+      });
+      if (option.selected) {
+        const allPayments = await db.getUpgradeOptionPayments(input.optionId);
+        const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
+        await db.updateUpgrade(option.upgradeId, ctx.user.id, { actualCost: totalPaid });
+      }
+      return payment;
     }),
     deletePayment: protectedProcedure.input(z.object({
+      paymentId: z.string(),
       optionId: z.string(),
-      paymentIndex: z.number().int().min(0),
-    })).mutation(async ({ input }) => {
-      await db.deleteUpgradeOptionPayment(input.optionId, input.paymentIndex);
+    })).mutation(async ({ ctx, input }) => {
+      const option = await db.getUpgradeOptionById(input.optionId);
+      if (!option) throw new TRPCError({ code: "NOT_FOUND" });
+      await assertUpgradeOwner(option.upgradeId, ctx.user.id);
+      await db.deleteUpgradeOptionPayment(input.paymentId, input.optionId);
+      if (option.selected) {
+        const allPayments = await db.getUpgradeOptionPayments(input.optionId);
+        const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
+        await db.updateUpgrade(option.upgradeId, ctx.user.id, { actualCost: totalPaid });
+      }
       return { success: true };
     }),
     delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
@@ -403,7 +441,8 @@ export const appRouter = router({
       actualCost: z.number().int().optional(),
       purchased: z.boolean().optional(),
       notes: z.string().optional(),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ ctx, input }) => {
+      await assertUpgradeOwner(input.upgradeId, ctx.user.id);
       return await db.createUpgradeItem({ id: nanoid(), ...input, purchased: input.purchased ?? false });
     }),
     update: protectedProcedure.input(z.object({ id: z.string(), data: z.object({
@@ -462,7 +501,6 @@ export const appRouter = router({
         id: nanoid(), ...input,
         name: input.name ?? input.lender ?? "Loan",
         currentBalance: input.currentBalance ?? input.originalAmount,
-        repayments: [],
         ownerId: ctx.user.id, propertyId: ctx.propertyId,
       });
     }),
@@ -483,11 +521,15 @@ export const appRouter = router({
         if (!targetLoan || targetLoan.ownerId !== ctx.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised to modify this loan" });
         }
-        const updatedRepayments = [
-          ...((targetLoan as any).repayments || []),
-          { date: input.date, amount: input.amount, ownerId: ctx.user.id },
-        ];
-        return await db.updateLoan(input.loanId, ctx.user.id, { repayments: updatedRepayments });
+        const repayment = await db.createLoanRepayment({
+          id: nanoid(), loanId: input.loanId, amount: input.amount, date: input.date,
+        });
+        const totalRepaid = [...targetLoan.repayments, { amount: input.amount }]
+          .reduce((s, r) => s + r.amount, 0);
+        await db.updateLoan(input.loanId, ctx.user.id, {
+          currentBalance: Math.max(0, targetLoan.originalAmount - totalRepaid),
+        });
+        return repayment;
       }),
   }),
 
@@ -563,8 +605,8 @@ export const appRouter = router({
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
-      .mutation(async ({ input }) => {
-        return await db.deleteCalendarEvent(input.id);
+      .mutation(async ({ ctx, input }) => {
+        return await db.deleteCalendarEvent(input.id, ctx.user.id);
       }),
   }),
 
@@ -586,8 +628,8 @@ export const appRouter = router({
     delete: protectedProcedure
       .input(z.object({ propertyId: z.number().int() }))
       .mutation(async ({ ctx, input }) => {
-        if (input.propertyId === 1) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete the primary property" });
         const props = await db.getPropertiesByUser(ctx.user.id);
+        if (props.length <= 1) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete your only property" });
         if (!props.find(p => p.id === input.propertyId)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Property not found" });
         }

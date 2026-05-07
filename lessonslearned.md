@@ -172,3 +172,100 @@ The unified HA migration script (`apply-migration-addon.mjs`) has been maintaine
 3. **`dropIfLegacyV1` is the right pattern for schema version detection in the HA add-on.** Checking `information_schema` for a NOT NULL canary is cheap, precise, and idempotent. Prefer it over maintaining a list of MODIFY COLUMN statements.
 
 ---
+
+## 2026-05-07 — Second security pass: gaps found by reading actual code, not summaries
+
+### What happened
+A deep code-reading pass (not relying on the agent survey) found six security holes and three structural bugs that the previous hardening session missed:
+
+**Security — four unguarded mutations:**
+1. `repairQuotes.logPayment` and `.deletePayment` — neither checked ownership. Any authenticated user could log or delete payments on any repair quote by knowing the quote ID.
+2. `upgradeOptions.logPayment` and `.deletePayment` — same gap.
+3. `upgradeItems.create` — the mutation didn't destructure `ctx` at all. Any authenticated user could add items to any upgrade by guessing its nanoid.
+4. `calendar.delete` — called `db.deleteCalendarEvent(input.id)` with no `ownerId` filter. Any user could delete any calendar event.
+
+**Data integrity — loan currentBalance drift:**
+`loans.addRepayment` stored the repayment in the JSON array but never updated the `currentBalance` column. The dashboard's `buildLoanSummary` was computing the correct remaining balance from the array (independently), while `currentBalance` in the DB silently fell out of sync after the first repayment. Two sources of truth for the same derived value.
+
+**Logic bug — property.delete guarded by ID 1:**
+The guard `if (propertyId === 1)` was correct only for a single-user install where the first created property happens to be ID 1 (autoincrement). For any multi-user deployment, user A's primary property could be ID 5 — the guard doesn't protect them.
+
+### Root cause
+All of these were invisible during the first security pass (P3) because that pass focused on *top-level entity* update/delete procedures. The four security holes were all in *child entity payment* paths and one *create* path — the assumption was that mutations need a `ctx` destructure to do anything harmful, but `protectedProcedure` already ensures the user is authenticated; the missing check was *whose* records they could touch.
+
+The `currentBalance` drift was invisible because `buildLoanSummary` happened to compute the balance correctly from the array — there was no observable UI bug, just a silent column divergence that would confuse future code reading `loan.currentBalance`.
+
+### What we changed
+- Added `getRepairQuoteById` + `assertRepairOwner` chain to `logPayment`/`deletePayment`.
+- Added `getUpgradeOptionById` + `assertUpgradeOwner` chain to `logPayment`/`deletePayment`.
+- Added `ctx` + `assertUpgradeOwner` to `upgradeItems.create`.
+- Added `ownerId` parameter to `db.deleteCalendarEvent`; baked into WHERE clause; router passes `ctx.user.id`.
+- `addRepayment` now computes `max(0, originalAmount - totalRepaid)` and writes `currentBalance` atomically with the repayments update.
+- `property.delete` guard changed from `propertyId === 1` to `props.length <= 1`.
+- `context.ts` property validation changed from full `getPropertiesByUser` list to a targeted `checkPropertyOwnership(userId, propertyId)` (single SELECT id). Full list only on fallback path.
+
+### Rules we carry forward
+1. **Every tRPC mutation that accepts an entity ID must answer: who can own this ID?** If it's a child entity (no `ownerId` column), walk to the parent. If it's a top-level entity, bake `ownerId` into the WHERE clause. Never leave a mutation that ignores `ctx.user.id`.
+2. **"Logged in" is not "authorized."** `protectedProcedure` ensures authentication. Authorization — *whose* data can this user touch — is a separate, explicit check that must appear in every mutation. It cannot be assumed.
+3. **Two sources of truth for the same value will diverge.** `currentBalance` and `sum(repayments)` both represent the outstanding balance. Pick one as canonical (the computed value from repayments) and keep the denormalized column in sync on every write.
+4. **Hardcoded IDs in guards are accidents.** `propertyId === 1` works on a single-user dev install by coincidence. The guard should always express the intended semantic: "can't delete the only property."
+
+---
+
+## 2026-05-07 — Architectural migration: JSON arrays → relational payment tables
+
+### What happened
+
+Three tables (`loans`, `repairQuotes`, `upgradeOptions`) stored payment sub-records as JSON arrays in a column. This is a common early-prototype pattern that creates several real problems:
+
+1. **No FK integrity.** Deleting a parent record left orphaned JSON blobs. The only protection was application-level logic in the delete path.
+2. **Index-based deletion is semantically wrong.** `deletePayment` took `paymentIndex: number` — the array index of the payment to delete. If two clients race, they can delete the wrong payment. Worse, this breaks completely with pagination.
+3. **Dashboard aggregation required full table loads.** `getDashboardStats` was loading every expense, repair, upgrade, and loan into Node.js memory, filtering in JS. On a long-lived installation this becomes a serious performance issue.
+4. **Denormalized `currentBalance` silently diverged.** After logging a repayment, the `currentBalance` column was never updated. `buildLoanSummary` computed the correct balance from the JSON array; `currentBalance` was stale.
+
+### Root cause
+All three patterns (JSON sub-records, index-based mutations, in-memory aggregation) were introduced by AI-generated code that optimized for "works on first try" rather than correctness or scalability. No code review of the persistence layer was done at generation time.
+
+### What we changed
+- Created three relational tables: `repairQuotePayments`, `upgradeOptionPayments`, `loanRepayments` — each with `ON DELETE CASCADE` FK to the parent.
+- Rewrote `server/db/repairs.ts`, `upgrades.ts`, `loans.ts`: `attachPayments()` / `attachRepayments()` batch-fetches child rows in one query, maps in JS (no N+1).
+- Changed `deletePayment` input from `paymentIndex: number` to `paymentId: string` on all three payment paths. Updated `RepairDetail.tsx` and `UpgradeDetail.tsx`.
+- Rewrote `getDashboardStats` and `getPortfolioSummary` with SQL `SUM`/`COUNT`/`GROUP BY` aggregates — no full-table loads.
+- `addRepayment` now updates `currentBalance` atomically.
+- Migration `drizzle/0010_payment_tables.sql` uses `JSON_TABLE` to copy existing data before dropping the JSON columns.
+- `apply-migration-addon.mjs` updated: Phase 2 creates the 3 new tables; Phase 4 (new) runs best-effort JSON→relational data copy (try/catch for MariaDB), then `DROP COLUMN IF EXISTS` for the old JSON columns.
+- `server/db/seed.ts` updated to insert repayments/payments into the new relational tables instead of passing them as JSON in parent inserts.
+
+---
+
+## 2026-05-07 — Migration runner silently dropped SQL; `DROP COLUMN IF EXISTS` not supported on MySQL 8.4 Windows
+
+### What happened
+`pnpm run db:migrate` failed with `ER_PARSE_ERROR` on `DROP COLUMN IF EXISTS`. Before reaching that, the runner was silently skipping three SQL statements entirely — `CREATE TABLE loanRepayments`, the data migration INSERT for it, and `ALTER TABLE loans DROP COLUMN repayments`. None of these were executed, and no error was logged. The runner reported "6 statements" but there should have been 10.
+
+### Root causes
+1. **The runner's comment filter was too aggressive.** The statement-split logic split on `statement-breakpoint`, then filtered any chunk whose first line started with `--`. A chunk structured as `-- comment\nCREATE TABLE ...` was treated as a pure comment and silently discarded. Three out of ten statements in the migration had leading SQL comments and were silently lost.
+
+2. **`DROP COLUMN IF EXISTS` is not supported by MySQL 8.4 on Windows.** The parser rejects the syntax even though MySQL 8.0.29 release notes document this feature. Using plain `DROP COLUMN` is equivalent since the runner's `IGNORABLE` set already includes `ER_CANT_DROP_FIELD_OR_KEY`.
+
+3. **The migration was never run as part of the session that created it.** The session ended after writing the migration file and running `pnpm test`, which passes because unit tests mock the DB. Running `pnpm run db:migrate` was not part of the session-end checklist.
+
+### What we changed
+- `scripts/migrate.ts`: changed the filter to strip leading comment lines from each chunk (line-by-line scan for first non-`--` line), preserving SQL that follows comments.
+- `drizzle/0010_payment_tables.sql` + `apply-migration-addon.mjs`: replaced `DROP COLUMN IF EXISTS` with plain `DROP COLUMN`.
+
+### Rules we carry forward
+1. **Every session that creates or modifies a migration file must run `pnpm run db:migrate` before ending.** `pnpm test` is not a substitute — unit tests don't hit the real DB.
+2. **The migration runner's comment filter must strip comment lines, not entire chunks.** A chunk is a multi-line SQL statement with optional header comments. Only discard chunks that are *all* comments.
+3. **Write tests before ending a session, not after the bug is found manually.** Adding `server/migrate.test.ts` retroactively confirmed three pre-existing issues (`ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `loanRepayments.ownerId` schema drift) that had been silently present since 0004/0005. A test written when the migration was first authored would have flagged all three immediately.
+4. **Don't assume `IF EXISTS` / `IF NOT EXISTS` DDL syntax works everywhere.** MySQL 8.4 on Windows rejected `DROP COLUMN IF EXISTS` with `ER_PARSE_ERROR`. Use plain DDL and handle the idempotency error in the IGNORABLE set instead.
+
+---
+
+### Rules we carry forward
+1. **JSON columns for sub-records are a prototype pattern, not a production pattern.** If a "thing" has a list of "sub-things", the sub-things deserve their own table. The signal to look for: any mutation that takes a list index (`paymentIndex: number`) to identify a specific sub-record.
+2. **Aggregation belongs in SQL, not in application code.** `SUM`, `COUNT`, `GROUP BY` exist for a reason. Loading all rows just to sum them in Node.js is O(n) memory and CPU for what the DB can do in a single page-scan pass.
+3. **When refactoring JSON columns to relational tables: keep the parent getter shape unchanged.** `getLoans()` still returns `Loan & { repayments: LoanRepayment[] }` — the same shape as before, but now with real objects. Client code that reads `loan.repayments` continues to work. The N+1 avoidance comes from `attachRepayments()` which batch-fetches all children for a list of parent IDs in one query.
+4. **`apply-migration-addon.mjs` has four phases now.** Phase 1: detect and drop legacy v1 tables. Phase 2: CREATE TABLE IF NOT EXISTS for current schema. Phase 3: ALTER TABLE convergence for upgrades. Phase 4: new — data migrations and DROP COLUMN for retired JSON columns. Any future column removal follows this pattern.
+
+---

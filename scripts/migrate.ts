@@ -65,8 +65,14 @@ async function run() {
     const statements = sql
       .split(/-->\s*statement-breakpoint/)
       .flatMap(chunk => chunk.split(/;(?=\s*(\n|$))/))
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith("--"));
+      .map(s => {
+        // Strip leading comment lines so a chunk like "-- comment\nALTER TABLE..."
+        // is not silently discarded. Pure comment chunks collapse to "".
+        const lines = s.trim().split("\n");
+        const firstSql = lines.findIndex(l => !l.trimStart().startsWith("--"));
+        return firstSql === -1 ? "" : lines.slice(firstSql).join("\n").trim();
+      })
+      .filter(s => s.length > 0);
 
     console.log(`[run]   ${file} (${statements.length} statements)`);
 

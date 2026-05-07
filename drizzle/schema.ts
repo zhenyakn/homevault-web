@@ -180,7 +180,6 @@ export const repairQuotes = mysqlTable(
     notes: text("notes"),
     date: varchar("date", { length: 20 }),
     selected: boolean("selected").default(false),
-    payments: json("payments").$type<any[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => ({
@@ -190,6 +189,27 @@ export const repairQuotes = mysqlTable(
 
 export type RepairQuote = typeof repairQuotes.$inferSelect;
 export type InsertRepairQuote = typeof repairQuotes.$inferInsert;
+
+export const repairQuotePayments = mysqlTable(
+  "repairQuotePayments",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    quoteId: varchar("quoteId", { length: 36 })
+      .notNull()
+      .references(() => repairQuotes.id, { onDelete: "cascade" }),
+    amount: int("amount").notNull(),
+    date: varchar("date", { length: 20 }).notNull(),
+    notes: text("notes"),
+    receipt: text("receipt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    quoteIdx: index("rqpay_quote_idx").on(table.quoteId),
+  })
+);
+
+export type RepairQuotePayment = typeof repairQuotePayments.$inferSelect;
+export type InsertRepairQuotePayment = typeof repairQuotePayments.$inferInsert;
 
 export const upgrades = mysqlTable(
   "upgrades",
@@ -256,7 +276,6 @@ export const upgradeOptions = mysqlTable(
     pros: json("pros").$type<string[]>(),
     cons: json("cons").$type<string[]>(),
     selected: boolean("selected").default(false),
-    payments: json("payments").$type<any[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (table) => ({
@@ -266,6 +285,27 @@ export const upgradeOptions = mysqlTable(
 
 export type UpgradeOption = typeof upgradeOptions.$inferSelect;
 export type InsertUpgradeOption = typeof upgradeOptions.$inferInsert;
+
+export const upgradeOptionPayments = mysqlTable(
+  "upgradeOptionPayments",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    optionId: varchar("optionId", { length: 36 })
+      .notNull()
+      .references(() => upgradeOptions.id, { onDelete: "cascade" }),
+    amount: int("amount").notNull(),
+    date: varchar("date", { length: 20 }).notNull(),
+    notes: text("notes"),
+    receipt: text("receipt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    optionIdx: index("uopay_option_idx").on(table.optionId),
+  })
+);
+
+export type UpgradeOptionPayment = typeof upgradeOptionPayments.$inferSelect;
+export type InsertUpgradeOptionPayment = typeof upgradeOptionPayments.$inferInsert;
 
 export const upgradeItems = mysqlTable(
   "upgradeItems",
@@ -320,7 +360,6 @@ export const loans = mysqlTable(
     ]).default("mortgage"),
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
-    repayments: json("repayments").$type<any[]>(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -332,6 +371,26 @@ export const loans = mysqlTable(
 
 export type Loan = typeof loans.$inferSelect;
 export type InsertLoan = typeof loans.$inferInsert;
+
+export const loanRepayments = mysqlTable(
+  "loanRepayments",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    loanId: varchar("loanId", { length: 36 })
+      .notNull()
+      .references(() => loans.id, { onDelete: "cascade" }),
+    amount: int("amount").notNull(),
+    date: varchar("date", { length: 20 }).notNull(),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => ({
+    loanIdx: index("lrep_loan_idx").on(table.loanId),
+  })
+);
+
+export type LoanRepayment = typeof loanRepayments.$inferSelect;
+export type InsertLoanRepayment = typeof loanRepayments.$inferInsert;
 
 export const wishlistItems = mysqlTable(
   "wishlistItems",

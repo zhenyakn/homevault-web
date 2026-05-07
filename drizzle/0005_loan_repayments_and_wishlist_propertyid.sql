@@ -4,9 +4,9 @@
 -- 1. Add propertyId to wishlistItems
 ALTER TABLE `wishlistItems` ADD COLUMN `propertyId` int NOT NULL DEFAULT 1;--> statement-breakpoint
 
-CREATE INDEX IF NOT EXISTS `wishlist_property_idx` ON `wishlistItems` (`propertyId`);--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `wishlist_owner_idx`    ON `wishlistItems` (`ownerId`);--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `wishlist_priority_idx` ON `wishlistItems` (`priority`);--> statement-breakpoint
+CREATE INDEX `wishlist_property_idx` ON `wishlistItems` (`propertyId`);--> statement-breakpoint
+CREATE INDEX `wishlist_owner_idx`    ON `wishlistItems` (`ownerId`);--> statement-breakpoint
+CREATE INDEX `wishlist_priority_idx` ON `wishlistItems` (`priority`);--> statement-breakpoint
 
 -- 2. Create loanRepayments table
 CREATE TABLE IF NOT EXISTS `loanRepayments` (
@@ -25,6 +25,6 @@ CREATE TABLE IF NOT EXISTS `loanRepayments` (
     FOREIGN KEY (`ownerId`) REFERENCES `users`(`id`)
 );--> statement-breakpoint
 
-CREATE INDEX IF NOT EXISTS `loanRepayment_loanId_idx` ON `loanRepayments` (`loanId`);--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `loanRepayment_owner_idx`  ON `loanRepayments` (`ownerId`);--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS `loanRepayment_date_idx`   ON `loanRepayments` (`date`);
+CREATE INDEX `loanRepayment_loanId_idx` ON `loanRepayments` (`loanId`);--> statement-breakpoint
+CREATE INDEX `loanRepayment_owner_idx`  ON `loanRepayments` (`ownerId`);--> statement-breakpoint
+CREATE INDEX `loanRepayment_date_idx`   ON `loanRepayments` (`date`);

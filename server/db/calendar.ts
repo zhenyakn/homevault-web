@@ -27,8 +27,8 @@ export async function updateCalendarEvent(id: string, data: Partial<CalendarEven
   return data;
 }
 
-export async function deleteCalendarEvent(id: string) {
+export async function deleteCalendarEvent(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(calendarEvents).where(eq(calendarEvents.id, id));
+  await db.delete(calendarEvents).where(and(eq(calendarEvents.id, id), eq(calendarEvents.ownerId, ownerId)));
   return true;
 }

@@ -209,12 +209,28 @@ async function main() {
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`selected\` tinyint(1) DEFAULT '0',
-      \`payments\` json DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
       KEY \`quote_repair_idx\` (\`repairId\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "repairQuotes"
+  );
+
+  // ── repairQuotePayments ───────────────────────────────────────────────────────
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`repairQuotePayments\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`quoteId\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`amount\` int NOT NULL,
+      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`receipt\` text COLLATE utf8mb4_unicode_ci,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      KEY \`rqp_quote_idx\` (\`quoteId\`),
+      CONSTRAINT \`rqp_quote_fk\` FOREIGN KEY (\`quoteId\`) REFERENCES \`repairQuotes\` (\`id\`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "repairQuotePayments"
   );
 
   // ── upgrades ─────────────────────────────────────────────────────────────────
@@ -256,12 +272,28 @@ async function main() {
       \`pros\` json DEFAULT NULL,
       \`cons\` json DEFAULT NULL,
       \`selected\` tinyint(1) DEFAULT '0',
-      \`payments\` json DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
       KEY \`option_upgrade_idx\` (\`upgradeId\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "upgradeOptions"
+  );
+
+  // ── upgradeOptionPayments ─────────────────────────────────────────────────────
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`upgradeOptionPayments\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`optionId\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`amount\` int NOT NULL,
+      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`receipt\` text COLLATE utf8mb4_unicode_ci,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      KEY \`uop_option_idx\` (\`optionId\`),
+      CONSTRAINT \`uop_option_fk\` FOREIGN KEY (\`optionId\`) REFERENCES \`upgradeOptions\` (\`id\`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "upgradeOptionPayments"
   );
 
   // ── upgradeItems ─────────────────────────────────────────────────────────────
@@ -302,7 +334,6 @@ async function main() {
       \`loanType\` enum('mortgage','heloc','personal','construction','other') COLLATE utf8mb4_unicode_ci DEFAULT 'mortgage',
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`attachments\` json DEFAULT NULL,
-      \`repayments\` json DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
@@ -310,6 +341,22 @@ async function main() {
       KEY \`loan_owner_idx\` (\`ownerId\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "loans"
+  );
+
+  // ── loanRepayments ────────────────────────────────────────────────────────────
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`loanRepayments\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`loanId\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`amount\` int NOT NULL,
+      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      KEY \`lr_loan_idx\` (\`loanId\`),
+      CONSTRAINT \`lr_loan_fk\` FOREIGN KEY (\`loanId\`) REFERENCES \`loans\` (\`id\`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "loanRepayments"
   );
 
   // ── wishlistItems ────────────────────────────────────────────────────────────
@@ -440,7 +487,6 @@ async function main() {
   await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`amount\` int DEFAULT NULL`, "repairQuotes.amount");
   await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "repairQuotes.date");
   await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`selected\` tinyint(1) NOT NULL DEFAULT 0`, "repairQuotes.selected");
-  await run(`ALTER TABLE \`repairQuotes\` ADD COLUMN \`payments\` json DEFAULT NULL`, "repairQuotes.payments");
 
   // ── upgrades ──────────────────────────────────────────────────────────────────
   await run(`ALTER TABLE \`upgrades\` ADD COLUMN \`title\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgrades.title");
@@ -460,7 +506,6 @@ async function main() {
   await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`pros\` json DEFAULT NULL`, "upgradeOptions.pros");
   await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`cons\` json DEFAULT NULL`, "upgradeOptions.cons");
   await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`selected\` tinyint(1) NOT NULL DEFAULT 0`, "upgradeOptions.selected");
-  await run(`ALTER TABLE \`upgradeOptions\` ADD COLUMN \`payments\` json DEFAULT NULL`, "upgradeOptions.payments");
 
   // ── upgradeItems ──────────────────────────────────────────────────────────────
   await run(`ALTER TABLE \`upgradeItems\` ADD COLUMN \`store\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "upgradeItems.store");
@@ -475,7 +520,6 @@ async function main() {
   await run(`ALTER TABLE \`loans\` ADD COLUMN \`monthlyPayment\` int DEFAULT NULL`, "loans.monthlyPayment");
   await run(`ALTER TABLE \`loans\` ADD COLUMN \`endDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "loans.endDate");
   await run(`ALTER TABLE \`loans\` ADD COLUMN \`nextPaymentDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "loans.nextPaymentDate");
-  await run(`ALTER TABLE \`loans\` ADD COLUMN \`repayments\` json DEFAULT NULL`, "loans.repayments");
   await run(`ALTER TABLE \`loans\` ADD COLUMN \`attachments\` json DEFAULT NULL`, "loans.attachments");
 
   // ── wishlistItems ─────────────────────────────────────────────────────────────
@@ -498,6 +542,68 @@ async function main() {
   await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`recurringInterval\` enum('monthly','quarterly','yearly') COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.recurringInterval");
   await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`reminderDaysBefore\` int DEFAULT NULL`, "calendarEvents.reminderDaysBefore");
   await run(`ALTER TABLE \`calendarEvents\` ADD COLUMN \`externalCalendarId\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`, "calendarEvents.externalCalendarId");
+
+  // ── Phase 4: payment tables — migrate JSON → relational, drop legacy columns ──
+  // Best-effort: JSON_TABLE is MySQL 8.0+ / MariaDB 10.6+. Wrapped in try/catch
+  // so older MariaDB installs skip the data copy gracefully (no data loss — the
+  // JSON column is dropped only after a successful copy, or if it never existed).
+
+  const jsonMigrations = [
+    {
+      label: "loanRepayments JSON migration",
+      sql: `INSERT IGNORE INTO \`loanRepayments\` (id, loanId, amount, date, notes, createdAt)
+        SELECT CONCAT(l.id, '_', jt.idx), l.id, jt.amount, jt.date, jt.notes, NOW()
+        FROM \`loans\` l,
+        JSON_TABLE(COALESCE(l.repayments, '[]'), '$[*]' COLUMNS(
+          idx FOR ORDINALITY,
+          amount INT PATH '$.amount',
+          date VARCHAR(20) PATH '$.date',
+          notes TEXT PATH '$.notes'
+        )) AS jt
+        WHERE l.repayments IS NOT NULL AND JSON_LENGTH(l.repayments) > 0`,
+    },
+    {
+      label: "repairQuotePayments JSON migration",
+      sql: `INSERT IGNORE INTO \`repairQuotePayments\` (id, quoteId, amount, date, notes, createdAt)
+        SELECT CONCAT(q.id, '_', jt.idx), q.id, jt.amount, jt.date, jt.notes, NOW()
+        FROM \`repairQuotes\` q,
+        JSON_TABLE(COALESCE(q.payments, '[]'), '$[*]' COLUMNS(
+          idx FOR ORDINALITY,
+          amount INT PATH '$.amount',
+          date VARCHAR(20) PATH '$.date',
+          notes TEXT PATH '$.notes'
+        )) AS jt
+        WHERE q.payments IS NOT NULL AND JSON_LENGTH(q.payments) > 0`,
+    },
+    {
+      label: "upgradeOptionPayments JSON migration",
+      sql: `INSERT IGNORE INTO \`upgradeOptionPayments\` (id, optionId, amount, date, notes, createdAt)
+        SELECT CONCAT(o.id, '_', jt.idx), o.id, jt.amount, jt.date, jt.notes, NOW()
+        FROM \`upgradeOptions\` o,
+        JSON_TABLE(COALESCE(o.payments, '[]'), '$[*]' COLUMNS(
+          idx FOR ORDINALITY,
+          amount INT PATH '$.amount',
+          date VARCHAR(20) PATH '$.date',
+          notes TEXT PATH '$.notes'
+        )) AS jt
+        WHERE o.payments IS NOT NULL AND JSON_LENGTH(o.payments) > 0`,
+    },
+  ];
+
+  for (const m of jsonMigrations) {
+    try {
+      await conn.execute(m.sql);
+      console.log(`✓ ${m.label}`);
+    } catch (e) {
+      console.log(`- ${m.label} (skipped — ${e.code ?? e.message})`);
+    }
+  }
+
+  // Drop legacy JSON columns now that data is in relational tables.
+  // ALTER TABLE ... DROP COLUMN IF EXISTS is supported in MySQL 8.0.29+ and MariaDB 10.2+.
+  await run(`ALTER TABLE \`loans\` DROP COLUMN \`repayments\``, "loans DROP repayments");
+  await run(`ALTER TABLE \`repairQuotes\` DROP COLUMN \`payments\``, "repairQuotes DROP payments");
+  await run(`ALTER TABLE \`upgradeOptions\` DROP COLUMN \`payments\``, "upgradeOptions DROP payments");
 
   console.log("Unified HomeVault migration complete.");
   await conn.end();

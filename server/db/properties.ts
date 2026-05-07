@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { properties, type Property } from "../../drizzle/schema";
 import { getDb } from "./client";
 
@@ -11,6 +11,16 @@ export async function getProperty(propertyId: number = 1) {
 export async function getPropertiesByUser(userId: number) {
   const db = await getDb();
   return await db.select().from(properties).where(eq(properties.userId, userId));
+}
+
+export async function checkPropertyOwnership(userId: number, propertyId: number): Promise<boolean> {
+  const db = await getDb();
+  const result = await db
+    .select({ id: properties.id })
+    .from(properties)
+    .where(and(eq(properties.userId, userId), eq(properties.id, propertyId)))
+    .limit(1);
+  return result.length > 0;
 }
 
 export async function createProperty(userId: number, data: Partial<typeof properties.$inferInsert> = {}) {

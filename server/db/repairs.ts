@@ -1,6 +1,11 @@
 import { eq, desc, and, inArray } from "drizzle-orm";
-import { repairs, repairQuotes, type Repair, type RepairQuote } from "../../drizzle/schema";
-import { getDb, parseJsonArray } from "./client";
+import {
+  repairs, repairQuotes, repairQuotePayments,
+  type Repair, type RepairQuote, type RepairQuotePayment,
+} from "../../drizzle/schema";
+import { getDb } from "./client";
+
+export type RepairQuoteWithPayments = RepairQuote & { payments: RepairQuotePayment[] };
 
 export async function getRepairs(userId: number, propertyId: number, limit = 500, offset = 0) {
   const db = await getDb();
@@ -37,12 +42,32 @@ export async function deleteRepair(id: string, ownerId: number) {
   return true;
 }
 
-// ─── Repair Quotes ────────────────────────────────────────────────────────────
+// ── Repair Quotes ─────────────────────────────────────────────────────────────
 
-export async function getRepairQuotes(repairId: string) {
+async function attachPayments(quoteRows: RepairQuote[]): Promise<RepairQuoteWithPayments[]> {
+  if (quoteRows.length === 0) return [];
   const db = await getDb();
-  const rows = await db.select().from(repairQuotes).where(eq(repairQuotes.repairId, repairId)).orderBy(repairQuotes.createdAt);
-  return rows.map(r => ({ ...r, payments: parseJsonArray(r.payments) }));
+  const ids = quoteRows.map(q => q.id);
+  const payRows = await db
+    .select()
+    .from(repairQuotePayments)
+    .where(inArray(repairQuotePayments.quoteId, ids))
+    .orderBy(repairQuotePayments.date);
+  const byQuote: Record<string, RepairQuotePayment[]> = {};
+  for (const p of payRows) {
+    (byQuote[p.quoteId] ??= []).push(p);
+  }
+  return quoteRows.map(q => ({ ...q, payments: byQuote[q.id] ?? [] }));
+}
+
+export async function getRepairQuotes(repairId: string): Promise<RepairQuoteWithPayments[]> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(repairQuotes)
+    .where(eq(repairQuotes.repairId, repairId))
+    .orderBy(repairQuotes.createdAt);
+  return attachPayments(rows);
 }
 
 export async function getRepairQuoteCounts(repairIds: string[]) {
@@ -70,15 +95,13 @@ export async function getRepairQuoteById(id: string) {
 
 export async function createRepairQuote(data: typeof repairQuotes.$inferInsert) {
   const db = await getDb();
-  await db.insert(repairQuotes).values({ ...data, payments: (data.payments ?? []) as any });
+  await db.insert(repairQuotes).values(data);
   return data;
 }
 
 export async function updateRepairQuote(id: string, data: Partial<RepairQuote>) {
   const db = await getDb();
-  const normalized: any = { ...data };
-  if ("payments" in normalized) normalized.payments = normalized.payments ?? [];
-  await db.update(repairQuotes).set(normalized).where(eq(repairQuotes.id, id));
+  await db.update(repairQuotes).set(data).where(eq(repairQuotes.id, id));
   return data;
 }
 
@@ -90,32 +113,33 @@ export async function selectRepairQuote(repairId: string, quoteId: string) {
   });
 }
 
-export async function logRepairQuotePayment(quoteId: string, payment: { date: string; amount: number; notes?: string; receipt?: string }) {
-  const db = await getDb();
-  const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
-  if (!existing) throw new Error("Quote not found");
-  const payments = [...parseJsonArray(existing.payments), payment];
-  await db.update(repairQuotes).set({ payments: payments as any }).where(eq(repairQuotes.id, quoteId));
-  if (existing.selected) {
-    const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
-    await db.update(repairs).set({ cost: totalPaid }).where(eq(repairs.id, existing.repairId));
-  }
-}
-
-export async function deleteRepairQuotePayment(quoteId: string, paymentIndex: number) {
-  const db = await getDb();
-  const [existing] = await db.select().from(repairQuotes).where(eq(repairQuotes.id, quoteId)).limit(1);
-  if (!existing) throw new Error("Quote not found");
-  const payments = parseJsonArray(existing.payments).filter((_: any, i: number) => i !== paymentIndex);
-  await db.update(repairQuotes).set({ payments: payments as any }).where(eq(repairQuotes.id, quoteId));
-  if (existing.selected) {
-    const totalPaid = payments.reduce((s: number, p: any) => s + p.amount, 0);
-    await db.update(repairs).set({ cost: totalPaid }).where(eq(repairs.id, existing.repairId));
-  }
-}
-
 export async function deleteRepairQuote(id: string) {
   const db = await getDb();
   await db.delete(repairQuotes).where(eq(repairQuotes.id, id));
+  return true;
+}
+
+// ── Repair quote payments ─────────────────────────────────────────────────────
+
+export async function getRepairQuotePayments(quoteId: string): Promise<RepairQuotePayment[]> {
+  const db = await getDb();
+  return await db
+    .select()
+    .from(repairQuotePayments)
+    .where(eq(repairQuotePayments.quoteId, quoteId))
+    .orderBy(repairQuotePayments.date);
+}
+
+export async function createRepairQuotePayment(data: typeof repairQuotePayments.$inferInsert): Promise<RepairQuotePayment> {
+  const db = await getDb();
+  await db.insert(repairQuotePayments).values(data);
+  return data as RepairQuotePayment;
+}
+
+export async function deleteRepairQuotePayment(id: string, quoteId: string) {
+  const db = await getDb();
+  await db
+    .delete(repairQuotePayments)
+    .where(and(eq(repairQuotePayments.id, id), eq(repairQuotePayments.quoteId, quoteId)));
   return true;
 }

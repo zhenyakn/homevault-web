@@ -52,12 +52,12 @@ export async function createContext(
   let propertyId = requestedId;
 
   if (user) {
-    const ownedProperties = await db.getPropertiesByUser(user.id);
-    const isOwned = ownedProperties.some((p) => p.id === requestedId);
+    const isOwned = await db.checkPropertyOwnership(user.id, requestedId);
 
     if (!isOwned) {
       // Fall back to the first owned property rather than silently
       // serving data from an unrelated property.
+      const ownedProperties = await db.getPropertiesByUser(user.id);
       propertyId = ownedProperties[0]?.id ?? requestedId;
     }
   }

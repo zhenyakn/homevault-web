@@ -1,11 +1,13 @@
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, inArray, gte, lte, notInArray, sql } from "drizzle-orm";
 import {
-  expenses, repairs, upgrades, upgradeOptions, loans, purchaseCosts,
+  expenses, repairs, upgrades, upgradeOptions, loans,
   type Expense, type Repair, type Loan,
   users,
 } from "../../drizzle/schema";
-import { getDb, parseJsonArray } from "./client";
+import { getDb } from "./client";
 import { getProperty, getPropertiesByUser } from "./properties";
+
+// ── Pure helpers (exported for unit tests) ────────────────────────────────────
 
 export function calcMonthlyStats(allExpenses: Expense[], monthStart: string, monthEnd: string) {
   const thisMonthExp = allExpenses.filter(e => e.date >= monthStart && e.date <= monthEnd);
@@ -24,16 +26,6 @@ export function getOverdueExpenses(allExpenses: Expense[], today: string) {
     .map(e => ({ id: e.id, label: e.name, amount: e.amount, date: e.date }));
 }
 
-function getStaleRepairs(allRepairs: Repair[], staleCutoff: string) {
-  return allRepairs
-    .filter(r => r.status !== "completed" && r.status !== "cancelled" &&
-      (r.priority === "urgent" || r.priority === "high") &&
-      (r.updatedAt
-        ? new Date(r.updatedAt).toISOString().split("T")[0] <= staleCutoff
-        : (r.reportedDate ?? "") <= staleCutoff))
-    .map(r => ({ id: r.id, label: r.title, priority: r.priority, status: r.status, contractor: r.contractor }));
-}
-
 export function buildLoanSummary(allLoans: (Loan & { repayments: any[] })[]) {
   return allLoans.map(l => {
     const repaid = l.repayments.reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
@@ -48,6 +40,8 @@ export function buildLoanSummary(allLoans: (Loan & { repayments: any[] })[]) {
     };
   });
 }
+
+// ── Recent activity feed ──────────────────────────────────────────────────────
 
 export async function getRecentActivity(propertyId: number) {
   const db = await getDb();
@@ -91,6 +85,8 @@ export async function getRecentActivity(propertyId: number) {
   return all.slice(0, 10);
 }
 
+// ── Dashboard stats — targeted SQL queries, no full-table loads ───────────────
+
 export async function getDashboardStats(userId: number, propertyId: number) {
   const db = await getDb();
 
@@ -100,71 +96,152 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const monthStart   = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-01`;
   const monthEnd     = new Date(currentYear, currentMonth + 1, 0).toISOString().split("T")[0];
   const today        = now.toISOString().split("T")[0];
-  const staleCutoff  = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  // 5-day lookback as a Date for timestamp comparison
+  const staleCutoffDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
 
-  const ownerPropFilter = <T extends { ownerId: ReturnType<typeof eq>; propertyId: ReturnType<typeof eq> }>(
-    col: { ownerId: any; propertyId: any }
-  ) => and(eq(col.ownerId, userId), eq(col.propertyId, propertyId));
+  const expFilter  = and(eq(expenses.ownerId,  userId), eq(expenses.propertyId,  propertyId));
+  const repFilter  = and(eq(repairs.ownerId,   userId), eq(repairs.propertyId,   propertyId));
+  const upgFilter  = and(eq(upgrades.ownerId,  userId), eq(upgrades.propertyId,  propertyId));
+  const loanFilter = and(eq(loans.ownerId,     userId), eq(loans.propertyId,     propertyId));
 
   const [
-    allExpenses, allRepairs, allUpgrades, allLoansRaw, allPurchaseCosts, prop,
+    monthSpentRows,
+    monthlyRecurringRows,
+    monthCatsRows,
+    overdueExpenses,
+    openRepairsCountRows,
+    openRepairs,
+    staleRepairs,
+    activeUpgradeRows,
+    loanRows,
+    prop,
   ] = await Promise.all([
-    db.select().from(expenses).where(ownerPropFilter(expenses)),
-    db.select().from(repairs).where(ownerPropFilter(repairs)),
-    db.select().from(upgrades).where(ownerPropFilter(upgrades)),
-    db.select().from(loans).where(ownerPropFilter(loans)),
-    db.select().from(purchaseCosts).where(ownerPropFilter(purchaseCosts)),
+    // Monthly spend (SQL SUM — no full table load)
+    db.select({ total: sql<number>`COALESCE(SUM(${expenses.amount}), 0)` })
+      .from(expenses)
+      .where(and(expFilter, gte(expenses.date, monthStart), lte(expenses.date, monthEnd))),
+
+    // Monthly recurring baseline (SQL SUM)
+    db.select({ total: sql<number>`COALESCE(SUM(${expenses.amount}), 0)` })
+      .from(expenses)
+      .where(and(expFilter, eq(expenses.isRecurring, true), eq(expenses.recurringInterval, "monthly"))),
+
+    // Category breakdown this month (SQL GROUP BY)
+    db.select({ category: expenses.category, total: sql<number>`SUM(${expenses.amount})` })
+      .from(expenses)
+      .where(and(expFilter, gte(expenses.date, monthStart), lte(expenses.date, monthEnd)))
+      .groupBy(expenses.category),
+
+    // Overdue recurring unpaid — exact rows for UI
+    db.select({ id: expenses.id, label: expenses.name, amount: expenses.amount, date: expenses.date })
+      .from(expenses)
+      .where(and(expFilter, eq(expenses.isRecurring, true), eq(expenses.isPaid, false), lte(expenses.date, today))),
+
+    // Open repairs count (SQL COUNT — no full table load)
+    db.select({ cnt: sql<number>`COUNT(*)` })
+      .from(repairs)
+      .where(and(repFilter, notInArray(repairs.status, ["completed", "cancelled"]))),
+
+    // Top 5 open repairs ordered by priority
+    db.select({ id: repairs.id, label: repairs.title, priority: repairs.priority, status: repairs.status, contractor: repairs.contractor })
+      .from(repairs)
+      .where(and(repFilter, notInArray(repairs.status, ["completed", "cancelled"])))
+      .orderBy(sql`CASE ${repairs.priority} WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END`)
+      .limit(5),
+
+    // Stale high/urgent repairs not updated in 5+ days
+    db.select({ id: repairs.id, label: repairs.title, priority: repairs.priority, status: repairs.status, contractor: repairs.contractor })
+      .from(repairs)
+      .where(and(
+        repFilter,
+        notInArray(repairs.status, ["completed", "cancelled"]),
+        inArray(repairs.priority, ["urgent", "high"]),
+        lte(repairs.updatedAt, staleCutoffDate),
+      )),
+
+    // Active upgrades (in_progress) — only needed columns
+    db.select({ id: upgrades.id, label: upgrades.title, estimatedCost: upgrades.estimatedCost, actualCost: upgrades.actualCost, status: upgrades.status })
+      .from(upgrades)
+      .where(and(upgFilter, eq(upgrades.status, "in_progress"))),
+
+    // Loans — currentBalance is kept in sync by addRepayment
+    db.select({
+      id: loans.id, lender: loans.lender, loanType: loans.loanType,
+      originalAmount: loans.originalAmount, currentBalance: loans.currentBalance,
+      interestRate: loans.interestRate, endDate: loans.endDate,
+    })
+      .from(loans)
+      .where(loanFilter),
+
     getProperty(propertyId),
   ]);
 
-  const allLoans = allLoansRaw.map(l => ({ ...l, repayments: parseJsonArray(l.repayments) }));
+  // Aggregate scalars
+  const monthSpent      = Number(monthSpentRows[0]?.total ?? 0);
+  const monthlyRecurring = Number(monthlyRecurringRows[0]?.total ?? 0);
+  const monthCats: Record<string, number> = {};
+  for (const row of monthCatsRows) {
+    if (row.category) monthCats[row.category] = Number(row.total ?? 0);
+  }
+  const openRepairsCount = Number(openRepairsCountRows[0]?.cnt ?? 0);
 
-  const { monthSpent, monthlyRecurring, monthCats } = calcMonthlyStats(allExpenses, monthStart, monthEnd);
-  const overdueExpenses = getOverdueExpenses(allExpenses, today);
-  const staleRepairs    = getStaleRepairs(allRepairs, staleCutoff);
+  // Loan summary — use currentBalance (kept in sync by addRepayment)
+  const loanSummary = loanRows.map(l => {
+    const remaining = Math.max(0, l.currentBalance ?? l.originalAmount);
+    const repaid    = Math.max(0, l.originalAmount - remaining);
+    return {
+      id: l.id, lender: l.lender, loanType: l.loanType,
+      totalAmount: l.originalAmount, repaid, remaining,
+      pct: l.originalAmount > 0 ? Math.round((repaid / l.originalAmount) * 100) : 0,
+      paidOff: remaining === 0,
+      interestRate: l.interestRate,
+      endDate: l.endDate,
+    };
+  });
 
-  const priOrder: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
-  const openRepairs = allRepairs
-    .filter(r => r.status !== "completed" && r.status !== "cancelled")
-    .sort((a, b) => (priOrder[a.priority ?? "low"] ?? 3) - (priOrder[b.priority ?? "low"] ?? 3))
-    .slice(0, 5)
-    .map(r => ({ id: r.id, label: r.title, priority: r.priority, status: r.status, contractor: r.contractor }));
-
-  const activeIds = allUpgrades.filter(u => u.status === "in_progress").map(u => u.id);
-  const activeOpts = activeIds.length > 0
-    ? await db.select({ upgradeId: upgradeOptions.upgradeId, selected: upgradeOptions.selected })
-        .from(upgradeOptions).where(inArray(upgradeOptions.upgradeId, activeIds))
+  // Upgrades needing a decision: in_progress + has options + no selected option
+  // We already have the activeUpgrade IDs from the parallel query above — just
+  // fetch option status for those specific IDs (bounded, never a full table scan)
+  const activeUpgradeIds = activeUpgradeRows.map(u => u.id);
+  const optionStatusRows = activeUpgradeIds.length > 0
+    ? await db
+        .select({ upgradeId: upgradeOptions.upgradeId, selected: upgradeOptions.selected })
+        .from(upgradeOptions)
+        .where(inArray(upgradeOptions.upgradeId, activeUpgradeIds))
     : [];
 
   const selMap: Record<string, boolean> = {};
   const hasOptsSet = new Set<string>();
-  for (const o of activeOpts) {
+  for (const o of optionStatusRows) {
     hasOptsSet.add(o.upgradeId);
     if (o.selected) selMap[o.upgradeId] = true;
   }
 
-  const upgradesNeedingDecision = allUpgrades
-    .filter(u => u.status === "in_progress" && hasOptsSet.has(u.id) && !selMap[u.id])
-    .map(u => ({ id: u.id, label: u.title }));
+  const upgradesNeedingDecision = activeUpgradeRows
+    .filter(u => hasOptsSet.has(u.id) && !selMap[u.id])
+    .map(u => ({ id: u.id, label: u.label }));
 
-  const activeUpgrades = allUpgrades
-    .filter(u => u.status === "in_progress")
-    .map(u => ({
-      id: u.id, label: u.title, budget: u.estimatedCost ?? 0, spent: u.actualCost ?? 0,
-      status: u.status,
-      pct: (u.estimatedCost ?? 0) > 0 ? Math.round(((u.actualCost ?? 0) / u.estimatedCost!) * 100) : 0,
-    }));
-
-  const loanSummary = buildLoanSummary(allLoans);
+  const activeUpgrades = activeUpgradeRows.map(u => ({
+    id: u.id, label: u.label,
+    budget: u.estimatedCost ?? 0,
+    spent:  u.actualCost   ?? 0,
+    status: u.status,
+    pct: (u.estimatedCost ?? 0) > 0
+      ? Math.round(((u.actualCost ?? 0) / u.estimatedCost!) * 100)
+      : 0,
+  }));
 
   return {
-    monthSpent, monthlyRecurring,
+    monthSpent,
+    monthlyRecurring,
     monthPct:       monthlyRecurring > 0 ? Math.round((monthSpent / monthlyRecurring) * 100) : 0,
     monthRemaining: Math.max(0, monthlyRecurring - monthSpent),
     monthCats,
-    overdueExpenses, staleRepairs, upgradesNeedingDecision,
+    overdueExpenses,
+    staleRepairs,
+    upgradesNeedingDecision,
     openRepairs,
-    openRepairsCount: allRepairs.filter(r => r.status !== "completed" && r.status !== "cancelled").length,
+    openRepairsCount,
     activeUpgrades,
     loanSummary,
     currency:        prop?.currencyCode || "ILS",
@@ -173,6 +250,8 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   };
 }
 
+// ── Portfolio summary ─────────────────────────────────────────────────────────
+
 export async function getPortfolioSummary(userId: number) {
   const props = await getPropertiesByUser(userId);
   if (props.length === 0) return [];
@@ -180,38 +259,44 @@ export async function getPortfolioSummary(userId: number) {
   const db = await getDb();
   const now = new Date();
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+  const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
 
   return await Promise.all(props.map(async (prop) => {
     const pid = prop.id;
-    const propFilter = <T extends { ownerId: any; propertyId: any }>(col: T) =>
-      and(eq(col.ownerId, userId), eq(col.propertyId, pid));
+    const expF  = and(eq(expenses.ownerId,  userId), eq(expenses.propertyId,  pid));
+    const repF  = and(eq(repairs.ownerId,   userId), eq(repairs.propertyId,   pid));
+    const loanF = and(eq(loans.ownerId,     userId), eq(loans.propertyId,     pid));
 
-    const [allExpenses, allRepairs, allLoans] = await Promise.all([
-      db.select({ amount: expenses.amount, date: expenses.date }).from(expenses).where(propFilter(expenses)),
-      db.select({ status: repairs.status }).from(repairs).where(propFilter(repairs)),
-      db.select({ originalAmount: loans.originalAmount, repayments: loans.repayments }).from(loans).where(propFilter(loans)),
+    const [monthSpentRows, openRepairsCountRows, loanRows] = await Promise.all([
+      db.select({ total: sql<number>`COALESCE(SUM(${expenses.amount}), 0)` })
+        .from(expenses)
+        .where(and(expF, gte(expenses.date, monthStart), lte(expenses.date, monthEnd))),
+
+      db.select({ cnt: sql<number>`COUNT(*)` })
+        .from(repairs)
+        .where(and(repF, notInArray(repairs.status, ["completed", "cancelled"]))),
+
+      // currentBalance is kept in sync by loans.addRepayment — use it directly
+      db.select({ originalAmount: loans.originalAmount, currentBalance: loans.currentBalance })
+        .from(loans)
+        .where(loanF),
     ]);
 
-    const monthSpent = allExpenses
-      .filter(e => e.date >= monthStart && e.date <= monthEnd)
-      .reduce((s, e) => s + e.amount, 0);
-
-    const openRepairsCount = allRepairs.filter(r => r.status !== "completed" && r.status !== "cancelled").length;
-
-    const outstandingLoanBalance = allLoans.reduce((sum, l) => {
-      const repaid = parseJsonArray(l.repayments).reduce((s: number, r: any) => s + (r.amount ?? 0), 0);
-      return sum + Math.max(0, l.originalAmount - repaid);
-    }, 0);
+    const monthSpent = Number(monthSpentRows[0]?.total ?? 0);
+    const openRepairsCount = Number(openRepairsCountRows[0]?.cnt ?? 0);
+    const outstandingLoanBalance = loanRows.reduce(
+      (sum, l) => sum + Math.max(0, l.currentBalance ?? l.originalAmount),
+      0
+    );
 
     return {
       id: prop.id,
-      houseName: prop.houseName,
+      houseName:     prop.houseName,
       houseNickname: prop.houseNickname,
-      address: prop.address,
-      propertyType: prop.propertyType,
+      address:       prop.address,
+      propertyType:  prop.propertyType,
       purchasePrice: prop.purchasePrice,
-      currencyCode: prop.currencyCode || "ILS",
+      currencyCode:  prop.currencyCode || "ILS",
       monthSpent,
       openRepairsCount,
       outstandingLoanBalance,
