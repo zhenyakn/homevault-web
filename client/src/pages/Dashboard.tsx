@@ -5,16 +5,18 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 
 type Stats = NonNullable<RouterOutputs["dashboard"]["stats"]>;
 type OverdueExpense = Stats["overdueExpenses"][number];
-type StaleRepair = Stats["staleRepairs"][number];
+type StaleRepair    = Stats["staleRepairs"][number];
 type DecisionUpgrade = Stats["upgradesNeedingDecision"][number];
-type ActiveUpgrade = Stats["activeUpgrades"][number];
+type ActiveUpgrade  = Stats["activeUpgrades"][number];
 type LoanSummaryItem = Stats["loanSummary"][number];
-type CalEvent = RouterOutputs["calendar"]["list"][number];
+type OpenRepair     = Stats["openRepairs"][number];
+type CalEvent       = RouterOutputs["calendar"]["list"][number];
+
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, Settings, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle, CheckCircle2, ChevronRight, Loader2, Settings } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { format, isToday, isTomorrow, addDays } from "date-fns";
+import { format, isToday, isTomorrow } from "date-fns";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -27,7 +29,7 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 const CAT_COLOR: Record<string, string> = {
-  Mortgage:    "#6366f1",
+  Mortgage:    "#2B7A55",
   Utility:     "#eab308",
   Insurance:   "#a855f7",
   Tax:         "#f43f5e",
@@ -35,122 +37,81 @@ const CAT_COLOR: Record<string, string> = {
   Other:       "#9ca3af",
 };
 
-const LOAN_BAR = ["bg-indigo-500", "bg-violet-500", "bg-blue-500", "bg-cyan-500"];
-
 function barColor(pct: number) {
   if (pct >= 100) return "bg-rose-500";
   if (pct >= 80)  return "bg-amber-400";
-  return "bg-indigo-500";
+  return "bg-primary";
 }
 
-// ── SectionLabel ──────────────────────────────────────────────────────────────
+function relDate(d: string, t: (k: string) => string) {
+  const dt = new Date(d);
+  if (isToday(dt))    return t("dashboard.today");
+  if (isTomorrow(dt)) return t("dashboard.tomorrow");
+  return format(dt, "MMM d");
+}
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+// ── Card shell ────────────────────────────────────────────────────────────────
+
+function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className="flex items-center gap-3 mb-3">
-      <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 whitespace-nowrap">
-        {children}
-      </span>
-      <div className="flex-1 h-px bg-border" />
+    <div className={cn("border border-border rounded-xl bg-card p-4 shadow-xs", className)}>
+      {children}
     </div>
   );
 }
 
-// ── AttentionZone ─────────────────────────────────────────────────────────────
+function CardLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10.5px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-3">
+      {children}
+    </p>
+  );
+}
 
-function AttentionZone({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
-  overdue: OverdueExpense[];
-  stale: StaleRepair[];
-  decisionNeeded: DecisionUpgrade[];
-  cur: string;
-  onMarkPaid: (id: string) => void;
+// ── OpenItemsCard ─────────────────────────────────────────────────────────────
+
+function OpenItemsCard({ openRepairs, overdueExpenses, activeUpgrades }: {
+  openRepairs: OpenRepair[];
+  overdueExpenses: OverdueExpense[];
+  activeUpgrades: ActiveUpgrade[];
 }) {
   const { t } = useTranslation();
-  const [, nav] = useLocation();
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const dismiss = (k: string) => setDismissed(p => new Set([...Array.from(p), k]));
 
-  const visOverdue   = overdue.filter(e => !dismissed.has(`exp-${e.id}`));
-  const visStale     = stale.filter(r => !dismissed.has(`rep-${r.id}`));
-  const visDecision  = decisionNeeded.filter(u => !dismissed.has(`upg-${u.id}`));
-  const total = visOverdue.length + visStale.length + visDecision.length;
+  const urgent   = openRepairs.filter(r => r.priority === "urgent").length;
+  const high     = openRepairs.filter(r => r.priority === "high").length;
+  const overdue  = overdueExpenses.length;
+  const inProg   = activeUpgrades.length;
 
-  const relDate = (d: string) => {
-    const dt = new Date(d);
-    if (isToday(dt))    return t("dashboard.today");
-    if (isTomorrow(dt)) return t("dashboard.tomorrow");
-    return format(dt, "MMM d");
-  };
-
-  if (total === 0) return (
-    <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900/50 text-sm font-medium text-emerald-700 dark:text-emerald-400 mb-6">
-      <CheckCircle2 className="h-4 w-4 shrink-0" />
-      {t("dashboard.noAttention")}
-    </div>
-  );
+  const rows = [
+    { label: t("dashboard.urgentRepairs"), count: urgent,  color: urgent  > 0 ? "text-rose-500"  : "text-muted-foreground", dot: "bg-rose-500"  },
+    { label: t("dashboard.highPriority"),  count: high,    color: high    > 0 ? "text-orange-500" : "text-muted-foreground", dot: "bg-orange-500" },
+    { label: t("dashboard.activeUpgrades"), count: inProg, color: inProg  > 0 ? "text-foreground" : "text-muted-foreground", dot: "bg-amber-400"  },
+    { label: t("dashboard.overdueBills"),  count: overdue, color: overdue > 0 ? "text-rose-500"  : "text-muted-foreground", dot: "bg-rose-500"  },
+  ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-      {visOverdue.map(e => (
-        <div key={e.id} className="rounded-lg border border-border border-l-2 border-l-rose-500 bg-card p-3.5 flex flex-col gap-2.5">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-snug">{e.label} {t("dashboard.unpaidSuffix")}</p>
-            <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 whitespace-nowrap shrink-0">
-              {t("dashboard.overdue")}
+    <Card>
+      <CardLabel>{t("dashboard.openItems")}</CardLabel>
+      <div className="flex flex-col">
+        {rows.map((row, i) => (
+          <div
+            key={row.label}
+            className={cn(
+              "flex items-center justify-between py-2",
+              i < rows.length - 1 && "border-b border-border"
+            )}
+          >
+            <span className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", row.dot)} />
+              {row.label}
+            </span>
+            <span className={cn("text-[15px] font-bold tabular-nums", row.color)}>
+              {row.count}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {formatCurrency(e.amount, cur)} · {t("dashboard.due")} {relDate(e.date)}
-          </p>
-          <button
-            className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
-            onClick={() => { onMarkPaid(e.id); dismiss(`exp-${e.id}`); }}
-          >
-            {t("dashboard.markPaid")}
-          </button>
-        </div>
-      ))}
-
-      {visStale.map(r => (
-        <div key={r.id} className="rounded-lg border border-border border-l-2 border-l-amber-400 bg-card p-3.5 flex flex-col gap-2.5">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-snug truncate">{r.label}</p>
-            <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900 whitespace-nowrap shrink-0">
-              {t("dashboard.stale5d")}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {r.priority} · {r.status}{r.contractor ? ` · ${r.contractor}` : ""}
-          </p>
-          <button
-            className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900 hover:opacity-75 transition-opacity"
-            onClick={() => nav("/repairs")}
-          >
-            {t("dashboard.updateStatus")}
-          </button>
-        </div>
-      ))}
-
-      {visDecision.map(u => (
-        <div key={u.id} className="rounded-lg border border-border border-l-2 border-l-blue-400 bg-card p-3.5 flex flex-col gap-2.5">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-snug truncate">{u.label}</p>
-            <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900 whitespace-nowrap shrink-0">
-              {t("dashboard.decisionNeeded")}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {t("dashboard.quotesReceived")}
-          </p>
-          <button
-            className="self-start text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900 hover:opacity-75 transition-opacity"
-            onClick={() => nav(`/upgrades/${u.id}`)}
-          >
-            {t("dashboard.reviewQuotes")}
-          </button>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -167,19 +128,17 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
   const top = Object.entries(cats).sort(([, a], [, b]) => b - a).slice(0, 5);
 
   return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          {t("dashboard.monthlySpend")}
-        </p>
-        <p className="text-xs text-muted-foreground">{daysLeft} {t("dashboard.daysLeft")}</p>
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <CardLabel>{t("dashboard.monthlySpend")} · {format(now, "MMM yyyy")}</CardLabel>
+        <p className="text-xs text-muted-foreground -mt-3">{daysLeft} {t("dashboard.daysLeft")}</p>
       </div>
 
-      <div className="text-2xl font-bold tracking-tight tabular-nums">{fmt(spent)}</div>
+      <div className="text-3xl font-bold tracking-tight tabular-nums">{fmt(spent)}</div>
       <p className="text-xs text-muted-foreground mt-1 mb-4">
         {t("expenses.of")} {fmt(baseline)} {t("dashboard.ofRecurringBaseline")}
         {remaining > 0 && (
-          <> · <span className="text-emerald-600 dark:text-emerald-400 font-medium">{fmt(remaining)} {t("dashboard.remaining")}</span></>
+          <> · <span className="text-primary font-medium">{fmt(remaining)} {t("dashboard.remaining")}</span></>
         )}
       </p>
 
@@ -191,12 +150,9 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
       </div>
       <p className="text-[11px] text-muted-foreground text-right mb-4">{pct}{t("dashboard.ofBaseline")}</p>
 
-      {top.map(([cat, amount]) => (
+      {top.length > 0 && top.map(([cat, amount]) => (
         <div key={cat} className="flex items-center gap-2.5 py-1.5 border-t border-border">
-          <span
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{ background: CAT_COLOR[cat] ?? "#9ca3af" }}
-          />
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: CAT_COLOR[cat] ?? "#9ca3af" }} />
           <span className="flex-1 text-xs text-muted-foreground">{cat}</span>
           <div className="w-14 h-[3px] bg-border rounded-full overflow-hidden">
             <div
@@ -212,97 +168,235 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
       ))}
 
       {baseline === 0 && (
-        <p className="text-xs text-muted-foreground mt-2">
-          {t("dashboard.addRecurring")}
-        </p>
+        <p className="text-xs text-muted-foreground mt-2">{t("dashboard.addRecurring")}</p>
       )}
-    </div>
+    </Card>
+  );
+}
+
+// ── LoansCard ─────────────────────────────────────────────────────────────────
+
+function LoansCard({ loans, cur }: { loans: LoanSummaryItem[]; cur: string }) {
+  const { t } = useTranslation();
+  const [, nav] = useLocation();
+  const fmt = (n: number) => formatCurrency(n, cur);
+
+  const totalOutstanding = loans.reduce((s, l) => s + (l.remaining ?? 0), 0);
+
+  return (
+    <Card>
+      <CardLabel>{t("loans.title")}</CardLabel>
+      <div className="text-2xl font-bold tracking-tight tabular-nums mb-1">{fmt(totalOutstanding)}</div>
+      <p className="text-xs text-muted-foreground mb-4">{t("dashboard.totalOutstanding")}</p>
+
+      {loans.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">{t("dashboard.noActiveLoans")}</p>
+      ) : (
+        <>
+          <div className="h-px bg-border mb-3" />
+          <div className="space-y-3">
+            {loans.map(l => {
+              const repaid    = l.repaid    ?? 0;
+              const remaining = l.remaining ?? Math.max(0, (l.totalAmount ?? 0) - repaid);
+              const pct       = l.pct       ?? 0;
+              return (
+                <div key={l.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[12.5px] font-medium text-foreground truncate flex-1 mr-2">{l.lender}</span>
+                    {l.paidOff ? (
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 shrink-0">
+                        <CheckCircle2 className="h-3 w-3" />
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground shrink-0">{pct}% repaid</span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mb-1.5">
+                    {fmt(remaining)} {t("dashboard.remaining")}
+                    {l.interestRate ? ` · ${l.interestRate}%` : ""}
+                    {l.endDate ? ` · until ${format(new Date(l.endDate), "MMM yyyy")}` : ""}
+                  </p>
+                  <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all", l.paidOff ? "bg-emerald-500" : "bg-primary")}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity mt-4 font-medium"
+            onClick={() => nav("/loans")}
+          >
+            {t("loans.title")} <ArrowRight className="h-3 w-3" />
+          </button>
+        </>
+      )}
+    </Card>
+  );
+}
+
+// ── AttentionCard ─────────────────────────────────────────────────────────────
+
+function AttentionCard({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
+  overdue: OverdueExpense[];
+  stale: StaleRepair[];
+  decisionNeeded: DecisionUpgrade[];
+  cur: string;
+  onMarkPaid: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [, nav] = useLocation();
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const dismiss = (k: string) => setDismissed(p => new Set([...Array.from(p), k]));
+
+  const visOverdue  = overdue.filter(e => !dismissed.has(`exp-${e.id}`));
+  const visStale    = stale.filter(r => !dismissed.has(`rep-${r.id}`));
+  const visDecision = decisionNeeded.filter(u => !dismissed.has(`upg-${u.id}`));
+  const total = visOverdue.length + visStale.length + visDecision.length;
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <CardLabel>{t("dashboard.attention")}</CardLabel>
+          {total > 0 && (
+            <p className="text-[11.5px] text-muted-foreground -mt-2 mb-2">
+              {total} {t("dashboard.itemsNeedAction")}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900/50 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {t("dashboard.noAttention")}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {visOverdue.map(e => (
+            <div key={e.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/50">
+              <div className="w-7 h-7 rounded-md bg-rose-500 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12.5px] font-semibold text-foreground truncate">
+                  {e.label} {t("dashboard.unpaidSuffix")}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {formatCurrency(e.amount, cur)} · {t("dashboard.due")} {relDate(e.date, t)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+                  {t("dashboard.overdue")}
+                </span>
+                <button
+                  className="text-[11px] font-semibold px-2 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
+                  onClick={() => { onMarkPaid(e.id); dismiss(`exp-${e.id}`); }}
+                >
+                  {t("dashboard.markPaid")}
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {visStale.map(r => (
+            <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50">
+              <div className="w-7 h-7 rounded-md bg-orange-500 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12.5px] font-semibold text-foreground truncate">{r.label}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {r.priority} · {r.status}{r.contractor ? ` · ${r.contractor}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900">
+                  {t("dashboard.stale5d")}
+                </span>
+                <button
+                  className="text-[11px] font-semibold px-2 py-1 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900 hover:opacity-75 transition-opacity"
+                  onClick={() => nav("/repairs")}
+                >
+                  {t("dashboard.updateStatus")}
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {visDecision.map(u => (
+            <div key={u.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900/50">
+              <div className="w-7 h-7 rounded-md bg-blue-500 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12.5px] font-semibold text-foreground truncate">{u.label}</p>
+                <p className="text-[11px] text-muted-foreground">{t("dashboard.quotesReceived")}</p>
+              </div>
+              <button
+                className="text-[11px] font-semibold px-2 py-1 rounded-md bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900 hover:opacity-75 transition-opacity shrink-0"
+                onClick={() => nav(`/upgrades/${u.id}`)}
+              >
+                {t("dashboard.reviewQuotes")}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 
 // ── CalendarCard ──────────────────────────────────────────────────────────────
 
-function CalendarCard({ calEvents, upcoming }: { calEvents: CalEvent[]; upcoming: CalEvent[] }) {
+function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
   const { t } = useTranslation();
   const [, nav] = useLocation();
-  const today = new Date();
-
-  const relDate = (d: string) => {
-    const dt = new Date(d);
-    if (isToday(dt))    return t("dashboard.today");
-    if (isTomorrow(dt)) return t("dashboard.tomorrow");
-    return format(dt, "MMM d");
-  };
-
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = addDays(today, i);
-    const dateStr = format(d, "yyyy-MM-dd");
-    const hasEvent = calEvents.some(e => (e.date as string)?.startsWith(dateStr));
-    return { d, dateStr, hasEvent };
-  });
 
   return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          {t("dashboard.next7days")}
-        </p>
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <CardLabel>{t("dashboard.upcoming")}</CardLabel>
         <button
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity font-medium -mt-3"
           onClick={() => nav("/calendar")}
         >
-          {t("dashboard.fullCalendar")}
+          {t("dashboard.fullCalendar")} <ArrowRight className="h-3 w-3" />
         </button>
       </div>
 
-      <div className="flex gap-1.5 mb-4">
-        {days.map(({ d, hasEvent }) => (
-          <div
-            key={format(d, "yyyy-MM-dd")}
-            className={cn(
-              "flex-1 flex flex-col items-center gap-1 py-2 rounded-lg border",
-              isToday(d)
-                ? "bg-indigo-500 border-indigo-500 text-white"
-                : hasEvent
-                  ? "border-indigo-200/70 bg-indigo-50/60 dark:bg-indigo-950/20 dark:border-indigo-900/40"
-                  : "border-border bg-muted/20"
-            )}
-          >
-            <span className={cn(
-              "text-[9.5px] font-semibold uppercase tracking-wide",
-              isToday(d) ? "text-white/70" : "text-muted-foreground"
-            )}>
-              {format(d, "EEE")}
-            </span>
-            <span className="text-sm font-bold">{format(d, "d")}</span>
-            <div className="h-1 flex items-center justify-center">
-              {hasEvent && (
-                <div className={cn(
-                  "w-1 h-1 rounded-full",
-                  isToday(d) ? "bg-white/70" : "bg-indigo-500"
-                )} />
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
       {upcoming.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          {t("dashboard.nothingScheduled")}
-        </p>
+        <p className="text-sm text-muted-foreground text-center py-6">{t("dashboard.nothingScheduled")}</p>
       ) : (
-        upcoming.map(e => (
-          <div key={e.id} className="flex items-center gap-3 py-1.5 border-t border-border">
-            <span className="text-[11px] font-semibold text-muted-foreground w-10 shrink-0">
-              {relDate(e.date)}
-            </span>
-            <span className="flex-1 text-sm truncate">{e.title}</span>
-            <span className="text-[10.5px] text-muted-foreground shrink-0">{e.category}</span>
-          </div>
-        ))
+        <div className="space-y-1.5">
+          {upcoming.map(e => {
+            const d = new Date(e.date);
+            return (
+              <div
+                key={e.id}
+                className="flex items-center gap-3 px-2 py-2 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors cursor-pointer"
+                onClick={() => nav("/calendar")}
+              >
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0">
+                  <span className="text-[14px] font-extrabold text-primary leading-none">{format(d, "d")}</span>
+                  <span className="text-[8.5px] font-bold uppercase text-primary/70">{format(d, "MMM")}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] font-medium text-foreground truncate">{e.title}</p>
+                  <p className="text-[11px] text-muted-foreground">{e.category}</p>
+                </div>
+                <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+              </div>
+            );
+          })}
+        </div>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -317,143 +411,56 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
   const [, nav] = useLocation();
   const fmt = (n: number) => formatCurrency(n, cur);
 
-  return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          {t("dashboard.activeUpgrades")}
-        </p>
-        {activeUpgrades.length > 0 && (
-          <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400 border border-violet-200 dark:border-violet-900">
-            {activeUpgrades.length} {t("upgrades.inProgress").toLowerCase()}
-          </span>
-        )}
-      </div>
-
-      {activeUpgrades.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">{t("dashboard.noActiveUpgrades")}</p>
-      ) : (
-        <>
-          {activeUpgrades.map(u => {
-            const counts = countMap[u.id];
-            return (
-              <div
-                key={u.id}
-                className="flex items-center gap-3 py-2.5 border-t border-border -mx-1 px-1 rounded-md cursor-pointer hover:bg-muted/40 transition-colors"
-                onClick={() => nav(`/upgrades/${u.id}`)}
-              >
-                <div className={cn(
-                  "w-2 h-2 rounded-full shrink-0",
-                  STATUS_DOT[u.status ?? ""] ?? "bg-muted-foreground/40"
-                )} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{u.label}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t(`status.${u.status}`, { defaultValue: t("upgrades.inProgress") })}
-                    {counts ? ` · ${counts.done}/${counts.total} ${t("upgradeDetail.items").toLowerCase()}` : ""}
-                  </p>
-                  <div className="h-[2px] w-full bg-border rounded-full overflow-hidden mt-1.5">
-                    <div
-                      className={cn("h-full rounded-full transition-all", barColor(u.pct))}
-                      style={{ width: `${Math.min(u.pct, 100)}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className={cn(
-                    "text-sm font-bold tabular-nums",
-                    u.pct >= 100 ? "text-rose-500" : u.pct >= 80 ? "text-amber-500" : ""
-                  )}>
-                    {fmt(u.spent)}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">/ {fmt(u.budget)}</p>
-                </div>
-              </div>
-            );
-          })}
-          <button
-            className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors mt-3 pt-3 border-t border-border"
-            onClick={() => nav("/upgrades")}
-          >
-            {t("nav.upgrades")} →
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── LoansCard ─────────────────────────────────────────────────────────────────
-
-function LoansCard({ loans, cur }: { loans: LoanSummaryItem[]; cur: string }) {
-  const { t } = useTranslation();
-  const [, nav] = useLocation();
-  const fmt = (n: number) => formatCurrency(n, cur);
+  if (activeUpgrades.length === 0) return null;
 
   return (
-    <div className="border border-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-          {t("loans.title")}
-        </p>
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <CardLabel>{t("dashboard.activeUpgrades")}</CardLabel>
+        <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 -mt-3">
+          {activeUpgrades.length} {t("upgrades.inProgress").toLowerCase()}
+        </span>
       </div>
-
-      {loans.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">{t("dashboard.noActiveLoans")}</p>
-      ) : (
-        <>
-          {loans.map((l, i) => {
-            const repaid    = l.repaid    ?? 0;
-            const remaining = l.remaining ?? Math.max(0, (l.totalAmount ?? 0) - repaid);
-            const pct       = l.pct       ?? 0;
-            return (
-              <div key={l.id} className={cn(i > 0 && "pt-3 mt-3 border-t border-border")}>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{l.lender}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {l.loanType}
-                      {l.interestRate ? ` · ${l.interestRate}%` : ""}
-                    </p>
-                  </div>
-                  {l.paidOff ? (
-                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 shrink-0">
-                      <CheckCircle2 className="h-3 w-3" /> {t("common.paidOff")}
-                    </span>
-                  ) : (
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold tabular-nums">{fmt(remaining)}</p>
-                      <p className="text-[11px] text-muted-foreground">{t("dashboard.remaining")}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="h-1.5 w-full rounded-full bg-border overflow-hidden mb-1.5">
+      <div className="space-y-0">
+        {activeUpgrades.map(u => {
+          const counts = countMap[u.id];
+          return (
+            <div
+              key={u.id}
+              className="flex items-center gap-3 py-2.5 border-t border-border first:border-t-0 -mx-1 px-1 rounded-md cursor-pointer hover:bg-muted/40 transition-colors"
+              onClick={() => nav(`/upgrades/${u.id}`)}
+            >
+              <div className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[u.status ?? ""] ?? "bg-muted-foreground/40")} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{u.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t(`status.${u.status}`, { defaultValue: t("upgrades.inProgress") })}
+                  {counts ? ` · ${counts.done}/${counts.total} ${t("upgradeDetail.items").toLowerCase()}` : ""}
+                </p>
+                <div className="h-[2px] w-full bg-border rounded-full overflow-hidden mt-1.5">
                   <div
-                    className={cn(
-                      "h-full rounded-full transition-all",
-                      l.paidOff ? "bg-emerald-500" : LOAN_BAR[i % LOAN_BAR.length]
-                    )}
-                    style={{ width: `${pct}%` }}
+                    className={cn("h-full rounded-full transition-all", barColor(u.pct))}
+                    style={{ width: `${Math.min(u.pct, 100)}%` }}
                   />
                 </div>
-                <div className="flex justify-between text-[11px] text-muted-foreground">
-                  <span>{fmt(repaid)} {t("loans.repaid")} · {pct}%</span>
-                  {l.endDate && (
-                    <span>until {format(new Date(l.endDate), "MMM yyyy")}</span>
-                  )}
-                </div>
               </div>
-            );
-          })}
-          <button
-            className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors mt-3 pt-3 border-t border-border"
-            onClick={() => nav("/loans")}
-          >
-            {t("loans.title")} →
-          </button>
-        </>
-      )}
-    </div>
+              <div className="text-right shrink-0">
+                <p className={cn("text-sm font-bold tabular-nums", u.pct >= 100 ? "text-rose-500" : u.pct >= 80 ? "text-amber-500" : "")}>
+                  {fmt(u.spent)}
+                </p>
+                <p className="text-[11px] text-muted-foreground">/ {fmt(u.budget)}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <button
+        className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity mt-3 pt-3 border-t border-border font-medium"
+        onClick={() => nav("/upgrades")}
+      >
+        {t("nav.upgrades")} <ArrowRight className="h-3 w-3" />
+      </button>
+    </Card>
   );
 }
 
@@ -528,55 +535,74 @@ export default function Dashboard() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold tracking-tight">{greeting()}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {format(new Date(), "EEEE, MMMM d, yyyy")}
+            {s.propertyName && (
+              <> · <span className="text-foreground/70">{s.propertyName}</span></>
+            )}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => nav("/settings")}>
-          <Settings className="h-3.5 w-3.5 me-1.5" />
-          {t("nav.settings")}
-        </Button>
       </div>
 
-      {/* Layer 1 — Needs attention */}
-      <SectionLabel>{t("dashboard.attention")}</SectionLabel>
-      <AttentionZone
-        overdue={s.overdueExpenses ?? []}
-        stale={s.staleRepairs ?? []}
-        decisionNeeded={s.upgradesNeedingDecision ?? []}
-        cur={cur}
-        onMarkPaid={id =>
-          markPaid.mutate({ id, paidDate: new Date().toISOString().split("T")[0] })
-        }
-      />
+      {/* Bento grid */}
+      <div className="grid grid-cols-12 gap-3.5">
 
-      {/* Layer 2 — This month */}
-      <SectionLabel>{format(new Date(), "MMMM yyyy")}</SectionLabel>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-        <SpendCard
-          spent={s.monthSpent}
-          baseline={s.monthlyRecurring}
-          pct={s.monthPct}
-          remaining={s.monthRemaining}
-          cats={s.monthCats}
-          cur={cur}
-        />
-        <CalendarCard calEvents={calEvents} upcoming={upcoming} />
-      </div>
+        {/* Row 1: Monthly spend (5) + Loans (4) + Open Items (3) */}
+        <div className="col-span-12 lg:col-span-5">
+          <SpendCard
+            spent={s.monthSpent}
+            baseline={s.monthlyRecurring}
+            pct={s.monthPct}
+            remaining={s.monthRemaining}
+            cats={s.monthCats}
+            cur={cur}
+          />
+        </div>
 
-      {/* Layer 3 — Running context */}
-      <SectionLabel>{t("dashboard.context")}</SectionLabel>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <UpgradesCard
-          activeUpgrades={s.activeUpgrades ?? []}
-          countMap={countMap}
-          cur={cur}
-        />
-        <LoansCard loans={s.loanSummary ?? []} cur={cur} />
+        <div className="col-span-12 lg:col-span-4">
+          <LoansCard loans={s.loanSummary ?? []} cur={cur} />
+        </div>
+
+        <div className="col-span-12 lg:col-span-3">
+          <OpenItemsCard
+            openRepairs={s.openRepairs ?? []}
+            overdueExpenses={s.overdueExpenses ?? []}
+            activeUpgrades={s.activeUpgrades ?? []}
+          />
+        </div>
+
+        {/* Row 2: Attention (8) + Upcoming Calendar (4) */}
+        <div className="col-span-12 lg:col-span-8">
+          <AttentionCard
+            overdue={s.overdueExpenses ?? []}
+            stale={s.staleRepairs ?? []}
+            decisionNeeded={s.upgradesNeedingDecision ?? []}
+            cur={cur}
+            onMarkPaid={id =>
+              markPaid.mutate({ id, paidDate: new Date().toISOString().split("T")[0] })
+            }
+          />
+        </div>
+
+        <div className="col-span-12 lg:col-span-4">
+          <CalendarCard upcoming={upcoming} />
+        </div>
+
+        {/* Row 3: Active upgrades (full width, only when present) */}
+        {(s.activeUpgrades?.length ?? 0) > 0 && (
+          <div className="col-span-12">
+            <UpgradesCard
+              activeUpgrades={s.activeUpgrades ?? []}
+              countMap={countMap}
+              cur={cur}
+            />
+          </div>
+        )}
+
       </div>
     </div>
   );

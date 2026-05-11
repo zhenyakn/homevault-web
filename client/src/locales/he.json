@@ -11,7 +11,13 @@
     "inventory": "מלאי",
     "calendar": "יומן",
     "settings": "הגדרות",
-    "portfolio": "תיק נכסים"
+    "portfolio": "תיק נכסים",
+    "group": {
+      "overview": "סקירה",
+      "finances": "פיננסים",
+      "property": "נכס",
+      "account": "חשבון"
+    }
   },
   "common": {
     "add": "הוסף",
@@ -611,6 +617,13 @@
     "nothingScheduled": "אין אירועים השבוע",
     "activeUpgrades": "שיפוצים פעילים",
     "noActiveUpgrades": "אין שיפוצים פעילים",
-    "noActiveLoans": "אין הלוואות פעילות"
+    "noActiveLoans": "אין הלוואות פעילות",
+    "openItems": "פריטים פתוחים",
+    "urgentRepairs": "תיקונים דחופים",
+    "highPriority": "עדיפות גבוהה",
+    "overdueBills": "חשבונות באיחור",
+    "upcoming": "הקרוב",
+    "totalOutstanding": "סה״כ יתרה",
+    "itemsNeedAction": "פריטים דורשים פעולה"
   }
 }

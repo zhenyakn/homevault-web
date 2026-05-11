@@ -11,7 +11,13 @@
     "inventory": "Inventory",
     "calendar": "Calendar",
     "settings": "Settings",
-    "portfolio": "Portfolio"
+    "portfolio": "Portfolio",
+    "group": {
+      "overview": "Overview",
+      "finances": "Finances",
+      "property": "Property",
+      "account": "Account"
+    }
   },
   "common": {
     "add": "Add",
@@ -620,6 +626,13 @@
     "nothingScheduled": "Nothing scheduled this week",
     "activeUpgrades": "Active upgrades",
     "noActiveUpgrades": "No active upgrades",
-    "noActiveLoans": "No active loans"
+    "noActiveLoans": "No active loans",
+    "openItems": "Open items",
+    "urgentRepairs": "Urgent repairs",
+    "highPriority": "High priority",
+    "overdueBills": "Overdue bills",
+    "upcoming": "Upcoming",
+    "totalOutstanding": "total outstanding",
+    "itemsNeedAction": "items need your action"
   }
 }

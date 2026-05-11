@@ -269,3 +269,28 @@ All three patterns (JSON sub-records, index-based mutations, in-memory aggregati
 4. **`apply-migration-addon.mjs` has four phases now.** Phase 1: detect and drop legacy v1 tables. Phase 2: CREATE TABLE IF NOT EXISTS for current schema. Phase 3: ALTER TABLE convergence for upgrades. Phase 4: new — data migrations and DROP COLUMN for retired JSON columns. Any future column removal follows this pattern.
 
 ---
+
+## 2026-05-11 — UI redesign: green brand, grouped nav, bento dashboard
+
+### What happened
+Implemented the HomeVault 2.0 redesign from the `homevault-redesign-concept.html` mock:
+- Primary color changed from blue → forest green (#2B7A55, oklch)
+- Navigation restructured from a flat 10-item list to 4 labeled groups (Overview, Finances, Property, Account)
+- Desktop topbar added (breadcrumb + search pill), replacing the navigation-only sidebar topbar that desktop users had before
+- Dashboard changed from vertical sections to a 12-column bento grid with an Open Items summary card
+
+### Root cause (nothing broke, but decisions made)
+The previous design mixed navigation styles from different UI frameworks (shadcn sidebar + Tailwind colors set to blue) while the brand needed to be green (property app). The flat nav had no hierarchy — all 10 items were equal weight, making the sidebar feel noisy.
+
+### What we changed
+- `index.css`: oklch green primary + sidebar-accent; dark mode green variants
+- `DashboardLayout.tsx`: grouped nav (`NAV_GROUPS`), `PAGE_META` lookup for breadcrumb, compact `ThemeToggle` in topbar, solid green logo mark
+- `Dashboard.tsx`: bento grid, new `OpenItemsCard` using `stats.openRepairs`/`overdueExpenses`/`activeUpgrades` counts, `AttentionCard` as a list inside a single card, `CalendarCard` with date-box style
+- `en.json` + `he.json`: `nav.group.*` section labels + 7 new `dashboard.*` keys
+
+### Rules we carry forward
+1. **Keep imports at the top of the file.** Attempting a mid-file `import` statement to fix a missing symbol caused a compile error. Always move the import to the top, or include it in the initial import declaration.
+2. **When changing color tokens in oklch, update both `:root` (light) and `.dark`.** Missing the dark-mode counterpart causes jarring color shifts when the user switches themes.
+3. **`PAGE_META` pattern is cleaner than scanning nav arrays.** A static `Record<path, {sectionKey, pageKey}>` for breadcrumb lookup is O(1) and survives nav restructuring without bugs — scanning `orderedItems.find(...)` would break when the same icon appears in multiple groups.
+
+---
