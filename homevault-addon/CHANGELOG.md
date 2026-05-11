@@ -1,15 +1,11 @@
 # Changelog
 
 ## 0.2.6
-- feat(ui): redesign — green brand theme, grouped sidebar nav, desktop topbar, bento dashboard
-- feat(seed): rewrite mockRepairs to 8 scenarios with embedded quotes + payments, covering all enum values
-- fix(seed): delete repairQuotes before repairs on re-seed (FK has no ON DELETE CASCADE) — closes orphan-rows hole
-
-## 0.2.5
-- fix(i18n): add missing upgradeDetail.purchased/pending locale keys (were rendering as raw key strings)
-- fix(i18n): replace hardcoded English strings in RepairDetail with t() calls (toast messages, labels)
-
-## 0.2.4
+- chore: release v0.2.6 — repair seed scenarios + UI polish
+- feat(ui): redesign — green brand, grouped nav, desktop topbar, bento dashboard
+- fix(i18n): add missing locale keys and replace hardcoded strings in repair/upgrade detail pages
+- refactor: payment tables migration, dashboard SQL aggregates, migration runner fixes
+- docs: log v0.2.2–v0.2.4 hotfixes in trace.md and lessonslearned.md
 - fix(addon): add upgradeItems to v1 schema reset (ownerId was NOT NULL)
 - fix(addon): v1 schema reset — drop legacy tables before CREATE TABLE recreates them
 - fix(addon): add loans.attachments and wishlistItems.attachments to convergence
@@ -213,6 +209,15 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.2.5
+- chore: release v0.2.6 — repair seed scenarios + UI polish
+- feat(ui): redesign — green brand, grouped nav, desktop topbar, bento dashboard
+
+## 0.2.4
+- fix(i18n): add missing locale keys and replace hardcoded strings in repair/upgrade detail pages
+- refactor: payment tables migration, dashboard SQL aggregates, migration runner fixes
+- docs: log v0.2.2–v0.2.4 hotfixes in trace.md and lessonslearned.md
 
 ## 0.2.3
 - fix(addon): add upgradeItems to v1 schema reset (ownerId was NOT NULL)
