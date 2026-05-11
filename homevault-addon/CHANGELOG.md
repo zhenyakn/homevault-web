@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.6
+- feat(ui): redesign — green brand theme, grouped sidebar nav, desktop topbar, bento dashboard
+- feat(seed): rewrite mockRepairs to 8 scenarios with embedded quotes + payments, covering all enum values
+- fix(seed): delete repairQuotes before repairs on re-seed (FK has no ON DELETE CASCADE) — closes orphan-rows hole
+
 ## 0.2.5
 - fix(i18n): add missing upgradeDetail.purchased/pending locale keys (were rendering as raw key strings)
 - fix(i18n): replace hardcoded English strings in RepairDetail with t() calls (toast messages, labels)

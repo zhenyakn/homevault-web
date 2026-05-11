@@ -294,3 +294,24 @@ The previous design mixed navigation styles from different UI frameworks (shadcn
 3. **`PAGE_META` pattern is cleaner than scanning nav arrays.** A static `Record<path, {sectionKey, pageKey}>` for breadcrumb lookup is O(1) and survives nav restructuring without bugs — scanning `orderedItems.find(...)` would break when the same icon appears in multiple groups.
 
 ---
+
+## 2026-05-11 — Mock repair data didn't exercise the quote/payment tables
+
+### What happened
+The user pointed out we didn't have good mock data for repairs. On inspection, `mockRepairs` had 6 flat entries — no rows were ever seeded into `repairQuotes` or `repairQuotePayments`, even though the repair UI has full multi-vendor quote support (with payments) since v2. Enum coverage was also patchy: `Electrical` / `Appliance` / `Other` categories were missing, `urgent` priority and `waiting_for_contractor` / `cancelled` statuses had no representative rows.
+
+### Root cause
+When the relational payment tables landed (`drizzle/0010_payment_tables.sql`, see trace entry on 2026-05-07), `mockUpgrades` was updated to carry embedded `options[].payments[]` and the seed loop was rewritten to insert them — but `mockRepairs` was left as flat repair rows with no `quotes` field. The seed loop for repairs continued to be a single `db.insert(repairs).values(...)` and never touched `repairQuotes` / `repairQuotePayments`. Result: the demo data exercised the upgrade quote/payment UI but not the parallel repair UI.
+
+A latent bug also surfaced: `repairQuotes.repairId → repairs.id` is **not** `ON DELETE CASCADE` in the schema, but the seed's pre-insert cleanup deletes repairs directly. The path was harmless only because no quotes were ever seeded — the first time someone seeded quotes and then re-seeded, repair rows would be deleted while their `repairQuotes` rows would remain orphaned (with dangling `repairId` references).
+
+### What we changed
+- `mockData.ts`: introduced `SeedRepair = Seed<InsertRepair> & { quotes?: ... }`, mirroring the existing `SeedUpgrade` pattern. Rewrote `mockRepairs` to 8 scenarios covering all 6 statuses, all 4 priorities, and all 7 categories. Each repair has 0–2 quotes; some quotes have payments (deposits, completion payments, single-shot payments).
+- `server/db/seed.ts`: imported `repairQuotePayments`; added a pre-cleanup step that deletes existing `repairQuotes` (cascades to payments via the payments-table FK, which **does** have `ON DELETE CASCADE`) before deleting repairs — closing the orphaned-quotes hole. Replaced the flat `db.insert(repairs).values(...)` with a per-repair loop that inserts the repair, then its quotes, then each quote's payments — same pattern as the upgrade seed.
+
+### Rules we carry forward
+1. **When a parent entity gains a relational child table, check the seed and the mock data — not just the runtime code.** The payment-table migration touched runtime + upgrade seed but missed the parallel repair seed. Demo data is part of the surface area that has to migrate alongside the schema.
+2. **Mock data should exercise every enum value at least once.** If a status like `cancelled` has no representative row, no one tests the rendering of cancelled items until a user reports it broken in prod. Treat enum coverage in seeds as a checklist.
+3. **Pre-insert cleanup must walk FK dependencies even when the FK is not cascading.** The repair seed's `db.delete(repairs).where(...)` looked symmetric to other table cleanups, but without an explicit `repairQuotes` delete it would orphan quote rows on re-seed. When in doubt, treat the seed cleanup as a manual cascade — list every child table that references the parent, even if the parent's cleanup looks innocent.
+
+---

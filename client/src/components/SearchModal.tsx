@@ -124,16 +124,7 @@ export function SearchModal({
             placeholder={t("search.placeholder")}
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
           />
-          {query && (
-            <button
-              onClick={() => onQueryChange("")}
-              className="text-muted-foreground hover:text-foreground transition-colors text-xs"
-              aria-label={t("search.clear")}
-            >
-              ✕
-            </button>
-          )}
-          <kbd className="hidden sm:inline-flex items-center gap-1 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+          <kbd className="hidden sm:inline-flex items-center gap-1 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground me-6">
             Esc
           </kbd>
         </div>

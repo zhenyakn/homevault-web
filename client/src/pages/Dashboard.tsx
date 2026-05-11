@@ -54,7 +54,7 @@ function relDate(d: string, t: (k: string) => string) {
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("border border-border rounded-xl bg-card p-4 shadow-xs", className)}>
+    <div className={cn("h-full border border-border rounded-xl bg-card p-4 shadow-xs", className)}>
       {children}
     </div>
   );
@@ -135,20 +135,25 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
       </div>
 
       <div className="text-3xl font-bold tracking-tight tabular-nums">{fmt(spent)}</div>
-      <p className="text-xs text-muted-foreground mt-1 mb-4">
-        {t("expenses.of")} {fmt(baseline)} {t("dashboard.ofRecurringBaseline")}
-        {remaining > 0 && (
-          <> · <span className="text-primary font-medium">{fmt(remaining)} {t("dashboard.remaining")}</span></>
-        )}
-      </p>
-
-      <div className="h-1.5 w-full rounded-full bg-border overflow-hidden mb-1.5">
-        <div
-          className={cn("h-full rounded-full transition-all duration-500", barColor(pct))}
-          style={{ width: `${Math.min(pct, 100)}%` }}
-        />
-      </div>
-      <p className="text-[11px] text-muted-foreground text-right mb-4">{pct}{t("dashboard.ofBaseline")}</p>
+      {baseline > 0 ? (
+        <>
+          <p className="text-xs text-muted-foreground mt-1 mb-4">
+            {t("expenses.of")} {fmt(baseline)} {t("dashboard.ofRecurringBaseline")}
+            {remaining > 0 && (
+              <> · <span className="text-primary font-medium">{fmt(remaining)} {t("dashboard.remaining")}</span></>
+            )}
+          </p>
+          <div className="h-1.5 w-full rounded-full bg-border overflow-hidden mb-1.5">
+            <div
+              className={cn("h-full rounded-full transition-all duration-500", barColor(pct))}
+              style={{ width: `${Math.min(pct, 100)}%` }}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground text-right mb-4">{pct}{t("dashboard.ofBaseline")}</p>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground mt-1 mb-4">{t("dashboard.addRecurring")}</p>
+      )}
 
       {top.length > 0 && top.map(([cat, amount]) => (
         <div key={cat} className="flex items-center gap-2.5 py-1.5 border-t border-border">
@@ -158,7 +163,7 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
             <div
               className="h-full rounded-full"
               style={{
-                width: `${spent > 0 ? Math.round((amount / spent) * 100) : 0}%`,
+                width: `${Math.round((amount / spent) * 100)}%`,
                 background: CAT_COLOR[cat] ?? "#9ca3af",
               }}
             />
@@ -166,10 +171,6 @@ function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
           <span className="text-xs font-semibold tabular-nums w-16 text-right">{fmt(amount)}</span>
         </div>
       ))}
-
-      {baseline === 0 && (
-        <p className="text-xs text-muted-foreground mt-2">{t("dashboard.addRecurring")}</p>
-      )}
     </Card>
   );
 }
@@ -533,6 +534,8 @@ export default function Dashboard() {
   const s = stats;
   const cur = s.currency ?? "ILS";
 
+  const hasLoans = (s.loanSummary?.length ?? 0) > 0;
+
   return (
     <div>
       {/* Page header */}
@@ -548,11 +551,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Bento grid */}
+      {/* Bento grid — cards in the same row stretch to equal height via h-full on Card */}
       <div className="grid grid-cols-12 gap-3.5">
 
-        {/* Row 1: Monthly spend (5) + Loans (4) + Open Items (3) */}
-        <div className="col-span-12 lg:col-span-5">
+        {/* Row 1: Monthly spend + Loans (conditional) + Open Items */}
+        <div className={cn("col-span-12", hasLoans ? "lg:col-span-5" : "lg:col-span-9")}>
           <SpendCard
             spent={s.monthSpent}
             baseline={s.monthlyRecurring}
@@ -563,9 +566,11 @@ export default function Dashboard() {
           />
         </div>
 
-        <div className="col-span-12 lg:col-span-4">
-          <LoansCard loans={s.loanSummary ?? []} cur={cur} />
-        </div>
+        {hasLoans && (
+          <div className="col-span-12 lg:col-span-4">
+            <LoansCard loans={s.loanSummary ?? []} cur={cur} />
+          </div>
+        )}
 
         <div className="col-span-12 lg:col-span-3">
           <OpenItemsCard
@@ -575,7 +580,7 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Row 2: Attention (8) + Upcoming Calendar (4) */}
+        {/* Row 2: Attention (8) + Calendar (4) */}
         <div className="col-span-12 lg:col-span-8">
           <AttentionCard
             overdue={s.overdueExpenses ?? []}

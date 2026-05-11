@@ -5,7 +5,7 @@ import {
   mockUpgrades, mockLoans, mockWishlist, mockPurchaseCosts, mockCalendarEvents, mockInventory,
 } from "../mockData.js";
 import {
-  properties, expenses, repairs, repairQuotes,
+  properties, expenses, repairs, repairQuotes, repairQuotePayments,
   upgrades, upgradeOptions, upgradeOptionPayments, upgradeItems,
   loans, loanRepayments, wishlistItems, purchaseCosts, calendarEvents, inventoryItems,
 } from "../../drizzle/schema";
@@ -63,6 +63,14 @@ export async function seedMockProperty(userId: number): Promise<number> {
     propertyId = (res as any).insertId as number;
   }
 
+  const existingRepairIds = (
+    await db.select({ id: repairs.id }).from(repairs).where(eq(repairs.propertyId, propertyId))
+  ).map(r => r.id);
+
+  if (existingRepairIds.length > 0) {
+    await db.delete(repairQuotes).where(inArray(repairQuotes.repairId, existingRepairIds));
+  }
+
   const existingUpgradeIds = (
     await db.select({ id: upgrades.id }).from(upgrades).where(eq(upgrades.propertyId, propertyId))
   ).map(u => u.id);
@@ -92,9 +100,26 @@ export async function seedMockProperty(userId: number): Promise<number> {
     mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid, attachments: [] as any }))
   );
 
-  await db.insert(repairs).values(
-    mockRepairs.map(r => ({ id: nanoid(), ...r, ownerId: oid, propertyId: pid, attachments: [] as any }))
-  );
+  for (const r of mockRepairs) {
+    const { quotes, ...repairCore } = r as any;
+    const repairId = nanoid();
+    await db.insert(repairs).values({ id: repairId, ...repairCore, ownerId: oid, propertyId: pid, attachments: [] as any });
+    if (quotes?.length) {
+      const quoteRows = quotes.map((q: any) => {
+        const { payments: _p, ...quoteCore } = q;
+        return { id: nanoid(), repairId, ...quoteCore };
+      });
+      await db.insert(repairQuotes).values(quoteRows);
+      for (let i = 0; i < quotes.length; i++) {
+        const pyms: any[] = quotes[i].payments ?? [];
+        if (pyms.length) {
+          await db.insert(repairQuotePayments).values(
+            pyms.map((p: any) => ({ id: nanoid(), quoteId: quoteRows[i].id, ...p }))
+          );
+        }
+      }
+    }
+  }
 
   for (const u of mockUpgrades) {
     const { options, items, ...upgradeCore } = u as any;

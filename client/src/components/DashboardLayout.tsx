@@ -61,8 +61,6 @@ import {
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
-import { SearchModal } from "./SearchModal";
-import { useSearch } from "@/hooks/useSearch";
 
 type LucideIcon = React.ComponentType<React.SVGProps<SVGSVGElement> & { className?: string }>;
 type NavItem = { icon: LucideIcon; key: string; path: string };
@@ -344,10 +342,7 @@ function DashboardLayoutContent({
   const { data: properties } = trpc.property.list.useQuery();
   const hasMultipleProperties = (properties?.length ?? 0) > 1;
 
-  const search = useSearch();
-
   const handleSearchOpen = () => {
-    search.setOpen(true);
     onSearchOpen?.();
   };
 
@@ -437,36 +432,6 @@ function DashboardLayoutContent({
 
           {/* ── Nav groups ───────────────────────────────────────────── */}
           <SidebarContent className="gap-0">
-            {/* Search bar */}
-            {!isCollapsed ? (
-              <div className="px-2 pb-2">
-                <button
-                  type="button"
-                  onClick={handleSearchOpen}
-                  className="flex h-8 w-full items-center gap-2 rounded-md border bg-background px-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                  aria-label={t("search.dialogTitle")}
-                >
-                  <Search className="h-3.5 w-3.5 shrink-0" />
-                  <span className="flex-1 text-start text-xs">{t("search.placeholder")}</span>
-                  <kbd className="hidden sm:inline-flex items-center rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
-                    ⌘K
-                  </kbd>
-                </button>
-              </div>
-            ) : (
-              <div className="flex justify-center pb-2">
-                <button
-                  type="button"
-                  onClick={handleSearchOpen}
-                  className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
-                  aria-label={t("search.dialogTitle")}
-                  title={`${t("search.dialogTitle")} (⌘K)`}
-                >
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                </button>
-              </div>
-            )}
-
             {navGroups.map(group => (
               <div key={group.labelKey} className="mb-1">
                 {!isCollapsed && (
@@ -626,15 +591,6 @@ function DashboardLayoutContent({
 
         <main className="flex-1 p-4 md:p-5">{children}</main>
       </SidebarInset>
-
-      <SearchModal
-        open={search.open}
-        onClose={search.close}
-        query={search.query}
-        onQueryChange={search.setQuery}
-        results={search.results}
-        isFetching={search.isFetching}
-      />
     </>
   );
 }

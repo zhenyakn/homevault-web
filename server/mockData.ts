@@ -2,6 +2,7 @@ import type {
   InsertProperty,
   InsertExpense,
   InsertRepair,
+  InsertRepairQuote,
   InsertUpgrade,
   InsertUpgradeOption,
   InsertUpgradeItem,
@@ -304,61 +305,170 @@ export const mockExpenses: Seed<InsertExpense>[] = [
   },
 ];
 
-// ─── Repairs ──────────────────────────────────────────────────────────────────
+// ─── Repairs (with embedded quotes & payments) ────────────────────────────────
+//
+// Each repair may have quotes[] — vendor estimates. Set selected: true on the
+// chosen one. payments[] logs actual transfers against that quote.
+//
+type SeedRepair = Seed<InsertRepair> & {
+  quotes?: (Omit<Seed<InsertRepairQuote>, "repairId"> & { payments?: any[] })[];
+};
 
-export const mockRepairs: Seed<InsertRepair>[] = [
+export const mockRepairs: SeedRepair[] = [
+  // ── 1. Kitchen sink — in_progress, high, Plumbing ─────────────────────────
   {
     title: "Kitchen sink — slow drain after descaling",
-    description: "Water drains slowly. May need pipe replacement section. Plumber did temporary fix in Feb but issue returned.",
+    description: "Water drains slowly. May need pipe replacement section. Plumber did a temporary clearing in Feb but issue returned within 3 weeks.",
     category: "Plumbing" as const,
     priority: "high" as const,
     status: "in_progress" as const,
     reportedDate: "2026-03-15",
     contractor: "Avi Plumbing Services",
-    notes: "Second visit scheduled. Contractor suspects partial blockage 80cm in.",
+    notes: "Second visit scheduled. Contractor suspects partial blockage ~80cm in. Will run a camera before deciding on pipe section replacement.",
+    quotes: [
+      {
+        contractor: "Avi Plumbing Services",
+        amount: ils(1_400),
+        date: "2026-03-18",
+        notes: "Camera inspection + targeted pipe section replacement if needed. Includes return-visit warranty (30 days). Quick to schedule.",
+        selected: true,
+        payments: [
+          { date: "2026-03-22", amount: ils(400), notes: "Deposit — camera inspection booked" },
+        ],
+      },
+      {
+        contractor: "Tel Aviv Drains Ltd",
+        amount: ils(1_900),
+        date: "2026-03-25",
+        notes: "Full kitchen drain line replacement to the main stack. More invasive — would require opening the wall behind the cabinet. Higher cost but permanent fix.",
+        selected: false,
+      },
+    ],
   },
+
+  // ── 2. Electrical panel — waiting_for_contractor, urgent, Electrical ──────
   {
-    title: "Bathroom wall tiles — hairline cracks (3 tiles)",
-    description: "Hairline cracks above the shower surround. Not leaking yet, but risk of water ingress if not fixed.",
-    category: "Structural" as const,
-    priority: "medium" as const,
-    status: "open" as const,
-    reportedDate: "2026-01-20",
-    notes: "Got 1 quote (₪2,800). Need a second quote. Low urgency for now.",
+    title: "Electrical panel — kitchen circuit trips under load",
+    description: "Kitchen circuit breaker trips when microwave and kettle run together. Started after the new outlet was added in December. Suspect undersized breaker or aged wiring.",
+    category: "Electrical" as const,
+    priority: "urgent" as const,
+    status: "waiting_for_contractor" as const,
+    reportedDate: "2026-04-28",
+    contractor: "Eli Gabai (Licensed Electrician)",
+    notes: "Eli is the licensed electrician already doing the Shelly relay install. Booked combined visit May 15 — will replace breaker and inspect kitchen wiring while he's here.",
+    quotes: [
+      {
+        contractor: "Eli Gabai (Licensed Electrician)",
+        amount: ils(950),
+        date: "2026-05-02",
+        notes: "Replace 16A breaker with 20A + visual inspection of kitchen circuit. Licensed, familiar with the panel from previous job.",
+        selected: true,
+        payments: [
+          { date: "2026-05-03", amount: ils(300), notes: "Deposit to secure May 15 slot" },
+        ],
+      },
+      {
+        contractor: "Mor Electric",
+        amount: ils(1_200),
+        date: "2026-05-04",
+        notes: "Full panel inspection + breaker replacement + amperage testing. Thorough but slower to schedule (3-week wait).",
+        selected: false,
+      },
+    ],
   },
-  {
-    title: "Water heater — pressure drop when multiple taps open",
-    description: "Hot water pressure drops noticeably when shower and kitchen tap are both open. Likely mixing valve.",
-    category: "Plumbing" as const,
-    priority: "medium" as const,
-    status: "waiting_for_parts" as const,
-    reportedDate: "2025-12-01",
-    contractor: "Avi Plumbing Services",
-    notes: "Contractor said it's likely the pressure-balancing valve. Parts on order.",
-  },
+
+  // ── 3. AC outdoor unit — open, low, HVAC (no quotes yet) ──────────────────
   {
     title: "AC outdoor unit — unusual noise when starting",
-    description: "Compressor makes a grinding sound for the first 30 seconds when starting from off. Worse in cold mornings.",
+    description: "Compressor makes a grinding sound for the first 30 seconds when starting from cold. Worse in cool mornings. Cooling performance still normal.",
     category: "HVAC" as const,
     priority: "low" as const,
     status: "open" as const,
     reportedDate: "2026-02-10",
-    notes: "Technician visit booked for May service — will diagnose then.",
+    notes: "Technician visit already booked for May annual service — will diagnose then. No separate quote needed yet.",
   },
+
+  // ── 4. Bathroom tiles — open, medium, Structural (quotes, none picked) ────
+  {
+    title: "Bathroom wall tiles — hairline cracks (3 tiles)",
+    description: "Hairline cracks above the shower surround on 3 adjacent tiles. Not leaking yet, but risk of water ingress into the wall if not addressed before next winter.",
+    category: "Structural" as const,
+    priority: "medium" as const,
+    status: "open" as const,
+    reportedDate: "2026-01-20",
+    notes: "Two quotes in. Deferring decision until after kitchen renovation finishes (May) — don't want overlapping contractor work.",
+    quotes: [
+      {
+        contractor: "Roni Tiling Works",
+        amount: ils(2_800),
+        date: "2026-02-05",
+        notes: "Replace 3 cracked tiles + regrout the surrounding 6 tiles. Match existing tile from leftover stock in storage. 1-day job.",
+        selected: false,
+      },
+      {
+        contractor: "Dan Renovations",
+        amount: ils(3_400),
+        date: "2026-02-12",
+        notes: "Replace 3 tiles + waterproof membrane patch behind. Slightly over-engineered for the issue but more durable.",
+        selected: false,
+      },
+    ],
+  },
+
+  // ── 5. Refrigerator — waiting_for_parts, medium, Appliance ────────────────
+  {
+    title: "Refrigerator — door seal failing on freezer compartment",
+    description: "Freezer door seal has condensation buildup and ice forming around the edge. Door doesn't close flush. Samsung confirmed seal needs replacement under extended warranty.",
+    category: "Appliance" as const,
+    priority: "medium" as const,
+    status: "waiting_for_parts" as const,
+    reportedDate: "2026-03-08",
+    contractor: "Samsung Authorized Service (Tel Aviv)",
+    notes: "Part ordered through Samsung extended warranty (purchased 2023). ETA 2 weeks. Labour covered, parts free under warranty — quote is service call only.",
+    quotes: [
+      {
+        contractor: "Samsung Authorized Service (Tel Aviv)",
+        amount: ils(280),
+        date: "2026-03-12",
+        notes: "Service call fee only. Seal replacement covered under extended warranty. Includes return visit for installation when part arrives.",
+        selected: true,
+        payments: [
+          { date: "2026-03-12", amount: ils(280), notes: "Service call paid on first visit (diagnosis)" },
+        ],
+      },
+    ],
+  },
+
+  // ── 6. Bedroom door — completed, low, Cosmetic (single quote, fully paid) ─
   {
     title: "Master bedroom door — stiff latch",
-    description: "Latch didn't retract smoothly, sometimes jammed.",
+    description: "Latch didn't retract smoothly when handle was turned, sometimes jammed entirely. Required two hands to open.",
     category: "Cosmetic" as const,
     priority: "low" as const,
     status: "completed" as const,
     reportedDate: "2025-10-05",
     completedDate: "2025-10-20",
+    contractor: "Local handyman (Moti)",
     cost: ils(180),
-    notes: "Replaced latch mechanism. Works fine now.",
+    notes: "Replaced latch mechanism + adjusted strike plate. Works fine now. 6-month workmanship guarantee — no recurrence so far.",
+    quotes: [
+      {
+        contractor: "Local handyman (Moti)",
+        amount: ils(180),
+        date: "2025-10-12",
+        notes: "Quick fix — latch mechanism replacement + adjustment. Same-day availability. Parts included.",
+        selected: true,
+        payments: [
+          { date: "2025-10-20", amount: ils(180), notes: "Paid on completion (cash, no receipt requested)" },
+        ],
+      },
+    ],
   },
+
+  // ── 7. Balcony seepage — completed, high, Structural (fully paid) ─────────
   {
     title: "Balcony — water seepage into ceiling below",
-    description: "Water stain appeared on ceiling of ground-floor storage after heavy rain. Traced to balcony membrane failure.",
+    description: "Water stain appeared on the ceiling of the ground-floor storage room after heavy November rain. Traced to balcony membrane failure at the drain corner.",
     category: "Structural" as const,
     priority: "high" as const,
     status: "completed" as const,
@@ -366,7 +476,47 @@ export const mockRepairs: Seed<InsertRepair>[] = [
     completedDate: "2025-09-28",
     contractor: "Roni Waterproofing Ltd",
     cost: ils(4_800),
-    notes: "Applied new bitumen membrane + drainage mat. 5-year workmanship warranty. Tested through two rain events — no recurrence.",
+    notes: "Applied new bitumen membrane + drainage mat + new perimeter sealant. 5-year workmanship warranty. Tested through two heavy rain events — no recurrence.",
+    quotes: [
+      {
+        contractor: "Roni Waterproofing Ltd",
+        amount: ils(4_800),
+        date: "2025-09-08",
+        notes: "Full membrane replacement at drain corner (2.5 sqm) + perimeter resealing. 5-year warranty. Neighbour recommendation — used them on the floor below us.",
+        selected: true,
+        payments: [
+          { date: "2025-09-15", amount: ils(2_000), notes: "Deposit — work scheduled" },
+          { date: "2025-09-28", amount: ils(2_800), notes: "Final payment on completion + warranty document received" },
+        ],
+      },
+      {
+        contractor: "Aqua Seal Israel",
+        amount: ils(5_600),
+        date: "2025-09-10",
+        notes: "Polyurethane liquid membrane (premium product). Longer warranty (8 years) but more expensive. Slower start date (3 weeks out).",
+        selected: false,
+      },
+    ],
+  },
+
+  // ── 8. Intercom buzzer — cancelled, low, Other (HOA took it on) ───────────
+  {
+    title: "Intercom — buzzer handset silent when called from lobby",
+    description: "Lobby panel rings, but the handset in the apartment is silent. Outgoing door release still works. Reported to va'ad bayit since the lobby panel may be the failing component.",
+    category: "Other" as const,
+    priority: "low" as const,
+    status: "cancelled" as const,
+    reportedDate: "2026-01-12",
+    notes: "Cancelled — va'ad bayit (HOA) decided to replace the entire building intercom system in March as part of their annual maintenance plan. Our handset was swapped at no cost. Keeping this record for traceability.",
+    quotes: [
+      {
+        contractor: "Tel Aviv Intercoms",
+        amount: ils(620),
+        date: "2026-01-20",
+        notes: "Replace apartment handset + test lobby panel connection. Standalone fix — wouldn't address root cause if lobby panel is actually failing.",
+        selected: false,
+      },
+    ],
   },
 ];
 
