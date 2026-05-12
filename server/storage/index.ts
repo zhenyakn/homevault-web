@@ -18,7 +18,7 @@ export function getActiveBackendName(): StorageBackendName {
   if (isGoogleEnvConfigured()) return "gdrive";
   if (isS3Configured()) return "s3";
   // Default to gdrive — surfaces a more actionable error message at the
-  // upload route (telling the user to visit /admin/google-drive).
+  // upload route (telling the user to visit Settings → Integrations).
   return "gdrive";
 }
 

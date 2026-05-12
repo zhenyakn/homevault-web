@@ -15,18 +15,26 @@ import { StorageNotConfiguredError, StorageOperationError } from "./storage/type
  * Google Drive setup endpoints.
  *
  * Flow:
- *   1. Admin visits /admin/google-drive (frontend page).
+ *   1. Admin visits Settings → Integrations (frontend page).
  *   2. Clicks "Connect" → GET /api/google-drive/connect issues a redirect to
  *      Google's consent screen with the drive.file scope.
  *   3. Google redirects back to /api/google-drive/callback?code=...
  *   4. Server exchanges the code for a refresh_token, stores it in
- *      app_settings, then redirects to /#/admin/google-drive?connected=1.
+ *      app_settings, then redirects the browser back to the Settings page
+ *      with a one-shot ?gdrive=connected query param.
  *   5. Admin can later click "Disconnect" → POST /api/google-drive/disconnect
  *      which clears the refresh token + cached folder IDs.
  *
  * GET /api/google-drive/status returns { connected, email, configured } so the
  * frontend can render the correct UI without exposing the refresh token.
  */
+
+// One-shot params are placed in window.location.search (NOT inside the hash)
+// so the existing hash-based router can route to /settings/integrations while
+// the Settings page reads the flag from `?gdrive=...`.
+const CONNECTED_REDIRECT = "/?gdrive=connected#/settings/integrations";
+const errorRedirect = (msg: string) =>
+  `/?gdrive=error&message=${encodeURIComponent(msg)}#/settings/integrations`;
 
 const router = Router();
 
@@ -79,7 +87,7 @@ router.get("/api/google-drive/callback", async (req, res) => {
   const errParam = (req.query.error as string) || "";
   if (errParam) {
     // The user denied consent or Google returned an error.
-    res.redirect(302, `/#/admin/google-drive?error=${encodeURIComponent(errParam)}`);
+    res.redirect(302, errorRedirect(errParam));
     return;
   }
   if (!code) {
@@ -95,16 +103,21 @@ router.get("/api/google-drive/callback", async (req, res) => {
 
   try {
     const { email } = await completeConnect(code);
-    const params = new URLSearchParams({ connected: "1" });
-    if (email) params.set("email", email);
-    res.redirect(302, `/#/admin/google-drive?${params.toString()}`);
+    if (email) {
+      res.redirect(
+        302,
+        `/?gdrive=connected&email=${encodeURIComponent(email)}#/settings/integrations`,
+      );
+    } else {
+      res.redirect(302, CONNECTED_REDIRECT);
+    }
   } catch (err) {
     const msg =
       err instanceof StorageOperationError || err instanceof StorageNotConfiguredError
         ? err.message
         : "Failed to complete Google Drive connection";
     logger.error({ err: (err as Error).message }, "[gdrive] callback error");
-    res.redirect(302, `/#/admin/google-drive?error=${encodeURIComponent(msg)}`);
+    res.redirect(302, errorRedirect(msg));
   }
 });
 

@@ -25,7 +25,6 @@ import Settings from "./pages/Settings";
 import Portfolio from "./pages/Portfolio";
 import UpgradeDetail from "./pages/UpgradeDetail";
 import RepairDetail from "./pages/RepairDetail";
-import AdminGoogleDrive from "./pages/AdminGoogleDrive";
 import { Home, Loader2, LogIn, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchModal } from "./components/SearchModal";
@@ -175,7 +174,6 @@ function AppRouter() {
             <Route path="/settings" component={Settings} />
             <Route path="/settings/:section" component={Settings} />
             <Route path="/property-settings" component={PropertySettings} />
-            <Route path="/admin/google-drive" component={AdminGoogleDrive} />
             <Route path="/404" component={NotFound} />
             <Route component={NotFound} />
           </Switch>

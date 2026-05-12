@@ -133,19 +133,33 @@ describe("GET /api/google-drive/callback", () => {
     app = await startApp();
   });
 
-  it("redirects to /admin/google-drive?connected=1 on success", async () => {
+  it("redirects to Settings → Integrations with gdrive=connected on success", async () => {
     gdriveMock.completeConnect.mockResolvedValueOnce({ email: "owner@x" });
     const res = await fetchUrl(`${app.url}/api/google-drive/callback?code=abc`);
     expect(res.status).toBe(302);
     const loc = res.headers.get("location")!;
-    expect(loc).toContain("connected=1");
+    expect(loc).toContain("gdrive=connected");
     expect(loc).toContain("email=owner%40x");
+    // Hash routes the SPA to the Integrations tab.
+    expect(loc).toContain("#/settings/integrations");
   });
 
-  it("redirects with error=... when Google returned an error", async () => {
+  it("redirects without email when userinfo lookup returned none", async () => {
+    gdriveMock.completeConnect.mockResolvedValueOnce({ email: null });
+    const res = await fetchUrl(`${app.url}/api/google-drive/callback?code=abc`);
+    expect(res.status).toBe(302);
+    const loc = res.headers.get("location")!;
+    expect(loc).toContain("gdrive=connected");
+    expect(loc).not.toContain("email=");
+  });
+
+  it("redirects with gdrive=error&message=... when Google returned an error", async () => {
     const res = await fetchUrl(`${app.url}/api/google-drive/callback?error=access_denied`);
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toContain("error=access_denied");
+    const loc = res.headers.get("location")!;
+    expect(loc).toContain("gdrive=error");
+    expect(loc).toContain("message=access_denied");
+    expect(loc).toContain("#/settings/integrations");
   });
 
   it("400 when no code is supplied", async () => {
@@ -153,11 +167,11 @@ describe("GET /api/google-drive/callback", () => {
     expect(res.status).toBe(400);
   });
 
-  it("redirects with error=... when completeConnect throws", async () => {
+  it("redirects with gdrive=error when completeConnect throws", async () => {
     gdriveMock.completeConnect.mockRejectedValueOnce(new Error("boom"));
     const res = await fetchUrl(`${app.url}/api/google-drive/callback?code=abc`);
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toContain("error=");
+    expect(res.headers.get("location")).toContain("gdrive=error");
   });
 
   it("requires admin auth", async () => {

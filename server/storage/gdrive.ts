@@ -75,13 +75,13 @@ export function buildOAuthClient(): OAuth2Client {
 
 /** Returns an OAuth2 client pre-loaded with the persisted refresh token.
  * Throws StorageNotConfiguredError if the owner has not yet completed the
- * `/admin/google-drive` connect flow. */
+ * connect flow in Settings → Integrations. */
 async function getAuthedClient(): Promise<OAuth2Client> {
   const client = buildOAuthClient();
   const refreshToken = await getSetting(GDRIVE_KEYS.refreshToken);
   if (!refreshToken) {
     throw new StorageNotConfiguredError(
-      "Google Drive is not connected. Visit /admin/google-drive and complete the connection flow.",
+      "Google Drive is not connected. Open Settings → Integrations and click Connect to authorise the app.",
     );
   }
   client.setCredentials({ refresh_token: refreshToken });
