@@ -559,3 +559,53 @@ export const inventoryItems = mysqlTable(
 
 export type InventoryItem = typeof inventoryItems.$inferSelect;
 export type InsertInventoryItem = typeof inventoryItems.$inferInsert;
+
+// ── App settings (single key/value store) ─────────────────────────────────────
+// Used to persist secrets that should not live in env vars (e.g. the Google
+// Drive OAuth refresh token) plus cached lookups such as the per-user Drive
+// folder IDs.
+export const appSettings = mysqlTable(
+  "app_settings",
+  {
+    key: varchar("key", { length: 64 }).primaryKey(),
+    value: text("value").notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+);
+
+export type AppSetting = typeof appSettings.$inferSelect;
+export type InsertAppSetting = typeof appSettings.$inferInsert;
+
+// ── Files registry ────────────────────────────────────────────────────────────
+// Every upload — whether persisted on S3 or on Google Drive — gets a row here.
+// The `attachments` JSON columns on expenses/repairs/upgrades/loans/wishlist/
+// purchaseCosts store *proxy URLs* of the shape `/api/files/<id>/<name>`; the
+// server resolves the row, checks ownership, and streams / 302-redirects the
+// content according to `backend`.
+export const files = mysqlTable(
+  "files",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    // Discriminator string; matches the `name` field on StorageBackend.
+    // Kept as varchar (not mysqlEnum) so adding a third backend in future
+    // doesn't require an enum migration.
+    backend: varchar("backend", { length: 16 }).notNull(),
+    // Backend-specific identifier: S3 key or Google Drive fileId.
+    externalId: text("externalId").notNull(),
+    originalName: varchar("originalName", { length: 255 }).notNull(),
+    mimeType: varchar("mimeType", { length: 150 }).notNull(),
+    size: int("size").default(0).notNull(),
+    ownerUserId: int("ownerUserId")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    deletedAt: timestamp("deletedAt"),
+  },
+  (table) => ({
+    ownerIdx: index("files_owner_idx").on(table.ownerUserId),
+    backendIdx: index("files_backend_idx").on(table.backend),
+  }),
+);
+
+export type FileRecord = typeof files.$inferSelect;
+export type InsertFileRecord = typeof files.$inferInsert;

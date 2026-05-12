@@ -462,6 +462,44 @@ async function main() {
     "inventoryItems"
   );
 
+  // ── app_settings ─────────────────────────────────────────────────────────────
+  // Generic key/value store used by the Google Drive integration (refresh
+  // token, cached folder IDs) and any future setup state that needs to
+  // outlive process restarts without going into env vars.
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`app_settings\` (
+      \`key\` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`value\` text COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`key\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "app_settings"
+  );
+
+  // ── files ────────────────────────────────────────────────────────────────────
+  // Catalogues every uploaded file regardless of storage backend (Google
+  // Drive or S3-compatible). The `attachments` JSON columns on the entity
+  // tables store proxy URLs of the form /api/files/<id>; the server resolves
+  // the row here, checks ownership, and streams or 302-redirects accordingly.
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`files\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`backend\` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`externalId\` text COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`originalName\` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`mimeType\` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`size\` int NOT NULL DEFAULT 0,
+      \`ownerUserId\` int NOT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`deletedAt\` timestamp NULL DEFAULT NULL,
+      PRIMARY KEY (\`id\`),
+      KEY \`files_owner_idx\` (\`ownerUserId\`),
+      KEY \`files_backend_idx\` (\`backend\`),
+      CONSTRAINT \`files_owner_fk\` FOREIGN KEY (\`ownerUserId\`) REFERENCES \`users\` (\`id\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "files"
+  );
+
   // ── Phase 3: convergence — bring v2+ installs up to current schema ───────────
   // Every ALTER is idempotent — ER_DUP_FIELDNAME is silently skipped.
   // Phase 1 handles v1→v2 resets. This section handles v2→now additions:

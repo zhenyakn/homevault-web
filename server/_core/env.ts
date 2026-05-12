@@ -7,8 +7,14 @@ const envSchema = z.object({
   VITE_APP_ID: z.string().default(""),
   OAUTH_SERVER_URL: z.string().default(""),
   OWNER_OPEN_ID: z.string().default(""),
+  // Forge API powers the optional Manus features (LLM, voice, maps, push)
+  // and is unrelated to file STORAGE — Drive/S3 handle that now.
   BUILT_IN_FORGE_API_URL: z.string().default(""),
   BUILT_IN_FORGE_API_KEY: z.string().default(""),
+  STORAGE_BACKEND: z.string().default(""),
+  GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().default(""),
+  GOOGLE_OAUTH_REDIRECT_URI: z.string().default(""),
   NO_AUTH: z.string().default("false"),
   SEED_MOCK_DATA: z.string().default("false"),
   PORT: z.string().default("3005"),
@@ -37,6 +43,10 @@ export const ENV = {
   isProduction:  raw.NODE_ENV === "production",
   forgeApiUrl:   raw.BUILT_IN_FORGE_API_URL,
   forgeApiKey:   raw.BUILT_IN_FORGE_API_KEY,
+  storageBackend: raw.STORAGE_BACKEND,
+  googleClientId: raw.GOOGLE_CLIENT_ID,
+  googleClientSecret: raw.GOOGLE_CLIENT_SECRET,
+  googleOAuthRedirectUri: raw.GOOGLE_OAUTH_REDIRECT_URI,
   noAuth:        raw.NO_AUTH === "true",
   seedMockData:  raw.SEED_MOCK_DATA === "true",
 };

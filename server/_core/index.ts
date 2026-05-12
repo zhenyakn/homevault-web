@@ -5,9 +5,10 @@ import net from "net";
 import rateLimit from "express-rate-limit";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { uploadRouter } from "../uploadRoute";
+import { filesRouter } from "../filesRoute";
+import { googleDriveRouter } from "../googleDriveRoute";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
@@ -99,9 +100,10 @@ async function startServer() {
   app.use("/api/trpc/auth", authLimiter);
   app.use("/api/trpc", apiLimiter);
 
-  registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.use(uploadRouter);
+  app.use(filesRouter);
+  app.use(googleDriveRouter);
 
   // Dev-only login bypass — keeps existing dev-server behavior unchanged
   if (process.env.NODE_ENV === "development") {

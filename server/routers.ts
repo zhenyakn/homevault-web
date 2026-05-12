@@ -9,6 +9,9 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import * as db from "./db";
+import { parseJsonArray } from "./db/client";
+import { syncAttachmentRemovals, deleteAttachmentList } from "./files";
+import { logger } from "./_core/logger";
 import { searchRouter } from "./searchRouter";
 import {
   expenses, repairs, upgrades, loans,
@@ -97,6 +100,61 @@ async function assertUpgradeOwner(id: string, userId: number) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised to modify this upgrade" });
   }
   return record;
+}
+
+// ─── Attachment lifecycle helpers ─────────────────────────────────────────────
+// Each of the 6 entity tables that have an `attachments` JSON column funnels
+// updates/deletes through these helpers so unreferenced files are reaped from
+// the storage backend (Google Drive / S3). Backend failures are logged but
+// never abort the user-facing operation.
+
+type WithAttachments = { ownerId: number; attachments?: string[] | null };
+
+async function diffAttachmentsOnUpdate<T extends WithAttachments>(
+  loadOld: () => Promise<T | null | undefined>,
+  newData: { attachments?: string[] | null },
+  userId: number,
+) {
+  // Skip the diff entirely if the update doesn't touch attachments.
+  if (!("attachments" in newData)) return;
+  let oldRecord: T | null | undefined;
+  try {
+    oldRecord = await loadOld();
+  } catch (err) {
+    logger.warn({ err: (err as Error).message }, "[attachments] load-old failed");
+    return;
+  }
+  if (!oldRecord || oldRecord.ownerId !== userId) return;
+  const oldList = parseJsonArray(oldRecord.attachments) as string[];
+  try {
+    await syncAttachmentRemovals({
+      oldList,
+      newList: newData.attachments ?? [],
+      ownerUserId: userId,
+    });
+  } catch (err) {
+    logger.error({ err: (err as Error).message }, "[attachments] sync failed");
+  }
+}
+
+async function deleteAttachmentsOnRecordDelete<T extends WithAttachments>(
+  loadRecord: () => Promise<T | null | undefined>,
+  userId: number,
+) {
+  let record: T | null | undefined;
+  try {
+    record = await loadRecord();
+  } catch (err) {
+    logger.warn({ err: (err as Error).message }, "[attachments] load-on-delete failed");
+    return;
+  }
+  if (!record || record.ownerId !== userId) return;
+  const list = parseJsonArray(record.attachments) as string[];
+  try {
+    await deleteAttachmentList(list, userId);
+  } catch (err) {
+    logger.error({ err: (err as Error).message }, "[attachments] delete-on-record-delete failed");
+  }
 }
 
 export const appRouter = router({
@@ -222,11 +280,13 @@ export const appRouter = router({
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: expenseSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
+        await diffAttachmentsOnUpdate(() => db.getExpenseById(input.id), input.data, ctx.user.id);
         return await db.updateExpense(input.id, ctx.user.id, input.data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        await deleteAttachmentsOnRecordDelete(() => db.getExpenseById(input.id), ctx.user.id);
         return await db.deleteExpense(input.id, ctx.user.id);
       }),
     markAsPaid: protectedProcedure
@@ -251,11 +311,13 @@ export const appRouter = router({
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: repairSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
+        await diffAttachmentsOnUpdate(() => db.getRepairById(input.id), input.data, ctx.user.id);
         return await db.updateRepair(input.id, ctx.user.id, input.data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        await deleteAttachmentsOnRecordDelete(() => db.getRepairById(input.id), ctx.user.id);
         return await db.deleteRepair(input.id, ctx.user.id);
       }),
   }),
@@ -481,11 +543,13 @@ export const appRouter = router({
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: upgradeSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
+        await diffAttachmentsOnUpdate(() => db.getUpgradeById(input.id), input.data, ctx.user.id);
         return await db.updateUpgrade(input.id, ctx.user.id, input.data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        await deleteAttachmentsOnRecordDelete(() => db.getUpgradeById(input.id), ctx.user.id);
         return await db.deleteUpgrade(input.id, ctx.user.id);
       }),
   }),
@@ -507,11 +571,13 @@ export const appRouter = router({
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: loanSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
+        await diffAttachmentsOnUpdate(() => db.getLoanById(input.id), input.data, ctx.user.id);
         return await db.updateLoan(input.id, ctx.user.id, input.data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        await deleteAttachmentsOnRecordDelete(() => db.getLoanById(input.id), ctx.user.id);
         return await db.deleteLoan(input.id, ctx.user.id);
       }),
     addRepayment: protectedProcedure
@@ -548,11 +614,13 @@ export const appRouter = router({
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: wishlistSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
+        await diffAttachmentsOnUpdate(() => db.getWishlistItemById(input.id), input.data, ctx.user.id);
         return await db.updateWishlistItem(input.id, ctx.user.id, input.data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        await deleteAttachmentsOnRecordDelete(() => db.getWishlistItemById(input.id), ctx.user.id);
         return await db.deleteWishlistItem(input.id, ctx.user.id);
       }),
   }),
@@ -572,11 +640,13 @@ export const appRouter = router({
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: purchaseCostSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
+        await diffAttachmentsOnUpdate(() => db.getPurchaseCostById(input.id), input.data, ctx.user.id);
         return await db.updatePurchaseCost(input.id, ctx.user.id, input.data);
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        await deleteAttachmentsOnRecordDelete(() => db.getPurchaseCostById(input.id), ctx.user.id);
         return await db.deletePurchaseCost(input.id, ctx.user.id);
       }),
   }),
