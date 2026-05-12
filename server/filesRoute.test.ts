@@ -123,7 +123,7 @@ describe("GET /api/files/:id", () => {
     expect(res.headers.get("location")).toBe("https://signed.example.com/x.pdf");
   });
 
-  it("streams content with the stored mimeType when backend returns kind:'stream'", async () => {
+  it("streams content with forced attachment + octet-stream + hardened headers (H2/H3 fix)", async () => {
     filesState.rows = [
       { id: "gd123456", ownerUserId: 7, backend: "gdrive", externalId: "drive-id", originalName: "hello.txt", mimeType: "text/plain", size: 5, createdAt: new Date(), deletedAt: null },
     ];
@@ -136,9 +136,51 @@ describe("GET /api/files/:id", () => {
 
     const res = await fetchUrl(`${app.url}/api/files/gd123456`);
     expect(res.status).toBe(200);
-    expect(res.headers.get("content-type")).toContain("text/plain");
-    const body = await res.text();
-    expect(body).toBe("hello");
+    // Force octet-stream — we MUST NOT echo the stored mimeType.
+    expect(res.headers.get("content-type")).toBe("application/octet-stream");
+    // Force attachment — browser saves to disk, never renders.
+    expect(res.headers.get("content-disposition")).toMatch(/^attachment;/);
+    expect(res.headers.get("content-disposition")).toContain("filename*=UTF-8''");
+    // Defense-in-depth headers
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("content-security-policy")).toContain("default-src 'none'");
+    expect(res.headers.get("cross-origin-resource-policy")).toBe("same-origin");
+    expect(res.headers.get("referrer-policy")).toBe("no-referrer");
+    // Body still streams correctly.
+    expect(await res.text()).toBe("hello");
+  });
+
+  it("forces attachment even for HTML/SVG mimeTypes stored in the DB (XSS defense)", async () => {
+    filesState.rows = [
+      { id: "evil1234", ownerUserId: 7, backend: "gdrive", externalId: "drive-id", originalName: "evil.svg", mimeType: "image/svg+xml", size: 5, createdAt: new Date(), deletedAt: null },
+    ];
+    backendStub.gdrive.download.mockResolvedValueOnce({
+      kind: "stream",
+      stream: Readable.from(Buffer.from("<svg/>")),
+      mimeType: "image/svg+xml",
+      size: 6,
+    });
+    const res = await fetchUrl(`${app.url}/api/files/evil1234`);
+    expect(res.headers.get("content-type")).toBe("application/octet-stream");
+    expect(res.headers.get("content-disposition")).toMatch(/^attachment;/);
+  });
+
+  it("RFC 8187-encodes non-ASCII filenames (CR/LF can't break the header)", async () => {
+    filesState.rows = [
+      { id: "uni12345", ownerUserId: 7, backend: "gdrive", externalId: "drive-id", originalName: "שלום\r\nSet-Cookie:evil.pdf", mimeType: "application/pdf", size: 0, createdAt: new Date(), deletedAt: null },
+    ];
+    backendStub.gdrive.download.mockResolvedValueOnce({
+      kind: "stream",
+      stream: Readable.from(Buffer.from("")),
+      mimeType: "application/pdf",
+    });
+    const res = await fetchUrl(`${app.url}/api/files/uni12345`);
+    const cd = res.headers.get("content-disposition")!;
+    expect(cd).toContain("filename*=UTF-8''");
+    // CR/LF are pct-encoded — no header smuggling possible.
+    expect(cd).toContain("%0D%0A");
+    // ASCII fallback strips raw CR/LF + quotes.
+    expect(cd).toMatch(/filename="[^\r\n"]*"/);
   });
 
   it("502 when backend throws", async () => {

@@ -71,10 +71,14 @@ describe("tamper detection", () => {
   it("rejects a flipped bit in the ciphertext (GCM tag mismatch)", () => {
     const env = encryptSecret("rt-secret");
     const parts = env.split(":");
-    // Flip the last char of the sealed segment.
+    // Flip a character in the middle of the sealed segment — guaranteed to
+    // alter a byte in the decoded ciphertext+tag region. Pick a char that
+    // we know maps to a different base64url symbol when XOR'd.
     const sealed = parts[2];
-    const lastChar = sealed.at(-1)!;
-    const flipped = sealed.slice(0, -1) + (lastChar === "A" ? "B" : "A");
+    const midIdx = Math.floor(sealed.length / 2);
+    const ch = sealed[midIdx];
+    const alt = ch === "A" ? "B" : "A";
+    const flipped = sealed.slice(0, midIdx) + alt + sealed.slice(midIdx + 1);
     const tampered = `${parts[0]}:${parts[1]}:${flipped}`;
     expect(() => decryptSecret(tampered)).toThrow();
   });

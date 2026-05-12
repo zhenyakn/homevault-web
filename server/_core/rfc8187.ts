@@ -21,7 +21,8 @@ export function rfc8187Encode(name: string): string {
   // Iterate over the UTF-8 byte representation so multi-byte chars get
   // pct-encoded per spec ("UTF-8''").
   const bytes = Buffer.from(name, "utf8");
-  for (const b of bytes) {
+  for (let i = 0; i < bytes.length; i++) {
+    const b = bytes[i];
     const c = String.fromCharCode(b);
     if (ATTR_CHAR_RE.test(c)) {
       out += c;

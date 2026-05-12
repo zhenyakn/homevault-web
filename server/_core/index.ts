@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import helmet from "helmet";
 import { createServer } from "http";
 import net from "net";
 import rateLimit from "express-rate-limit";
@@ -13,10 +14,15 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
 import { getSessionCookieOptions } from "./cookies";
+import { csrfIssueMiddleware } from "./csrf";
 import * as db from "../db";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./env";
 import { logger } from "./logger";
+
+// Rate limiters. NODE_ENV=test bypasses all of these so the test suite isn't
+// throttled — the limit logic itself is unit-tested in its own file.
+const skipInTest = () => process.env.NODE_ENV === "test";
 
 // Auth endpoints: strict — 20 requests per 15 minutes (brute force protection)
 const authLimiter = rateLimit({
@@ -24,6 +30,7 @@ const authLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipInTest,
   message: { error: "Too many authentication attempts, please try again later." },
 });
 
@@ -33,7 +40,41 @@ const apiLimiter = rateLimit({
   max: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipInTest,
   message: { error: "Too many requests, please slow down." },
+});
+
+// Upload: 30/min/IP — bounded by the 16MB cap and the in-process semaphore
+// in uploadRoute.ts. Pair-of-suspenders against a remote attacker spinning
+// up memory-storage churn.
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: { error: "Too many upload attempts, please slow down." },
+});
+
+// /api/files/* — generous (300/min) for legitimate page-load attachment fans.
+const filesLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: { error: "Too many file requests." },
+});
+
+// Google Drive setup endpoints — strict. These touch external OAuth and should
+// never see legitimate burst traffic.
+const gdriveLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: { error: "Too many Drive setup attempts, please try again later." },
 });
 
 // ── Seed-only mode (called from run.sh before the HTTP server starts) ─────────
@@ -94,11 +135,38 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Tight body limits — none of HomeVault's JSON endpoints need more than
+  // a few KB. File uploads go through multer (multipart) and don't traverse
+  // express.json. The previous 50mb limit was a wide-open DoS vector.
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ limit: "1mb", extended: true }));
+
+  // Defense-in-depth headers. The strictest headers (CSP / nosniff / CORP)
+  // for proxied file downloads are set per-response in filesRoute.ts; what
+  // helmet provides here is the global baseline (HSTS in prod, X-Frame-
+  // Options=DENY, Referrer-Policy=no-referrer, etc).
+  //
+  // contentSecurityPolicy is intentionally disabled because the Vite dev
+  // server + the SPA need to load chunks from same-origin without a strict
+  // policy. We rely on per-route CSP for the dangerous responses.
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false, // breaks Google Maps iframe
+      referrerPolicy: { policy: "no-referrer" },
+    }),
+  );
+
+  // CSRF cookie issuance is global — every response sees the cookie so the
+  // SPA can read it. The verification middleware is opt-in per state-
+  // changing route (uploadRoute, filesRoute DELETE, googleDriveRoute POST).
+  app.use(csrfIssueMiddleware);
 
   app.use("/api/trpc/auth", authLimiter);
   app.use("/api/trpc", apiLimiter);
+  app.use("/api/upload", uploadLimiter);
+  app.use("/api/files", filesLimiter);
+  app.use("/api/google-drive", gdriveLimiter);
 
   registerOAuthRoutes(app);
   app.use(uploadRouter);

@@ -73,6 +73,13 @@ import {
   _resetGoogleDriveCachesForTests,
 } from "./gdrive";
 import { StorageNotConfiguredError, StorageOperationError } from "./types";
+import { readMaybeEncrypted, encryptSecret } from "../_core/secrets";
+
+// Helper: stored values are now AES-GCM envelopes. Tests assert against the
+// decrypted plaintext, not the raw envelope (which has a random nonce).
+const stored = (k: string) => readMaybeEncrypted(fakeSettings.get(k) ?? null);
+// Helper to seed a value the way production code would (encrypted).
+const seedEncrypted = (k: string, v: string) => fakeSettings.set(k, encryptSecret(v));
 
 const ENV_KEYS = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_OAUTH_REDIRECT_URI"];
 const ENV_SNAP: Record<string, string | undefined> = {};
@@ -135,8 +142,10 @@ describe("completeConnect", () => {
     });
     const { email } = await completeConnect("good-code");
     expect(email).toBe("owner@example.com");
-    expect(fakeSettings.get(GDRIVE_KEYS.refreshToken)).toBe("rt-good-code");
-    expect(fakeSettings.get(GDRIVE_KEYS.connectedEmail)).toBe("owner@example.com");
+    // Persisted as an AES-GCM envelope (M1 hardening) — never plaintext.
+    expect(fakeSettings.get(GDRIVE_KEYS.refreshToken)!.startsWith("v1:")).toBe(true);
+    expect(stored(GDRIVE_KEYS.refreshToken)).toBe("rt-good-code");
+    expect(stored(GDRIVE_KEYS.connectedEmail)).toBe("owner@example.com");
   });
 
   it("throws StorageOperationError when Google does not return a refresh_token", async () => {
@@ -148,7 +157,7 @@ describe("completeConnect", () => {
     oauth2userinfoStub.userinfo.get.mockRejectedValueOnce(new Error("403"));
     const { email } = await completeConnect("good-code");
     expect(email).toBeNull();
-    expect(fakeSettings.get(GDRIVE_KEYS.refreshToken)).toBe("rt-good-code");
+    expect(stored(GDRIVE_KEYS.refreshToken)).toBe("rt-good-code");
   });
 });
 
@@ -213,8 +222,9 @@ describe("gdriveBackend.upload", () => {
     expect(lastCall.media.mimeType).toBe("application/pdf");
     expect(lastCall.media.body).toBeInstanceOf(Readable);
 
-    expect(fakeSettings.get(GDRIVE_KEYS.rootFolderId)).toBe("root-fid");
-    expect(fakeSettings.get(GDRIVE_KEYS.userFolderPrefix + "42")).toBe("user-fid");
+    // Folder IDs are encrypted at rest (M1) — read through the helper.
+    expect(stored(GDRIVE_KEYS.rootFolderId)).toBe("root-fid");
+    expect(stored(GDRIVE_KEYS.userFolderPrefix + "42")).toBe("user-fid");
   });
 
   it("reuses cached folder ids on subsequent uploads (no listing)", async () => {

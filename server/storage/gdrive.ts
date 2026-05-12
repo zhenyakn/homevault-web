@@ -13,7 +13,37 @@ import {
   StorageOperationError,
 } from "./types";
 import { getSetting, setSetting, deleteSetting } from "../db/appSettings";
+import { encryptSecret, readMaybeEncrypted } from "../_core/secrets";
 import { logger } from "../_core/logger";
+
+/**
+ * Sensitive keys whose values must be encrypted-at-rest in `app_settings`.
+ * Reads transparently decrypt; writes transparently encrypt. Values written
+ * before this hardening landed are read back via `readMaybeEncrypted`, which
+ * treats them as plaintext and lets the next write re-encrypt them — no SQL
+ * migration needed.
+ */
+const ENCRYPTED_KEYS = new Set<string>([
+  // listed as static keys below; the helpers below ensure these are the only
+  // values that go through the envelope.
+]);
+
+async function getEncryptedSetting(key: string): Promise<string | null> {
+  ENCRYPTED_KEYS.add(key);
+  const raw = await getSetting(key);
+  if (raw == null) return null;
+  try {
+    return readMaybeEncrypted(raw);
+  } catch (err) {
+    logger.error({ key, err: (err as Error).message }, "[gdrive] could not decrypt setting; treating as unset");
+    return null;
+  }
+}
+
+async function setEncryptedSetting(key: string, value: string): Promise<void> {
+  ENCRYPTED_KEYS.add(key);
+  await setSetting(key, encryptSecret(value));
+}
 
 /**
  * Google Drive storage backend.
@@ -78,7 +108,7 @@ export function buildOAuthClient(): OAuth2Client {
  * connect flow in Settings → Integrations. */
 async function getAuthedClient(): Promise<OAuth2Client> {
   const client = buildOAuthClient();
-  const refreshToken = await getSetting(GDRIVE_KEYS.refreshToken);
+  const refreshToken = await getEncryptedSetting(GDRIVE_KEYS.refreshToken);
   if (!refreshToken) {
     throw new StorageNotConfiguredError(
       "Google Drive is not connected. Open Settings → Integrations and click Connect to authorise the app.",
@@ -88,7 +118,7 @@ async function getAuthedClient(): Promise<OAuth2Client> {
   // Keep persisted token in sync if Google ever rotates it.
   client.on("tokens", (tokens: { refresh_token?: string | null }) => {
     if (tokens.refresh_token && tokens.refresh_token !== refreshToken) {
-      setSetting(GDRIVE_KEYS.refreshToken, tokens.refresh_token).catch((err) =>
+      setEncryptedSetting(GDRIVE_KEYS.refreshToken, tokens.refresh_token).catch((err) =>
         logger.error({ err }, "[gdrive] failed to persist rotated refresh token"),
       );
     }
@@ -109,6 +139,23 @@ async function ensureFolder(
   name: string,
   parentId: string | null,
 ): Promise<string> {
+  // INVARIANT: `name` and `parentId` must ALWAYS come from app-controlled
+  // sources — either constant strings declared in this file, a numeric
+  // userId coerced via String(), or a Drive-returned fileId from a prior
+  // call. NEVER pass user-supplied input here; the Drive query language
+  // has no parameterisation, only single-quote escaping below.
+  if (
+    typeof name !== "string"
+    || name.length === 0
+    || /[\r\n\0]/.test(name)
+    || name.includes("\\")
+  ) {
+    throw new StorageOperationError("gdrive", "ensureFolder: refusing unsafe folder name");
+  }
+  if (parentId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(parentId)) {
+    throw new StorageOperationError("gdrive", "ensureFolder: refusing unsafe parentId");
+  }
+
   // Lookup by name + parent. trashed=false to ignore deleted folders.
   const q =
     `mimeType='application/vnd.google-apps.folder' ` +
@@ -139,7 +186,10 @@ async function ensureFolder(
   return created.data.id;
 }
 
-/** Get-or-create + cache helper, keyed by app_settings entry. */
+/** Get-or-create + cache helper, keyed by app_settings entry. Folder IDs are
+ * encrypted at rest alongside the refresh token — they're not as catastrophic
+ * to leak, but they identify the user's Drive layout and there's no reason
+ * NOT to wrap them. */
 function memoizeFolder(
   cacheKey: string,
   factory: () => Promise<string>,
@@ -148,10 +198,10 @@ function memoizeFolder(
   if (inFlight) return inFlight;
 
   const p = (async () => {
-    const cached = await getSetting(cacheKey);
+    const cached = await getEncryptedSetting(cacheKey);
     if (cached) return cached;
     const id = await factory();
-    await setSetting(cacheKey, id);
+    await setEncryptedSetting(cacheKey, id);
     return id;
   })().finally(() => _pending.delete(cacheKey));
 
@@ -304,7 +354,7 @@ export async function completeConnect(code: string): Promise<{ email: string | n
       "Google did not return a refresh_token. Re-run the connect flow with prompt=consent, or revoke the app at https://myaccount.google.com/permissions and try again.",
     );
   }
-  await setSetting(GDRIVE_KEYS.refreshToken, tokens.refresh_token);
+  await setEncryptedSetting(GDRIVE_KEYS.refreshToken, tokens.refresh_token);
 
   // Best-effort: fetch the owner's email so the admin UI can show it.
   let email: string | null = null;
@@ -313,7 +363,7 @@ export async function completeConnect(code: string): Promise<{ email: string | n
     const oauth2 = google.oauth2({ version: "v2", auth: client });
     const me = await oauth2.userinfo.get();
     email = me.data.email ?? null;
-    if (email) await setSetting(GDRIVE_KEYS.connectedEmail, email);
+    if (email) await setEncryptedSetting(GDRIVE_KEYS.connectedEmail, email);
   } catch (err) {
     logger.warn({ err }, "[gdrive] could not fetch user email after connect");
   }
@@ -336,8 +386,8 @@ export async function getConnectionStatus(): Promise<{
   email: string | null;
 }> {
   const [token, email] = await Promise.all([
-    getSetting(GDRIVE_KEYS.refreshToken),
-    getSetting(GDRIVE_KEYS.connectedEmail),
+    getEncryptedSetting(GDRIVE_KEYS.refreshToken),
+    getEncryptedSetting(GDRIVE_KEYS.connectedEmail),
   ]);
   return { connected: !!token, email };
 }

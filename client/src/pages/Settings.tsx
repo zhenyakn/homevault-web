@@ -44,6 +44,7 @@ import {
   Download, Sun, Moon, Monitor, ChevronRight, Trash2, RefreshCw,
   Cloud, CheckCircle2, ShieldCheck, ExternalLink,
 } from "lucide-react";
+import { csrfHeaders } from "@/lib/csrf";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
@@ -608,7 +609,11 @@ function IntegrationsSection({ p }: { p: any }) {
 type GDriveStatus = {
   configured: boolean;
   connected: boolean;
-  email: string | null;
+  // Server returns a masked form ("o***@gmail.com") to avoid leaking the full
+  // Google address in shared screenshots / log dumps. The full address is
+  // shown only in the one-shot "Connected as foo@gmail.com" toast immediately
+  // after the OAuth callback.
+  emailMasked: string | null;
 };
 
 function FileStorageGroup() {
@@ -669,7 +674,12 @@ function FileStorageGroup() {
     if (!confirm("Disconnect Google Drive? Existing uploads stay reachable until the file row is deleted.")) return;
     setBusy(true);
     try {
-      const resp = await fetch("/api/google-drive/disconnect", { method: "POST" });
+      const resp = await fetch("/api/google-drive/disconnect", {
+        method: "POST",
+        // CSRF: server verifies this header matches the csrf_token cookie.
+        headers: csrfHeaders(),
+        credentials: "include",
+      });
       if (!resp.ok) throw new Error(`Disconnect failed (${resp.status})`);
       toast.success("Disconnected");
       await loadStatus();
@@ -780,8 +790,8 @@ GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
         <Row
           label="Status"
           hint={
-            status.email
-              ? `Connected as ${status.email}. New uploads go to this account's Drive.`
+            status.emailMasked
+              ? `Connected as ${status.emailMasked}. New uploads go to this account's Drive.`
               : "Connected. New uploads go to the authorised account's Drive."
           }
         >

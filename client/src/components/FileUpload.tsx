@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, X, FileText, Image } from "lucide-react";
 import { toast } from "sonner";
+import { csrfHeaders } from "@/lib/csrf";
 
 interface UploadedFile {
   url: string;
@@ -50,6 +51,9 @@ export function FileUpload({
       const resp = await fetch("/api/upload", {
         method: "POST",
         body: formData,
+        // CSRF: server verifies this header matches the csrf_token cookie.
+        headers: csrfHeaders(),
+        credentials: "include",
       });
 
       if (!resp.ok) {
