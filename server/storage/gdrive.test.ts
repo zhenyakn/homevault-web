@@ -164,26 +164,55 @@ describe("completeConnect", () => {
 // ─── disconnectGoogleDrive + getConnectionStatus ─────────────────────────────
 
 describe("disconnect + status", () => {
-  it("getConnectionStatus reports disconnected by default", async () => {
-    expect(await getConnectionStatus()).toEqual({ connected: false, email: null });
-  });
-
-  it("getConnectionStatus reports connected after a token is stored", async () => {
-    fakeSettings.set(GDRIVE_KEYS.refreshToken, "rt");
-    fakeSettings.set(GDRIVE_KEYS.connectedEmail, "owner@example.com");
+  it("getConnectionStatus reports disconnected + no-reconnect-needed by default", async () => {
     expect(await getConnectionStatus()).toEqual({
-      connected: true,
-      email: "owner@example.com",
+      connected: false,
+      email: null,
+      needsReconnect: false,
     });
   });
 
-  it("disconnectGoogleDrive clears every gdrive.* key", async () => {
-    fakeSettings.set(GDRIVE_KEYS.refreshToken, "rt");
-    fakeSettings.set(GDRIVE_KEYS.connectedEmail, "owner@example.com");
-    fakeSettings.set(GDRIVE_KEYS.rootFolderId, "root");
+  it("getConnectionStatus reports connected after a token is stored", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    seedEncrypted(GDRIVE_KEYS.connectedEmail, "owner@example.com");
+    expect(await getConnectionStatus()).toEqual({
+      connected: true,
+      email: "owner@example.com",
+      needsReconnect: false,
+    });
+  });
+
+  it("getConnectionStatus reports needsReconnect=true when tokenBroken flag is set", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    seedEncrypted(GDRIVE_KEYS.connectedEmail, "owner@example.com");
+    fakeSettings.set(GDRIVE_KEYS.tokenBroken, "1"); // plaintext boolean flag
+    expect(await getConnectionStatus()).toEqual({
+      connected: true,
+      email: "owner@example.com",
+      needsReconnect: true,
+    });
+  });
+
+  it("disconnectGoogleDrive clears every gdrive.* key (refresh token, email, folders, tokenBroken)", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    seedEncrypted(GDRIVE_KEYS.connectedEmail, "owner@example.com");
+    seedEncrypted(GDRIVE_KEYS.rootFolderId, "root");
+    fakeSettings.set(GDRIVE_KEYS.tokenBroken, "1");
     await disconnectGoogleDrive();
-    expect(await getConnectionStatus()).toEqual({ connected: false, email: null });
+    expect(await getConnectionStatus()).toEqual({
+      connected: false,
+      email: null,
+      needsReconnect: false,
+    });
     expect(fakeSettings.has(GDRIVE_KEYS.rootFolderId)).toBe(false);
+    expect(fakeSettings.has(GDRIVE_KEYS.tokenBroken)).toBe(false);
+  });
+
+  it("completeConnect clears a stale tokenBroken flag", async () => {
+    fakeSettings.set(GDRIVE_KEYS.tokenBroken, "1");
+    oauth2userinfoStub.userinfo.get.mockResolvedValueOnce({ data: { email: "x@x" } });
+    await completeConnect("good-code");
+    expect(fakeSettings.has(GDRIVE_KEYS.tokenBroken)).toBe(false);
   });
 });
 
@@ -192,21 +221,22 @@ describe("disconnect + status", () => {
 describe("gdriveBackend.upload", () => {
   it("throws StorageNotConfiguredError when not connected", async () => {
     await expect(
-      gdriveBackend.upload(Buffer.from("x"), { ownerUserId: 1, originalName: "x.pdf", mimeType: "application/pdf" }),
+      gdriveBackend.upload(Buffer.from("x"), { ownerUserId: 1, propertyId: 1, originalName: "x.pdf", mimeType: "application/pdf" }),
     ).rejects.toThrow(StorageNotConfiguredError);
   });
 
-  it("creates the HomeVault > uploads > <userId> folder chain on first call", async () => {
-    fakeSettings.set(GDRIVE_KEYS.refreshToken, "rt");
+  it("creates the HomeVault > property-<id> > <userId> folder chain on first call", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
     driveStub.files.list.mockResolvedValue({ data: { files: [] } });
     driveStub.files.create
       .mockResolvedValueOnce({ data: { id: "root-fid" } })
-      .mockResolvedValueOnce({ data: { id: "uploads-fid" } })
+      .mockResolvedValueOnce({ data: { id: "property-7-fid" } })
       .mockResolvedValueOnce({ data: { id: "user-fid" } })
       .mockResolvedValueOnce({ data: { id: "drive-file-id" } });
 
     const result = await gdriveBackend.upload(Buffer.from("data"), {
       ownerUserId: 42,
+      propertyId: 7,
       originalName: "receipt.pdf",
       mimeType: "application/pdf",
     });
@@ -214,6 +244,15 @@ describe("gdriveBackend.upload", () => {
     expect(result).toEqual({ externalId: "drive-file-id" });
     expect(driveStub.files.create).toHaveBeenCalledTimes(4);
 
+    // The 2nd folder created is named property-<propertyId>.
+    const secondCall = driveStub.files.create.mock.calls[1]![0];
+    expect(secondCall.requestBody).toMatchObject({ name: "property-7" });
+
+    // The 3rd folder created is the userId (as string), nested under property-7.
+    const thirdCall = driveStub.files.create.mock.calls[2]![0];
+    expect(thirdCall.requestBody).toMatchObject({ name: "42", parents: ["property-7-fid"] });
+
+    // The file is created inside the user folder.
     const lastCall = driveStub.files.create.mock.calls.at(-1)![0];
     expect(lastCall.requestBody).toMatchObject({
       name: "receipt.pdf",
@@ -222,21 +261,23 @@ describe("gdriveBackend.upload", () => {
     expect(lastCall.media.mimeType).toBe("application/pdf");
     expect(lastCall.media.body).toBeInstanceOf(Readable);
 
-    // Folder IDs are encrypted at rest (M1) — read through the helper.
+    // New folder-cache keys (encrypted at rest).
     expect(stored(GDRIVE_KEYS.rootFolderId)).toBe("root-fid");
-    expect(stored(GDRIVE_KEYS.userFolderPrefix + "42")).toBe("user-fid");
+    expect(stored(GDRIVE_KEYS.propertyFolderPrefix + "7")).toBe("property-7-fid");
+    expect(stored(GDRIVE_KEYS.userPropertyFolderPrefix + "7.42")).toBe("user-fid");
   });
 
   it("reuses cached folder ids on subsequent uploads (no listing)", async () => {
-    fakeSettings.set(GDRIVE_KEYS.refreshToken, "rt");
-    fakeSettings.set(GDRIVE_KEYS.rootFolderId, "root-fid");
-    fakeSettings.set(GDRIVE_KEYS.userFolderPrefix + "_uploads", "uploads-fid");
-    fakeSettings.set(GDRIVE_KEYS.userFolderPrefix + "42", "user-fid");
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    seedEncrypted(GDRIVE_KEYS.rootFolderId, "root-fid");
+    seedEncrypted(GDRIVE_KEYS.propertyFolderPrefix + "7", "property-7-fid");
+    seedEncrypted(GDRIVE_KEYS.userPropertyFolderPrefix + "7.42", "user-fid");
 
     driveStub.files.create.mockResolvedValueOnce({ data: { id: "drive-file-id" } });
 
     await gdriveBackend.upload(Buffer.from("data"), {
       ownerUserId: 42,
+      propertyId: 7,
       originalName: "x.pdf",
       mimeType: "application/pdf",
     });
@@ -246,19 +287,68 @@ describe("gdriveBackend.upload", () => {
   });
 
   it("wraps Drive upload failures as StorageOperationError", async () => {
-    fakeSettings.set(GDRIVE_KEYS.refreshToken, "rt");
-    fakeSettings.set(GDRIVE_KEYS.rootFolderId, "root-fid");
-    fakeSettings.set(GDRIVE_KEYS.userFolderPrefix + "_uploads", "uploads-fid");
-    fakeSettings.set(GDRIVE_KEYS.userFolderPrefix + "1", "user-fid");
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    seedEncrypted(GDRIVE_KEYS.rootFolderId, "root-fid");
+    seedEncrypted(GDRIVE_KEYS.propertyFolderPrefix + "1", "property-1-fid");
+    seedEncrypted(GDRIVE_KEYS.userPropertyFolderPrefix + "1.1", "user-fid");
     driveStub.files.create.mockRejectedValueOnce(new Error("403 forbidden"));
 
     await expect(
       gdriveBackend.upload(Buffer.from("x"), {
         ownerUserId: 1,
+        propertyId: 1,
         originalName: "x.pdf",
         mimeType: "application/pdf",
       }),
     ).rejects.toThrow(StorageOperationError);
+  });
+
+  // ─── G4 — invalid_grant maps to StorageNotConfiguredError + tokenBroken ──
+  it("on invalid_grant: sets tokenBroken flag + throws StorageNotConfiguredError", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    seedEncrypted(GDRIVE_KEYS.rootFolderId, "root-fid");
+    seedEncrypted(GDRIVE_KEYS.propertyFolderPrefix + "1", "p-fid");
+    seedEncrypted(GDRIVE_KEYS.userPropertyFolderPrefix + "1.1", "user-fid");
+
+    const err: any = new Error("invalid_grant: Token has been expired or revoked.");
+    err.code = "invalid_grant";
+    driveStub.files.create.mockRejectedValueOnce(err);
+
+    await expect(
+      gdriveBackend.upload(Buffer.from("x"), {
+        ownerUserId: 1,
+        propertyId: 1,
+        originalName: "x.pdf",
+        mimeType: "application/pdf",
+      }),
+    ).rejects.toThrow(StorageNotConfiguredError);
+
+    expect(fakeSettings.get(GDRIVE_KEYS.tokenBroken)).toBe("1");
+  });
+
+  // ─── G7 — storageQuotaExceeded surfaces DRIVE_QUOTA_EXCEEDED ──────────────
+  it("on storageQuotaExceeded: throws StorageOperationError with DRIVE_QUOTA_EXCEEDED prefix", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    seedEncrypted(GDRIVE_KEYS.rootFolderId, "root-fid");
+    seedEncrypted(GDRIVE_KEYS.propertyFolderPrefix + "1", "p-fid");
+    seedEncrypted(GDRIVE_KEYS.userPropertyFolderPrefix + "1.1", "user-fid");
+
+    const err: any = new Error("storageQuotaExceeded: The user's Drive storage quota has been exceeded.");
+    err.errors = [{ reason: "storageQuotaExceeded" }];
+    driveStub.files.create.mockRejectedValueOnce(err);
+
+    try {
+      await gdriveBackend.upload(Buffer.from("x"), {
+        ownerUserId: 1,
+        propertyId: 1,
+        originalName: "x.pdf",
+        mimeType: "application/pdf",
+      });
+      throw new Error("expected upload to throw");
+    } catch (e) {
+      expect(e).toBeInstanceOf(StorageOperationError);
+      expect((e as Error).message).toMatch(/DRIVE_QUOTA_EXCEEDED:/);
+    }
   });
 });
 
@@ -266,7 +356,7 @@ describe("gdriveBackend.upload", () => {
 
 describe("gdriveBackend.download", () => {
   beforeEach(() => {
-    fakeSettings.set(GDRIVE_KEYS.refreshToken, "rt");
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
   });
 
   it("returns a stream + mimeType from Drive metadata", async () => {
@@ -329,16 +419,17 @@ describe("gdriveBackend.delete", () => {
 // ─── ensureFolder lookup-first semantics ─────────────────────────────────────
 
 describe("folder lookup uses existing folder when present", () => {
-  it("does not create a folder if list returns one", async () => {
-    fakeSettings.set(GDRIVE_KEYS.refreshToken, "rt");
+  it("does not create a folder if list returns one (matches per-property layout)", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
     driveStub.files.list
       .mockResolvedValueOnce({ data: { files: [{ id: "root-fid", name: "HomeVault" }] } })
-      .mockResolvedValueOnce({ data: { files: [{ id: "uploads-fid", name: "uploads" }] } })
+      .mockResolvedValueOnce({ data: { files: [{ id: "p-fid", name: "property-9" }] } })
       .mockResolvedValueOnce({ data: { files: [{ id: "user-fid", name: "1" }] } });
     driveStub.files.create.mockResolvedValueOnce({ data: { id: "drive-file-id" } });
 
     await gdriveBackend.upload(Buffer.from("x"), {
       ownerUserId: 1,
+      propertyId: 9,
       originalName: "a.pdf",
       mimeType: "application/pdf",
     });

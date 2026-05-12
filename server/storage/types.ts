@@ -14,6 +14,10 @@ export type StorageBackendName = "s3" | "gdrive";
 
 export interface UploadMeta {
   ownerUserId: number;
+  // The currently-active property the file is being attached to. Drive uses
+  // it to compute the folder layout (HomeVault/property-<id>/<userId>/…) and
+  // the `files` table records it for the file-browser UI. S3 ignores it.
+  propertyId: number;
   originalName: string;
   mimeType: string;
 }

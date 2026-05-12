@@ -167,6 +167,7 @@ router.post("/api/upload", csrfRequireMiddleware, (req: Request, res: Response) 
           // Persist the AUTHORITATIVE mime type, not the browser's.
           mimeType: sniff.mimeType,
           ownerUserId: ctx.user.id,
+          propertyId: ctx.propertyId,
         });
         res.json({
           id: record.id,
@@ -177,15 +178,33 @@ router.post("/api/upload", csrfRequireMiddleware, (req: Request, res: Response) 
         });
       } catch (storageError) {
         if (storageError instanceof StorageNotConfiguredError) {
-          logger.warn({ message: storageError.message }, "[Upload] not configured");
-          res.status(503).json({ error: storageError.message });
+          // "Drive needs reconnecting" is communicated as a structured code so
+          // the frontend can branch to a specific UI (link to Settings) rather
+          // than showing a generic "Upload failed" toast.
+          const reconnect = /reconnect|invalid_grant|expired or revoked/i.test(storageError.message);
+          logger.warn({ message: storageError.message, reconnect }, "[Upload] not configured");
+          res.status(503).json({
+            error: storageError.message,
+            code: reconnect ? "RECONNECT_REQUIRED" : "STORAGE_NOT_CONFIGURED",
+          });
           return;
         }
         if (storageError instanceof StorageOperationError) {
+          // Drive quota exhaustion: surface 507 + a code the UI can render.
+          const quota = /DRIVE_QUOTA_EXCEEDED|storageQuotaExceeded|storage quota/i.test(
+            storageError.message,
+          );
           logger.error(
-            { backend: storageError.backend, message: storageError.message },
+            { backend: storageError.backend, message: storageError.message, quota },
             "[Upload] storage error",
           );
+          if (quota) {
+            res.status(507).json({
+              error: "Your Google Drive is full. Free up space or upgrade your plan.",
+              code: "DRIVE_QUOTA_EXCEEDED",
+            });
+            return;
+          }
           res.status(502).json({ error: "File upload failed — see server logs." });
           return;
         }

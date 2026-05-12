@@ -57,7 +57,25 @@ export function FileUpload({
       });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Upload failed" }));
+        const err = await resp.json().catch(() => ({ error: "Upload failed", code: undefined }));
+        // Specific UX paths for the two error codes the server promises.
+        // Falling through to the generic toast for anything else.
+        if (err.code === "RECONNECT_REQUIRED") {
+          toast.error("Google Drive needs reconnecting", {
+            description: "Open Settings → Integrations to reconnect.",
+            action: {
+              label: "Open Settings",
+              onClick: () => { window.location.hash = "#/settings/integrations"; },
+            },
+          });
+          return;
+        }
+        if (err.code === "DRIVE_QUOTA_EXCEEDED") {
+          toast.error("Your Google Drive is full", {
+            description: "Free up space at one.google.com/storage.",
+          });
+          return;
+        }
         throw new Error(err.error);
       }
 

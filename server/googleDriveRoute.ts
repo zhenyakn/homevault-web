@@ -149,6 +149,9 @@ router.get("/api/google-drive/status", async (req, res) => {
     res.json({
       configured: isGoogleEnvConfigured(),
       connected: status.connected,
+      // True when a Drive call recently returned invalid_grant — the UI uses
+      // this to show "Reconnect needed" prominently.
+      needsReconnect: status.needsReconnect,
       emailMasked: maskEmail(status.email),
     });
   } catch (err) {

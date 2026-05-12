@@ -10,8 +10,22 @@ import {
   loans, loanRepayments, wishlistItems, purchaseCosts, calendarEvents, inventoryItems,
 } from "../../drizzle/schema";
 import { getDb } from "./client";
+import { deleteAllFilesForOwner } from "../files";
+import { logger } from "../_core/logger";
 
 export async function deleteAllUserData(userId: number) {
+  // Reap the user's storage-backend files (Drive / S3) first so the rows-
+  // referencing-them in the entity tables still resolve to file IDs the
+  // helper can find. Best-effort: any backend failure logs + moves on; we
+  // don't want a Drive outage to block the DB wipe the user explicitly asked
+  // for. The files table's own rows are soft-deleted in the same call.
+  try {
+    const summary = await deleteAllFilesForOwner(userId);
+    logger.info({ userId, summary }, "[deleteAllUserData] reaped files");
+  } catch (err) {
+    logger.error({ userId, err: (err as Error).message }, "[deleteAllUserData] file reap failed");
+  }
+
   const db = await getDb();
   await db.transaction(async (tx) => {
     const userRepairIds = (

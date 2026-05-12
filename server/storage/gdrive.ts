@@ -68,7 +68,18 @@ export const GDRIVE_KEYS = {
   refreshToken: "gdrive.refreshToken",
   connectedEmail: "gdrive.connectedEmail",
   rootFolderId: "gdrive.rootFolderId",
+  // Legacy per-user-only layout (pre-property folders). Cached so existing
+  // installs can still resolve their folder hierarchy without re-listing.
   userFolderPrefix: "gdrive.userFolder.", // + <userId>
+  // Per-property layout used by NEW uploads. Folder names in Drive use the
+  // form "property-<id>". We never delete the old cache rows — file IDs
+  // continue to work regardless of folder location.
+  propertyFolderPrefix: "gdrive.propertyFolder.",                 // + <propertyId>
+  userPropertyFolderPrefix: "gdrive.userPropertyFolder.",         // + <propertyId>.<userId>
+  // Flipped to "1" the moment a Drive call returns invalid_grant. Cleared on
+  // a successful re-connect. Lets the status endpoint + Settings UI show
+  // "Reconnect needed" instead of silently failing every upload.
+  tokenBroken: "gdrive.tokenBroken",
 } as const;
 
 export const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
@@ -215,17 +226,28 @@ async function ensureRootFolder(drive: drive_v3.Drive): Promise<string> {
   );
 }
 
-async function ensureUserFolder(
+/**
+ * Per-property upload target.
+ * Layout: HomeVault/property-<propertyId>/<userId>/
+ *
+ * Files uploaded BEFORE this layout existed live at the legacy path
+ *   HomeVault/uploads/<userId>/<file>
+ * and are still reachable by `externalId` (Drive file ID) regardless of path.
+ * No migration of existing files.
+ */
+async function ensureUploadTargetFolder(
   drive: drive_v3.Drive,
+  propertyId: number,
   ownerUserId: number,
 ): Promise<string> {
   const root = await ensureRootFolder(drive);
-  const uploadsKey = GDRIVE_KEYS.userFolderPrefix + "_uploads";
-  const uploadsParent = await memoizeFolder(uploadsKey, () =>
-    ensureFolder(drive, USER_FOLDERS_PARENT_NAME, root),
+  const propertyFolder = await memoizeFolder(
+    GDRIVE_KEYS.propertyFolderPrefix + propertyId,
+    () => ensureFolder(drive, `property-${propertyId}`, root),
   );
-  return memoizeFolder(GDRIVE_KEYS.userFolderPrefix + ownerUserId, () =>
-    ensureFolder(drive, String(ownerUserId), uploadsParent),
+  return memoizeFolder(
+    `${GDRIVE_KEYS.userPropertyFolderPrefix}${propertyId}.${ownerUserId}`,
+    () => ensureFolder(drive, String(ownerUserId), propertyFolder),
   );
 }
 
@@ -246,6 +268,64 @@ function wrapError(action: string, err: unknown): StorageOperationError {
   return new StorageOperationError("gdrive", `Drive ${action} failed: ${msg}`, err);
 }
 
+/**
+ * Classify Google's error response. Two cases get special treatment:
+ *
+ *   - `invalid_grant` / "Token has been expired or revoked" — the refresh
+ *     token is no longer usable. We flip the `tokenBroken` flag so the
+ *     status endpoint can report `needsReconnect: true`, and re-throw as
+ *     `StorageNotConfiguredError` so the upload route surfaces a 503 with
+ *     a `RECONNECT_REQUIRED` code.
+ *
+ *   - `storageQuotaExceeded` — Google account is full. Tagged with a
+ *     `DRIVE_QUOTA_EXCEEDED:` prefix so the upload route can surface 507.
+ *
+ * Everything else flows through `wrapError`.
+ */
+async function classifyAndThrow(action: string, err: unknown): Promise<never> {
+  const msg = (err as Error)?.message ?? String(err);
+  const code = (err as any)?.code;
+  const reason = (err as any)?.errors?.[0]?.reason
+    ?? (err as any)?.response?.data?.error?.errors?.[0]?.reason;
+  const responseError = (err as any)?.response?.data?.error;
+  const googleErrorCode = typeof responseError === "string"
+    ? responseError
+    : responseError?.message ?? "";
+
+  // ── invalid_grant — refresh token revoked / expired ────────────────────
+  const looksLikeInvalidGrant =
+    code === "invalid_grant"
+    || /invalid_grant/i.test(msg)
+    || /invalid_grant/i.test(googleErrorCode)
+    || /Token has been expired or revoked/i.test(msg)
+    || /Token has been expired or revoked/i.test(googleErrorCode);
+  if (looksLikeInvalidGrant) {
+    try {
+      await setSetting(GDRIVE_KEYS.tokenBroken, "1");
+    } catch (writeErr) {
+      logger.warn({ err: (writeErr as Error).message }, "[gdrive] could not persist tokenBroken flag");
+    }
+    throw new StorageNotConfiguredError(
+      "Google Drive needs reconnecting (invalid_grant). Open Settings → Integrations and click Reconnect.",
+    );
+  }
+
+  // ── storageQuotaExceeded — Drive is full ───────────────────────────────
+  const looksLikeQuota =
+    reason === "storageQuotaExceeded"
+    || /storageQuotaExceeded/i.test(msg)
+    || /storage quota.*exceeded/i.test(msg);
+  if (looksLikeQuota) {
+    throw new StorageOperationError(
+      "gdrive",
+      `DRIVE_QUOTA_EXCEEDED: ${msg}`,
+      err,
+    );
+  }
+
+  throw wrapError(action, err);
+}
+
 export const gdriveBackend: StorageBackend = {
   name: "gdrive",
 
@@ -255,16 +335,16 @@ export const gdriveBackend: StorageBackend = {
 
     let folderId: string;
     try {
-      folderId = await ensureUserFolder(drive, meta.ownerUserId);
+      folderId = await ensureUploadTargetFolder(drive, meta.propertyId, meta.ownerUserId);
     } catch (err) {
-      throw wrapError("folder lookup", err);
+      await classifyAndThrow("folder lookup", err);
     }
 
     try {
       const created = await drive.files.create({
         requestBody: {
           name: meta.originalName,
-          parents: [folderId],
+          parents: [folderId!],
         },
         media: {
           mimeType: meta.mimeType,
@@ -276,8 +356,10 @@ export const gdriveBackend: StorageBackend = {
       if (!id) throw new Error("Drive returned an empty file id");
       return { externalId: id };
     } catch (err) {
-      throw wrapError("upload", err);
+      await classifyAndThrow("upload", err);
     }
+    // unreachable — classifyAndThrow always throws.
+    throw new Error("unreachable");
   },
 
   async download(externalId: string): Promise<DownloadResult> {
@@ -309,7 +391,8 @@ export const gdriveBackend: StorageBackend = {
         size,
       };
     } catch (err) {
-      throw wrapError("download", err);
+      await classifyAndThrow("download", err);
+      throw new Error("unreachable");
     }
   },
 
@@ -325,7 +408,7 @@ export const gdriveBackend: StorageBackend = {
         logger.warn({ externalId }, "[gdrive] delete: file already gone");
         return;
       }
-      throw wrapError("delete", err);
+      await classifyAndThrow("delete", err);
     }
   },
 };
@@ -355,6 +438,9 @@ export async function completeConnect(code: string): Promise<{ email: string | n
     );
   }
   await setEncryptedSetting(GDRIVE_KEYS.refreshToken, tokens.refresh_token);
+  // A fresh connect means the previous invalid_grant condition (if any) is
+  // resolved — clear the flag so the UI stops showing "Reconnect needed".
+  await deleteSetting(GDRIVE_KEYS.tokenBroken);
 
   // Best-effort: fetch the owner's email so the admin UI can show it.
   let email: string | null = null;
@@ -376,18 +462,28 @@ export async function disconnectGoogleDrive(): Promise<void> {
     deleteSetting(GDRIVE_KEYS.connectedEmail),
     deleteSetting(GDRIVE_KEYS.rootFolderId),
     deleteSetting(GDRIVE_KEYS.userFolderPrefix + "_uploads"),
+    deleteSetting(GDRIVE_KEYS.tokenBroken),
   ]);
   _pending.clear();
-  // Per-user folder cache rows linger harmlessly until next upload.
+  // Per-user / per-property folder cache rows linger harmlessly until next upload.
 }
 
 export async function getConnectionStatus(): Promise<{
   connected: boolean;
   email: string | null;
+  // True only when the persisted refresh token still exists but a recent Drive
+  // call returned invalid_grant. UI uses this to show an amber "Reconnect"
+  // banner instead of the green "Connected" badge.
+  needsReconnect: boolean;
 }> {
-  const [token, email] = await Promise.all([
+  const [token, email, broken] = await Promise.all([
     getEncryptedSetting(GDRIVE_KEYS.refreshToken),
     getEncryptedSetting(GDRIVE_KEYS.connectedEmail),
+    getSetting(GDRIVE_KEYS.tokenBroken),
   ]);
-  return { connected: !!token, email };
+  return {
+    connected: !!token,
+    email,
+    needsReconnect: !!token && broken === "1",
+  };
 }

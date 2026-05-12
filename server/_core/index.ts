@@ -10,6 +10,7 @@ import { appRouter } from "../routers";
 import { uploadRouter } from "../uploadRoute";
 import { filesRouter } from "../filesRoute";
 import { googleDriveRouter } from "../googleDriveRoute";
+import { exportRouter } from "../exportRoute";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
@@ -75,6 +76,17 @@ const gdriveLimiter = rateLimit({
   legacyHeaders: false,
   skip: skipInTest,
   message: { error: "Too many Drive setup attempts, please try again later." },
+});
+
+// /api/export/* — very strict. Each request opens N parallel Drive downloads
+// and produces a multi-MB ZIP, so it's an expensive operation.
+const exportLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: { error: "Please wait before requesting another export." },
 });
 
 // ── Seed-only mode (called from run.sh before the HTTP server starts) ─────────
@@ -167,11 +179,13 @@ async function startServer() {
   app.use("/api/upload", uploadLimiter);
   app.use("/api/files", filesLimiter);
   app.use("/api/google-drive", gdriveLimiter);
+  app.use("/api/export", exportLimiter);
 
   registerOAuthRoutes(app);
   app.use(uploadRouter);
   app.use(filesRouter);
   app.use(googleDriveRouter);
+  app.use(exportRouter);
 
   // Dev-only login bypass — keeps existing dev-server behavior unchanged
   if (process.env.NODE_ENV === "development") {

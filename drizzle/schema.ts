@@ -598,12 +598,18 @@ export const files = mysqlTable(
     ownerUserId: int("ownerUserId")
       .notNull()
       .references(() => users.id),
+    // NULL for files uploaded before per-property layout existed. Set on every
+    // new upload so the file-browser UI + property-delete reaper can scope by
+    // property cheaply (also lets `HomeVault/property-<id>/<userId>/` Drive
+    // folders mirror this).
+    propertyId: int("propertyId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     deletedAt: timestamp("deletedAt"),
   },
   (table) => ({
     ownerIdx: index("files_owner_idx").on(table.ownerUserId),
     backendIdx: index("files_backend_idx").on(table.backend),
+    propertyIdx: index("files_property_idx").on(table.propertyId),
   }),
 );
 

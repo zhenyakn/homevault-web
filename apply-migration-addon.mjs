@@ -490,15 +490,21 @@ async function main() {
       \`mimeType\` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`size\` int NOT NULL DEFAULT 0,
       \`ownerUserId\` int NOT NULL,
+      \`propertyId\` int DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       \`deletedAt\` timestamp NULL DEFAULT NULL,
       PRIMARY KEY (\`id\`),
       KEY \`files_owner_idx\` (\`ownerUserId\`),
       KEY \`files_backend_idx\` (\`backend\`),
+      KEY \`files_property_idx\` (\`propertyId\`),
       CONSTRAINT \`files_owner_fk\` FOREIGN KEY (\`ownerUserId\`) REFERENCES \`users\` (\`id\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "files"
   );
+
+  // Idempotent additions for the 0012 migration on already-deployed addons.
+  await run(`ALTER TABLE \`files\` ADD COLUMN \`propertyId\` int DEFAULT NULL`, "files.propertyId");
+  await run(`CREATE INDEX \`files_property_idx\` ON \`files\` (\`propertyId\`)`, "files_property_idx");
 
   // ── Phase 3: convergence — bring v2+ installs up to current schema ───────────
   // Every ALTER is idempotent — ER_DUP_FIELDNAME is silently skipped.

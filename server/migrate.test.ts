@@ -122,6 +122,28 @@ describe("migration files — statement parser extracts every SQL chunk", () => 
   );
 });
 
+// ── 0012_files_property.sql — propertyId scope on files ──────────────────────
+
+describe("0012_files_property.sql — propertyId scope", () => {
+  const sql = readFileSync(
+    resolve(MIGRATIONS_DIR, "0012_files_property.sql"),
+    "utf-8",
+  );
+
+  it("adds the nullable propertyId column", () => {
+    expect(sql).toMatch(/ALTER TABLE `files` ADD COLUMN `propertyId` int DEFAULT NULL/);
+  });
+
+  it("creates the files_property_idx index", () => {
+    expect(sql).toContain("CREATE INDEX `files_property_idx`");
+    expect(sql).toContain("ON `files` (`propertyId`)");
+  });
+
+  it("parses to exactly 2 SQL statements", () => {
+    expect(parseStatements(sql)).toHaveLength(2);
+  });
+});
+
 // ── 0011_files_and_app_settings.sql — files registry migration coverage ────
 
 describe("0011_files_and_app_settings.sql — coverage", () => {

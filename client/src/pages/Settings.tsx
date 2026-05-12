@@ -569,6 +569,7 @@ function IntegrationsSection({ p }: { p: any }) {
       </div>
 
       <FileStorageGroup />
+      <StoredFilesGroup />
 
       <Group label="Google Calendar">
         <Row label={t("settings.syncEvents")} hint={t("settings.syncEventsHint")} htmlFor="i-sync">
@@ -609,6 +610,10 @@ function IntegrationsSection({ p }: { p: any }) {
 type GDriveStatus = {
   configured: boolean;
   connected: boolean;
+  // True when a recent Drive call returned invalid_grant — the cookie says
+  // "connected" but the underlying refresh token is no longer usable. UI
+  // flips to an amber "Reconnect needed" banner.
+  needsReconnect: boolean;
   // Server returns a masked form ("o***@gmail.com") to avoid leaking the full
   // Google address in shared screenshots / log dumps. The full address is
   // shown only in the one-shot "Connected as foo@gmail.com" toast immediately
@@ -786,6 +791,39 @@ GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
             </ol>
           </div>
         </FullRow>
+      ) : status && status.connected && status.needsReconnect ? (
+        <FullRow
+          label="Reconnect needed"
+          hint={
+            status.emailMasked
+              ? `Google revoked HomeVault's access to ${status.emailMasked}. Uploads are failing until you reconnect.`
+              : "Google revoked HomeVault's access. Uploads are failing until you reconnect."
+          }
+        >
+          <div className="flex items-center gap-3 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 rounded-md p-3">
+            <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+              The refresh token was revoked or has expired. Click Reconnect to re-grant access.
+            </span>
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => { window.location.href = "/api/google-drive/connect"; }}
+              disabled={busy}
+            >
+              Reconnect
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={handleDisconnect}
+              disabled={busy}
+            >
+              Disconnect
+            </Button>
+          </div>
+        </FullRow>
       ) : status && status.connected ? (
         <Row
           label="Status"
@@ -951,6 +989,17 @@ function DataSection({
             {isFetching ? t("settings.preparing") : t("settings.downloadJson")}
           </Button>
         </Row>
+        <Row
+          label="All attached files (ZIP)"
+          hint="Downloads every file you uploaded. Pair with the JSON export above before disconnecting Google Drive."
+        >
+          <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+            <a href="/api/export/files.zip" download>
+              <Download className="mr-1.5 h-3 w-3" />
+              Download files (ZIP)
+            </a>
+          </Button>
+        </Row>
         <Row label={t("settings.perModule")} hint={t("settings.perModuleHint")}>
           <span className="text-xs text-muted-foreground">{t("settings.perModuleList")}</span>
         </Row>
@@ -1048,6 +1097,137 @@ function DataSection({
         )}
       </Group>
     </div>
+  );
+}
+
+// ─── Stored files (browser + bulk actions) ───────────────────────────────────
+
+function prettyBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function StoredFilesGroup() {
+  const { data: me } = trpc.profiles.current.useQuery();
+  const { activePropertyId } = useProperty();
+  const utils = trpc.useUtils();
+  // Always-loaded summary so the section header reads naturally even when
+  // the list is collapsed. Filter to the current property by default; users
+  // can flip to "all properties" to find legacy files.
+  const [scope, setScope] = useState<"property" | "all">("property");
+  const [expanded, setExpanded] = useState(false);
+  const list = trpc.files.list.useQuery(
+    scope === "property" ? { propertyId: activePropertyId } : undefined,
+  );
+  const deleteFile = trpc.files.delete.useMutation({
+    onSuccess: () => utils.files.list.invalidate(),
+    onError: (e) => toast.error(e.message),
+  });
+  const reap = trpc.files.reapOrphans.useMutation({
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (!me) return null;
+  const isAdmin = me.role === "admin";
+
+  const items = list.data?.items ?? [];
+
+  return (
+    <Group label="Stored files">
+      <FullRow
+        label={
+          list.isLoading
+            ? "Loading…"
+            : `${list.data?.totalCount ?? 0} file${list.data?.totalCount === 1 ? "" : "s"} · ${prettyBytes(list.data?.totalBytes ?? 0)}`
+        }
+        hint={
+          scope === "property"
+            ? "Files attached to anything in the currently-selected property."
+            : "All files you've uploaded, across every property + any legacy files from before per-property folders."
+        }
+      >
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <ToggleGroup
+            type="single"
+            value={scope}
+            className="h-7"
+            onValueChange={(v) => v && setScope(v as "property" | "all")}
+          >
+            <ToggleGroupItem value="property" className="text-xs h-7 px-3">This property</ToggleGroupItem>
+            <ToggleGroupItem value="all" className="text-xs h-7 px-3">All</ToggleGroupItem>
+          </ToggleGroup>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setExpanded((e) => !e)}
+              disabled={list.isLoading || items.length === 0}
+            >
+              {expanded ? "Hide list" : "Browse files"}
+            </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={async () => {
+                  try {
+                    const r = await reap.mutateAsync();
+                    toast.success(
+                      `Cleanup retried ${r.retried}: ${r.succeeded} ok, ${r.failed} failed`,
+                    );
+                    await utils.files.list.invalidate();
+                  } catch {}
+                }}
+                disabled={reap.isPending}
+              >
+                {reap.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                Clean up orphans
+              </Button>
+            )}
+          </div>
+        </div>
+      </FullRow>
+
+      {expanded && items.length > 0 && (
+        <div className="px-4 py-3 max-h-96 overflow-y-auto divide-y divide-border">
+          {items.map((f) => (
+            <div key={f.id} className="flex items-center gap-3 py-2 text-sm">
+              <div className="flex-1 min-w-0">
+                <p className="truncate font-medium">{f.originalName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {prettyBytes(f.size)} · {new Date(f.createdAt).toLocaleDateString()} · {" "}
+                  {f.propertyId == null ? "Legacy" : `Property #${f.propertyId}`}
+                </p>
+              </div>
+              <a
+                href={f.downloadUrl}
+                className="text-xs underline text-muted-foreground hover:text-foreground"
+                download={f.originalName}
+              >
+                Download
+              </a>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-destructive"
+                onClick={() => {
+                  if (confirm(`Delete "${f.originalName}"? This cannot be undone.`)) {
+                    deleteFile.mutate({ id: f.id });
+                  }
+                }}
+                disabled={deleteFile.isPending}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Group>
   );
 }
 

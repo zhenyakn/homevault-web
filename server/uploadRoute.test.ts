@@ -150,7 +150,31 @@ describe("POST /api/upload", () => {
     );
     const res = await uploadFile(app.url);
     expect(res.status).toBe(503);
-    expect((await res.json()).error).toContain("Google Drive is not connected");
+    const body = await res.json();
+    expect(body.error).toContain("Google Drive is not connected");
+    expect(body.code).toBe("STORAGE_NOT_CONFIGURED");
+  });
+
+  it("503 with RECONNECT_REQUIRED when the message mentions invalid_grant", async () => {
+    const { StorageNotConfiguredError } = await import("./storage/types");
+    hoisted.fileFlow.uploadAndRegister.mockRejectedValueOnce(
+      new StorageNotConfiguredError("Google Drive needs reconnecting (invalid_grant)."),
+    );
+    const res = await uploadFile(app.url);
+    expect(res.status).toBe(503);
+    expect((await res.json()).code).toBe("RECONNECT_REQUIRED");
+  });
+
+  it("507 with DRIVE_QUOTA_EXCEEDED when the backend surfaces a quota error", async () => {
+    const { StorageOperationError } = await import("./storage/types");
+    hoisted.fileFlow.uploadAndRegister.mockRejectedValueOnce(
+      new StorageOperationError("gdrive" as any, "DRIVE_QUOTA_EXCEEDED: storage quota has been exceeded"),
+    );
+    const res = await uploadFile(app.url);
+    expect(res.status).toBe(507);
+    const body = await res.json();
+    expect(body.code).toBe("DRIVE_QUOTA_EXCEEDED");
+    expect(body.error.toLowerCase()).toContain("google drive is full");
   });
 
   it("502 when storage backend operation fails", async () => {
