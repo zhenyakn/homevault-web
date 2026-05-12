@@ -15,6 +15,9 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
   GOOGLE_OAUTH_REDIRECT_URI: z.string().default(""),
+  // Required to use Drive endpoints when NO_AUTH=true. Without it, the auto-
+  // admin session middleware would let any LAN client bind/unbind the Drive.
+  ADMIN_SETUP_TOKEN: z.string().default(""),
   NO_AUTH: z.string().default("false"),
   SEED_MOCK_DATA: z.string().default("false"),
   PORT: z.string().default("3005"),
@@ -47,6 +50,7 @@ export const ENV = {
   googleClientId: raw.GOOGLE_CLIENT_ID,
   googleClientSecret: raw.GOOGLE_CLIENT_SECRET,
   googleOAuthRedirectUri: raw.GOOGLE_OAUTH_REDIRECT_URI,
+  adminSetupToken: raw.ADMIN_SETUP_TOKEN,
   noAuth:        raw.NO_AUTH === "true",
   seedMockData:  raw.SEED_MOCK_DATA === "true",
 };
