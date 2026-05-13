@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.3.2
+## 0.3.4
+- fix(ci): trigger build on release publish and correct tag pattern
 - Fix archiver ESM import for addon startup
 - fix(addon): remove corepack dependency in Docker build
 - chore(deps): bump the production-dependencies group across 1 directory with 22 updates
@@ -226,6 +227,12 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.3.3
+- fix(ci): trigger build on release publish and correct tag pattern
+
+## 0.3.2
+- Internal improvements and dependency updates
 
 ## 0.3.1
 - Fix archiver ESM import for addon startup
