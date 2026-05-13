@@ -1,13 +1,13 @@
 # Global ARGs must be declared before the first FROM
 ARG BUILD_ARCH=amd64
-ARG BUILD_VERSION
+ARG BUILD_VERSION=dev
 
 # ── Build stage ──────────────────────────────────────────────────────────────────────────────
 FROM node:26-alpine AS builder
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@10.4.1 --activate
+RUN npm install -g pnpm@10.4.1
 
 # Copy manifests first for better layer caching
 COPY package.json pnpm-lock.yaml ./
@@ -22,7 +22,7 @@ RUN pnpm build
 
 # ── Production stage ──────────────────────────────────────────────────────────────────────────────
 ARG BUILD_ARCH
-ARG BUILD_VERSION
+ARG BUILD_VERSION=dev
 FROM ghcr.io/home-assistant/${BUILD_ARCH}-base:3.21
 
 # Install Node.js and bash (runtime only, no pnpm/npm needed)
