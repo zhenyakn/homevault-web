@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { keepPreviousData } from "@tanstack/react-query";
-import { trpc } from "../lib/trpc";
+import { trpc, type RouterOutputs } from "../lib/trpc";
 import { useDebounce } from "./useDebounce";
 import { useProperty } from "../contexts/PropertyContext";
 
@@ -12,7 +12,7 @@ export type SearchResultItem = {
   route: string;
 };
 
-type SearchData = ReturnType<typeof trpc.search.global.useQuery>["data"];
+type SearchData = RouterOutputs["search"]["global"] | undefined;
 
 function toResultItems(data: SearchData): SearchResultItem[] {
   if (!data) return [];
@@ -49,7 +49,7 @@ function toResultItems(data: SearchData): SearchResultItem[] {
     items.push({
       id: String(r.id),
       type: "loan",
-      label: r.label,
+      label: r.label ?? "",
       subtitle: r.loanType ?? "",
       route: "/loans",
     });

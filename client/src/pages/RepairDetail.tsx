@@ -98,14 +98,19 @@ function QuoteDialog({ open, onOpenChange, repairId, editQuote }: {
 
   const handleSave = async () => {
     if (!f.contractorName.trim()) { toast.error(t("repairDetail.contractorName") + " is required"); return; }
+    // Phone/timeline/guarantee/scope have no DB columns — fold into notes so
+    // user-entered context is preserved instead of silently dropped.
+    const extras = [
+      f.contractorPhone && `${t("common.phone")}: ${f.contractorPhone}`,
+      f.timeline && `${t("common.timeline")}: ${f.timeline}`,
+      f.guarantee && `${t("common.guarantee")}: ${f.guarantee}`,
+      f.scope && `${t("common.scope")}: ${f.scope}`,
+    ].filter(Boolean).join("\n");
+    const combinedNotes = [extras, f.notes].filter(Boolean).join("\n\n") || undefined;
     const payload = {
-      contractorName: f.contractorName.trim(),
-      contractorPhone: f.contractorPhone || undefined,
-      quotedPrice: f.quotedPrice ? ils(parseFloat(f.quotedPrice)) : undefined,
-      timeline: f.timeline || undefined,
-      guarantee: f.guarantee || undefined,
-      scope: f.scope || undefined,
-      notes: f.notes || undefined,
+      contractor: f.contractorName.trim(),
+      amount: f.quotedPrice ? ils(parseFloat(f.quotedPrice)) : undefined,
+      notes: combinedNotes,
     };
     try {
       if (editQuote) await updateMut.mutateAsync({ id: editQuote.id, data: payload });

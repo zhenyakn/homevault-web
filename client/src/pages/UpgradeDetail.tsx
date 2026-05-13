@@ -173,14 +173,19 @@ function OptionDialog({
   const isPending = createMut.isPending || updateMut.isPending;
 
   const submit = () => {
+    // DB stores title/estimatedCost/description; vendorPhone/timeline/warranty
+    // have no columns — fold into description so user-entered context survives.
+    const extras = [
+      f.vendorPhone && `${t("common.phone")}: ${f.vendorPhone}`,
+      f.timeline && `${t("common.timeline")}: ${f.timeline}`,
+      f.warranty && `${t("common.warranty")}: ${f.warranty}`,
+      f.notes && `${t("common.notes")}: ${f.notes}`,
+    ].filter(Boolean).join("\n");
+    const description = [f.scope, extras].filter(Boolean).join("\n\n") || undefined;
     const payload = {
-      name: f.name,
-      vendorPhone: f.vendorPhone || undefined,
-      totalPrice: f.totalPrice ? Math.round(parseFloat(f.totalPrice) * 100) : undefined,
-      timeline: f.timeline || undefined,
-      warranty: f.warranty || undefined,
-      scope: f.scope || undefined,
-      notes: f.notes || undefined,
+      title: f.name,
+      estimatedCost: f.totalPrice ? Math.round(parseFloat(f.totalPrice) * 100) : undefined,
+      description,
     };
     if (editOption) updateMut.mutate({ id: editOption.id, data: payload });
     else createMut.mutate({ upgradeId, ...payload });
