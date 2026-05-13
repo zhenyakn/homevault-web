@@ -1,7 +1,9 @@
 import { useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Upload, X, FileText, Image } from "lucide-react";
 import { toast } from "sonner";
+import { csrfHeaders } from "@/lib/csrf";
 
 interface UploadedFile {
   url: string;
@@ -25,6 +27,7 @@ export function FileUpload({
   accept = "image/*,.pdf,.doc,.docx,.xls,.xlsx",
   maxFiles = 5,
 }: FileUploadProps) {
+  const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -50,10 +53,31 @@ export function FileUpload({
       const resp = await fetch("/api/upload", {
         method: "POST",
         body: formData,
+        // CSRF: server verifies this header matches the csrf_token cookie.
+        headers: csrfHeaders(),
+        credentials: "include",
       });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Upload failed" }));
+        const err = await resp.json().catch(() => ({ error: t("fileUpload.uploadFailed"), code: undefined }));
+        // Specific UX paths for the two error codes the server promises.
+        // Falling through to the generic toast for anything else.
+        if (err.code === "RECONNECT_REQUIRED") {
+          toast.error(t("fileUpload.reconnectTitle"), {
+            description: t("fileUpload.reconnectDesc"),
+            action: {
+              label: t("fileUpload.openSettings"),
+              onClick: () => { window.location.hash = "#/settings/integrations"; },
+            },
+          });
+          return;
+        }
+        if (err.code === "DRIVE_QUOTA_EXCEEDED") {
+          toast.error(t("fileUpload.quotaTitle"), {
+            description: t("fileUpload.quotaDesc"),
+          });
+          return;
+        }
         throw new Error(err.error);
       }
 
@@ -61,7 +85,7 @@ export function FileUpload({
       onUpload(result);
       toast.success("File uploaded");
     } catch (error: any) {
-      toast.error(error.message || "Upload failed");
+      toast.error(error.message || t("fileUpload.uploadFailed"));
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";

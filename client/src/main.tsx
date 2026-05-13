@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from "@shared/const";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
+import { csrfHeaders } from "@/lib/csrf";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
@@ -50,6 +51,9 @@ const trpcClient = trpc.createClient({
             // Read from localStorage on every fetch so that switchProperty()
             // takes effect immediately without requiring a page reload first.
             "x-property-id": String(getStoredPropertyId()),
+            // CSRF double-submit — sends the server-set cookie value as a
+            // header on every tRPC call. State-changing routes verify it.
+            ...csrfHeaders(),
           },
         });
       },
