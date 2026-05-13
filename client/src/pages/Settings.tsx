@@ -12,9 +12,9 @@
  */
 
 import {
-  useState, useEffect, useRef, useCallback, type ReactNode,
+  useState, useEffect, useRef, useCallback, useMemo, type ReactNode,
 } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -42,7 +42,9 @@ import {
 import {
   Loader2, Check, ChevronsUpDown, AlertTriangle,
   Download, Sun, Moon, Monitor, ChevronRight, Trash2, RefreshCw,
+  Cloud, CheckCircle2, ShieldCheck, ExternalLink,
 } from "lucide-react";
+import { csrfHeaders } from "@/lib/csrf";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
@@ -566,6 +568,9 @@ function IntegrationsSection({ p }: { p: any }) {
         <Pending show={m.isPending} />
       </div>
 
+      <FileStorageGroup />
+      <StoredFilesGroup />
+
       <Group label="Google Calendar">
         <Row label={t("settings.syncEvents")} hint={t("settings.syncEventsHint")} htmlFor="i-sync">
           <Switch id="i-sync"
@@ -597,6 +602,258 @@ function IntegrationsSection({ p }: { p: any }) {
         )}
       </Group>
     </div>
+  );
+}
+
+// ─── File Storage (Google Drive) ─────────────────────────────────────────────
+
+type GDriveStatus = {
+  configured: boolean;
+  connected: boolean;
+  // True when a recent Drive call returned invalid_grant — the cookie says
+  // "connected" but the underlying refresh token is no longer usable. UI
+  // flips to an amber "Reconnect needed" banner.
+  needsReconnect: boolean;
+  // Server returns a masked form ("o***@gmail.com") to avoid leaking the full
+  // Google address in shared screenshots / log dumps. The full address is
+  // shown only in the one-shot "Connected as foo@gmail.com" toast immediately
+  // after the OAuth callback.
+  emailMasked: string | null;
+};
+
+function FileStorageGroup() {
+  const { t } = useTranslation();
+  const { data: me } = trpc.profiles.current.useQuery();
+  const isAdmin = me?.role === "admin";
+  const [status, setStatus] = useState<GDriveStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadStatus = useCallback(async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch("/api/google-drive/status");
+      if (resp.status === 401 || resp.status === 403) {
+        setStatus(null);
+        setError(null);
+        return;
+      }
+      if (!resp.ok) {
+        setError(`Status request failed (${resp.status})`);
+        return;
+      }
+      setStatus((await resp.json()) as GDriveStatus);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message || "Failed to load status");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+    void loadStatus();
+
+    // OAuth callback returns to /?gdrive=connected[&email=...]#/settings/integrations
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("gdrive") === "connected") {
+      const email = q.get("email");
+      toast.success(email ? `Connected as ${email}` : "Google Drive connected");
+      // Remove the one-shot params so a refresh doesn't repeat the toast.
+      const url = new URL(window.location.href);
+      url.search = "";
+      window.history.replaceState(null, "", url.toString());
+    } else if (q.get("gdrive") === "error") {
+      toast.error(q.get("message") || "Failed to connect");
+      const url = new URL(window.location.href);
+      url.search = "";
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, [isAdmin, loadStatus]);
+
+  async function handleDisconnect() {
+    if (!confirm(t("settings.fileStorage.disconnectConfirm"))) return;
+    setBusy(true);
+    try {
+      const resp = await fetch("/api/google-drive/disconnect", {
+        method: "POST",
+        // CSRF: server verifies this header matches the csrf_token cookie.
+        headers: csrfHeaders(),
+        credentials: "include",
+      });
+      if (!resp.ok) throw new Error(`Disconnect failed (${resp.status})`);
+      toast.success(t("settings.fileStorage.disconnected"));
+      await loadStatus();
+    } catch (err) {
+      toast.error((err as Error).message || t("settings.fileStorage.disconnectFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Group label={t("settings.fileStorage.groupLabel")}>
+      {/* Always-visible header explaining what this section configures */}
+      <div className="px-4 py-3.5 space-y-1.5 bg-muted/30">
+        <div className="flex items-center gap-2">
+          <Cloud className="h-4 w-4 text-muted-foreground" />
+          <p className="text-sm font-medium">{t("settings.fileStorage.title")}</p>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          {t("settings.fileStorage.desc", {
+            folder: "HomeVault/property-<id>/<userId>/",
+          })}
+        </p>
+      </div>
+
+      {/* Permission disclosure — explicit so users know exactly what they're granting */}
+      <div className="px-4 py-3 space-y-2">
+        <div className="flex items-start gap-2">
+          <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+          <div className="space-y-1 min-w-0">
+            <p className="text-sm font-medium">{t("settings.fileStorage.permissionTitle")}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {t("settings.fileStorage.permissionDesc")}{" "}
+              <a
+                href="https://myaccount.google.com/permissions"
+                target="_blank"
+                rel="noreferrer"
+                className="underline hover:text-foreground inline-flex items-center gap-0.5"
+              >
+                {t("settings.fileStorage.permissionLink")} <ExternalLink className="h-3 w-3" />
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Status + actions */}
+      {loading ? (
+        <div className="px-4 py-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> {t("settings.fileStorage.loadingStatus")}
+        </div>
+      ) : !isAdmin ? (
+        <div className="px-4 py-3 text-xs text-muted-foreground">
+          {t("settings.fileStorage.adminOnly")}
+        </div>
+      ) : error ? (
+        <div className="px-4 py-3 text-xs text-destructive flex items-center gap-2">
+          <AlertTriangle className="h-3.5 w-3.5" /> {error}
+        </div>
+      ) : status && !status.configured ? (
+        <FullRow
+          label={t("settings.fileStorage.notConfiguredLabel")}
+          hint={t("settings.fileStorage.notConfiguredHint")}
+        >
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-3 space-y-2">
+            <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
+              {t("settings.fileStorage.howTo")}
+            </p>
+            <ol className="text-xs text-amber-700 dark:text-amber-300 list-decimal ml-4 space-y-1">
+              <li>{t("settings.fileStorage.howToStep1")}</li>
+              <li>
+                {t("settings.fileStorage.howToStep2", { uri: "" })}{" "}
+                <code className="font-mono text-[11px] bg-amber-100 dark:bg-amber-900/60 px-1 rounded">
+                  {window.location.origin}/api/google-drive/callback
+                </code>
+              </li>
+              <li>{t("settings.fileStorage.howToStep3")}</li>
+              <li>
+                {t("settings.fileStorage.howToStep4")}
+                <pre className="text-[11px] bg-amber-100 dark:bg-amber-900/60 rounded p-2 mt-1 overflow-x-auto font-mono">
+{`GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
+                </pre>
+              </li>
+            </ol>
+          </div>
+        </FullRow>
+      ) : status && status.connected && status.needsReconnect ? (
+        <FullRow
+          label={t("settings.fileStorage.reconnectNeeded")}
+          hint={
+            status.emailMasked
+              ? t("settings.fileStorage.reconnectHintWithEmail", { email: status.emailMasked })
+              : t("settings.fileStorage.reconnectHintNoEmail")
+          }
+        >
+          <div className="flex items-center gap-3 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 rounded-md p-3">
+            <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300 shrink-0" />
+            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+              {t("settings.fileStorage.reconnectBannerBody")}
+            </span>
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => { window.location.href = "/api/google-drive/connect"; }}
+              disabled={busy}
+            >
+              {t("settings.fileStorage.reconnect")}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={handleDisconnect}
+              disabled={busy}
+            >
+              {t("settings.fileStorage.disconnect")}
+            </Button>
+          </div>
+        </FullRow>
+      ) : status && status.connected ? (
+        <Row
+          label={t("settings.fileStorage.statusLabel")}
+          hint={
+            status.emailMasked
+              ? t("settings.fileStorage.connectedHintWithEmail", { email: status.emailMasked })
+              : t("settings.fileStorage.connectedHintNoEmail")
+          }
+        >
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5" /> {t("settings.fileStorage.connected")}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={handleDisconnect}
+              disabled={busy}
+            >
+              {busy && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+              {t("settings.fileStorage.disconnect")}
+            </Button>
+          </div>
+        </Row>
+      ) : (
+        <Row
+          label={t("settings.fileStorage.statusLabel")}
+          hint={t("settings.fileStorage.notConnectedHint")}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">{t("settings.notConnected")}</span>
+            <Button
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => {
+                window.location.href = "/api/google-drive/connect";
+              }}
+              disabled={busy}
+            >
+              {t("settings.connect")}
+            </Button>
+          </div>
+        </Row>
+      )}
+    </Group>
   );
 }
 
@@ -716,6 +973,17 @@ function DataSection({
             {isFetching ? t("settings.preparing") : t("settings.downloadJson")}
           </Button>
         </Row>
+        <Row
+          label={t("settings.exportFilesZipLabel")}
+          hint={t("settings.exportFilesZipHint")}
+        >
+          <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+            <a href="/api/export/files.zip" download>
+              <Download className="mr-1.5 h-3 w-3" />
+              {t("settings.exportFilesZipBtn")}
+            </a>
+          </Button>
+        </Row>
         <Row label={t("settings.perModule")} hint={t("settings.perModuleHint")}>
           <span className="text-xs text-muted-foreground">{t("settings.perModuleList")}</span>
         </Row>
@@ -816,11 +1084,211 @@ function DataSection({
   );
 }
 
+// ─── Stored files (browser + bulk actions) ───────────────────────────────────
+
+function prettyBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+const FILES_PAGE_SIZE = 50;
+
+function StoredFilesGroup() {
+  const { t } = useTranslation();
+  const { data: me } = trpc.profiles.current.useQuery();
+  const { activePropertyId } = useProperty();
+  const utils = trpc.useUtils();
+  // Always-loaded summary so the section header reads naturally even when
+  // the list is collapsed. Filter to the current property by default; users
+  // can flip to "all properties" to find legacy files.
+  const [scope, setScope] = useState<"property" | "all">("property");
+  const [expanded, setExpanded] = useState(false);
+  // Pagination — accumulate pages locally as the user clicks "Load more".
+  // Resets to page 0 when the scope toggle changes.
+  const [page, setPage] = useState(0);
+  const queryInput = useMemo(() => {
+    const base: any = { limit: FILES_PAGE_SIZE, offset: page * FILES_PAGE_SIZE };
+    if (scope === "property") base.propertyId = activePropertyId;
+    return base;
+  }, [scope, page, activePropertyId]);
+  const list = trpc.files.list.useQuery(queryInput);
+
+  type FileItem = NonNullable<typeof list.data>["items"][number];
+  const [allItems, setAllItems] = useState<FileItem[]>([]);
+
+  // When a new page arrives, append. When the scope toggle changes (page
+  // resets to 0), replace.
+  useEffect(() => {
+    if (!list.data) return;
+    if (page === 0) setAllItems(list.data.items);
+    else setAllItems((prev) => [...prev, ...list.data!.items]);
+  }, [list.data, page]);
+
+  // Reset pagination state on scope toggle.
+  useEffect(() => {
+    setPage(0);
+    setAllItems([]);
+  }, [scope, activePropertyId]);
+
+  const deleteFile = trpc.files.delete.useMutation({
+    onSuccess: () => {
+      setPage(0);
+      setAllItems([]);
+      utils.files.list.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const reap = trpc.files.reapOrphans.useMutation({
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (!me) return null;
+  const isAdmin = me.role === "admin";
+
+  const totalCount = list.data?.totalCount ?? 0;
+  const totalBytes = list.data?.totalBytes ?? 0;
+  const hasMore = allItems.length < totalCount;
+
+  return (
+    <Group label={t("settings.storedFiles.groupLabel")}>
+      <FullRow
+        label={
+          list.isLoading && page === 0
+            ? t("settings.storedFiles.summaryLoading")
+            : t("settings.storedFiles.summaryEmpty", {
+                count: totalCount,
+                bytes: prettyBytes(totalBytes),
+              })
+        }
+        hint={
+          scope === "property"
+            ? t("settings.storedFiles.summaryHintProperty")
+            : t("settings.storedFiles.summaryHintAll")
+        }
+      >
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <ToggleGroup
+            type="single"
+            value={scope}
+            className="h-7"
+            onValueChange={(v) => v && setScope(v as "property" | "all")}
+          >
+            <ToggleGroupItem value="property" className="text-xs h-7 px-3">
+              {t("settings.storedFiles.scopeProperty")}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="all" className="text-xs h-7 px-3">
+              {t("settings.storedFiles.scopeAll")}
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setExpanded((e) => !e)}
+              disabled={list.isLoading || totalCount === 0}
+            >
+              {expanded ? t("settings.storedFiles.hide") : t("settings.storedFiles.browse")}
+            </Button>
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={async () => {
+                  try {
+                    const r = await reap.mutateAsync();
+                    toast.success(
+                      t("settings.storedFiles.cleanupResult", {
+                        retried: r.retried,
+                        ok: r.succeeded,
+                        failed: r.failed,
+                      }),
+                    );
+                    setPage(0);
+                    setAllItems([]);
+                    await utils.files.list.invalidate();
+                  } catch {}
+                }}
+                disabled={reap.isPending}
+              >
+                {reap.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                {t("settings.storedFiles.cleanupOrphans")}
+              </Button>
+            )}
+          </div>
+        </div>
+      </FullRow>
+
+      {expanded && allItems.length > 0 && (
+        <div className="px-4 py-3 max-h-96 overflow-y-auto divide-y divide-border">
+          {allItems.map((f) => (
+            <div key={f.id} className="flex items-center gap-3 py-2 text-sm">
+              <div className="flex-1 min-w-0">
+                <p className="truncate font-medium">{f.originalName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {prettyBytes(f.size)} · {new Date(f.createdAt).toLocaleDateString()} ·{" "}
+                  {f.propertyId == null
+                    ? t("settings.storedFiles.legacyLabel")
+                    : t("settings.storedFiles.propertyLabel", { id: f.propertyId })}
+                </p>
+              </div>
+              <a
+                href={f.downloadUrl}
+                className="text-xs underline text-muted-foreground hover:text-foreground"
+                download={f.originalName}
+              >
+                {t("settings.storedFiles.download")}
+              </a>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 text-destructive"
+                onClick={() => {
+                  if (confirm(t("settings.storedFiles.deleteConfirm", { name: f.originalName }))) {
+                    deleteFile.mutate({ id: f.id });
+                  }
+                }}
+                disabled={deleteFile.isPending}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          ))}
+          {hasMore && (
+            <div className="pt-3 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {t("settings.storedFiles.loadedOf", { loaded: allItems.length, total: totalCount })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={list.isFetching}
+              >
+                {list.isFetching && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                {t("settings.storedFiles.loadMore")}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </Group>
+  );
+}
+
 // ─── Shell ────────────────────────────────────────────────────────────────────
 
 export default function Settings() {
   const { t } = useTranslation();
-  const [active, setActive] = useState<SID>("property");
+  const routeParams = useParams<{ section?: string }>();
+  const initialSection: SID = (routeParams.section && (NAV_IDS as readonly string[]).includes(routeParams.section)
+    ? (routeParams.section as SID)
+    : "property");
+  const [active, setActive] = useState<SID>(initialSection);
   const { data: property, isLoading } = trpc.property.get.useQuery();
   const { data: allProperties } = trpc.property.list.useQuery();
   const { activePropertyId, switchProperty } = useProperty();
@@ -828,10 +1296,13 @@ export default function Settings() {
 
   const NAV = NAV_IDS.map(id => ({ id, label: t(`settings.${id}`) }));
 
+  // Sync active tab when the wouter route param changes (e.g. after OAuth
+  // callback redirects to /#/settings/integrations).
   useEffect(() => {
-    const hash = window.location.hash.replace("#", "") as SID;
-    if (hash && NAV_IDS.includes(hash as any)) setActive(hash);
-  }, []);
+    if (routeParams.section && (NAV_IDS as readonly string[]).includes(routeParams.section)) {
+      setActive(routeParams.section as SID);
+    }
+  }, [routeParams.section]);
 
   const go = (id: SID) => {
     setActive(id);

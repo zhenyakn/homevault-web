@@ -1,4 +1,5 @@
 export { getDb, parseJsonArray } from "./client";
+export * from "./appSettings";
 export * from "./users";
 export * from "./properties";
 export * from "./expenses";
