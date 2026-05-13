@@ -11,6 +11,7 @@ import {
   disconnectGoogleDrive,
   getConnectionStatus,
   isGoogleEnvConfigured,
+  validateDriveConnection,
 } from "./storage/gdrive";
 import { StorageNotConfiguredError, StorageOperationError } from "./storage/types";
 
@@ -145,6 +146,13 @@ router.get("/api/google-drive/status", async (req, res) => {
   const ctx = await requireAdmin(req, res);
   if (!ctx) return;
   try {
+    // Proactive heartbeat: when an admin loads Settings → Integrations we
+    // probe Drive at most once every 5 minutes (in-process throttled). The
+    // result is a side-effect on the `tokenBroken` flag in app_settings,
+    // which `getConnectionStatus` below reads to compute `needsReconnect`.
+    // Errors are swallowed inside `validateDriveConnection` — we never want
+    // the status endpoint itself to 500 on a Drive blip.
+    await validateDriveConnection();
     const status = await getConnectionStatus();
     res.json({
       configured: isGoogleEnvConfigured(),

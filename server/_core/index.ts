@@ -147,6 +147,15 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
+  // HomeVault is meant to run behind a single reverse proxy: the Home Assistant
+  // ingress, an nginx/caddy in front of the Docker container, or Cloudflare.
+  // Trusting exactly one hop lets every rate limiter use the real client IP
+  // from X-Forwarded-For, and makes req.ip / req.secure / req.protocol reflect
+  // what the user's browser actually used. The numeric `1` is deliberate —
+  // setting `true` would let a malicious client chain its own XFF values to
+  // forge an arbitrary source IP.
+  app.set("trust proxy", 1);
+
   // Tight body limits — none of HomeVault's JSON endpoints need more than
   // a few KB. File uploads go through multer (multipart) and don't traverse
   // express.json. The previous 50mb limit was a wide-open DoS vector.
@@ -158,12 +167,32 @@ async function startServer() {
   // helmet provides here is the global baseline (HSTS in prod, X-Frame-
   // Options=DENY, Referrer-Policy=no-referrer, etc).
   //
-  // contentSecurityPolicy is intentionally disabled because the Vite dev
-  // server + the SPA need to load chunks from same-origin without a strict
-  // policy. We rely on per-route CSP for the dangerous responses.
+  // Dev keeps CSP off because Vite HMR uses ws:// + eval; production gets a
+  // tight policy that covers the bundled SPA, Radix UI's inline styles, and
+  // the Google Maps script if it's loaded. The per-route CSP in
+  // filesRoute.ts (`default-src 'none'; sandbox; …`) is still the tightest
+  // layer for any byte we let the user retrieve.
   app.use(
     helmet({
-      contentSecurityPolicy: false,
+      contentSecurityPolicy: process.env.NODE_ENV === "production"
+        ? {
+            useDefaults: true,
+            directives: {
+              defaultSrc: ["'self'"],
+              scriptSrc: ["'self'", "https://maps.googleapis.com"],
+              styleSrc: ["'self'", "'unsafe-inline'"], // Radix UI inline styles
+              imgSrc: ["'self'", "data:", "blob:", "https:"],
+              connectSrc: ["'self'", "https://maps.googleapis.com"],
+              fontSrc: ["'self'", "data:"],
+              frameSrc: ["'self'"],
+              frameAncestors: ["'none'"],
+              baseUri: ["'self'"],
+              formAction: ["'self'"],
+              objectSrc: ["'none'"],
+              upgradeInsecureRequests: [],
+            },
+          }
+        : false,
       crossOriginEmbedderPolicy: false, // breaks Google Maps iframe
       referrerPolicy: { policy: "no-referrer" },
     }),

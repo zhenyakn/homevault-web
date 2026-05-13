@@ -13,6 +13,7 @@ const hoisted = vi.hoisted(() => ({
     disconnectGoogleDrive: null as any,
     getConnectionStatus: null as any,
     isGoogleEnvConfigured: null as any,
+    validateDriveConnection: null as any,
   },
 }));
 
@@ -50,6 +51,10 @@ hoisted.gdriveMock.completeConnect = vi.fn();
 hoisted.gdriveMock.disconnectGoogleDrive = vi.fn();
 hoisted.gdriveMock.getConnectionStatus = vi.fn();
 hoisted.gdriveMock.isGoogleEnvConfigured = vi.fn(() => true);
+// Heartbeat — the /status endpoint calls this before reading the persisted
+// state. Mock returns void so the route falls through to getConnectionStatus
+// for the actual response shape.
+hoisted.gdriveMock.validateDriveConnection = vi.fn(async () => {});
 
 import { googleDriveRouter, maskEmail } from "./googleDriveRoute";
 
@@ -85,6 +90,8 @@ beforeEach(() => {
   gdriveMock.isGoogleEnvConfigured.mockReturnValue(true);
   gdriveMock.buildConnectAuthUrl.mockImplementation((state?: string) =>
     `https://google.example/auth?state=${state ?? ""}`);
+  // Heartbeat is a no-op by default; individual tests can override.
+  gdriveMock.validateDriveConnection.mockImplementation(async () => {});
 });
 
 // ─── /status ────────────────────────────────────────────────────────────────
@@ -94,19 +101,42 @@ describe("GET /api/google-drive/status", () => {
   beforeEach(async () => { app = await startApp(); });
   afterEach(async () => { await app.close(); });
 
-  it("returns connection + configured flags for admins, masking the email", async () => {
-    gdriveMock.getConnectionStatus.mockResolvedValueOnce({ connected: true, email: "owner@example.com" });
+  it("returns connection + configured flags for admins, masking the email + heartbeat fired", async () => {
+    gdriveMock.getConnectionStatus.mockResolvedValueOnce({
+      connected: true,
+      email: "owner@example.com",
+      needsReconnect: false,
+    });
     const res = await fetchUrl(`${app.url}/api/google-drive/status`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       configured: true,
       connected: true,
+      needsReconnect: false,
       emailMasked: "o***@example.com",
     });
+    // The /status endpoint must trigger the proactive heartbeat.
+    expect(gdriveMock.validateDriveConnection).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns needsReconnect=true when the heartbeat flipped tokenBroken", async () => {
+    // Simulate: heartbeat ran, classified an invalid_grant, and the persisted
+    // tokenBroken flag is now read by getConnectionStatus.
+    gdriveMock.getConnectionStatus.mockResolvedValueOnce({
+      connected: true,
+      email: "owner@example.com",
+      needsReconnect: true,
+    });
+    const res = await fetchUrl(`${app.url}/api/google-drive/status`);
+    expect((await res.json()).needsReconnect).toBe(true);
   });
 
   it("returns null emailMasked when no email is stored", async () => {
-    gdriveMock.getConnectionStatus.mockResolvedValueOnce({ connected: false, email: null });
+    gdriveMock.getConnectionStatus.mockResolvedValueOnce({
+      connected: false,
+      email: null,
+      needsReconnect: false,
+    });
     const res = await fetchUrl(`${app.url}/api/google-drive/status`);
     expect((await res.json()).emailMasked).toBeNull();
   });

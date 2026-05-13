@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import archiver from "archiver";
+import path from "node:path";
 import { Readable } from "stream";
 import { and, eq, isNull } from "drizzle-orm";
 import { createContext } from "./_core/context";
@@ -83,7 +84,12 @@ router.get("/api/export/files.zip", async (req: Request, res: Response) => {
   for (const row of rows) {
     if (aborted) break;
     const folder = row.propertyId == null ? "legacy" : `property-${row.propertyId}`;
-    const entryName = `${folder}/${uniqueName(folder, row.originalName)}`;
+    // Strip any directory component a malicious / clumsy `originalName` may
+    // carry (e.g. `../etc/passwd.txt`) so the ZIP layout stays flat under
+    // the per-property folder. Defence-in-depth — most extractors reject
+    // `..` paths but normalising here means we never depend on that.
+    const safeName = path.basename(row.originalName);
+    const entryName = `${folder}/${uniqueName(folder, safeName)}`;
 
     try {
       const backend = getBackendByName(row.backend as StorageBackendName);

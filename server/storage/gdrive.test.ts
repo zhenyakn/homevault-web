@@ -13,6 +13,9 @@ const hoisted = vi.hoisted(() => {
       get: null as any,
       delete: null as any,
     },
+    about: {
+      get: null as any,
+    },
   };
   const oauth2userinfoStub = { userinfo: { get: null as any } };
 
@@ -60,6 +63,7 @@ hoisted.driveStub.files.list = vi.fn();
 hoisted.driveStub.files.create = vi.fn();
 hoisted.driveStub.files.get = vi.fn();
 hoisted.driveStub.files.delete = vi.fn();
+hoisted.driveStub.about.get = vi.fn();
 hoisted.oauth2userinfoStub.userinfo.get = vi.fn();
 
 import {
@@ -70,7 +74,9 @@ import {
   getConnectionStatus,
   gdriveBackend,
   isGoogleEnvConfigured,
+  validateDriveConnection,
   _resetGoogleDriveCachesForTests,
+  _resetDriveHeartbeatThrottleForTests,
 } from "./gdrive";
 import { StorageNotConfiguredError, StorageOperationError } from "./types";
 import { readMaybeEncrypted, encryptSecret } from "../_core/secrets";
@@ -213,6 +219,58 @@ describe("disconnect + status", () => {
     oauth2userinfoStub.userinfo.get.mockResolvedValueOnce({ data: { email: "x@x" } });
     await completeConnect("good-code");
     expect(fakeSettings.has(GDRIVE_KEYS.tokenBroken)).toBe(false);
+  });
+});
+
+// ─── validateDriveConnection (heartbeat) ────────────────────────────────────
+
+describe("validateDriveConnection (F3)", () => {
+  beforeEach(() => {
+    _resetDriveHeartbeatThrottleForTests();
+    driveStub.about.get.mockReset();
+  });
+
+  it("no-ops when no refresh token is stored", async () => {
+    await validateDriveConnection();
+    expect(driveStub.about.get).not.toHaveBeenCalled();
+  });
+
+  it("calls drive.about.get and clears a stale tokenBroken flag on success", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    fakeSettings.set(GDRIVE_KEYS.tokenBroken, "1");
+    driveStub.about.get.mockResolvedValueOnce({ data: { user: { emailAddress: "x@x" } } });
+
+    await validateDriveConnection();
+    expect(driveStub.about.get).toHaveBeenCalledTimes(1);
+    expect(fakeSettings.has(GDRIVE_KEYS.tokenBroken)).toBe(false);
+  });
+
+  it("flips tokenBroken=1 when Drive returns invalid_grant", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    const err: any = new Error("invalid_grant: Token has been expired or revoked.");
+    err.code = "invalid_grant";
+    driveStub.about.get.mockRejectedValueOnce(err);
+
+    await validateDriveConnection();
+    expect(fakeSettings.get(GDRIVE_KEYS.tokenBroken)).toBe("1");
+  });
+
+  it("swallows non-revocation errors (Drive 5xx blips) without flipping tokenBroken", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    driveStub.about.get.mockRejectedValueOnce(new Error("Internal server error"));
+
+    await validateDriveConnection();
+    expect(fakeSettings.has(GDRIVE_KEYS.tokenBroken)).toBe(false);
+  });
+
+  it("is throttled — repeat calls inside the 5-minute window skip the Drive probe", async () => {
+    seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
+    driveStub.about.get.mockResolvedValue({ data: { user: { emailAddress: "x@x" } } });
+
+    await validateDriveConnection();
+    await validateDriveConnection();
+    await validateDriveConnection();
+    expect(driveStub.about.get).toHaveBeenCalledTimes(1);
   });
 });
 

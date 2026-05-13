@@ -487,3 +487,84 @@ export async function getConnectionStatus(): Promise<{
     needsReconnect: !!token && broken === "1",
   };
 }
+
+// ─── Proactive heartbeat ─────────────────────────────────────────────────────
+
+const HEARTBEAT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let _lastHeartbeatAt = 0;
+let _heartbeatInFlight: Promise<void> | null = null;
+
+/** Test hook — resets the in-process throttle so consecutive test runs probe
+ * Drive each time. NEVER call in production code. */
+export function _resetDriveHeartbeatThrottleForTests() {
+  _lastHeartbeatAt = 0;
+  _heartbeatInFlight = null;
+}
+
+/**
+ * Active heartbeat: actually talks to Drive (`drive.about.get`) to confirm the
+ * refresh token still works. Without this, a revoked token stays invisible
+ * until the next user upload — which means the amber "Reconnect needed"
+ * banner only ever lights up *after* a failed write.
+ *
+ *   - Success → clears `tokenBroken` (also handles "user reconnected directly
+ *     in their Google account" recovery).
+ *   - `invalid_grant` → flows through `classifyAndThrow`, which flips
+ *     `tokenBroken=1`. The error is then swallowed (this is best-effort —
+ *     the caller already has the value via getConnectionStatus).
+ *   - Other failures → logged + swallowed. Transient Drive 5xx shouldn't
+ *     register a false reconnect alarm.
+ *
+ * Throttled to once per 5 minutes per process so admin Settings refreshes
+ * don't burn Drive API quota.
+ *
+ * No-op if no refresh token is stored.
+ */
+export async function validateDriveConnection(): Promise<void> {
+  const now = Date.now();
+  if (now - _lastHeartbeatAt < HEARTBEAT_TTL_MS) return;
+  if (_heartbeatInFlight) return _heartbeatInFlight;
+
+  _heartbeatInFlight = (async () => {
+    try {
+      // Cheap auth check — only fetch the user fields we already implicitly
+      // have (so no PII / scope upgrade required).
+      const auth = await getAuthedClient();
+      const drive = getDrive(auth);
+      await drive.about.get({ fields: "user" });
+      // Token verified. Clear any stale tokenBroken flag from a previous
+      // partial outage that has since recovered.
+      const flag = await getSetting(GDRIVE_KEYS.tokenBroken);
+      if (flag === "1") {
+        await deleteSetting(GDRIVE_KEYS.tokenBroken);
+      }
+    } catch (err: unknown) {
+      if (err instanceof StorageNotConfiguredError) {
+        // Either the env vars are missing or the refresh token was never
+        // stored. Either way nothing to validate — the route already
+        // reports `connected: false`.
+        return;
+      }
+      try {
+        await classifyAndThrow("heartbeat", err);
+      } catch (classified) {
+        // classifyAndThrow re-throws. We deliberately swallow here so the
+        // status endpoint doesn't 500 on a Drive blip; the tokenBroken flag
+        // is the durable signal.
+        if (classified instanceof StorageNotConfiguredError) {
+          // invalid_grant path — tokenBroken already flipped by classify.
+          return;
+        }
+        logger.warn(
+          { err: (classified as Error).message },
+          "[gdrive] heartbeat probe failed (non-revocation)",
+        );
+      }
+    } finally {
+      _lastHeartbeatAt = Date.now();
+      _heartbeatInFlight = null;
+    }
+  })();
+
+  return _heartbeatInFlight;
+}

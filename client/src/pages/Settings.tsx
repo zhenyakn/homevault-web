@@ -12,7 +12,7 @@
  */
 
 import {
-  useState, useEffect, useRef, useCallback, type ReactNode,
+  useState, useEffect, useRef, useCallback, useMemo, type ReactNode,
 } from "react";
 import { useLocation, useParams } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -622,6 +622,7 @@ type GDriveStatus = {
 };
 
 function FileStorageGroup() {
+  const { t } = useTranslation();
   const { data: me } = trpc.profiles.current.useQuery();
   const isAdmin = me?.role === "admin";
   const [status, setStatus] = useState<GDriveStatus | null>(null);
@@ -676,7 +677,7 @@ function FileStorageGroup() {
   }, [isAdmin, loadStatus]);
 
   async function handleDisconnect() {
-    if (!confirm("Disconnect Google Drive? Existing uploads stay reachable until the file row is deleted.")) return;
+    if (!confirm(t("settings.fileStorage.disconnectConfirm"))) return;
     setBusy(true);
     try {
       const resp = await fetch("/api/google-drive/disconnect", {
@@ -686,29 +687,27 @@ function FileStorageGroup() {
         credentials: "include",
       });
       if (!resp.ok) throw new Error(`Disconnect failed (${resp.status})`);
-      toast.success("Disconnected");
+      toast.success(t("settings.fileStorage.disconnected"));
       await loadStatus();
     } catch (err) {
-      toast.error((err as Error).message || "Disconnect failed");
+      toast.error((err as Error).message || t("settings.fileStorage.disconnectFailed"));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <Group label="File storage">
+    <Group label={t("settings.fileStorage.groupLabel")}>
       {/* Always-visible header explaining what this section configures */}
       <div className="px-4 py-3.5 space-y-1.5 bg-muted/30">
         <div className="flex items-center gap-2">
           <Cloud className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-medium">Google Drive</p>
+          <p className="text-sm font-medium">{t("settings.fileStorage.title")}</p>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          When you attach a file to an expense, repair, upgrade, loan, wishlist item or purchase
-          cost, HomeVault uploads it to <em>your</em> Google Drive — never to a HomeVault server.
-          Files live in a folder named{" "}
-          <code className="font-mono text-[11px] bg-background px-1 rounded">HomeVault/uploads/&lt;userId&gt;/</code>
-          {" "}and are streamed back to your browser through this app so they stay private.
+          {t("settings.fileStorage.desc", {
+            folder: "HomeVault/property-<id>/<userId>/",
+          })}
         </p>
       </div>
 
@@ -717,19 +716,16 @@ function FileStorageGroup() {
         <div className="flex items-start gap-2">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
           <div className="space-y-1 min-w-0">
-            <p className="text-sm font-medium">Permission requested</p>
+            <p className="text-sm font-medium">{t("settings.fileStorage.permissionTitle")}</p>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              <code className="font-mono text-[11px] bg-muted px-1 rounded">drive.file</code> — the
-              least-privilege scope. HomeVault can <strong>only see and manage files it created
-              itself</strong>; it cannot read or list anything else in your Drive. Revoke any time
-              at{" "}
+              {t("settings.fileStorage.permissionDesc")}{" "}
               <a
                 href="https://myaccount.google.com/permissions"
                 target="_blank"
                 rel="noreferrer"
                 className="underline hover:text-foreground inline-flex items-center gap-0.5"
               >
-                myaccount.google.com/permissions <ExternalLink className="h-3 w-3" />
+                {t("settings.fileStorage.permissionLink")} <ExternalLink className="h-3 w-3" />
               </a>
               .
             </p>
@@ -740,11 +736,11 @@ function FileStorageGroup() {
       {/* Status + actions */}
       {loading ? (
         <div className="px-4 py-3 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Loading status…
+          <Loader2 className="h-3 w-3 animate-spin" /> {t("settings.fileStorage.loadingStatus")}
         </div>
       ) : !isAdmin ? (
         <div className="px-4 py-3 text-xs text-muted-foreground">
-          Only admin users can connect or disconnect file storage. Ask the property owner.
+          {t("settings.fileStorage.adminOnly")}
         </div>
       ) : error ? (
         <div className="px-4 py-3 text-xs text-destructive flex items-center gap-2">
@@ -752,36 +748,24 @@ function FileStorageGroup() {
         </div>
       ) : status && !status.configured ? (
         <FullRow
-          label="Server not configured"
-          hint="The deployment is missing the Google OAuth client ID/secret. Until they're added, file uploads will fail."
+          label={t("settings.fileStorage.notConfiguredLabel")}
+          hint={t("settings.fileStorage.notConfiguredHint")}
         >
           <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-3 space-y-2">
             <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
-              How to configure
+              {t("settings.fileStorage.howTo")}
             </p>
             <ol className="text-xs text-amber-700 dark:text-amber-300 list-decimal ml-4 space-y-1">
+              <li>{t("settings.fileStorage.howToStep1")}</li>
               <li>
-                Create an OAuth 2.0 Web client at{" "}
-                <a
-                  href="https://console.cloud.google.com/apis/credentials"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline"
-                >
-                  console.cloud.google.com/apis/credentials
-                </a>
-                .
-              </li>
-              <li>
-                Add the redirect URI{" "}
+                {t("settings.fileStorage.howToStep2", { uri: "" })}{" "}
                 <code className="font-mono text-[11px] bg-amber-100 dark:bg-amber-900/60 px-1 rounded">
                   {window.location.origin}/api/google-drive/callback
                 </code>
-                .
               </li>
-              <li>Enable the Google Drive API on the same project.</li>
+              <li>{t("settings.fileStorage.howToStep3")}</li>
               <li>
-                Set these env vars on the server and restart:
+                {t("settings.fileStorage.howToStep4")}
                 <pre className="text-[11px] bg-amber-100 dark:bg-amber-900/60 rounded p-2 mt-1 overflow-x-auto font-mono">
 {`GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
@@ -793,17 +777,17 @@ GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
         </FullRow>
       ) : status && status.connected && status.needsReconnect ? (
         <FullRow
-          label="Reconnect needed"
+          label={t("settings.fileStorage.reconnectNeeded")}
           hint={
             status.emailMasked
-              ? `Google revoked HomeVault's access to ${status.emailMasked}. Uploads are failing until you reconnect.`
-              : "Google revoked HomeVault's access. Uploads are failing until you reconnect."
+              ? t("settings.fileStorage.reconnectHintWithEmail", { email: status.emailMasked })
+              : t("settings.fileStorage.reconnectHintNoEmail")
           }
         >
           <div className="flex items-center gap-3 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 rounded-md p-3">
             <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300 shrink-0" />
             <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
-              The refresh token was revoked or has expired. Click Reconnect to re-grant access.
+              {t("settings.fileStorage.reconnectBannerBody")}
             </span>
             <Button
               size="sm"
@@ -811,7 +795,7 @@ GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
               onClick={() => { window.location.href = "/api/google-drive/connect"; }}
               disabled={busy}
             >
-              Reconnect
+              {t("settings.fileStorage.reconnect")}
             </Button>
             <Button
               variant="ghost"
@@ -820,22 +804,22 @@ GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
               onClick={handleDisconnect}
               disabled={busy}
             >
-              Disconnect
+              {t("settings.fileStorage.disconnect")}
             </Button>
           </div>
         </FullRow>
       ) : status && status.connected ? (
         <Row
-          label="Status"
+          label={t("settings.fileStorage.statusLabel")}
           hint={
             status.emailMasked
-              ? `Connected as ${status.emailMasked}. New uploads go to this account's Drive.`
-              : "Connected. New uploads go to the authorised account's Drive."
+              ? t("settings.fileStorage.connectedHintWithEmail", { email: status.emailMasked })
+              : t("settings.fileStorage.connectedHintNoEmail")
           }
         >
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Connected
+              <CheckCircle2 className="h-3.5 w-3.5" /> {t("settings.fileStorage.connected")}
             </span>
             <Button
               variant="outline"
@@ -845,17 +829,17 @@ GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
               disabled={busy}
             >
               {busy && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-              Disconnect
+              {t("settings.fileStorage.disconnect")}
             </Button>
           </div>
         </Row>
       ) : (
         <Row
-          label="Status"
-          hint="Click Connect to sign in to Google and authorise HomeVault to manage its own folder in your Drive."
+          label={t("settings.fileStorage.statusLabel")}
+          hint={t("settings.fileStorage.notConnectedHint")}
         >
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">Not connected</span>
+            <span className="text-xs text-muted-foreground">{t("settings.notConnected")}</span>
             <Button
               size="sm"
               className="h-7 text-xs"
@@ -864,7 +848,7 @@ GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
               }}
               disabled={busy}
             >
-              Connect
+              {t("settings.connect")}
             </Button>
           </div>
         </Row>
@@ -990,13 +974,13 @@ function DataSection({
           </Button>
         </Row>
         <Row
-          label="All attached files (ZIP)"
-          hint="Downloads every file you uploaded. Pair with the JSON export above before disconnecting Google Drive."
+          label={t("settings.exportFilesZipLabel")}
+          hint={t("settings.exportFilesZipHint")}
         >
           <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
             <a href="/api/export/files.zip" download>
               <Download className="mr-1.5 h-3 w-3" />
-              Download files (ZIP)
+              {t("settings.exportFilesZipBtn")}
             </a>
           </Button>
         </Row>
@@ -1109,7 +1093,10 @@ function prettyBytes(n: number): string {
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
+const FILES_PAGE_SIZE = 50;
+
 function StoredFilesGroup() {
+  const { t } = useTranslation();
   const { data: me } = trpc.profiles.current.useQuery();
   const { activePropertyId } = useProperty();
   const utils = trpc.useUtils();
@@ -1118,11 +1105,39 @@ function StoredFilesGroup() {
   // can flip to "all properties" to find legacy files.
   const [scope, setScope] = useState<"property" | "all">("property");
   const [expanded, setExpanded] = useState(false);
-  const list = trpc.files.list.useQuery(
-    scope === "property" ? { propertyId: activePropertyId } : undefined,
-  );
+  // Pagination — accumulate pages locally as the user clicks "Load more".
+  // Resets to page 0 when the scope toggle changes.
+  const [page, setPage] = useState(0);
+  const queryInput = useMemo(() => {
+    const base: any = { limit: FILES_PAGE_SIZE, offset: page * FILES_PAGE_SIZE };
+    if (scope === "property") base.propertyId = activePropertyId;
+    return base;
+  }, [scope, page, activePropertyId]);
+  const list = trpc.files.list.useQuery(queryInput);
+
+  type FileItem = NonNullable<typeof list.data>["items"][number];
+  const [allItems, setAllItems] = useState<FileItem[]>([]);
+
+  // When a new page arrives, append. When the scope toggle changes (page
+  // resets to 0), replace.
+  useEffect(() => {
+    if (!list.data) return;
+    if (page === 0) setAllItems(list.data.items);
+    else setAllItems((prev) => [...prev, ...list.data!.items]);
+  }, [list.data, page]);
+
+  // Reset pagination state on scope toggle.
+  useEffect(() => {
+    setPage(0);
+    setAllItems([]);
+  }, [scope, activePropertyId]);
+
   const deleteFile = trpc.files.delete.useMutation({
-    onSuccess: () => utils.files.list.invalidate(),
+    onSuccess: () => {
+      setPage(0);
+      setAllItems([]);
+      utils.files.list.invalidate();
+    },
     onError: (e) => toast.error(e.message),
   });
   const reap = trpc.files.reapOrphans.useMutation({
@@ -1132,20 +1147,25 @@ function StoredFilesGroup() {
   if (!me) return null;
   const isAdmin = me.role === "admin";
 
-  const items = list.data?.items ?? [];
+  const totalCount = list.data?.totalCount ?? 0;
+  const totalBytes = list.data?.totalBytes ?? 0;
+  const hasMore = allItems.length < totalCount;
 
   return (
-    <Group label="Stored files">
+    <Group label={t("settings.storedFiles.groupLabel")}>
       <FullRow
         label={
-          list.isLoading
-            ? "Loading…"
-            : `${list.data?.totalCount ?? 0} file${list.data?.totalCount === 1 ? "" : "s"} · ${prettyBytes(list.data?.totalBytes ?? 0)}`
+          list.isLoading && page === 0
+            ? t("settings.storedFiles.summaryLoading")
+            : t("settings.storedFiles.summaryEmpty", {
+                count: totalCount,
+                bytes: prettyBytes(totalBytes),
+              })
         }
         hint={
           scope === "property"
-            ? "Files attached to anything in the currently-selected property."
-            : "All files you've uploaded, across every property + any legacy files from before per-property folders."
+            ? t("settings.storedFiles.summaryHintProperty")
+            : t("settings.storedFiles.summaryHintAll")
         }
       >
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -1155,8 +1175,12 @@ function StoredFilesGroup() {
             className="h-7"
             onValueChange={(v) => v && setScope(v as "property" | "all")}
           >
-            <ToggleGroupItem value="property" className="text-xs h-7 px-3">This property</ToggleGroupItem>
-            <ToggleGroupItem value="all" className="text-xs h-7 px-3">All</ToggleGroupItem>
+            <ToggleGroupItem value="property" className="text-xs h-7 px-3">
+              {t("settings.storedFiles.scopeProperty")}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="all" className="text-xs h-7 px-3">
+              {t("settings.storedFiles.scopeAll")}
+            </ToggleGroupItem>
           </ToggleGroup>
           <div className="flex items-center gap-2">
             <Button
@@ -1164,9 +1188,9 @@ function StoredFilesGroup() {
               size="sm"
               className="h-7 text-xs"
               onClick={() => setExpanded((e) => !e)}
-              disabled={list.isLoading || items.length === 0}
+              disabled={list.isLoading || totalCount === 0}
             >
-              {expanded ? "Hide list" : "Browse files"}
+              {expanded ? t("settings.storedFiles.hide") : t("settings.storedFiles.browse")}
             </Button>
             {isAdmin && (
               <Button
@@ -1177,30 +1201,38 @@ function StoredFilesGroup() {
                   try {
                     const r = await reap.mutateAsync();
                     toast.success(
-                      `Cleanup retried ${r.retried}: ${r.succeeded} ok, ${r.failed} failed`,
+                      t("settings.storedFiles.cleanupResult", {
+                        retried: r.retried,
+                        ok: r.succeeded,
+                        failed: r.failed,
+                      }),
                     );
+                    setPage(0);
+                    setAllItems([]);
                     await utils.files.list.invalidate();
                   } catch {}
                 }}
                 disabled={reap.isPending}
               >
                 {reap.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-                Clean up orphans
+                {t("settings.storedFiles.cleanupOrphans")}
               </Button>
             )}
           </div>
         </div>
       </FullRow>
 
-      {expanded && items.length > 0 && (
+      {expanded && allItems.length > 0 && (
         <div className="px-4 py-3 max-h-96 overflow-y-auto divide-y divide-border">
-          {items.map((f) => (
+          {allItems.map((f) => (
             <div key={f.id} className="flex items-center gap-3 py-2 text-sm">
               <div className="flex-1 min-w-0">
                 <p className="truncate font-medium">{f.originalName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {prettyBytes(f.size)} · {new Date(f.createdAt).toLocaleDateString()} · {" "}
-                  {f.propertyId == null ? "Legacy" : `Property #${f.propertyId}`}
+                  {prettyBytes(f.size)} · {new Date(f.createdAt).toLocaleDateString()} ·{" "}
+                  {f.propertyId == null
+                    ? t("settings.storedFiles.legacyLabel")
+                    : t("settings.storedFiles.propertyLabel", { id: f.propertyId })}
                 </p>
               </div>
               <a
@@ -1208,14 +1240,14 @@ function StoredFilesGroup() {
                 className="text-xs underline text-muted-foreground hover:text-foreground"
                 download={f.originalName}
               >
-                Download
+                {t("settings.storedFiles.download")}
               </a>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-6 w-6 p-0 text-destructive"
                 onClick={() => {
-                  if (confirm(`Delete "${f.originalName}"? This cannot be undone.`)) {
+                  if (confirm(t("settings.storedFiles.deleteConfirm", { name: f.originalName }))) {
                     deleteFile.mutate({ id: f.id });
                   }
                 }}
@@ -1225,6 +1257,23 @@ function StoredFilesGroup() {
               </Button>
             </div>
           ))}
+          {hasMore && (
+            <div className="pt-3 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {t("settings.storedFiles.loadedOf", { loaded: allItems.length, total: totalCount })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={list.isFetching}
+              >
+                {list.isFetching && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                {t("settings.storedFiles.loadMore")}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </Group>
