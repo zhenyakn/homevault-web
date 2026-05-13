@@ -122,6 +122,70 @@ describe("migration files — statement parser extracts every SQL chunk", () => 
   );
 });
 
+// ── 0012_files_property.sql — propertyId scope on files ──────────────────────
+
+describe("0012_files_property.sql — propertyId scope", () => {
+  const sql = readFileSync(
+    resolve(MIGRATIONS_DIR, "0012_files_property.sql"),
+    "utf-8",
+  );
+
+  it("adds the nullable propertyId column", () => {
+    expect(sql).toMatch(/ALTER TABLE `files` ADD COLUMN `propertyId` int DEFAULT NULL/);
+  });
+
+  it("creates the files_property_idx index", () => {
+    expect(sql).toContain("CREATE INDEX `files_property_idx`");
+    expect(sql).toContain("ON `files` (`propertyId`)");
+  });
+
+  it("parses to exactly 2 SQL statements", () => {
+    expect(parseStatements(sql)).toHaveLength(2);
+  });
+});
+
+// ── 0011_files_and_app_settings.sql — files registry migration coverage ────
+
+describe("0011_files_and_app_settings.sql — coverage", () => {
+  const sql = readFileSync(
+    resolve(MIGRATIONS_DIR, "0011_files_and_app_settings.sql"),
+    "utf-8",
+  );
+
+  it("creates both app_settings and files tables", () => {
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `app_settings`");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS `files`");
+  });
+
+  it("files table declares the required columns", () => {
+    expect(sql).toMatch(/`id`\s+varchar\(36\)\s+NOT NULL PRIMARY KEY/);
+    expect(sql).toMatch(/`backend`\s+varchar\(16\)\s+NOT NULL/);
+    expect(sql).toMatch(/`externalId`\s+text\s+NOT NULL/);
+    expect(sql).toMatch(/`originalName`\s+varchar\(255\)\s+NOT NULL/);
+    expect(sql).toMatch(/`mimeType`\s+varchar\(150\)\s+NOT NULL/);
+    expect(sql).toMatch(/`size`\s+int/);
+    expect(sql).toMatch(/`ownerUserId`\s+int\s+NOT NULL/);
+    expect(sql).toMatch(/`createdAt`\s+timestamp/);
+    expect(sql).toMatch(/`deletedAt`\s+timestamp\s+NULL/);
+  });
+
+  it("files table has FK to users + helpful indexes", () => {
+    expect(sql).toContain("FOREIGN KEY (`ownerUserId`) REFERENCES `users` (`id`)");
+    expect(sql).toContain("INDEX `files_owner_idx`");
+    expect(sql).toContain("INDEX `files_backend_idx`");
+  });
+
+  it("app_settings has the expected key/value/updatedAt columns", () => {
+    expect(sql).toMatch(/`key`\s+varchar\(64\)\s+NOT NULL PRIMARY KEY/);
+    expect(sql).toMatch(/`value`\s+text\s+NOT NULL/);
+    expect(sql).toMatch(/`updatedAt`\s+timestamp/);
+  });
+
+  it("produces exactly 2 SQL statements when parsed", () => {
+    expect(parseStatements(sql)).toHaveLength(2);
+  });
+});
+
 // ── 0010_payment_tables.sql — specific statement coverage ────────────────────
 
 describe("0010_payment_tables.sql — payment tables migration coverage", () => {
