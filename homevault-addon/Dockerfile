@@ -3,7 +3,7 @@ ARG BUILD_ARCH=amd64
 ARG BUILD_VERSION
 
 # ── Build stage ──────────────────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
