@@ -331,11 +331,13 @@ export const appRouter = router({
   }),
 
   repairQuotes: router({
-    list: protectedProcedure.input(z.object({ repairId: z.string() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ repairId: z.string() })).query(async ({ ctx, input }) => {
+      await assertRepairOwner(input.repairId, ctx.user.id);
       return (await db.getRepairQuotes(input.repairId)) ?? [];
     }),
-    countByRepair: protectedProcedure.input(z.object({ repairIds: z.array(z.string()) })).query(async ({ input }) => {
-      return await db.getRepairQuoteCounts(input.repairIds);
+    countByRepair: protectedProcedure.input(z.object({ repairIds: z.array(z.string()) })).query(async ({ ctx, input }) => {
+      const owned = await db.filterOwnedRepairIds(input.repairIds, ctx.user.id);
+      return await db.getRepairQuoteCounts(owned);
     }),
     create: protectedProcedure.input(z.object({
       repairId: z.string(),
@@ -346,7 +348,7 @@ export const appRouter = router({
     })).mutation(async ({ ctx, input }) => {
       await assertRepairOwner(input.repairId, ctx.user.id);
       return await db.createRepairQuote({
-        id: nanoid(), payments: [],
+        id: nanoid(),
         repairId: input.repairId,
         contractor: input.contractor,
         amount: input.amount ?? 0,
@@ -416,7 +418,8 @@ export const appRouter = router({
   }),
 
   upgradeOptions: router({
-    list: protectedProcedure.input(z.object({ upgradeId: z.string() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ upgradeId: z.string() })).query(async ({ ctx, input }) => {
+      await assertUpgradeOwner(input.upgradeId, ctx.user.id);
       return (await db.getUpgradeOptions(input.upgradeId)) ?? [];
     }),
     create: protectedProcedure.input(z.object({
@@ -428,7 +431,7 @@ export const appRouter = router({
     })).mutation(async ({ ctx, input }) => {
       await assertUpgradeOwner(input.upgradeId, ctx.user.id);
       return await db.createUpgradeOption({
-        id: nanoid(), payments: [],
+        id: nanoid(),
         upgradeId: input.upgradeId,
         title: input.title,
         estimatedCost: input.estimatedCost,
@@ -497,11 +500,13 @@ export const appRouter = router({
   }),
 
   upgradeItems: router({
-    list: protectedProcedure.input(z.object({ upgradeId: z.string() })).query(async ({ input }) => {
+    list: protectedProcedure.input(z.object({ upgradeId: z.string() })).query(async ({ ctx, input }) => {
+      await assertUpgradeOwner(input.upgradeId, ctx.user.id);
       return (await db.getUpgradeItems(input.upgradeId)) ?? [];
     }),
-    countByUpgrade: protectedProcedure.input(z.object({ upgradeIds: z.array(z.string()) })).query(async ({ input }) => {
-      return await db.getUpgradeItemCounts(input.upgradeIds);
+    countByUpgrade: protectedProcedure.input(z.object({ upgradeIds: z.array(z.string()) })).query(async ({ ctx, input }) => {
+      const owned = await db.filterOwnedUpgradeIds(input.upgradeIds, ctx.user.id);
+      return await db.getUpgradeItemCounts(owned);
     }),
     create: protectedProcedure.input(z.object({
       upgradeId: z.string(),
@@ -598,8 +603,9 @@ export const appRouter = router({
         const repayment = await db.createLoanRepayment({
           id: nanoid(), loanId: input.loanId, amount: input.amount, date: input.date,
         });
-        const totalRepaid = [...targetLoan.repayments, { amount: input.amount }]
-          .reduce((s, r) => s + r.amount, 0);
+        // Refetch from DB so concurrent inserts are reflected in the new balance.
+        const allRepayments = await db.getLoanRepayments(input.loanId);
+        const totalRepaid = allRepayments.reduce((s, r) => s + (r.amount ?? 0), 0);
         await db.updateLoan(input.loanId, ctx.user.id, {
           currentBalance: Math.max(0, targetLoan.originalAmount - totalRepaid),
         });

@@ -16,7 +16,10 @@ export function calcMonthlyStats(allExpenses: Expense[], monthStart: string, mon
     .filter(e => e.isRecurring && e.recurringInterval === "monthly")
     .reduce((s, e) => s + e.amount, 0);
   const monthCats: Record<string, number> = {};
-  for (const e of thisMonthExp) monthCats[e.category] = (monthCats[e.category] || 0) + e.amount;
+  for (const e of thisMonthExp) {
+    const cat = e.category ?? "Other";
+    monthCats[cat] = (monthCats[cat] || 0) + e.amount;
+  }
   return { monthSpent, monthlyRecurring, monthCats };
 }
 

@@ -222,7 +222,7 @@ async function main() {
       \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`quoteId\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`amount\` int NOT NULL,
-      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`receipt\` text COLLATE utf8mb4_unicode_ci,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -285,7 +285,7 @@ async function main() {
       \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`optionId\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`amount\` int NOT NULL,
-      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`receipt\` text COLLATE utf8mb4_unicode_ci,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -349,7 +349,7 @@ async function main() {
       \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`loanId\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`amount\` int NOT NULL,
-      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
@@ -648,6 +648,17 @@ async function main() {
   await run(`ALTER TABLE \`loans\` DROP COLUMN \`repayments\``, "loans DROP repayments");
   await run(`ALTER TABLE \`repairQuotes\` DROP COLUMN \`payments\``, "repairQuotes DROP payments");
   await run(`ALTER TABLE \`upgradeOptions\` DROP COLUMN \`payments\``, "upgradeOptions DROP payments");
+
+  // Schema-drift fix: payment-table `date` columns were created DEFAULT NULL in
+  // earlier addon versions, but drizzle/schema.ts declares them NOT NULL.
+  // Backfill any NULLs (best-effort; source JSON may have been incomplete) then
+  // tighten the constraint so existing installs match the schema contract.
+  await run(`UPDATE \`loanRepayments\` SET \`date\` = DATE_FORMAT(CURDATE(), '%Y-%m-%d') WHERE \`date\` IS NULL`, "loanRepayments backfill date");
+  await run(`UPDATE \`repairQuotePayments\` SET \`date\` = DATE_FORMAT(CURDATE(), '%Y-%m-%d') WHERE \`date\` IS NULL`, "repairQuotePayments backfill date");
+  await run(`UPDATE \`upgradeOptionPayments\` SET \`date\` = DATE_FORMAT(CURDATE(), '%Y-%m-%d') WHERE \`date\` IS NULL`, "upgradeOptionPayments backfill date");
+  await run(`ALTER TABLE \`loanRepayments\` MODIFY COLUMN \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL`, "loanRepayments.date NOT NULL");
+  await run(`ALTER TABLE \`repairQuotePayments\` MODIFY COLUMN \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL`, "repairQuotePayments.date NOT NULL");
+  await run(`ALTER TABLE \`upgradeOptionPayments\` MODIFY COLUMN \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL`, "upgradeOptionPayments.date NOT NULL");
 
   console.log("Unified HomeVault migration complete.");
   await conn.end();
