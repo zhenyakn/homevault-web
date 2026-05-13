@@ -1,6 +1,21 @@
 # Changelog
 
-## 0.2.6
+## 0.3.0
+- chore(deps): bump the production-dependencies group across 1 directory with 22 updates
+- chore(deps): bump the actions-all group with 6 updates
+- chore(deps): bump node in the docker-all group
+- chore(deps): bump node in /homevault-addon in the addon-docker-all group
+- chore(dependabot): quieter config — monthly, fully grouped, 1 PR/ecosystem (#47)
+- chore(deps): close remaining transitive vulnerability advisories (#44)
+- fix(ts): clear all 143 pre-existing TypeScript errors
+- fix(db): IDOR on child-entity list/count, addRepayment race, addon date drift
+- chore(deps): resolve dependabot vulnerabilities and consolidate lockfiles (#24)
+- fix(drive): trust proxy, production CSP, Drive heartbeat, i18n, pagination
+- feat(storage): lifecycle, file-browser, and per-property folders
+- fix(security): close 13 findings in the Google Drive integration
+- chore(security): add CSRF, AES-256-GCM secrets envelope, RFC 8187 helpers
+- feat(settings): inline Google Drive config with clear permission disclosure
+- feat(storage): add Google Drive backend with proxied downloads
 - chore: release v0.2.6 — repair seed scenarios + UI polish
 - feat(ui): redesign — green brand, grouped nav, desktop topbar, bento dashboard
 - fix(i18n): add missing locale keys and replace hardcoded strings in repair/upgrade detail pages
@@ -209,6 +224,23 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.2.6
+- chore(deps): bump the production-dependencies group across 1 directory with 22 updates
+- chore(deps): bump the actions-all group with 6 updates
+- chore(deps): bump node in the docker-all group
+- chore(deps): bump node in /homevault-addon in the addon-docker-all group
+- chore(dependabot): quieter config — monthly, fully grouped, 1 PR/ecosystem (#47)
+- chore(deps): close remaining transitive vulnerability advisories (#44)
+- fix(ts): clear all 143 pre-existing TypeScript errors
+- fix(db): IDOR on child-entity list/count, addRepayment race, addon date drift
+- chore(deps): resolve dependabot vulnerabilities and consolidate lockfiles (#24)
+- fix(drive): trust proxy, production CSP, Drive heartbeat, i18n, pagination
+- feat(storage): lifecycle, file-browser, and per-property folders
+- fix(security): close 13 findings in the Google Drive integration
+- chore(security): add CSRF, AES-256-GCM secrets envelope, RFC 8187 helpers
+- feat(settings): inline Google Drive config with clear permission disclosure
+- feat(storage): add Google Drive backend with proxied downloads
 
 ## 0.2.5
 - chore: release v0.2.6 — repair seed scenarios + UI polish
