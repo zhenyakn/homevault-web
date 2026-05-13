@@ -22,6 +22,16 @@ export async function getUpgradeById(id: string) {
   return result[0] ?? null;
 }
 
+export async function filterOwnedUpgradeIds(ids: string[], ownerId: number): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const db = await getDb();
+  const rows = await db
+    .select({ id: upgrades.id })
+    .from(upgrades)
+    .where(and(inArray(upgrades.id, ids), eq(upgrades.ownerId, ownerId)));
+  return rows.map(r => r.id);
+}
+
 export async function createUpgrade(data: typeof upgrades.$inferInsert) {
   const db = await getDb();
   await db.insert(upgrades).values({ ...data, attachments: (data.attachments ?? []) as any });

@@ -22,6 +22,16 @@ export async function getRepairById(id: string) {
   return result[0] ?? null;
 }
 
+export async function filterOwnedRepairIds(ids: string[], ownerId: number): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const db = await getDb();
+  const rows = await db
+    .select({ id: repairs.id })
+    .from(repairs)
+    .where(and(inArray(repairs.id, ids), eq(repairs.ownerId, ownerId)));
+  return rows.map(r => r.id);
+}
+
 export async function createRepair(data: typeof repairs.$inferInsert) {
   const db = await getDb();
   await db.insert(repairs).values({ ...data, attachments: (data.attachments ?? []) as any });
