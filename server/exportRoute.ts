@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { create as createArchiver } from "archiver";
+import { ZipArchive } from "archiver";
 import path from "node:path";
 import { Readable } from "stream";
 import { and, eq, isNull } from "drizzle-orm";
@@ -55,7 +55,7 @@ router.get("/api/export/files.zip", async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "private, no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
 
-  const zip = createArchiver("zip", { zlib: { level: 6 } });
+  const zip = new ZipArchive({ zlib: { level: 6 } });
   let aborted = false;
   zip.on("error", (err) => {
     logger.error({ err: err.message }, "[export] archiver error");
