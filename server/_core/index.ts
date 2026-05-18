@@ -185,7 +185,12 @@ async function startServer() {
               connectSrc: ["'self'", "https://maps.googleapis.com"],
               fontSrc: ["'self'", "data:"],
               frameSrc: ["'self'"],
-              frameAncestors: ["'none'"],
+              // Same-origin framing allowed so the addon renders inside the
+              // Home Assistant UI's <iframe src="…/api/hassio_ingress/…">.
+              // Both the HA UI and the ingress proxy are served from the same
+              // origin, so 'self' lets HA embed us while still blocking
+              // cross-origin clickjacking.
+              frameAncestors: ["'self'"],
               baseUri: ["'self'"],
               formAction: ["'self'"],
               objectSrc: ["'none'"],
