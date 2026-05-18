@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.6
+## 0.3.7
 - fix(ci): unbreak amd64 addon image publish
 - fix(ci): trigger build on release publish and correct tag pattern
 - Fix archiver ESM import for addon startup
@@ -228,6 +228,9 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.3.6
+- Internal improvements and dependency updates
 
 ## 0.2.6
 - fix(ci): unbreak amd64 addon image publish
