@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.3.8
+## 0.3.9
+- fix(addon): allow same-origin framing so HA ingress can embed the addon
 - fix(addon): use ZipArchive class for archiver@8 ESM API
 - fix(ci): unbreak amd64 addon image publish
 - fix(ci): trigger build on release publish and correct tag pattern
@@ -229,6 +230,9 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.3.8
+- fix(addon): allow same-origin framing so HA ingress can embed the addon
 
 ## 0.3.7
 - fix(addon): use ZipArchive class for archiver@8 ESM API
