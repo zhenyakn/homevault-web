@@ -633,9 +633,15 @@ function FileStorageGroup() {
   const loadStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await fetch("/api/google-drive/status");
+      const resp = await fetch("api/google-drive/status");
       if (resp.status === 401 || resp.status === 403) {
         setStatus(null);
+        setError(null);
+        return;
+      }
+      if (resp.status === 404) {
+        // Route unreachable (env vars not set or path issue) — show setup instructions.
+        setStatus({ configured: false, connected: false, needsReconnect: false, emailMasked: null });
         setError(null);
         return;
       }
@@ -680,7 +686,7 @@ function FileStorageGroup() {
     if (!confirm(t("settings.fileStorage.disconnectConfirm"))) return;
     setBusy(true);
     try {
-      const resp = await fetch("/api/google-drive/disconnect", {
+      const resp = await fetch("api/google-drive/disconnect", {
         method: "POST",
         // CSRF: server verifies this header matches the csrf_token cookie.
         headers: csrfHeaders(),
@@ -757,13 +763,13 @@ function FileStorageGroup() {
             </p>
             <ol className="text-xs text-amber-700 dark:text-amber-300 list-decimal ml-4 space-y-1">
               <li>{t("settings.fileStorage.howToStep1")}</li>
+              <li>{t("settings.fileStorage.howToStep2")}</li>
               <li>
-                {t("settings.fileStorage.howToStep2", { uri: "" })}{" "}
+                {t("settings.fileStorage.howToStep3")}{" "}
                 <code className="font-mono text-[11px] bg-amber-100 dark:bg-amber-900/60 px-1 rounded">
                   {window.location.origin}/api/google-drive/callback
                 </code>
               </li>
-              <li>{t("settings.fileStorage.howToStep3")}</li>
               <li>
                 {t("settings.fileStorage.howToStep4")}
                 <pre className="text-[11px] bg-amber-100 dark:bg-amber-900/60 rounded p-2 mt-1 overflow-x-auto font-mono">
@@ -792,7 +798,7 @@ GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
             <Button
               size="sm"
               className="h-7 text-xs"
-              onClick={() => { window.location.href = "/api/google-drive/connect"; }}
+              onClick={() => { window.location.href = new URL("api/google-drive/connect", window.location.href).href; }}
               disabled={busy}
             >
               {t("settings.fileStorage.reconnect")}
@@ -844,7 +850,7 @@ GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
               size="sm"
               className="h-7 text-xs"
               onClick={() => {
-                window.location.href = "/api/google-drive/connect";
+                window.location.href = new URL("api/google-drive/connect", window.location.href).href;
               }}
               disabled={busy}
             >
