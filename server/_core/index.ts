@@ -194,7 +194,16 @@ async function startServer() {
               baseUri: ["'self'"],
               formAction: ["'self'"],
               objectSrc: ["'none'"],
-              upgradeInsecureRequests: [],
+              // NOTE: `upgrade-insecure-requests` is intentionally NOT set.
+              // The HA addon is commonly proxied through Home Assistant on
+              // plain HTTP (e.g. http://homeassistant.local:8123). With the
+              // directive enabled the browser rewrites every subresource URL
+              // — including the addon's own bundled JS/CSS — to https://,
+              // which fails the TLS handshake on HTTP installs and leaves
+              // users with a white/black blank page. `'self'` on script/
+              // style/connect already prevents mixed-content downgrades from
+              // arbitrary origins; adding upgrade-insecure-requests on top
+              // breaks more than it protects.
             },
           }
         : false,
