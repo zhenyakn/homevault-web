@@ -11,6 +11,9 @@ import {
   disconnectGoogleDrive,
   getConnectionStatus,
   isGoogleEnvConfigured,
+  isGoogleConfigured,
+  saveGoogleCredentials,
+  getCredentialsStatus,
   validateDriveConnection,
 } from "./storage/gdrive";
 import { StorageNotConfiguredError, StorageOperationError } from "./storage/types";
@@ -153,14 +156,21 @@ router.get("/api/google-drive/status", async (req, res) => {
     // Errors are swallowed inside `validateDriveConnection` — we never want
     // the status endpoint itself to 500 on a Drive blip.
     await validateDriveConnection();
-    const status = await getConnectionStatus();
+    const [status, creds] = await Promise.all([
+      getConnectionStatus(),
+      getCredentialsStatus(),
+    ]);
     res.json({
-      configured: isGoogleEnvConfigured(),
+      configured: await isGoogleConfigured(),
       connected: status.connected,
       // True when a Drive call recently returned invalid_grant — the UI uses
       // this to show "Reconnect needed" prominently.
       needsReconnect: status.needsReconnect,
       emailMasked: maskEmail(status.email),
+      clientId: creds.clientId,
+      secretExists: creds.secretExists,
+      redirectUri: creds.redirectUri,
+      fromEnv: creds.fromEnv,
     });
   } catch (err) {
     logger.error({ err: (err as Error).message }, "[gdrive] status error");
@@ -177,7 +187,7 @@ router.get("/api/google-drive/connect", async (req, res) => {
     // we hash the returned state and compare in constant time.
     const state = crypto.randomBytes(32).toString("base64url");
     res.cookie(OAUTH_STATE_COOKIE, hashState(state), buildStateCookieOptions(req));
-    const url = buildConnectAuthUrl(state);
+    const url = await buildConnectAuthUrl(state);
     res.redirect(302, url);
   } catch (err) {
     if (err instanceof StorageNotConfiguredError) {
@@ -264,6 +274,40 @@ router.post(
     } catch (err) {
       logger.error({ err: (err as Error).message }, "[gdrive] disconnect error");
       res.status(500).json({ error: "Failed to disconnect" });
+    }
+  },
+);
+
+router.post(
+  "/api/google-drive/credentials",
+  csrfRequireMiddleware,
+  async (req, res) => {
+    const ctx = await requireRealAdmin(req, res);
+    if (!ctx) return;
+    const { clientId, clientSecret, redirectUri } = req.body as {
+      clientId?: string;
+      clientSecret?: string;
+      redirectUri?: string;
+    };
+    if (!clientId?.trim() || !redirectUri?.trim()) {
+      res.status(400).json({ error: "clientId and redirectUri are required" });
+      return;
+    }
+    const existing = await getCredentialsStatus();
+    if (!existing.secretExists && !clientSecret?.trim()) {
+      res.status(400).json({ error: "clientSecret is required for initial setup" });
+      return;
+    }
+    try {
+      await saveGoogleCredentials({
+        clientId: clientId.trim(),
+        clientSecret: clientSecret?.trim() || undefined,
+        redirectUri: redirectUri.trim(),
+      });
+      res.json({ ok: true });
+    } catch (err) {
+      logger.error({ err: (err as Error).message }, "[gdrive] save credentials error");
+      res.status(500).json({ error: "Failed to save credentials" });
     }
   },
 );
