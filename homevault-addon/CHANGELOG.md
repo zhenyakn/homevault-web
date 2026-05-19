@@ -1,6 +1,7 @@
 # Changelog
 
-## 0.4.0
+## 0.4.1
+- fix(addon): actually disable upgrade-insecure-requests (helmet defaults re-add it)
 - fix(addon): drop CSP upgrade-insecure-requests so HTTP-served HA works
 - fix(addon): allow same-origin framing so HA ingress can embed the addon
 - fix(addon): use ZipArchive class for archiver@8 ESM API
@@ -231,6 +232,9 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.4.0
+- fix(addon): actually disable upgrade-insecure-requests (helmet defaults re-add it)
 
 ## 0.3.9
 - fix(addon): drop CSP upgrade-insecure-requests so HTTP-served HA works
