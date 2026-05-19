@@ -94,7 +94,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main
-          git checkout -B main origin/main
+          # Force the checkout: the previous "Generate CHANGELOG.md" and
+          # "Update config.yaml version" steps modified these files in the
+          # working tree, and if another run (or merge) advanced origin/main
+          # in the meantime, plain `checkout -B` aborts with "Your local
+          # changes would be overwritten". The step regenerates both files
+          # below from scratch on the freshly-fetched main, so discarding
+          # the in-progress edits is correct.
+          git checkout -f -B main origin/main
           # Re-apply version bump on the clean main checkout
           sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
           # Re-generate changelog on the clean main checkout (same logic)
