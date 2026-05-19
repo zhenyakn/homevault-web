@@ -286,7 +286,26 @@
       "connectedHintNoEmail": "מחובר. העלאות חדשות מגיעות ל-Drive של החשבון המורשה.",
       "connected": "מחובר",
       "disconnect": "נתק",
-      "notConnectedHint": "לחץ 'חבר' כדי להיכנס ל-Google ולאשר ל-HomeVault לנהל תיקייה משלה ב-Drive שלך."
+      "notConnectedHint": "לחץ 'חבר' כדי להיכנס ל-Google ולאשר ל-HomeVault לנהל תיקייה משלה ב-Drive שלך.",
+      "creds": {
+        "label": "אישורי OAuth",
+        "setupHint": "הזן את אישורי OAuth 2.0 מ-Google כדי לאפשר העלאת קבצים.",
+        "fromEnv": "ממשתני סביבה",
+        "fromEnvHint": "האישורים מוגדרים דרך GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_OAUTH_REDIRECT_URI. ערוך את קובץ ה-.env כדי לשנות אותם.",
+        "clientId": "Client ID",
+        "clientSecret": "Client Secret",
+        "redirectUri": "כתובת הפניה מורשית",
+        "redirectUriHint": "חייבת להתאים בדיוק לכתובת הרשומה ב-Google Cloud Console. אם משתמשים ב-Home Assistant add-on, השתמש בכתובת השרת הישירה (לא בכתובת ingress).",
+        "secretPlaceholder": "השאר ריק לשמור על הסוד הקיים",
+        "secretSaved": "סוד כבר שמור. השאר ריק כדי לשמור אותו.",
+        "save": "שמור אישורים",
+        "saved": "האישורים נשמרו",
+        "edit": "ערוך",
+        "cancel": "ביטול",
+        "clientIdRequired": "Client ID נדרש",
+        "redirectUriRequired": "כתובת ההפניה נדרשת",
+        "secretRequired": "Client Secret נדרש להגדרה ראשונית"
+      }
     },
     "storedFiles": {
       "groupLabel": "קבצים שמורים",

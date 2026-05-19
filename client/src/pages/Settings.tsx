@@ -42,7 +42,7 @@ import {
 import {
   Loader2, Check, ChevronsUpDown, AlertTriangle,
   Download, Sun, Moon, Monitor, ChevronRight, Trash2, RefreshCw,
-  Cloud, CheckCircle2, ShieldCheck, ExternalLink,
+  Cloud, CheckCircle2, ShieldCheck, ExternalLink, Eye, EyeOff,
 } from "lucide-react";
 import { csrfHeaders } from "@/lib/csrf";
 
@@ -619,6 +619,10 @@ type GDriveStatus = {
   // shown only in the one-shot "Connected as foo@gmail.com" toast immediately
   // after the OAuth callback.
   emailMasked: string | null;
+  clientId: string | null;
+  secretExists: boolean;
+  redirectUri: string | null;
+  fromEnv: boolean;
 };
 
 function FileStorageGroup() {
@@ -629,6 +633,10 @@ function FileStorageGroup() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [credForm, setCredForm] = useState({ clientId: "", secret: "", redirectUri: "" });
+  const [showSecret, setShowSecret] = useState(false);
+  const [editingCreds, setEditingCreds] = useState(false);
+  const [savingCreds, setSavingCreds] = useState(false);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -682,6 +690,23 @@ function FileStorageGroup() {
     }
   }, [isAdmin, loadStatus]);
 
+  useEffect(() => {
+    if (!status) return;
+    setCredForm(f => ({
+      clientId: status.clientId ?? f.clientId,
+      secret: "",
+      redirectUri: status.redirectUri ?? f.redirectUri,
+    }));
+    if (!status.configured) setEditingCreds(true);
+  }, [status]);
+
+  useEffect(() => {
+    setCredForm(f => ({
+      ...f,
+      redirectUri: f.redirectUri || `${window.location.origin}/api/google-drive/callback`,
+    }));
+  }, []);
+
   async function handleDisconnect() {
     if (!confirm(t("settings.fileStorage.disconnectConfirm"))) return;
     setBusy(true);
@@ -699,6 +724,46 @@ function FileStorageGroup() {
       toast.error((err as Error).message || t("settings.fileStorage.disconnectFailed"));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleSaveCredentials() {
+    if (!credForm.clientId.trim()) {
+      toast.error(t("settings.fileStorage.creds.clientIdRequired"));
+      return;
+    }
+    if (!credForm.redirectUri.trim()) {
+      toast.error(t("settings.fileStorage.creds.redirectUriRequired"));
+      return;
+    }
+    if (!status?.secretExists && !credForm.secret.trim()) {
+      toast.error(t("settings.fileStorage.creds.secretRequired"));
+      return;
+    }
+    setSavingCreds(true);
+    try {
+      const resp = await fetch("api/google-drive/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...csrfHeaders() },
+        credentials: "include",
+        body: JSON.stringify({
+          clientId: credForm.clientId.trim(),
+          clientSecret: credForm.secret.trim() || undefined,
+          redirectUri: credForm.redirectUri.trim(),
+        }),
+      });
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? `Save failed (${resp.status})`);
+      }
+      toast.success(t("settings.fileStorage.creds.saved"));
+      setEditingCreds(false);
+      setCredForm(f => ({ ...f, secret: "" }));
+      await loadStatus();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSavingCreds(false);
     }
   }
 
@@ -739,7 +804,135 @@ function FileStorageGroup() {
         </div>
       </div>
 
-      {/* Status + actions */}
+      {/* ── Credentials (admin only) ────────────────────────────────────── */}
+      {isAdmin && !loading && !error && (
+        <>
+          {/* fromEnv: credentials come from env vars — show read-only notice */}
+          {status?.fromEnv ? (
+            <FullRow
+              label={t("settings.fileStorage.creds.label")}
+              hint={t("settings.fileStorage.creds.fromEnvHint")}
+            >
+              <p className="text-xs text-muted-foreground italic">
+                {t("settings.fileStorage.creds.fromEnv")}
+              </p>
+            </FullRow>
+          ) : editingCreds || !status?.configured ? (
+            /* Editable credentials form */
+            <FullRow
+              label={t("settings.fileStorage.creds.label")}
+              hint={t("settings.fileStorage.creds.setupHint")}
+            >
+              <div className="space-y-3">
+                {/* Client ID */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t("settings.fileStorage.creds.clientId")}
+                  </label>
+                  <Input
+                    value={credForm.clientId}
+                    onChange={e => setCredForm(f => ({ ...f, clientId: e.target.value }))}
+                    placeholder="123456789-xxxx.apps.googleusercontent.com"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                {/* Client Secret */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t("settings.fileStorage.creds.clientSecret")}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showSecret ? "text" : "password"}
+                      value={credForm.secret}
+                      onChange={e => setCredForm(f => ({ ...f, secret: e.target.value }))}
+                      placeholder={status?.secretExists ? t("settings.fileStorage.creds.secretPlaceholder") : ""}
+                      className="h-8 text-xs font-mono pr-8"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecret(s => !s)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showSecret ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                  {status?.secretExists && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("settings.fileStorage.creds.secretSaved")}
+                    </p>
+                  )}
+                </div>
+                {/* Redirect URI */}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t("settings.fileStorage.creds.redirectUri")}
+                  </label>
+                  <Input
+                    value={credForm.redirectUri}
+                    onChange={e => setCredForm(f => ({ ...f, redirectUri: e.target.value }))}
+                    placeholder="https://your-server/api/google-drive/callback"
+                    className="h-8 text-xs font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("settings.fileStorage.creds.redirectUriHint")}
+                  </p>
+                </div>
+                {/* Actions */}
+                <div className="flex items-center justify-between pt-1">
+                  <a
+                    href="https://console.cloud.google.com/apis/credentials"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-muted-foreground underline hover:text-foreground inline-flex items-center gap-1"
+                  >
+                    Google Cloud Console <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <div className="flex items-center gap-2">
+                    {status?.configured && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => { setEditingCreds(false); setCredForm(f => ({ ...f, secret: "" })); }}
+                        disabled={savingCreds}
+                      >
+                        {t("settings.fileStorage.creds.cancel")}
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => void handleSaveCredentials()}
+                      disabled={savingCreds}
+                    >
+                      {savingCreds && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                      {t("settings.fileStorage.creds.save")}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </FullRow>
+          ) : (
+            /* Credentials summary (configured, not currently editing) */
+            <Row
+              label={t("settings.fileStorage.creds.label")}
+              hint={status.clientId ? status.clientId : undefined}
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setEditingCreds(true)}
+              >
+                {t("settings.fileStorage.creds.edit")}
+              </Button>
+            </Row>
+          )}
+        </>
+      )}
+
+      {/* ── Loading / auth gate / error ─────────────────────────────────── */}
       {loading ? (
         <div className="px-4 py-3 flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" /> {t("settings.fileStorage.loadingStatus")}
@@ -752,112 +945,90 @@ function FileStorageGroup() {
         <div className="px-4 py-3 text-xs text-destructive flex items-center gap-2">
           <AlertTriangle className="h-3.5 w-3.5" /> {error}
         </div>
-      ) : status && !status.configured ? (
-        <FullRow
-          label={t("settings.fileStorage.notConfiguredLabel")}
-          hint={t("settings.fileStorage.notConfiguredHint")}
-        >
-          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-md p-3 space-y-2">
-            <p className="text-xs text-amber-800 dark:text-amber-200 font-medium">
-              {t("settings.fileStorage.howTo")}
-            </p>
-            <ol className="text-xs text-amber-700 dark:text-amber-300 list-decimal ml-4 space-y-1">
-              <li>{t("settings.fileStorage.howToStep1")}</li>
-              <li>{t("settings.fileStorage.howToStep2")}</li>
-              <li>
-                {t("settings.fileStorage.howToStep3")}{" "}
-                <code className="font-mono text-[11px] bg-amber-100 dark:bg-amber-900/60 px-1 rounded">
-                  {window.location.origin}/api/google-drive/callback
-                </code>
-              </li>
-              <li>
-                {t("settings.fileStorage.howToStep4")}
-                <pre className="text-[11px] bg-amber-100 dark:bg-amber-900/60 rounded p-2 mt-1 overflow-x-auto font-mono">
-{`GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_OAUTH_REDIRECT_URI=${window.location.origin}/api/google-drive/callback`}
-                </pre>
-              </li>
-            </ol>
-          </div>
-        </FullRow>
-      ) : status && status.connected && status.needsReconnect ? (
-        <FullRow
-          label={t("settings.fileStorage.reconnectNeeded")}
-          hint={
-            status.emailMasked
-              ? t("settings.fileStorage.reconnectHintWithEmail", { email: status.emailMasked })
-              : t("settings.fileStorage.reconnectHintNoEmail")
-          }
-        >
-          <div className="flex items-center gap-3 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 rounded-md p-3">
-            <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300 shrink-0" />
-            <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
-              {t("settings.fileStorage.reconnectBannerBody")}
-            </span>
-            <Button
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => { window.location.href = new URL("api/google-drive/connect", window.location.href).href; }}
-              disabled={busy}
+      ) : null}
+
+      {/* ── Connection status (only when credentials are configured) ────── */}
+      {!loading && isAdmin && !error && status?.configured && (
+        <>
+          {status.connected && status.needsReconnect ? (
+            <FullRow
+              label={t("settings.fileStorage.reconnectNeeded")}
+              hint={
+                status.emailMasked
+                  ? t("settings.fileStorage.reconnectHintWithEmail", { email: status.emailMasked })
+                  : t("settings.fileStorage.reconnectHintNoEmail")
+              }
             >
-              {t("settings.fileStorage.reconnect")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={handleDisconnect}
-              disabled={busy}
+              <div className="flex items-center gap-3 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 rounded-md p-3">
+                <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300 shrink-0" />
+                <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
+                  {t("settings.fileStorage.reconnectBannerBody")}
+                </span>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => { window.location.href = new URL("api/google-drive/connect", window.location.href).href; }}
+                  disabled={busy}
+                >
+                  {t("settings.fileStorage.reconnect")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleDisconnect}
+                  disabled={busy}
+                >
+                  {t("settings.fileStorage.disconnect")}
+                </Button>
+              </div>
+            </FullRow>
+          ) : status.connected ? (
+            <Row
+              label={t("settings.fileStorage.statusLabel")}
+              hint={
+                status.emailMasked
+                  ? t("settings.fileStorage.connectedHintWithEmail", { email: status.emailMasked })
+                  : t("settings.fileStorage.connectedHintNoEmail")
+              }
             >
-              {t("settings.fileStorage.disconnect")}
-            </Button>
-          </div>
-        </FullRow>
-      ) : status && status.connected ? (
-        <Row
-          label={t("settings.fileStorage.statusLabel")}
-          hint={
-            status.emailMasked
-              ? t("settings.fileStorage.connectedHintWithEmail", { email: status.emailMasked })
-              : t("settings.fileStorage.connectedHintNoEmail")
-          }
-        >
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-3.5 w-3.5" /> {t("settings.fileStorage.connected")}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={handleDisconnect}
-              disabled={busy}
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> {t("settings.fileStorage.connected")}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={handleDisconnect}
+                  disabled={busy}
+                >
+                  {busy && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                  {t("settings.fileStorage.disconnect")}
+                </Button>
+              </div>
+            </Row>
+          ) : (
+            <Row
+              label={t("settings.fileStorage.statusLabel")}
+              hint={t("settings.fileStorage.notConnectedHint")}
             >
-              {busy && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
-              {t("settings.fileStorage.disconnect")}
-            </Button>
-          </div>
-        </Row>
-      ) : (
-        <Row
-          label={t("settings.fileStorage.statusLabel")}
-          hint={t("settings.fileStorage.notConnectedHint")}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{t("settings.notConnected")}</span>
-            <Button
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => {
-                window.location.href = new URL("api/google-drive/connect", window.location.href).href;
-              }}
-              disabled={busy}
-            >
-              {t("settings.connect")}
-            </Button>
-          </div>
-        </Row>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground">{t("settings.notConnected")}</span>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => {
+                    window.location.href = new URL("api/google-drive/connect", window.location.href).href;
+                  }}
+                  disabled={busy}
+                >
+                  {t("settings.connect")}
+                </Button>
+              </div>
+            </Row>
+          )}
+        </>
       )}
     </Group>
   );

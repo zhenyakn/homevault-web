@@ -80,6 +80,9 @@ export const GDRIVE_KEYS = {
   // a successful re-connect. Lets the status endpoint + Settings UI show
   // "Reconnect needed" instead of silently failing every upload.
   tokenBroken: "gdrive.tokenBroken",
+  clientId: "gdrive.clientId",
+  clientSecret: "gdrive.clientSecret",
+  redirectUri: "gdrive.redirectUri",
 } as const;
 
 export const GDRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
@@ -88,27 +91,50 @@ const USER_FOLDERS_PARENT_NAME = "uploads";
 
 // ─── Env / OAuth client ──────────────────────────────────────────────────────
 
-function readEnv() {
+async function readCredentials(): Promise<{
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  fromEnv: boolean;
+}> {
+  const envId = process.env.GOOGLE_CLIENT_ID || "";
+  const envSecret = process.env.GOOGLE_CLIENT_SECRET || "";
+  const envRedirect = process.env.GOOGLE_OAUTH_REDIRECT_URI || "";
+  if (envId && envSecret && envRedirect) {
+    return { clientId: envId, clientSecret: envSecret, redirectUri: envRedirect, fromEnv: true };
+  }
+  const [clientId, clientSecret, redirectUri] = await Promise.all([
+    getEncryptedSetting(GDRIVE_KEYS.clientId),
+    getEncryptedSetting(GDRIVE_KEYS.clientSecret),
+    getEncryptedSetting(GDRIVE_KEYS.redirectUri),
+  ]);
   return {
-    clientId: process.env.GOOGLE_CLIENT_ID || "",
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    redirectUri: process.env.GOOGLE_OAUTH_REDIRECT_URI || "",
+    clientId: clientId ?? "",
+    clientSecret: clientSecret ?? "",
+    redirectUri: redirectUri ?? "",
+    fromEnv: false,
   };
 }
 
 export function isGoogleEnvConfigured(): boolean {
-  const { clientId, clientSecret, redirectUri } = readEnv();
+  const clientId = process.env.GOOGLE_CLIENT_ID || "";
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
+  const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || "";
   return !!(clientId && clientSecret && redirectUri);
+}
+
+export async function isGoogleConfigured(): Promise<boolean> {
+  const creds = await readCredentials();
+  return !!(creds.clientId && creds.clientSecret && creds.redirectUri);
 }
 
 /** Build an OAuth2 client — no refresh token attached yet. Used during the
  * one-time connect flow (auth-URL generation + code exchange). */
-export function buildOAuthClient(): OAuth2Client {
-  const { clientId, clientSecret, redirectUri } = readEnv();
+async function buildOAuthClientAsync(): Promise<OAuth2Client> {
+  const { clientId, clientSecret, redirectUri } = await readCredentials();
   if (!clientId || !clientSecret || !redirectUri) {
     throw new StorageNotConfiguredError(
-      "Google Drive OAuth is not configured. Set GOOGLE_CLIENT_ID, " +
-      "GOOGLE_CLIENT_SECRET and GOOGLE_OAUTH_REDIRECT_URI in your .env file.",
+      "Google Drive OAuth is not configured. Open Settings → Integrations to set up your Google OAuth credentials.",
     );
   }
   return new google.auth.OAuth2({ clientId, clientSecret, redirectUri });
@@ -118,7 +144,7 @@ export function buildOAuthClient(): OAuth2Client {
  * Throws StorageNotConfiguredError if the owner has not yet completed the
  * connect flow in Settings → Integrations. */
 async function getAuthedClient(): Promise<OAuth2Client> {
-  const client = buildOAuthClient();
+  const client = await buildOAuthClientAsync();
   const refreshToken = await getEncryptedSetting(GDRIVE_KEYS.refreshToken);
   if (!refreshToken) {
     throw new StorageNotConfiguredError(
@@ -415,8 +441,8 @@ export const gdriveBackend: StorageBackend = {
 
 // ─── OAuth helpers used by the connect/callback route ────────────────────────
 
-export function buildConnectAuthUrl(state?: string): string {
-  const client = buildOAuthClient();
+export async function buildConnectAuthUrl(state?: string): Promise<string> {
+  const client = await buildOAuthClientAsync();
   return client.generateAuthUrl({
     access_type: "offline",
     // Force consent so Google returns a NEW refresh_token even if the user has
@@ -429,7 +455,7 @@ export function buildConnectAuthUrl(state?: string): string {
 }
 
 export async function completeConnect(code: string): Promise<{ email: string | null }> {
-  const client = buildOAuthClient();
+  const client = await buildOAuthClientAsync();
   const { tokens } = await client.getToken(code);
   if (!tokens.refresh_token) {
     throw new StorageOperationError(
@@ -485,6 +511,36 @@ export async function getConnectionStatus(): Promise<{
     connected: !!token,
     email,
     needsReconnect: !!token && broken === "1",
+  };
+}
+
+export async function saveGoogleCredentials(opts: {
+  clientId: string;
+  clientSecret?: string;
+  redirectUri: string;
+}): Promise<void> {
+  const writes: Promise<void>[] = [
+    setEncryptedSetting(GDRIVE_KEYS.clientId, opts.clientId),
+    setEncryptedSetting(GDRIVE_KEYS.redirectUri, opts.redirectUri),
+  ];
+  if (opts.clientSecret) {
+    writes.push(setEncryptedSetting(GDRIVE_KEYS.clientSecret, opts.clientSecret));
+  }
+  await Promise.all(writes);
+}
+
+export async function getCredentialsStatus(): Promise<{
+  clientId: string | null;
+  secretExists: boolean;
+  redirectUri: string | null;
+  fromEnv: boolean;
+}> {
+  const creds = await readCredentials();
+  return {
+    clientId: creds.clientId || null,
+    secretExists: !!creds.clientSecret,
+    redirectUri: creds.redirectUri || null,
+    fromEnv: creds.fromEnv,
   };
 }
 

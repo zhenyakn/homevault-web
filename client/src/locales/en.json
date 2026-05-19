@@ -295,7 +295,26 @@
       "connectedHintNoEmail": "Connected. New uploads go to the authorised account's Drive.",
       "connected": "Connected",
       "disconnect": "Disconnect",
-      "notConnectedHint": "Click Connect to sign in to Google and authorise HomeVault to manage its own folder in your Drive."
+      "notConnectedHint": "Click Connect to sign in to Google and authorise HomeVault to manage its own folder in your Drive.",
+      "creds": {
+        "label": "OAuth credentials",
+        "setupHint": "Enter your Google OAuth 2.0 client credentials to enable file uploads.",
+        "fromEnv": "From environment variables",
+        "fromEnvHint": "Credentials are set via GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_OAUTH_REDIRECT_URI. Edit your .env file to change them.",
+        "clientId": "Client ID",
+        "clientSecret": "Client Secret",
+        "redirectUri": "Authorized redirect URI",
+        "redirectUriHint": "Must exactly match an Authorized redirect URI in your Google Cloud Console. If using a Home Assistant add-on, use the direct server URL (not the ingress URL).",
+        "secretPlaceholder": "Leave blank to keep the saved secret",
+        "secretSaved": "A secret is already saved. Leave blank to keep it.",
+        "save": "Save credentials",
+        "saved": "Credentials saved",
+        "edit": "Edit",
+        "cancel": "Cancel",
+        "clientIdRequired": "Client ID is required",
+        "redirectUriRequired": "Redirect URI is required",
+        "secretRequired": "Client Secret is required for initial setup"
+      }
     },
     "storedFiles": {
       "groupLabel": "Stored files",
