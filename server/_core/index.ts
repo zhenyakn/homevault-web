@@ -194,16 +194,26 @@ async function startServer() {
               baseUri: ["'self'"],
               formAction: ["'self'"],
               objectSrc: ["'none'"],
-              // NOTE: `upgrade-insecure-requests` is intentionally NOT set.
+              // Explicitly disable `upgrade-insecure-requests`.
+              //
               // The HA addon is commonly proxied through Home Assistant on
               // plain HTTP (e.g. http://homeassistant.local:8123). With the
               // directive enabled the browser rewrites every subresource URL
               // — including the addon's own bundled JS/CSS — to https://,
               // which fails the TLS handshake on HTTP installs and leaves
-              // users with a white/black blank page. `'self'` on script/
-              // style/connect already prevents mixed-content downgrades from
-              // arbitrary origins; adding upgrade-insecure-requests on top
-              // breaks more than it protects.
+              // users with a white/black blank page.
+              //
+              // `useDefaults: true` (above) MERGES our directives with
+              // helmet's defaults, and helmet's default CSP includes
+              // `upgrade-insecure-requests`. Simply omitting the key here
+              // leaves the default in place — to actually drop a default
+              // directive we have to set it to `null` per helmet's docs.
+              //
+              // `'self'` on script/style/connect already prevents mixed-
+              // content downgrades from arbitrary origins; adding upgrade-
+              // insecure-requests on top breaks more than it protects when
+              // the operator's HA is HTTP-only.
+              upgradeInsecureRequests: null,
             },
           }
         : false,
