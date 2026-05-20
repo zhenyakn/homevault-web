@@ -295,7 +295,7 @@
         "clientId": "Client ID",
         "clientSecret": "Client Secret",
         "redirectUri": "כתובת הפניה מורשית",
-        "redirectUriHint": "חייבת להתאים בדיוק לכתובת הרשומה ב-Google Cloud Console. אם משתמשים ב-Home Assistant add-on, השתמש בכתובת השרת הישירה (לא בכתובת ingress).",
+        "redirectUriHint": "חייבת להתאים בדיוק לכתובת הרשומה ב-Google Cloud Console (OAuth 2.0 Client ID → Web application). Google מאפשר רק localhost להתקנות מקומיות — לא כתובות LAN כמו 192.168.x.x.",
         "secretPlaceholder": "השאר ריק לשמור על הסוד הקיים",
         "secretSaved": "סוד כבר שמור. השאר ריק כדי לשמור אותו.",
         "save": "שמור אישורים",

@@ -607,6 +607,26 @@ function IntegrationsSection({ p }: { p: any }) {
 
 // ─── File Storage (Google Drive) ─────────────────────────────────────────────
 
+/**
+ * Google only allows `localhost` / `127.0.0.1` as redirect URIs for local
+ * development — not arbitrary LAN IPs (192.168.x, 10.x, etc.). When the app
+ * is accessed via a private IP we rewrite the origin to localhost so the
+ * pre-filled redirect URI is one Google will actually accept.
+ */
+function defaultRedirectUri(): string {
+  const { hostname, port } = window.location;
+  const isPrivateIp =
+    hostname !== "localhost" &&
+    hostname !== "127.0.0.1" &&
+    (/^10\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname));
+  const base = isPrivateIp
+    ? `http://localhost${port ? `:${port}` : ""}`
+    : window.location.origin;
+  return `${base}/api/google-drive/callback`;
+}
+
 type GDriveStatus = {
   configured: boolean;
   connected: boolean;
@@ -703,7 +723,7 @@ function FileStorageGroup() {
   useEffect(() => {
     setCredForm(f => ({
       ...f,
-      redirectUri: f.redirectUri || `${window.location.origin}/api/google-drive/callback`,
+      redirectUri: f.redirectUri || defaultRedirectUri(),
     }));
   }, []);
 
