@@ -296,6 +296,19 @@
       "connected": "Connected",
       "disconnect": "Disconnect",
       "notConnectedHint": "Click Connect to sign in to Google and authorise HomeVault to manage its own folder in your Drive.",
+      "manualToken": {
+        "toggle": "Having trouble with the OAuth flow? Use a refresh token instead.",
+        "label": "Connect with a refresh token",
+        "hint": "Use Google's OAuth Playground to generate a refresh token and paste it here — no consent screen setup needed.",
+        "step1": "Go to developers.google.com/oauthplayground and click the ⚙ gear icon.",
+        "step2": "Check \"Use your own OAuth credentials\" and enter your Client ID and Secret.",
+        "step3": "In the scope box type https://www.googleapis.com/auth/drive.file, click \"Authorize APIs\" and sign in with your Google account.",
+        "step4": "Click \"Exchange authorization code for tokens\" and copy the refresh_token value.",
+        "placeholder": "Paste refresh_token here",
+        "save": "Connect",
+        "success": "Google Drive connected",
+        "required": "Paste the refresh token first"
+      }
       "creds": {
         "label": "OAuth credentials",
         "setupHint": "Enter your Google OAuth 2.0 client credentials to enable file uploads.",

@@ -14,6 +14,7 @@ import {
   isGoogleConfigured,
   saveGoogleCredentials,
   getCredentialsStatus,
+  connectWithRefreshToken,
   validateDriveConnection,
 } from "./storage/gdrive";
 import { StorageNotConfiguredError, StorageOperationError } from "./storage/types";
@@ -274,6 +275,27 @@ router.post(
     } catch (err) {
       logger.error({ err: (err as Error).message }, "[gdrive] disconnect error");
       res.status(500).json({ error: "Failed to disconnect" });
+    }
+  },
+);
+
+router.post(
+  "/api/google-drive/manual-token",
+  csrfRequireMiddleware,
+  async (req, res) => {
+    const ctx = await requireRealAdmin(req, res);
+    if (!ctx) return;
+    const { refreshToken } = req.body as { refreshToken?: string };
+    if (!refreshToken?.trim()) {
+      res.status(400).json({ error: "refreshToken is required" });
+      return;
+    }
+    try {
+      const { email } = await connectWithRefreshToken(refreshToken.trim());
+      res.json({ ok: true, email });
+    } catch (err) {
+      logger.error({ err: (err as Error).message }, "[gdrive] manual token error");
+      res.status(400).json({ error: (err as Error).message || "Invalid refresh token" });
     }
   },
 );

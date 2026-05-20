@@ -657,6 +657,9 @@ function FileStorageGroup() {
   const [showSecret, setShowSecret] = useState(false);
   const [editingCreds, setEditingCreds] = useState(false);
   const [savingCreds, setSavingCreds] = useState(false);
+  const [showManualToken, setShowManualToken] = useState(false);
+  const [manualToken, setManualToken] = useState("");
+  const [savingToken, setSavingToken] = useState(false);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -784,6 +787,32 @@ function FileStorageGroup() {
       toast.error((err as Error).message);
     } finally {
       setSavingCreds(false);
+    }
+  }
+
+  async function handleManualToken() {
+    if (!manualToken.trim()) {
+      toast.error(t("settings.fileStorage.manualToken.required"));
+      return;
+    }
+    setSavingToken(true);
+    try {
+      const resp = await fetch("api/google-drive/manual-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...csrfHeaders() },
+        credentials: "include",
+        body: JSON.stringify({ refreshToken: manualToken.trim() }),
+      });
+      const data = await resp.json().catch(() => ({})) as { ok?: boolean; email?: string; error?: string };
+      if (!resp.ok) throw new Error(data.error ?? `Failed (${resp.status})`);
+      toast.success(data.email ? `Connected as ${data.email}` : t("settings.fileStorage.manualToken.success"));
+      setManualToken("");
+      setShowManualToken(false);
+      await loadStatus();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSavingToken(false);
     }
   }
 
@@ -1029,24 +1058,89 @@ function FileStorageGroup() {
               </div>
             </Row>
           ) : (
-            <Row
-              label={t("settings.fileStorage.statusLabel")}
-              hint={t("settings.fileStorage.notConnectedHint")}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground">{t("settings.notConnected")}</span>
-                <Button
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    window.location.href = new URL("api/google-drive/connect", window.location.href).href;
-                  }}
-                  disabled={busy}
+            <>
+              <Row
+                label={t("settings.fileStorage.statusLabel")}
+                hint={t("settings.fileStorage.notConnectedHint")}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">{t("settings.notConnected")}</span>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      window.location.href = new URL("api/google-drive/connect", window.location.href).href;
+                    }}
+                    disabled={busy}
+                  >
+                    {t("settings.connect")}
+                  </Button>
+                </div>
+              </Row>
+              {/* Manual token fallback */}
+              {!showManualToken ? (
+                <div className="px-4 py-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualToken(true)}
+                    className="text-xs text-muted-foreground underline hover:text-foreground"
+                  >
+                    {t("settings.fileStorage.manualToken.toggle")}
+                  </button>
+                </div>
+              ) : (
+                <FullRow
+                  label={t("settings.fileStorage.manualToken.label")}
+                  hint={t("settings.fileStorage.manualToken.hint")}
                 >
-                  {t("settings.connect")}
-                </Button>
-              </div>
-            </Row>
+                  <div className="space-y-2">
+                    <ol className="text-xs text-muted-foreground list-decimal ml-4 space-y-1">
+                      <li>{t("settings.fileStorage.manualToken.step1")}</li>
+                      <li>{t("settings.fileStorage.manualToken.step2")}</li>
+                      <li>{t("settings.fileStorage.manualToken.step3")}</li>
+                      <li>{t("settings.fileStorage.manualToken.step4")}</li>
+                    </ol>
+                    <div className="flex items-center gap-2 pt-1">
+                      <a
+                        href="https://developers.google.com/oauthplayground"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-muted-foreground underline hover:text-foreground inline-flex items-center gap-1 shrink-0"
+                      >
+                        OAuth Playground <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <input
+                      type="password"
+                      value={manualToken}
+                      onChange={e => setManualToken(e.target.value)}
+                      placeholder={t("settings.fileStorage.manualToken.placeholder")}
+                      className="w-full h-8 text-xs font-mono px-3 rounded-md border border-input bg-background"
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => { setShowManualToken(false); setManualToken(""); }}
+                        disabled={savingToken}
+                      >
+                        {t("settings.fileStorage.creds.cancel")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => void handleManualToken()}
+                        disabled={savingToken}
+                      >
+                        {savingToken && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                        {t("settings.fileStorage.manualToken.save")}
+                      </Button>
+                    </div>
+                  </div>
+                </FullRow>
+              )}
+            </>
           )}
         </>
       )}

@@ -482,6 +482,36 @@ export async function completeConnect(code: string): Promise<{ email: string | n
   return { email };
 }
 
+/** Save a refresh token obtained outside the built-in OAuth flow (e.g. from
+ *  Google's OAuth Playground). Validates the token against Drive before saving. */
+export async function connectWithRefreshToken(refreshToken: string): Promise<{ email: string | null }> {
+  const client = await buildOAuthClientAsync();
+  client.setCredentials({ refresh_token: refreshToken });
+  // Validate before saving — a bad token should surface as a clear error, not
+  // a silent "connected" state that fails on the first upload.
+  try {
+    const drive = getDrive(client);
+    await drive.about.get({ fields: "user" });
+  } catch (err) {
+    throw new StorageOperationError(
+      "gdrive",
+      "Refresh token rejected by Google. Make sure you authorised the drive.file scope and are using the correct OAuth client credentials.",
+    );
+  }
+  await setEncryptedSetting(GDRIVE_KEYS.refreshToken, refreshToken);
+  await deleteSetting(GDRIVE_KEYS.tokenBroken);
+  let email: string | null = null;
+  try {
+    const oauth2 = google.oauth2({ version: "v2", auth: client });
+    const me = await oauth2.userinfo.get();
+    email = me.data.email ?? null;
+    if (email) await setEncryptedSetting(GDRIVE_KEYS.connectedEmail, email);
+  } catch (err) {
+    logger.warn({ err }, "[gdrive] could not fetch user email after manual token connect");
+  }
+  return { email };
+}
+
 export async function disconnectGoogleDrive(): Promise<void> {
   await Promise.all([
     deleteSetting(GDRIVE_KEYS.refreshToken),
