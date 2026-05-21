@@ -5,15 +5,34 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
 
-const CATEGORIES = ["Lawyer", "Tax", "Moving", "Inspection", "Registration", "Other"];
+const CATEGORIES = [
+  "Lawyer",
+  "Tax",
+  "Moving",
+  "Inspection",
+  "Registration",
+  "Other",
+];
 
 export default function PurchaseCosts() {
   const { t } = useTranslation();
@@ -38,7 +57,7 @@ export default function PurchaseCosts() {
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`${t("purchaseCosts.failedAdd")}: ${error.message}`);
     },
   });
@@ -50,7 +69,7 @@ export default function PurchaseCosts() {
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`${t("purchaseCosts.failedUpdate")}: ${error.message}`);
     },
   });
@@ -60,7 +79,7 @@ export default function PurchaseCosts() {
       toast.success(t("purchaseCosts.deleted"));
       utils.purchaseCosts.list.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`${t("purchaseCosts.failedDeleteMsg")}: ${error.message}`);
     },
   });
@@ -86,7 +105,14 @@ export default function PurchaseCosts() {
       notes: cost.notes || "",
     });
     setEditingId(cost.id);
-    setAttachments((cost.attachments || []).map((url: string) => ({ url, filename: url.split('/').pop() || 'file', mimeType: 'application/octet-stream', size: 0 })));
+    setAttachments(
+      (cost.attachments || []).map((url: string) => ({
+        url,
+        filename: url.split("/").pop() || "file",
+        mimeType: "application/octet-stream",
+        size: 0,
+      }))
+    );
     setIsDialogOpen(true);
   };
 
@@ -120,15 +146,27 @@ export default function PurchaseCosts() {
   };
 
   const handleExportCSV = () => {
-    if (!costs || costs.length === 0) { toast.error(t("purchaseCosts.nothingToExport")); return; }
+    if (!costs || costs.length === 0) {
+      toast.error(t("purchaseCosts.nothingToExport"));
+      return;
+    }
     const headers = ["Label", "Amount", "Date", "Category", "Notes"];
     const rows = costs.map((c: any) => [
-      c.name, (c.amount / 100).toFixed(2), c.date, c.category || "", c.notes || "",
+      c.name,
+      (c.amount / 100).toFixed(2),
+      c.date,
+      c.category || "",
+      c.notes || "",
     ]);
-    const csv = [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = [headers, ...rows]
+      .map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `purchase_costs_${new Date().toISOString().split("T")[0]}.csv`; a.click();
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `purchase_costs_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
     URL.revokeObjectURL(url);
     toast.success(t("purchaseCosts.exported"));
   };
@@ -143,7 +181,9 @@ export default function PurchaseCosts() {
 
   const totalCosts = costs?.reduce((sum, cost) => sum + cost.amount, 0) || 0;
   const numItems = costs?.length || 0;
-  const largestCost = costs?.reduce((max, cost) => (cost.amount > max ? cost.amount : max), 0) || 0;
+  const largestCost =
+    costs?.reduce((max, cost) => (cost.amount > max ? cost.amount : max), 0) ||
+    0;
 
   return (
     <div className="space-y-6">
@@ -151,118 +191,203 @@ export default function PurchaseCosts() {
         <h1 className="text-xl font-semibold">{t("purchaseCosts.title")}</h1>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-3.5 w-3.5 me-1.5" />{t("common.exportCsv")}
+            <Download className="h-3.5 w-3.5 me-1.5" />
+            {t("common.exportCsv")}
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={open => {
+              setIsDialogOpen(open);
+              if (!open) resetForm();
+            }}
+          >
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-3.5 w-3.5 me-1.5" />{t("purchaseCosts.addCost")}</Button>
-            </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingId ? t("purchaseCosts.editCost") : t("purchaseCosts.addCost")}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">{t("common.label")}</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount">{t("common.amount")}</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="date">{t("common.date")}</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="category">{t("common.category")}</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData({ ...formData, category: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("common.select") + " " + t("common.category")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {t(`categories.${cat}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">{t("common.notes")}</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("common.attachments")}</Label>
-                <FileUpload onUpload={(file) => setAttachments([...attachments, file])} existingFiles={attachments} onRemove={(i) => setAttachments(attachments.filter((_, idx) => idx !== i))} accept="image/*,.pdf" />
-              </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending || updateMutation.isPending}>
-                {(createMutation.isPending || updateMutation.isPending) && (
-                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                )}
-                {editingId ? t("common.update") : t("common.save")}
+              <Button size="sm">
+                <Plus className="h-3.5 w-3.5 me-1.5" />
+                {t("purchaseCosts.addCost")}
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingId
+                    ? t("purchaseCosts.editCost")
+                    : t("purchaseCosts.addCost")}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">{t("common.label")}</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={e =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="amount">{t("common.amount")}</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.amount}
+                    onChange={e =>
+                      setFormData({ ...formData, amount: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="date">{t("common.date")}</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={e =>
+                      setFormData({ ...formData, date: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="category">{t("common.category")}</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={value =>
+                      setFormData({ ...formData, category: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          t("common.select") + " " + t("common.category")
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map(cat => (
+                        <SelectItem key={cat} value={cat}>
+                          {t(`categories.${cat}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">{t("common.notes")}</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={e =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("common.attachments")}</Label>
+                  <FileUpload
+                    onUpload={file => setAttachments([...attachments, file])}
+                    existingFiles={attachments}
+                    onRemove={i =>
+                      setAttachments(attachments.filter((_, idx) => idx !== i))
+                    }
+                    accept="image/*,.pdf"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
+                >
+                  {(createMutation.isPending || updateMutation.isPending) && (
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                  )}
+                  {editingId ? t("common.update") : t("common.save")}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("purchaseCosts.totalCosts")}</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(totalCosts)}</p></div>
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("common.entries")}</p><p className="text-xl font-semibold tabular-nums mt-1">{numItems}</p></div>
-        <div className="px-4 py-3.5"><p className="text-xs text-muted-foreground">{t("purchaseCosts.largestItem")}</p><p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(largestCost)}</p></div>
+        <div className="px-4 py-3.5">
+          <p className="text-xs text-muted-foreground">
+            {t("purchaseCosts.totalCosts")}
+          </p>
+          <p className="text-xl font-semibold tabular-nums mt-1">
+            {formatCurrency(totalCosts)}
+          </p>
+        </div>
+        <div className="px-4 py-3.5">
+          <p className="text-xs text-muted-foreground">{t("common.entries")}</p>
+          <p className="text-xl font-semibold tabular-nums mt-1">{numItems}</p>
+        </div>
+        <div className="px-4 py-3.5">
+          <p className="text-xs text-muted-foreground">
+            {t("purchaseCosts.largestItem")}
+          </p>
+          <p className="text-xl font-semibold tabular-nums mt-1">
+            {formatCurrency(largestCost)}
+          </p>
+        </div>
       </div>
 
       {costs?.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
-          <p className="text-sm text-muted-foreground">{t("purchaseCosts.noCosts")}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("purchaseCosts.noCosts")}
+          </p>
         </div>
       ) : (
         <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
-          {costs?.map((cost) => (
-            <div key={cost.id} className="flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors">
+          {costs?.map(cost => (
+            <div
+              key={cost.id}
+              className="flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors"
+            >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium">{cost.name}</p>
-                  {cost.category && <Badge variant="secondary" className="text-xs h-5">{t(`categories.${cost.category}`, { defaultValue: cost.category })}</Badge>}
+                  {cost.category && (
+                    <Badge variant="secondary" className="text-xs h-5">
+                      {t(`categories.${cost.category}`, {
+                        defaultValue: cost.category,
+                      })}
+                    </Badge>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{cost.date ? formatDate(cost.date) : ""}{cost.notes && ` · ${cost.notes}`}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {cost.date ? formatDate(cost.date) : ""}
+                  {cost.notes && ` · ${cost.notes}`}
+                </p>
               </div>
-              <p className="text-sm font-semibold tabular-nums shrink-0 me-2">{formatCurrency(cost.amount)}</p>
+              <p className="text-sm font-semibold tabular-nums shrink-0 me-2">
+                {formatCurrency(cost.amount)}
+              </p>
               <div className="flex gap-1 shrink-0">
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => handleEdit(cost)}><Pencil className="h-3.5 w-3.5" /></Button>
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(cost.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 w-7 p-0"
+                  onClick={() => handleEdit(cost)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                  onClick={() => handleDelete(cost.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
           ))}

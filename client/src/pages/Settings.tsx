@@ -12,7 +12,12 @@
  */
 
 import {
-  useState, useEffect, useRef, useCallback, useMemo, type ReactNode,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  type ReactNode,
 } from "react";
 import { useLocation, useParams } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -29,30 +34,61 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Command, CommandEmpty, CommandGroup, CommandInput,
-  CommandItem, CommandList,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
-  Select, SelectContent, SelectItem,
-  SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
-  Loader2, Check, ChevronsUpDown, AlertTriangle,
-  Download, Sun, Moon, Monitor, ChevronRight, Trash2, RefreshCw,
-  Cloud, CheckCircle2, ShieldCheck, ExternalLink, Eye, EyeOff,
+  Loader2,
+  Check,
+  ChevronsUpDown,
+  AlertTriangle,
+  Download,
+  Sun,
+  Moon,
+  Monitor,
+  ChevronRight,
+  Trash2,
+  RefreshCw,
+  Cloud,
+  CheckCircle2,
+  ShieldCheck,
+  ExternalLink,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { csrfHeaders } from "@/lib/csrf";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
 const NAV_IDS = [
-  "property", "purchase", "household", "regional",
-  "notifications", "integrations", "appearance", "data",
+  "property",
+  "purchase",
+  "household",
+  "regional",
+  "notifications",
+  "integrations",
+  "appearance",
+  "data",
 ] as const;
-type SID = typeof NAV_IDS[number];
+type SID = (typeof NAV_IDS)[number];
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -60,7 +96,9 @@ function Group({ label, children }: { label?: string; children: ReactNode }) {
   return (
     <div className="space-y-1.5">
       {label && (
-        <p className="px-1 text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="px-1 text-xs font-medium text-muted-foreground">
+          {label}
+        </p>
       )}
       <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
         {children}
@@ -87,13 +125,15 @@ function Row({
           htmlFor={htmlFor}
           className={cn(
             "block text-sm font-medium leading-none",
-            htmlFor && "cursor-pointer",
+            htmlFor && "cursor-pointer"
           )}
         >
           {label}
         </label>
         {hint && (
-          <p className="mt-0.5 text-xs text-muted-foreground leading-snug">{hint}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground leading-snug">
+            {hint}
+          </p>
         )}
       </div>
       <div className="shrink-0 flex items-center">{children}</div>
@@ -101,7 +141,15 @@ function Row({
   );
 }
 
-function FullRow({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function FullRow({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
   return (
     <div className="px-4 py-3.5 space-y-2">
       <div>
@@ -138,7 +186,9 @@ function Field({
 }) {
   const [v, setV] = useState(value);
   const dirty = useRef(false);
-  useEffect(() => { setV(value); }, [value]);
+  useEffect(() => {
+    setV(value);
+  }, [value]);
 
   const commit = () => {
     if (!dirty.current) return;
@@ -156,9 +206,14 @@ function Field({
       value={v}
       placeholder={placeholder}
       className={cn("h-8 text-sm", width)}
-      onChange={e => { setV(e.target.value); dirty.current = true; }}
+      onChange={e => {
+        setV(e.target.value);
+        dirty.current = true;
+      }}
       onBlur={commit}
-      onKeyDown={e => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+      onKeyDown={e =>
+        e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()
+      }
     />
   );
 }
@@ -205,12 +260,24 @@ function Combobox({
                   key={o.value}
                   value={o.value}
                   keywords={[o.label, o.sub ?? ""]}
-                  onSelect={() => { onSelect(o.value); setOpen(false); }}
+                  onSelect={() => {
+                    onSelect(o.value);
+                    setOpen(false);
+                  }}
                   className="text-sm"
                 >
-                  <Check className={cn("mr-2 h-3.5 w-3.5 shrink-0", value === o.value ? "opacity-100" : "opacity-0")} />
+                  <Check
+                    className={cn(
+                      "mr-2 h-3.5 w-3.5 shrink-0",
+                      value === o.value ? "opacity-100" : "opacity-0"
+                    )}
+                  />
                   <span>{o.label}</span>
-                  {o.sub && <span className="ml-2 text-xs text-muted-foreground">{o.sub}</span>}
+                  {o.sub && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {o.sub}
+                    </span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -224,10 +291,12 @@ function Combobox({
 function Pending({ show }: { show: boolean }) {
   const { t } = useTranslation();
   return (
-    <span className={cn(
-      "inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-opacity duration-300",
-      show ? "opacity-100" : "opacity-0 pointer-events-none",
-    )}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-opacity duration-300",
+        show ? "opacity-100" : "opacity-0 pointer-events-none"
+      )}
+    >
       <Loader2 className="h-3 w-3 animate-spin" />
       {t("common.saving")}
     </span>
@@ -249,25 +318,33 @@ const CURRENCIES = [
   { value: "AED", label: "AED", sub: "UAE Dirham د.إ" },
 ];
 const SYMBOLS: Record<string, string> = {
-  ILS:"₪", USD:"$", EUR:"€", GBP:"£", JPY:"¥",
-  CAD:"CA$", AUD:"A$", CHF:"Fr", SGD:"S$", AED:"د.إ",
+  ILS: "₪",
+  USD: "$",
+  EUR: "€",
+  GBP: "£",
+  JPY: "¥",
+  CAD: "CA$",
+  AUD: "A$",
+  CHF: "Fr",
+  SGD: "S$",
+  AED: "د.إ",
 };
 const TIMEZONES = [
-  { value: "Asia/Jerusalem",      label: "Asia/Jerusalem",      sub: "UTC+3"  },
-  { value: "Asia/Dubai",          label: "Asia/Dubai",          sub: "UTC+4"  },
-  { value: "Asia/Riyadh",         label: "Asia/Riyadh",         sub: "UTC+3"  },
-  { value: "Europe/London",       label: "Europe/London",       sub: "UTC+1"  },
-  { value: "Europe/Paris",        label: "Europe/Paris",        sub: "UTC+2"  },
-  { value: "Europe/Berlin",       label: "Europe/Berlin",       sub: "UTC+2"  },
-  { value: "Europe/Amsterdam",    label: "Europe/Amsterdam",    sub: "UTC+2"  },
-  { value: "America/New_York",    label: "America/New_York",    sub: "UTC-4"  },
-  { value: "America/Chicago",     label: "America/Chicago",     sub: "UTC-5"  },
-  { value: "America/Los_Angeles", label: "America/Los_Angeles", sub: "UTC-7"  },
-  { value: "America/Sao_Paulo",   label: "America/Sao_Paulo",   sub: "UTC-3"  },
-  { value: "Asia/Tokyo",          label: "Asia/Tokyo",          sub: "UTC+9"  },
-  { value: "Asia/Singapore",      label: "Asia/Singapore",      sub: "UTC+8"  },
-  { value: "Australia/Sydney",    label: "Australia/Sydney",    sub: "UTC+10" },
-  { value: "UTC",                 label: "UTC",                 sub: "UTC+0"  },
+  { value: "Asia/Jerusalem", label: "Asia/Jerusalem", sub: "UTC+3" },
+  { value: "Asia/Dubai", label: "Asia/Dubai", sub: "UTC+4" },
+  { value: "Asia/Riyadh", label: "Asia/Riyadh", sub: "UTC+3" },
+  { value: "Europe/London", label: "Europe/London", sub: "UTC+1" },
+  { value: "Europe/Paris", label: "Europe/Paris", sub: "UTC+2" },
+  { value: "Europe/Berlin", label: "Europe/Berlin", sub: "UTC+2" },
+  { value: "Europe/Amsterdam", label: "Europe/Amsterdam", sub: "UTC+2" },
+  { value: "America/New_York", label: "America/New_York", sub: "UTC-4" },
+  { value: "America/Chicago", label: "America/Chicago", sub: "UTC-5" },
+  { value: "America/Los_Angeles", label: "America/Los_Angeles", sub: "UTC-7" },
+  { value: "America/Sao_Paulo", label: "America/Sao_Paulo", sub: "UTC-3" },
+  { value: "Asia/Tokyo", label: "Asia/Tokyo", sub: "UTC+9" },
+  { value: "Asia/Singapore", label: "Asia/Singapore", sub: "UTC+8" },
+  { value: "Australia/Sydney", label: "Australia/Sydney", sub: "UTC+10" },
+  { value: "UTC", label: "UTC", sub: "UTC+0" },
 ];
 
 // ─── Sections ─────────────────────────────────────────────────────────────────
@@ -275,16 +352,30 @@ const TIMEZONES = [
 function PropertySection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
+  const m = trpc.property.update.useMutation({
+    onSuccess: () => u.property.get.invalidate(),
+    onError: e => toast.error(e.message),
+  });
   const save = useCallback((d: any) => m.mutate(d), [m]);
   const g = (k: string, fb: any = "") => p?.[k] ?? fb;
 
   const specs = [
-    { k: "squareMeters", lKey: "settings.size",      placeholder: t("settings.sqm"), suffix: t("settings.sqm") },
-    { k: "rooms",        lKey: "settings.rooms",     placeholder: "0",    step: "0.5" },
-    { k: "floor",        lKey: "settings.floor",     placeholder: "0" },
-    { k: "parkingSpots", lKey: "settings.parking",   placeholder: "0",    min: 0 },
-    { k: "yearBuilt",    lKey: "settings.yearBuilt", placeholder: "1998", min: 1800, max: new Date().getFullYear() },
+    {
+      k: "squareMeters",
+      lKey: "settings.size",
+      placeholder: t("settings.sqm"),
+      suffix: t("settings.sqm"),
+    },
+    { k: "rooms", lKey: "settings.rooms", placeholder: "0", step: "0.5" },
+    { k: "floor", lKey: "settings.floor", placeholder: "0" },
+    { k: "parkingSpots", lKey: "settings.parking", placeholder: "0", min: 0 },
+    {
+      k: "yearBuilt",
+      lKey: "settings.yearBuilt",
+      placeholder: "1998",
+      min: 1800,
+      max: new Date().getFullYear(),
+    },
   ] as const;
 
   return (
@@ -295,18 +386,51 @@ function PropertySection({ p }: { p: any }) {
       </div>
 
       <Group label={t("settings.identity")}>
-        <Row label={t("common.name")} hint={t("settings.propertyNameHint")} htmlFor="p-name">
-          <Field id="p-name" value={g("houseName")} placeholder={t("settings.placeholderMyHome")} onSave={v => save({ houseName: v })} />
+        <Row
+          label={t("common.name")}
+          hint={t("settings.propertyNameHint")}
+          htmlFor="p-name"
+        >
+          <Field
+            id="p-name"
+            value={g("houseName")}
+            placeholder={t("settings.placeholderMyHome")}
+            onSave={v => save({ houseName: v })}
+          />
         </Row>
-        <Row label={t("settings.nickname")} hint={t("settings.nicknameHint")} htmlFor="p-nick">
-          <Field id="p-nick" value={g("houseNickname")} placeholder={t("settings.placeholderHome")} onSave={v => save({ houseNickname: v })} />
+        <Row
+          label={t("settings.nickname")}
+          hint={t("settings.nicknameHint")}
+          htmlFor="p-nick"
+        >
+          <Field
+            id="p-nick"
+            value={g("houseNickname")}
+            placeholder={t("settings.placeholderHome")}
+            onSave={v => save({ houseNickname: v })}
+          />
         </Row>
         <Row label={t("common.type")}>
-          <Select value={g("propertyType") || "Apartment"} onValueChange={v => save({ propertyType: v })}>
-            <SelectTrigger className="h-8 w-40 text-sm"><SelectValue /></SelectTrigger>
+          <Select
+            value={g("propertyType") || "Apartment"}
+            onValueChange={v => save({ propertyType: v })}
+          >
+            <SelectTrigger className="h-8 w-40 text-sm">
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
-              {["Apartment","House","Villa","Townhouse","Studio","Penthouse","Other"].map(ptype => (
-                <SelectItem key={ptype} value={ptype}>{t(`propertyType.${ptype}`)}</SelectItem>
+              {[
+                "Apartment",
+                "House",
+                "Villa",
+                "Townhouse",
+                "Studio",
+                "Penthouse",
+                "Other",
+              ].map(ptype => (
+                <SelectItem key={ptype} value={ptype}>
+                  {t(`propertyType.${ptype}`)}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -322,12 +446,16 @@ function PropertySection({ p }: { p: any }) {
               placeholder={t("settings.addressPlaceholder")}
               rows={2}
               className="text-sm resize-none"
-              onBlur={e => { if (e.target.value !== g("address")) save({ address: e.target.value }); }}
+              onBlur={e => {
+                if (e.target.value !== g("address"))
+                  save({ address: e.target.value });
+              }}
             />
           </div>
           {g("latitude") && g("longitude") && (
             <p className="text-xs text-muted-foreground">
-              {parseFloat(g("latitude")).toFixed(5)}, {parseFloat(g("longitude")).toFixed(5)}
+              {parseFloat(g("latitude")).toFixed(5)},{" "}
+              {parseFloat(g("longitude")).toFixed(5)}
             </p>
           )}
         </FullRow>
@@ -337,15 +465,33 @@ function PropertySection({ p }: { p: any }) {
         {specs.map(({ k, lKey, placeholder, step, min, max, suffix }: any) => (
           <Row key={k} label={t(lKey)} htmlFor={`ps-${k}`}>
             <div className="flex items-center gap-1.5">
-              <Field id={`ps-${k}`} type="number" step={step} min={min} max={max}
-                value={p?.[k] ? String(p[k]) : ""} placeholder={placeholder} width="w-20"
-                onSave={v => save({ [k]: v ? Number(v) : undefined })} />
-              {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
+              <Field
+                id={`ps-${k}`}
+                type="number"
+                step={step}
+                min={min}
+                max={max}
+                value={p?.[k] ? String(p[k]) : ""}
+                placeholder={placeholder}
+                width="w-20"
+                onSave={v => save({ [k]: v ? Number(v) : undefined })}
+              />
+              {suffix && (
+                <span className="text-xs text-muted-foreground">{suffix}</span>
+              )}
             </div>
           </Row>
         ))}
-        <Row label={t("settings.storageUnit")} hint={t("settings.storageUnitHint")} htmlFor="ps-stor">
-          <Switch id="ps-stor" checked={g("hasStorage", false)} onCheckedChange={v => save({ hasStorage: v })} />
+        <Row
+          label={t("settings.storageUnit")}
+          hint={t("settings.storageUnitHint")}
+          htmlFor="ps-stor"
+        >
+          <Switch
+            id="ps-stor"
+            checked={g("hasStorage", false)}
+            onCheckedChange={v => save({ hasStorage: v })}
+          />
         </Row>
       </Group>
     </div>
@@ -355,7 +501,10 @@ function PropertySection({ p }: { p: any }) {
 function PurchaseSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
+  const m = trpc.property.update.useMutation({
+    onSuccess: () => u.property.get.invalidate(),
+    onError: e => toast.error(e.message),
+  });
   const { data: costs } = trpc.purchaseCosts.list.useQuery();
   const [, nav] = useLocation();
   const price = p?.purchasePrice ?? 0;
@@ -372,16 +521,34 @@ function PurchaseSection({ p }: { p: any }) {
 
       <Group>
         <Row label={t("settings.purchasePrice")} htmlFor="pu-price">
-          <Field id="pu-price" type="number" min={0} step="0.01"
-            value={price ? String(price / 100) : ""} placeholder="0.00" width="w-36"
-            onSave={v => m.mutate({ purchasePrice: v ? Math.round(parseFloat(v) * 100) : undefined })} />
+          <Field
+            id="pu-price"
+            type="number"
+            min={0}
+            step="0.01"
+            value={price ? String(price / 100) : ""}
+            placeholder="0.00"
+            width="w-36"
+            onSave={v =>
+              m.mutate({
+                purchasePrice: v ? Math.round(parseFloat(v) * 100) : undefined,
+              })
+            }
+          />
         </Row>
         <Row label={t("settings.purchaseDate")} htmlFor="pu-date">
-          <Field id="pu-date" type="date"
-            value={p?.purchaseDate ?? ""} width="w-36"
-            onSave={v => m.mutate({ purchaseDate: v || undefined })} />
+          <Field
+            id="pu-date"
+            type="date"
+            value={p?.purchaseDate ?? ""}
+            width="w-36"
+            onSave={v => m.mutate({ purchaseDate: v || undefined })}
+          />
         </Row>
-        <Row label={t("settings.acquisitionCosts")} hint={t("settings.acquisitionCostsHint")}>
+        <Row
+          label={t("settings.acquisitionCosts")}
+          hint={t("settings.acquisitionCostsHint")}
+        >
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium tabular-nums">{fmt(acq)}</span>
             <button
@@ -397,8 +564,12 @@ function PurchaseSection({ p }: { p: any }) {
 
       <Group label={t("settings.totalInvested")}>
         <div className="px-4 py-4 flex items-baseline justify-between">
-          <p className="text-sm text-muted-foreground">{t("settings.totalInvestedDesc")}</p>
-          <p className="text-base font-semibold tabular-nums">{fmt(price + acq)}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("settings.totalInvestedDesc")}
+          </p>
+          <p className="text-base font-semibold tabular-nums">
+            {fmt(price + acq)}
+          </p>
         </div>
       </Group>
     </div>
@@ -411,10 +582,19 @@ function HouseholdSection() {
   const { data: me } = trpc.profiles.current.useQuery();
   const { data: members } = trpc.profiles.list.useQuery();
   const upd = trpc.profiles.updateMe.useMutation({
-    onSuccess: () => { u.profiles.current.invalidate(); u.profiles.list.invalidate(); },
+    onSuccess: () => {
+      u.profiles.current.invalidate();
+      u.profiles.list.invalidate();
+    },
     onError: e => toast.error(e.message),
   });
-  const ini = (n?: string | null) => (n ?? "?").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const ini = (n?: string | null) =>
+    (n ?? "?")
+      .split(" ")
+      .map(w => w[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
 
   return (
     <div className="space-y-5">
@@ -425,20 +605,31 @@ function HouseholdSection() {
 
       <Group label={t("settings.yourProfile")}>
         <Row label={t("settings.displayName")} htmlFor="h-name">
-          <Field id="h-name" value={me?.name ?? ""} placeholder={t("settings.yourName")}
-            onSave={v => upd.mutate({ name: v })} />
+          <Field
+            id="h-name"
+            value={me?.name ?? ""}
+            placeholder={t("settings.yourName")}
+            onSave={v => upd.mutate({ name: v })}
+          />
         </Row>
         <Row label={t("settings.email")}>
-          <span className="text-sm text-muted-foreground">{me?.email ?? "—"}</span>
+          <span className="text-sm text-muted-foreground">
+            {me?.email ?? "—"}
+          </span>
         </Row>
         <Row label={t("settings.role")}>
-          <Badge variant={me?.role === "admin" ? "default" : "secondary"} className="capitalize text-xs h-5">
+          <Badge
+            variant={me?.role === "admin" ? "default" : "secondary"}
+            className="capitalize text-xs h-5"
+          >
             {me?.role ?? "user"}
           </Badge>
         </Row>
         <Row label={t("settings.lastSignIn")}>
           <span className="text-sm text-muted-foreground">
-            {me?.lastSignedIn ? new Date(me.lastSignedIn).toLocaleDateString() : "—"}
+            {me?.lastSignedIn
+              ? new Date(me.lastSignedIn).toLocaleDateString()
+              : "—"}
           </span>
         </Row>
       </Group>
@@ -453,7 +644,9 @@ function HouseholdSection() {
             >
               <div className="flex items-center gap-2">
                 {m.id === me?.id && (
-                  <Badge variant="outline" className="text-xs h-5 font-normal">{t("settings.you")}</Badge>
+                  <Badge variant="outline" className="text-xs h-5 font-normal">
+                    {t("settings.you")}
+                  </Badge>
                 )}
                 <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
                   {ini(m.name)}
@@ -470,7 +663,10 @@ function HouseholdSection() {
 function RegionalSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
+  const m = trpc.property.update.useMutation({
+    onSuccess: () => u.property.get.invalidate(),
+    onError: e => toast.error(e.message),
+  });
   const g = (k: string, f: any = "") => p?.[k] ?? f;
 
   return (
@@ -482,25 +678,52 @@ function RegionalSection({ p }: { p: any }) {
 
       <Group label={t("settings.currency")}>
         <Row label={t("settings.currency")}>
-          <Combobox value={g("currencyCode", "ILS")} options={CURRENCIES} search={t("settings.searchCurrencies")}
-            onSelect={v => m.mutate({ currencyCode: v, currency: SYMBOLS[v] ?? v })} />
+          <Combobox
+            value={g("currencyCode", "ILS")}
+            options={CURRENCIES}
+            search={t("settings.searchCurrencies")}
+            onSelect={v =>
+              m.mutate({ currencyCode: v, currency: SYMBOLS[v] ?? v })
+            }
+          />
         </Row>
-        <Row label={t("settings.symbol")} hint={t("settings.symbolHint")} htmlFor="r-sym">
-          <Field id="r-sym" value={g("currency", "₪")} placeholder="₪" width="w-16"
-            onSave={v => m.mutate({ currency: v })} />
+        <Row
+          label={t("settings.symbol")}
+          hint={t("settings.symbolHint")}
+          htmlFor="r-sym"
+        >
+          <Field
+            id="r-sym"
+            value={g("currency", "₪")}
+            placeholder="₪"
+            width="w-16"
+            onSave={v => m.mutate({ currency: v })}
+          />
         </Row>
       </Group>
 
       <Group label={t("settings.dateTime")}>
         <Row label={t("settings.timezone")}>
-          <Combobox value={g("timezone", "Asia/Jerusalem")} options={TIMEZONES} search={t("settings.searchTimezones")}
-            onSelect={v => m.mutate({ timezone: v })} />
+          <Combobox
+            value={g("timezone", "Asia/Jerusalem")}
+            options={TIMEZONES}
+            search={t("settings.searchTimezones")}
+            onSelect={v => m.mutate({ timezone: v })}
+          />
         </Row>
         <Row label={t("settings.startOfWeek")}>
-          <ToggleGroup type="single" value={g("startOfWeek", "Sunday")} className="h-8"
-            onValueChange={v => v && m.mutate({ startOfWeek: v })}>
-            <ToggleGroupItem value="Sunday"  className="text-xs h-8 px-4">{t("settings.sun")}</ToggleGroupItem>
-            <ToggleGroupItem value="Monday"  className="text-xs h-8 px-4">{t("settings.mon")}</ToggleGroupItem>
+          <ToggleGroup
+            type="single"
+            value={g("startOfWeek", "Sunday")}
+            className="h-8"
+            onValueChange={v => v && m.mutate({ startOfWeek: v })}
+          >
+            <ToggleGroupItem value="Sunday" className="text-xs h-8 px-4">
+              {t("settings.sun")}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="Monday" className="text-xs h-8 px-4">
+              {t("settings.mon")}
+            </ToggleGroupItem>
           </ToggleGroup>
         </Row>
       </Group>
@@ -511,14 +734,33 @@ function RegionalSection({ p }: { p: any }) {
 function NotificationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
+  const m = trpc.property.update.useMutation({
+    onSuccess: () => u.property.get.invalidate(),
+    onError: e => toast.error(e.message),
+  });
   const days = p?.reminderDaysBefore ?? 3;
 
   const toggles = [
-    { k: "remindExpenses", lKey: "settings.remindExpenses", dKey: "settings.remindExpensesHint" },
-    { k: "remindLoans",    lKey: "settings.remindLoans",    dKey: "settings.remindLoansHint" },
-    { k: "remindRepairs",  lKey: "settings.remindRepairs",  dKey: "settings.remindRepairsHint" },
-    { k: "remindCalendar", lKey: "settings.remindCalendar", dKey: "settings.remindCalendarHint" },
+    {
+      k: "remindExpenses",
+      lKey: "settings.remindExpenses",
+      dKey: "settings.remindExpensesHint",
+    },
+    {
+      k: "remindLoans",
+      lKey: "settings.remindLoans",
+      dKey: "settings.remindLoansHint",
+    },
+    {
+      k: "remindRepairs",
+      lKey: "settings.remindRepairs",
+      dKey: "settings.remindRepairsHint",
+    },
+    {
+      k: "remindCalendar",
+      lKey: "settings.remindCalendar",
+      dKey: "settings.remindCalendarHint",
+    },
   ] as const;
 
   return (
@@ -536,18 +778,27 @@ function NotificationsSection({ p }: { p: any }) {
               {days} {t("settings.daysBefore")}
             </span>
           </div>
-          <Slider min={1} max={30} step={1} value={[days]}
-            onValueCommit={([v]) => m.mutate({ reminderDaysBefore: v })} />
-          <p className="text-xs text-muted-foreground">{t("settings.appliesAll")}</p>
+          <Slider
+            min={1}
+            max={30}
+            step={1}
+            value={[days]}
+            onValueCommit={([v]) => m.mutate({ reminderDaysBefore: v })}
+          />
+          <p className="text-xs text-muted-foreground">
+            {t("settings.appliesAll")}
+          </p>
         </div>
       </Group>
 
       <Group label={t("settings.reminderTypes")}>
         {toggles.map(({ k, lKey, dKey }) => (
           <Row key={k} label={t(lKey)} hint={t(dKey)} htmlFor={`n-${k}`}>
-            <Switch id={`n-${k}`}
+            <Switch
+              id={`n-${k}`}
               checked={p?.[k] ?? true}
-              onCheckedChange={v => m.mutate({ [k]: v })} />
+              onCheckedChange={v => m.mutate({ [k]: v })}
+            />
           </Row>
         ))}
       </Group>
@@ -558,7 +809,10 @@ function NotificationsSection({ p }: { p: any }) {
 function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({ onSuccess: () => u.property.get.invalidate(), onError: e => toast.error(e.message) });
+  const m = trpc.property.update.useMutation({
+    onSuccess: () => u.property.get.invalidate(),
+    onError: e => toast.error(e.message),
+  });
   const hasKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
   return (
@@ -572,15 +826,28 @@ function IntegrationsSection({ p }: { p: any }) {
       <StoredFilesGroup />
 
       <Group label="Google Calendar">
-        <Row label={t("settings.syncEvents")} hint={t("settings.syncEventsHint")} htmlFor="i-sync">
-          <Switch id="i-sync"
+        <Row
+          label={t("settings.syncEvents")}
+          hint={t("settings.syncEventsHint")}
+          htmlFor="i-sync"
+        >
+          <Switch
+            id="i-sync"
             checked={p?.calendarSyncEnabled ?? false}
-            onCheckedChange={v => m.mutate({ calendarSyncEnabled: v })} />
+            onCheckedChange={v => m.mutate({ calendarSyncEnabled: v })}
+          />
         </Row>
         <Row label={t("settings.connectedAccount")}>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{t("settings.notConnected")}</span>
-            <Button variant="outline" size="sm" className="h-7 text-xs" disabled>
+            <span className="text-xs text-muted-foreground">
+              {t("settings.notConnected")}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              disabled
+            >
               {t("settings.connect")}
             </Button>
           </div>
@@ -589,15 +856,27 @@ function IntegrationsSection({ p }: { p: any }) {
 
       <Group label={t("settings.maps")}>
         <Row label={t("settings.provider")}>
-          <ToggleGroup type="single" value={p?.mapsProvider ?? "google"} className="h-8"
-            onValueChange={v => v && m.mutate({ mapsProvider: v as any })}>
-            <ToggleGroupItem value="google" className="text-xs h-8 px-4">Google</ToggleGroupItem>
-            <ToggleGroupItem value="osm"    className="text-xs h-8 px-4">OpenStreetMap</ToggleGroupItem>
+          <ToggleGroup
+            type="single"
+            value={p?.mapsProvider ?? "google"}
+            className="h-8"
+            onValueChange={v => v && m.mutate({ mapsProvider: v as any })}
+          >
+            <ToggleGroupItem value="google" className="text-xs h-8 px-4">
+              Google
+            </ToggleGroupItem>
+            <ToggleGroupItem value="osm" className="text-xs h-8 px-4">
+              OpenStreetMap
+            </ToggleGroupItem>
           </ToggleGroup>
         </Row>
         {!hasKey && (p?.mapsProvider ?? "google") === "google" && (
           <div className="px-4 py-3 text-xs text-muted-foreground border-t bg-amber-50/60 dark:bg-amber-950/20">
-            Add <code className="font-mono text-amber-700 dark:text-amber-400">VITE_GOOGLE_MAPS_API_KEY</code> to <code className="font-mono">.env</code> for geocoding.
+            Add{" "}
+            <code className="font-mono text-amber-700 dark:text-amber-400">
+              VITE_GOOGLE_MAPS_API_KEY
+            </code>{" "}
+            to <code className="font-mono">.env</code> for geocoding.
           </div>
         )}
       </Group>
@@ -653,7 +932,11 @@ function FileStorageGroup() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [credForm, setCredForm] = useState({ clientId: "", secret: "", redirectUri: "" });
+  const [credForm, setCredForm] = useState({
+    clientId: "",
+    secret: "",
+    redirectUri: "",
+  });
   const [showSecret, setShowSecret] = useState(false);
   const [editingCreds, setEditingCreds] = useState(false);
   const [savingCreds, setSavingCreds] = useState(false);
@@ -672,7 +955,16 @@ function FileStorageGroup() {
       }
       if (resp.status === 404) {
         // Route unreachable (env vars not set or path issue) — show setup instructions.
-        setStatus({ configured: false, connected: false, needsReconnect: false, emailMasked: null });
+        setStatus({
+          configured: false,
+          connected: false,
+          needsReconnect: false,
+          emailMasked: null,
+          clientId: null,
+          secretExists: false,
+          redirectUri: null,
+          fromEnv: false,
+        });
         setError(null);
         return;
       }
@@ -744,7 +1036,9 @@ function FileStorageGroup() {
       toast.success(t("settings.fileStorage.disconnected"));
       await loadStatus();
     } catch (err) {
-      toast.error((err as Error).message || t("settings.fileStorage.disconnectFailed"));
+      toast.error(
+        (err as Error).message || t("settings.fileStorage.disconnectFailed")
+      );
     } finally {
       setBusy(false);
     }
@@ -776,7 +1070,9 @@ function FileStorageGroup() {
         }),
       });
       if (!resp.ok) {
-        const data = await resp.json().catch(() => ({})) as { error?: string };
+        const data = (await resp.json().catch(() => ({}))) as {
+          error?: string;
+        };
         throw new Error(data.error ?? `Save failed (${resp.status})`);
       }
       toast.success(t("settings.fileStorage.creds.saved"));
@@ -803,9 +1099,17 @@ function FileStorageGroup() {
         credentials: "include",
         body: JSON.stringify({ refreshToken: manualToken.trim() }),
       });
-      const data = await resp.json().catch(() => ({})) as { ok?: boolean; email?: string; error?: string };
+      const data = (await resp.json().catch(() => ({}))) as {
+        ok?: boolean;
+        email?: string;
+        error?: string;
+      };
       if (!resp.ok) throw new Error(data.error ?? `Failed (${resp.status})`);
-      toast.success(data.email ? `Connected as ${data.email}` : t("settings.fileStorage.manualToken.success"));
+      toast.success(
+        data.email
+          ? `Connected as ${data.email}`
+          : t("settings.fileStorage.manualToken.success")
+      );
       setManualToken("");
       setShowManualToken(false);
       await loadStatus();
@@ -822,7 +1126,9 @@ function FileStorageGroup() {
       <div className="px-4 py-3.5 space-y-1.5 bg-muted/30">
         <div className="flex items-center gap-2">
           <Cloud className="h-4 w-4 text-muted-foreground" />
-          <p className="text-sm font-medium">{t("settings.fileStorage.title")}</p>
+          <p className="text-sm font-medium">
+            {t("settings.fileStorage.title")}
+          </p>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
           {t("settings.fileStorage.desc", {
@@ -836,7 +1142,9 @@ function FileStorageGroup() {
         <div className="flex items-start gap-2">
           <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
           <div className="space-y-1 min-w-0">
-            <p className="text-sm font-medium">{t("settings.fileStorage.permissionTitle")}</p>
+            <p className="text-sm font-medium">
+              {t("settings.fileStorage.permissionTitle")}
+            </p>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {t("settings.fileStorage.permissionDesc")}{" "}
               <a
@@ -845,7 +1153,8 @@ function FileStorageGroup() {
                 rel="noreferrer"
                 className="underline hover:text-foreground inline-flex items-center gap-0.5"
               >
-                {t("settings.fileStorage.permissionLink")} <ExternalLink className="h-3 w-3" />
+                {t("settings.fileStorage.permissionLink")}{" "}
+                <ExternalLink className="h-3 w-3" />
               </a>
               .
             </p>
@@ -880,7 +1189,9 @@ function FileStorageGroup() {
                   </label>
                   <Input
                     value={credForm.clientId}
-                    onChange={e => setCredForm(f => ({ ...f, clientId: e.target.value }))}
+                    onChange={e =>
+                      setCredForm(f => ({ ...f, clientId: e.target.value }))
+                    }
                     placeholder="123456789-xxxx.apps.googleusercontent.com"
                     className="h-8 text-xs font-mono"
                   />
@@ -894,8 +1205,14 @@ function FileStorageGroup() {
                     <Input
                       type={showSecret ? "text" : "password"}
                       value={credForm.secret}
-                      onChange={e => setCredForm(f => ({ ...f, secret: e.target.value }))}
-                      placeholder={status?.secretExists ? t("settings.fileStorage.creds.secretPlaceholder") : ""}
+                      onChange={e =>
+                        setCredForm(f => ({ ...f, secret: e.target.value }))
+                      }
+                      placeholder={
+                        status?.secretExists
+                          ? t("settings.fileStorage.creds.secretPlaceholder")
+                          : ""
+                      }
                       className="h-8 text-xs font-mono pr-8"
                     />
                     <button
@@ -903,7 +1220,11 @@ function FileStorageGroup() {
                       onClick={() => setShowSecret(s => !s)}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                      {showSecret ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      {showSecret ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
                     </button>
                   </div>
                   {status?.secretExists && (
@@ -919,7 +1240,9 @@ function FileStorageGroup() {
                   </label>
                   <Input
                     value={credForm.redirectUri}
-                    onChange={e => setCredForm(f => ({ ...f, redirectUri: e.target.value }))}
+                    onChange={e =>
+                      setCredForm(f => ({ ...f, redirectUri: e.target.value }))
+                    }
                     placeholder="https://your-server/api/google-drive/callback"
                     className="h-8 text-xs font-mono"
                   />
@@ -943,7 +1266,10 @@ function FileStorageGroup() {
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => { setEditingCreds(false); setCredForm(f => ({ ...f, secret: "" })); }}
+                        onClick={() => {
+                          setEditingCreds(false);
+                          setCredForm(f => ({ ...f, secret: "" }));
+                        }}
                         disabled={savingCreds}
                       >
                         {t("settings.fileStorage.creds.cancel")}
@@ -955,7 +1281,9 @@ function FileStorageGroup() {
                       onClick={() => void handleSaveCredentials()}
                       disabled={savingCreds}
                     >
-                      {savingCreds && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                      {savingCreds && (
+                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                      )}
                       {t("settings.fileStorage.creds.save")}
                     </Button>
                   </div>
@@ -984,7 +1312,8 @@ function FileStorageGroup() {
       {/* ── Loading / auth gate / error ─────────────────────────────────── */}
       {loading ? (
         <div className="px-4 py-3 flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> {t("settings.fileStorage.loadingStatus")}
+          <Loader2 className="h-3 w-3 animate-spin" />{" "}
+          {t("settings.fileStorage.loadingStatus")}
         </div>
       ) : !isAdmin ? (
         <div className="px-4 py-3 text-xs text-muted-foreground">
@@ -1004,7 +1333,9 @@ function FileStorageGroup() {
               label={t("settings.fileStorage.reconnectNeeded")}
               hint={
                 status.emailMasked
-                  ? t("settings.fileStorage.reconnectHintWithEmail", { email: status.emailMasked })
+                  ? t("settings.fileStorage.reconnectHintWithEmail", {
+                      email: status.emailMasked,
+                    })
                   : t("settings.fileStorage.reconnectHintNoEmail")
               }
             >
@@ -1016,7 +1347,12 @@ function FileStorageGroup() {
                 <Button
                   size="sm"
                   className="h-7 text-xs"
-                  onClick={() => { window.location.href = new URL("api/google-drive/connect", window.location.href).href; }}
+                  onClick={() => {
+                    window.location.href = new URL(
+                      "api/google-drive/connect",
+                      window.location.href
+                    ).href;
+                  }}
                   disabled={busy}
                 >
                   {t("settings.fileStorage.reconnect")}
@@ -1037,13 +1373,16 @@ function FileStorageGroup() {
               label={t("settings.fileStorage.statusLabel")}
               hint={
                 status.emailMasked
-                  ? t("settings.fileStorage.connectedHintWithEmail", { email: status.emailMasked })
+                  ? t("settings.fileStorage.connectedHintWithEmail", {
+                      email: status.emailMasked,
+                    })
                   : t("settings.fileStorage.connectedHintNoEmail")
               }
             >
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> {t("settings.fileStorage.connected")}
+                  <CheckCircle2 className="h-3.5 w-3.5" />{" "}
+                  {t("settings.fileStorage.connected")}
                 </span>
                 <Button
                   variant="outline"
@@ -1064,12 +1403,17 @@ function FileStorageGroup() {
                 hint={t("settings.fileStorage.notConnectedHint")}
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground">{t("settings.notConnected")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("settings.notConnected")}
+                  </span>
                   <Button
                     size="sm"
                     className="h-7 text-xs"
                     onClick={() => {
-                      window.location.href = new URL("api/google-drive/connect", window.location.href).href;
+                      window.location.href = new URL(
+                        "api/google-drive/connect",
+                        window.location.href
+                      ).href;
                     }}
                     disabled={busy}
                   >
@@ -1114,7 +1458,9 @@ function FileStorageGroup() {
                       type="password"
                       value={manualToken}
                       onChange={e => setManualToken(e.target.value)}
-                      placeholder={t("settings.fileStorage.manualToken.placeholder")}
+                      placeholder={t(
+                        "settings.fileStorage.manualToken.placeholder"
+                      )}
                       className="w-full h-8 text-xs font-mono px-3 rounded-md border border-input bg-background"
                     />
                     <div className="flex items-center justify-end gap-2">
@@ -1122,7 +1468,10 @@ function FileStorageGroup() {
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => { setShowManualToken(false); setManualToken(""); }}
+                        onClick={() => {
+                          setShowManualToken(false);
+                          setManualToken("");
+                        }}
                         disabled={savingToken}
                       >
                         {t("settings.fileStorage.creds.cancel")}
@@ -1133,7 +1482,9 @@ function FileStorageGroup() {
                         onClick={() => void handleManualToken()}
                         disabled={savingToken}
                       >
-                        {savingToken && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                        {savingToken && (
+                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        )}
                         {t("settings.fileStorage.manualToken.save")}
                       </Button>
                     </div>
@@ -1159,22 +1510,36 @@ function AppearanceSection() {
 
       <Group>
         <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
-          <ToggleGroup type="single" value={theme} className="h-8"
-            onValueChange={v => v && setTheme(v as any)}>
-            <ToggleGroupItem value="light"  className="h-8 px-3 text-xs gap-1.5">
-              <Sun className="h-3.5 w-3.5" />{t("settings.themeLight")}
+          <ToggleGroup
+            type="single"
+            value={theme}
+            className="h-8"
+            onValueChange={v => v && setTheme(v as any)}
+          >
+            <ToggleGroupItem value="light" className="h-8 px-3 text-xs gap-1.5">
+              <Sun className="h-3.5 w-3.5" />
+              {t("settings.themeLight")}
             </ToggleGroupItem>
-            <ToggleGroupItem value="dark"   className="h-8 px-3 text-xs gap-1.5">
-              <Moon className="h-3.5 w-3.5" />{t("settings.themeDark")}
+            <ToggleGroupItem value="dark" className="h-8 px-3 text-xs gap-1.5">
+              <Moon className="h-3.5 w-3.5" />
+              {t("settings.themeDark")}
             </ToggleGroupItem>
-            <ToggleGroupItem value="system" className="h-8 px-3 text-xs gap-1.5">
-              <Monitor className="h-3.5 w-3.5" />{t("settings.themeSystem")}
+            <ToggleGroupItem
+              value="system"
+              className="h-8 px-3 text-xs gap-1.5"
+            >
+              <Monitor className="h-3.5 w-3.5" />
+              {t("settings.themeSystem")}
             </ToggleGroupItem>
           </ToggleGroup>
         </Row>
         <Row label={t("settings.language")} hint={t("settings.languageHint")}>
-          <ToggleGroup type="single" value={language} className="h-8"
-            onValueChange={v => v && setLanguage(v as any)}>
+          <ToggleGroup
+            type="single"
+            value={language}
+            className="h-8"
+            onValueChange={v => v && setLanguage(v as any)}
+          >
             <ToggleGroupItem value="en" className="h-8 px-3 text-xs">
               English
             </ToggleGroupItem>
@@ -1189,7 +1554,10 @@ function AppearanceSection() {
 }
 
 function DataSection({
-  p, canDeleteProperty, activePropertyId, switchProperty,
+  p,
+  canDeleteProperty,
+  activePropertyId,
+  switchProperty,
 }: {
   p: any;
   canDeleteProperty: boolean;
@@ -1198,9 +1566,15 @@ function DataSection({
 }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
-  const { refetch, isFetching } = trpc.data.exportAll.useQuery(undefined, { enabled: false });
+  const { refetch, isFetching } = trpc.data.exportAll.useQuery(undefined, {
+    enabled: false,
+  });
   const del = trpc.data.deleteAll.useMutation({
-    onSuccess: () => { toast.success(t("settings.allRecordsDeleted")); setPhrase(""); setDanger(false); },
+    onSuccess: () => {
+      toast.success(t("settings.allRecordsDeleted"));
+      setPhrase("");
+      setDanger(false);
+    },
     onError: e => toast.error(e.message),
   });
   const delProp = trpc.property.delete.useMutation({
@@ -1229,7 +1603,9 @@ function DataSection({
   const exportAll = async () => {
     const r = await refetch();
     if (!r.data) return;
-    const blob = new Blob([JSON.stringify(r.data, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(r.data, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -1243,24 +1619,43 @@ function DataSection({
       <h2 className="text-sm font-semibold">{t("settings.data")}</h2>
 
       <Group label={t("settings.demoData")}>
-        <Row label={t("settings.restoreDemo")} hint={t("settings.restoreDemoHint")}>
+        <Row
+          label={t("settings.restoreDemo")}
+          hint={t("settings.restoreDemoHint")}
+        >
           <Button
-            variant="outline" size="sm" className="h-7 text-xs"
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
             onClick={() => seed.mutate()}
             disabled={seed.isPending}
           >
+            {seed.isPending ? (
+              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-1.5 h-3 w-3" />
+            )}
             {seed.isPending
-              ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-              : <RefreshCw className="mr-1.5 h-3 w-3" />}
-            {seed.isPending ? t("settings.restoringDemo") : t("settings.restoreDemoBtn")}
+              ? t("settings.restoringDemo")
+              : t("settings.restoreDemoBtn")}
           </Button>
         </Row>
       </Group>
 
       <Group label={t("settings.export")}>
         <Row label={t("settings.allData")} hint={t("settings.allDataHint")}>
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={exportAll} disabled={isFetching}>
-            {isFetching ? <Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> : <Download className="mr-1.5 h-3 w-3" />}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={exportAll}
+            disabled={isFetching}
+          >
+            {isFetching ? (
+              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+            ) : (
+              <Download className="mr-1.5 h-3 w-3" />
+            )}
             {isFetching ? t("settings.preparing") : t("settings.downloadJson")}
           </Button>
         </Row>
@@ -1276,15 +1671,21 @@ function DataSection({
           </Button>
         </Row>
         <Row label={t("settings.perModule")} hint={t("settings.perModuleHint")}>
-          <span className="text-xs text-muted-foreground">{t("settings.perModuleList")}</span>
+          <span className="text-xs text-muted-foreground">
+            {t("settings.perModuleList")}
+          </span>
         </Row>
       </Group>
 
       <Group label={t("settings.dangerZone")}>
         {!danger ? (
-          <Row label={t("settings.deleteAll")} hint={t("settings.deleteAllHint")}>
+          <Row
+            label={t("settings.deleteAll")}
+            hint={t("settings.deleteAllHint")}
+          >
             <Button
-              variant="outline" size="sm"
+              variant="outline"
+              size="sm"
               className="h-7 text-xs text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => setDanger(true)}
             >
@@ -1294,10 +1695,15 @@ function DataSection({
         ) : (
           <div className="px-4 py-4 space-y-3">
             <p className="text-sm font-medium text-destructive flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0" />{t("settings.cannotUndo")}
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              {t("settings.cannotUndo")}
             </p>
             <p className="text-sm text-muted-foreground">
-              {t("settings.typePrefix")} <strong className="text-foreground font-medium">{expected}</strong> {t("settings.typeSuffix")}
+              {t("settings.typePrefix")}{" "}
+              <strong className="text-foreground font-medium">
+                {expected}
+              </strong>{" "}
+              {t("settings.typeSuffix")}
             </p>
             <Input
               value={phrase}
@@ -1309,15 +1715,26 @@ function DataSection({
             />
             <div className="flex gap-2">
               <Button
-                variant="destructive" size="sm" className="h-7 text-xs"
+                variant="destructive"
+                size="sm"
+                className="h-7 text-xs"
                 disabled={phrase !== expected || del.isPending}
                 onClick={() => del.mutate({ confirmationPhrase: phrase })}
               >
-                {del.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                {del.isPending && (
+                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                )}
                 {t("settings.confirm")}
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs"
-                onClick={() => { setDanger(false); setPhrase(""); }}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  setDanger(false);
+                  setPhrase("");
+                }}
+              >
                 {t("common.cancel")}
               </Button>
             </div>
@@ -1327,22 +1744,32 @@ function DataSection({
         {canDeleteProperty && (
           <>
             {!propDanger ? (
-              <Row label={t("settings.deleteProperty")} hint={t("settings.deletePropertyHint")}>
+              <Row
+                label={t("settings.deleteProperty")}
+                hint={t("settings.deletePropertyHint")}
+              >
                 <Button
-                  variant="outline" size="sm"
+                  variant="outline"
+                  size="sm"
                   className="h-7 text-xs text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
                   onClick={() => setPropDanger(true)}
                 >
-                  <Trash2 className="h-3 w-3 mr-1.5" />{t("settings.deletePropertyBtn")}
+                  <Trash2 className="h-3 w-3 mr-1.5" />
+                  {t("settings.deletePropertyBtn")}
                 </Button>
               </Row>
             ) : (
               <div className="px-4 py-4 space-y-3">
                 <p className="text-sm font-medium text-destructive flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />{t("settings.deletePropertyConfirm")}
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  {t("settings.deletePropertyConfirm")}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {t("settings.typePrefix")} <strong className="text-foreground font-medium">{propExpected}</strong> {t("settings.typeSuffix")}
+                  {t("settings.typePrefix")}{" "}
+                  <strong className="text-foreground font-medium">
+                    {propExpected}
+                  </strong>{" "}
+                  {t("settings.typeSuffix")}
                 </p>
                 <Input
                   value={propPhrase}
@@ -1354,15 +1781,28 @@ function DataSection({
                 />
                 <div className="flex gap-2">
                   <Button
-                    variant="destructive" size="sm" className="h-7 text-xs"
+                    variant="destructive"
+                    size="sm"
+                    className="h-7 text-xs"
                     disabled={propPhrase !== propExpected || delProp.isPending}
-                    onClick={() => delProp.mutate({ propertyId: activePropertyId })}
+                    onClick={() =>
+                      delProp.mutate({ propertyId: activePropertyId })
+                    }
                   >
-                    {delProp.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                    {delProp.isPending && (
+                      <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                    )}
                     {t("settings.deletePropertyConfirmBtn")}
                   </Button>
-                  <Button variant="ghost" size="sm" className="h-7 text-xs"
-                    onClick={() => { setPropDanger(false); setPropPhrase(""); }}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      setPropDanger(false);
+                      setPropPhrase("");
+                    }}
+                  >
                     {t("common.cancel")}
                   </Button>
                 </div>
@@ -1400,7 +1840,10 @@ function StoredFilesGroup() {
   // Resets to page 0 when the scope toggle changes.
   const [page, setPage] = useState(0);
   const queryInput = useMemo(() => {
-    const base: any = { limit: FILES_PAGE_SIZE, offset: page * FILES_PAGE_SIZE };
+    const base: any = {
+      limit: FILES_PAGE_SIZE,
+      offset: page * FILES_PAGE_SIZE,
+    };
     if (scope === "property") base.propertyId = activePropertyId;
     return base;
   }, [scope, page, activePropertyId]);
@@ -1414,7 +1857,7 @@ function StoredFilesGroup() {
   useEffect(() => {
     if (!list.data) return;
     if (page === 0) setAllItems(list.data.items);
-    else setAllItems((prev) => [...prev, ...list.data!.items]);
+    else setAllItems(prev => [...prev, ...list.data!.items]);
   }, [list.data, page]);
 
   // Reset pagination state on scope toggle.
@@ -1429,10 +1872,10 @@ function StoredFilesGroup() {
       setAllItems([]);
       utils.files.list.invalidate();
     },
-    onError: (e) => toast.error(e.message),
+    onError: e => toast.error(e.message),
   });
   const reap = trpc.files.reapOrphans.useMutation({
-    onError: (e) => toast.error(e.message),
+    onError: e => toast.error(e.message),
   });
 
   if (!me) return null;
@@ -1464,7 +1907,7 @@ function StoredFilesGroup() {
             type="single"
             value={scope}
             className="h-7"
-            onValueChange={(v) => v && setScope(v as "property" | "all")}
+            onValueChange={v => v && setScope(v as "property" | "all")}
           >
             <ToggleGroupItem value="property" className="text-xs h-7 px-3">
               {t("settings.storedFiles.scopeProperty")}
@@ -1478,10 +1921,12 @@ function StoredFilesGroup() {
               variant="ghost"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => setExpanded((e) => !e)}
+              onClick={() => setExpanded(e => !e)}
               disabled={list.isLoading || totalCount === 0}
             >
-              {expanded ? t("settings.storedFiles.hide") : t("settings.storedFiles.browse")}
+              {expanded
+                ? t("settings.storedFiles.hide")
+                : t("settings.storedFiles.browse")}
             </Button>
             {isAdmin && (
               <Button
@@ -1496,7 +1941,7 @@ function StoredFilesGroup() {
                         retried: r.retried,
                         ok: r.succeeded,
                         failed: r.failed,
-                      }),
+                      })
                     );
                     setPage(0);
                     setAllItems([]);
@@ -1505,7 +1950,9 @@ function StoredFilesGroup() {
                 }}
                 disabled={reap.isPending}
               >
-                {reap.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                {reap.isPending && (
+                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                )}
                 {t("settings.storedFiles.cleanupOrphans")}
               </Button>
             )}
@@ -1515,15 +1962,18 @@ function StoredFilesGroup() {
 
       {expanded && allItems.length > 0 && (
         <div className="px-4 py-3 max-h-96 overflow-y-auto divide-y divide-border">
-          {allItems.map((f) => (
+          {allItems.map(f => (
             <div key={f.id} className="flex items-center gap-3 py-2 text-sm">
               <div className="flex-1 min-w-0">
                 <p className="truncate font-medium">{f.originalName}</p>
                 <p className="text-xs text-muted-foreground">
-                  {prettyBytes(f.size)} · {new Date(f.createdAt).toLocaleDateString()} ·{" "}
+                  {prettyBytes(f.size)} ·{" "}
+                  {new Date(f.createdAt).toLocaleDateString()} ·{" "}
                   {f.propertyId == null
                     ? t("settings.storedFiles.legacyLabel")
-                    : t("settings.storedFiles.propertyLabel", { id: f.propertyId })}
+                    : t("settings.storedFiles.propertyLabel", {
+                        id: f.propertyId,
+                      })}
                 </p>
               </div>
               <a
@@ -1538,7 +1988,13 @@ function StoredFilesGroup() {
                 size="sm"
                 className="h-6 w-6 p-0 text-destructive"
                 onClick={() => {
-                  if (confirm(t("settings.storedFiles.deleteConfirm", { name: f.originalName }))) {
+                  if (
+                    confirm(
+                      t("settings.storedFiles.deleteConfirm", {
+                        name: f.originalName,
+                      })
+                    )
+                  ) {
                     deleteFile.mutate({ id: f.id });
                   }
                 }}
@@ -1551,16 +2007,21 @@ function StoredFilesGroup() {
           {hasMore && (
             <div className="pt-3 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
-                {t("settings.storedFiles.loadedOf", { loaded: allItems.length, total: totalCount })}
+                {t("settings.storedFiles.loadedOf", {
+                  loaded: allItems.length,
+                  total: totalCount,
+                })}
               </span>
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => setPage(p => p + 1)}
                 disabled={list.isFetching}
               >
-                {list.isFetching && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                {list.isFetching && (
+                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                )}
                 {t("settings.storedFiles.loadMore")}
               </Button>
             </div>
@@ -1576,21 +2037,27 @@ function StoredFilesGroup() {
 export default function Settings() {
   const { t } = useTranslation();
   const routeParams = useParams<{ section?: string }>();
-  const initialSection: SID = (routeParams.section && (NAV_IDS as readonly string[]).includes(routeParams.section)
-    ? (routeParams.section as SID)
-    : "property");
+  const initialSection: SID =
+    routeParams.section &&
+    (NAV_IDS as readonly string[]).includes(routeParams.section)
+      ? (routeParams.section as SID)
+      : "property";
   const [active, setActive] = useState<SID>(initialSection);
   const { data: property, isLoading } = trpc.property.get.useQuery();
   const { data: allProperties } = trpc.property.list.useQuery();
   const { activePropertyId, switchProperty } = useProperty();
-  const canDeleteProperty = (allProperties?.length ?? 0) > 1 && activePropertyId !== 1;
+  const canDeleteProperty =
+    (allProperties?.length ?? 0) > 1 && activePropertyId !== 1;
 
   const NAV = NAV_IDS.map(id => ({ id, label: t(`settings.${id}`) }));
 
   // Sync active tab when the wouter route param changes (e.g. after OAuth
   // callback redirects to /#/settings/integrations).
   useEffect(() => {
-    if (routeParams.section && (NAV_IDS as readonly string[]).includes(routeParams.section)) {
+    if (
+      routeParams.section &&
+      (NAV_IDS as readonly string[]).includes(routeParams.section)
+    ) {
       setActive(routeParams.section as SID);
     }
   }, [routeParams.section]);
@@ -1611,7 +2078,6 @@ export default function Settings() {
 
   return (
     <div className="flex gap-12 min-h-full">
-
       {/* Desktop side nav — text only, order flips in RTL via flex direction */}
       <nav className="hidden md:block w-36 shrink-0 sticky top-4 self-start">
         <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
@@ -1633,7 +2099,7 @@ export default function Settings() {
               "w-full text-start px-2 py-1.5 rounded text-sm transition-colors",
               active === id
                 ? "text-foreground font-medium"
-                : "text-muted-foreground hover:text-foreground",
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             {label}
@@ -1654,7 +2120,7 @@ export default function Settings() {
                   "shrink-0 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors",
                   active === id
                     ? "bg-foreground text-background font-medium"
-                    : "text-muted-foreground hover:text-foreground",
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 {label}
@@ -1662,14 +2128,21 @@ export default function Settings() {
             ))}
           </div>
         </div>
-        {active === "property"      && <PropertySection      p={property} />}
-        {active === "purchase"      && <PurchaseSection      p={property} />}
-        {active === "household"     && <HouseholdSection />}
-        {active === "regional"      && <RegionalSection      p={property} />}
+        {active === "property" && <PropertySection p={property} />}
+        {active === "purchase" && <PurchaseSection p={property} />}
+        {active === "household" && <HouseholdSection />}
+        {active === "regional" && <RegionalSection p={property} />}
         {active === "notifications" && <NotificationsSection p={property} />}
-        {active === "integrations"  && <IntegrationsSection  p={property} />}
-        {active === "appearance"    && <AppearanceSection />}
-        {active === "data"          && <DataSection          p={property} canDeleteProperty={canDeleteProperty} activePropertyId={activePropertyId} switchProperty={switchProperty} />}
+        {active === "integrations" && <IntegrationsSection p={property} />}
+        {active === "appearance" && <AppearanceSection />}
+        {active === "data" && (
+          <DataSection
+            p={property}
+            canDeleteProperty={canDeleteProperty}
+            activePropertyId={activePropertyId}
+            switchProperty={switchProperty}
+          />
+        )}
       </div>
     </div>
   );

@@ -17,7 +17,10 @@ import {
   connectWithRefreshToken,
   validateDriveConnection,
 } from "./storage/gdrive";
-import { StorageNotConfiguredError, StorageOperationError } from "./storage/types";
+import {
+  StorageNotConfiguredError,
+  StorageOperationError,
+} from "./storage/types";
 
 /**
  * Google Drive setup endpoints.
@@ -50,7 +53,8 @@ const CONNECTED_REDIRECT = "/?gdrive=connected#/settings/integrations";
 const errorRedirect = (msg: string) =>
   `/?gdrive=error&message=${encodeURIComponent(msg)}#/settings/integrations`;
 // Generic message shown to the user — verbose Google text stays in server logs.
-const GENERIC_CALLBACK_ERROR = "Could not complete the Google connection. Try again.";
+const GENERIC_CALLBACK_ERROR =
+  "Could not complete the Google connection. Try again.";
 
 const router = Router();
 
@@ -93,8 +97,9 @@ async function requireRealAdmin(req: Request, res: Response) {
     });
     return null;
   }
-  const supplied = (req.headers[SETUP_TOKEN_HEADER] as string | undefined)
-    || (typeof req.query.setup_token === "string" ? req.query.setup_token : "");
+  const supplied =
+    (req.headers[SETUP_TOKEN_HEADER] as string | undefined) ||
+    (typeof req.query.setup_token === "string" ? req.query.setup_token : "");
   if (!supplied || !timingSafeEqualStr(supplied, required)) {
     res.status(403).json({
       error:
@@ -120,7 +125,8 @@ function hashState(state: string): string {
 
 function buildStateCookieOptions(req: Request) {
   const xfp = req.headers["x-forwarded-proto"];
-  const proto = typeof xfp === "string" ? xfp.split(",")[0].trim() : req.protocol;
+  const proto =
+    typeof xfp === "string" ? xfp.split(",")[0].trim() : req.protocol;
   const secure = ENV.isProduction || proto === "https";
   return {
     httpOnly: true,
@@ -187,7 +193,11 @@ router.get("/api/google-drive/connect", async (req, res) => {
     // send to Google and store ONLY its hash in our HttpOnly cookie. On callback
     // we hash the returned state and compare in constant time.
     const state = crypto.randomBytes(32).toString("base64url");
-    res.cookie(OAUTH_STATE_COOKIE, hashState(state), buildStateCookieOptions(req));
+    res.cookie(
+      OAUTH_STATE_COOKIE,
+      hashState(state),
+      buildStateCookieOptions(req)
+    );
     const url = await buildConnectAuthUrl(state);
     res.redirect(302, url);
   } catch (err) {
@@ -209,10 +219,16 @@ router.get("/api/google-drive/callback", async (req, res) => {
   // a state can never be replayed across requests. Calling clearCookie
   // *after* res.status / res.redirect would crash (ERR_HTTP_HEADERS_SENT).
   const cookieStateHash = readCookie(req, OAUTH_STATE_COOKIE);
-  res.clearCookie(OAUTH_STATE_COOKIE, { ...buildStateCookieOptions(req), maxAge: 0 });
+  res.clearCookie(OAUTH_STATE_COOKIE, {
+    ...buildStateCookieOptions(req),
+    maxAge: 0,
+  });
 
   if (errParam) {
-    logger.warn({ err: errParam }, "[gdrive] Google returned an error parameter");
+    logger.warn(
+      { err: errParam },
+      "[gdrive] Google returned an error parameter"
+    );
     res.redirect(302, errorRedirect(GENERIC_CALLBACK_ERROR));
     return;
   }
@@ -252,13 +268,16 @@ router.get("/api/google-drive/callback", async (req, res) => {
     if (email) {
       res.redirect(
         302,
-        `/?gdrive=connected&email=${encodeURIComponent(email)}#/settings/integrations`,
+        `/?gdrive=connected&email=${encodeURIComponent(email)}#/settings/integrations`
       );
     } else {
       res.redirect(302, CONNECTED_REDIRECT);
     }
   } catch (err) {
-    logger.error({ err: (err as Error).message }, "[gdrive] callback exchange error");
+    logger.error(
+      { err: (err as Error).message },
+      "[gdrive] callback exchange error"
+    );
     res.redirect(302, errorRedirect(GENERIC_CALLBACK_ERROR));
   }
 });
@@ -273,10 +292,13 @@ router.post(
       await disconnectGoogleDrive();
       res.json({ ok: true });
     } catch (err) {
-      logger.error({ err: (err as Error).message }, "[gdrive] disconnect error");
+      logger.error(
+        { err: (err as Error).message },
+        "[gdrive] disconnect error"
+      );
       res.status(500).json({ error: "Failed to disconnect" });
     }
-  },
+  }
 );
 
 router.post(
@@ -294,10 +316,15 @@ router.post(
       const { email } = await connectWithRefreshToken(refreshToken.trim());
       res.json({ ok: true, email });
     } catch (err) {
-      logger.error({ err: (err as Error).message }, "[gdrive] manual token error");
-      res.status(400).json({ error: (err as Error).message || "Invalid refresh token" });
+      logger.error(
+        { err: (err as Error).message },
+        "[gdrive] manual token error"
+      );
+      res
+        .status(400)
+        .json({ error: (err as Error).message || "Invalid refresh token" });
     }
-  },
+  }
 );
 
 router.post(
@@ -317,7 +344,9 @@ router.post(
     }
     const existing = await getCredentialsStatus();
     if (!existing.secretExists && !clientSecret?.trim()) {
-      res.status(400).json({ error: "clientSecret is required for initial setup" });
+      res
+        .status(400)
+        .json({ error: "clientSecret is required for initial setup" });
       return;
     }
     try {
@@ -328,10 +357,13 @@ router.post(
       });
       res.json({ ok: true });
     } catch (err) {
-      logger.error({ err: (err as Error).message }, "[gdrive] save credentials error");
+      logger.error(
+        { err: (err as Error).message },
+        "[gdrive] save credentials error"
+      );
       res.status(500).json({ error: "Failed to save credentials" });
     }
-  },
+  }
 );
 
 export { router as googleDriveRouter };

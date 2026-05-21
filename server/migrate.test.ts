@@ -11,10 +11,12 @@ import { readFileSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { describe, it, expect } from "vitest";
 
-const ROOT           = resolve(import.meta.dirname, "..");
+const ROOT = resolve(import.meta.dirname, "..");
 const MIGRATIONS_DIR = resolve(ROOT, "drizzle");
 
-const sqlFiles = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith(".sql")).sort();
+const sqlFiles = readdirSync(MIGRATIONS_DIR)
+  .filter(f => f.endsWith(".sql"))
+  .sort();
 
 // ── Statement parser — mirrors scripts/migrate.ts exactly ────────────────────
 // If the runner logic changes, this must stay in sync.
@@ -86,7 +88,7 @@ describe("migrate.ts parser — leading comment handling", () => {
 describe("migration files — MySQL 8.4 syntax compatibility", () => {
   it.each(sqlFiles)(
     "%s — no IF [NOT] EXISTS on ALTER/INDEX DDL (not supported on MySQL 8.4 Windows)",
-    (file) => {
+    file => {
       const sql = readFileSync(resolve(MIGRATIONS_DIR, file), "utf-8");
       // Use plain DDL + rely on IGNORABLE error codes in the runner instead:
       //   ADD COLUMN    → ER_DUP_FIELDNAME (already IGNORABLE)
@@ -104,19 +106,24 @@ describe("migration files — MySQL 8.4 syntax compatibility", () => {
 describe("migration files — statement parser extracts every SQL chunk", () => {
   it.each(sqlFiles)(
     "%s — every non-empty statement-breakpoint chunk produces at least one SQL statement",
-    (file) => {
-      const sql   = readFileSync(resolve(MIGRATIONS_DIR, file), "utf-8");
+    file => {
+      const sql = readFileSync(resolve(MIGRATIONS_DIR, file), "utf-8");
       const chunks = sql.split(/-->\s*statement-breakpoint/);
 
       for (const chunk of chunks) {
-        const lines   = chunk.trim().split("\n");
-        const hasSql  = lines.some(l => !l.trimStart().startsWith("--") && l.trim().length > 0);
+        const lines = chunk.trim().split("\n");
+        const hasSql = lines.some(
+          l => !l.trimStart().startsWith("--") && l.trim().length > 0
+        );
         if (!hasSql) continue;
 
         // A chunk with SQL content must survive the parser
-        const firstIdx  = lines.findIndex(l => !l.trimStart().startsWith("--"));
+        const firstIdx = lines.findIndex(l => !l.trimStart().startsWith("--"));
         const sqlContent = lines.slice(firstIdx).join("\n").trim();
-        expect(sqlContent.length, `chunk in ${file} has SQL but parser would drop it:\n${chunk}`).toBeGreaterThan(0);
+        expect(
+          sqlContent.length,
+          `chunk in ${file} has SQL but parser would drop it:\n${chunk}`
+        ).toBeGreaterThan(0);
       }
     }
   );
@@ -127,11 +134,13 @@ describe("migration files — statement parser extracts every SQL chunk", () => 
 describe("0012_files_property.sql — propertyId scope", () => {
   const sql = readFileSync(
     resolve(MIGRATIONS_DIR, "0012_files_property.sql"),
-    "utf-8",
+    "utf-8"
   );
 
   it("adds the nullable propertyId column", () => {
-    expect(sql).toMatch(/ALTER TABLE `files` ADD COLUMN `propertyId` int DEFAULT NULL/);
+    expect(sql).toMatch(
+      /ALTER TABLE `files` ADD COLUMN `propertyId` int DEFAULT NULL/
+    );
   });
 
   it("creates the files_property_idx index", () => {
@@ -149,7 +158,7 @@ describe("0012_files_property.sql — propertyId scope", () => {
 describe("0011_files_and_app_settings.sql — coverage", () => {
   const sql = readFileSync(
     resolve(MIGRATIONS_DIR, "0011_files_and_app_settings.sql"),
-    "utf-8",
+    "utf-8"
   );
 
   it("creates both app_settings and files tables", () => {
@@ -170,7 +179,9 @@ describe("0011_files_and_app_settings.sql — coverage", () => {
   });
 
   it("files table has FK to users + helpful indexes", () => {
-    expect(sql).toContain("FOREIGN KEY (`ownerUserId`) REFERENCES `users` (`id`)");
+    expect(sql).toContain(
+      "FOREIGN KEY (`ownerUserId`) REFERENCES `users` (`id`)"
+    );
     expect(sql).toContain("INDEX `files_owner_idx`");
     expect(sql).toContain("INDEX `files_backend_idx`");
   });
@@ -189,7 +200,10 @@ describe("0011_files_and_app_settings.sql — coverage", () => {
 // ── 0010_payment_tables.sql — specific statement coverage ────────────────────
 
 describe("0010_payment_tables.sql — payment tables migration coverage", () => {
-  const sql = readFileSync(resolve(MIGRATIONS_DIR, "0010_payment_tables.sql"), "utf-8");
+  const sql = readFileSync(
+    resolve(MIGRATIONS_DIR, "0010_payment_tables.sql"),
+    "utf-8"
+  );
 
   it("produces exactly 12 SQL statements when parsed", () => {
     expect(parseStatements(sql)).toHaveLength(12);
@@ -204,24 +218,37 @@ describe("0010_payment_tables.sql — payment tables migration coverage", () => 
   it("drops all three legacy JSON columns", () => {
     expect(sql).toMatch(/ALTER TABLE `loans`\s+DROP COLUMN `repayments`/);
     expect(sql).toMatch(/ALTER TABLE `repairQuotes`\s+DROP COLUMN `payments`/);
-    expect(sql).toMatch(/ALTER TABLE `upgradeOptions`\s+DROP COLUMN `payments`/);
+    expect(sql).toMatch(
+      /ALTER TABLE `upgradeOptions`\s+DROP COLUMN `payments`/
+    );
   });
 
   it("drops legacy ownerId from loanRepayments before first INSERT into it", () => {
-    const dropFkIdx    = sql.indexOf("DROP FOREIGN KEY `loanRepayments_ownerId_users_id_fk`");
-    const dropColIdx   = sql.indexOf("DROP COLUMN `ownerId`");
-    const insertLrIdx  = sql.indexOf("INSERT IGNORE INTO `loanRepayments`");
-    expect(dropFkIdx,  "must drop ownerId FK").toBeGreaterThan(-1);
+    const dropFkIdx = sql.indexOf(
+      "DROP FOREIGN KEY `loanRepayments_ownerId_users_id_fk`"
+    );
+    const dropColIdx = sql.indexOf("DROP COLUMN `ownerId`");
+    const insertLrIdx = sql.indexOf("INSERT IGNORE INTO `loanRepayments`");
+    expect(dropFkIdx, "must drop ownerId FK").toBeGreaterThan(-1);
     expect(dropColIdx, "must drop ownerId column").toBeGreaterThan(-1);
-    expect(insertLrIdx,"must have INSERT for loanRepayments").toBeGreaterThan(-1);
-    expect(dropColIdx, "DROP COLUMN must come before INSERT").toBeLessThan(insertLrIdx);
+    expect(insertLrIdx, "must have INSERT for loanRepayments").toBeGreaterThan(
+      -1
+    );
+    expect(dropColIdx, "DROP COLUMN must come before INSERT").toBeLessThan(
+      insertLrIdx
+    );
   });
 
   it("normalizes upgradeOptions.id collation before creating upgradeOptionPayments FK", () => {
-    const modifyIdx  = sql.indexOf("MODIFY COLUMN `id`");
-    const createIdx  = sql.indexOf("CREATE TABLE IF NOT EXISTS `upgradeOptionPayments`");
+    const modifyIdx = sql.indexOf("MODIFY COLUMN `id`");
+    const createIdx = sql.indexOf(
+      "CREATE TABLE IF NOT EXISTS `upgradeOptionPayments`"
+    );
     expect(modifyIdx).toBeGreaterThan(-1);
     expect(createIdx).toBeGreaterThan(-1);
-    expect(modifyIdx, "MODIFY COLUMN must appear before the upgradeOptionPayments CREATE TABLE").toBeLessThan(createIdx);
+    expect(
+      modifyIdx,
+      "MODIFY COLUMN must appear before the upgradeOptionPayments CREATE TABLE"
+    ).toBeLessThan(createIdx);
   });
 });

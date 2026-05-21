@@ -1,15 +1,28 @@
 import { eq, desc, and, inArray } from "drizzle-orm";
 import {
-  repairs, repairQuotes, repairQuotePayments,
-  type Repair, type RepairQuote, type RepairQuotePayment,
+  repairs,
+  repairQuotes,
+  repairQuotePayments,
+  type Repair,
+  type RepairQuote,
+  type RepairQuotePayment,
 } from "../../drizzle/schema";
 import { getDb } from "./client";
 
-export type RepairQuoteWithPayments = RepairQuote & { payments: RepairQuotePayment[] };
+export type RepairQuoteWithPayments = RepairQuote & {
+  payments: RepairQuotePayment[];
+};
 
-export async function getRepairs(userId: number, propertyId: number, limit = 500, offset = 0) {
+export async function getRepairs(
+  userId: number,
+  propertyId: number,
+  limit = 500,
+  offset = 0
+) {
   const db = await getDb();
-  return await db.select().from(repairs)
+  return await db
+    .select()
+    .from(repairs)
     .where(and(eq(repairs.ownerId, userId), eq(repairs.propertyId, propertyId)))
     .orderBy(desc(repairs.createdAt))
     .limit(limit)
@@ -18,11 +31,18 @@ export async function getRepairs(userId: number, propertyId: number, limit = 500
 
 export async function getRepairById(id: string) {
   const db = await getDb();
-  const result = await db.select().from(repairs).where(eq(repairs.id, id)).limit(1);
+  const result = await db
+    .select()
+    .from(repairs)
+    .where(eq(repairs.id, id))
+    .limit(1);
   return result[0] ?? null;
 }
 
-export async function filterOwnedRepairIds(ids: string[], ownerId: number): Promise<string[]> {
+export async function filterOwnedRepairIds(
+  ids: string[],
+  ownerId: number
+): Promise<string[]> {
   if (ids.length === 0) return [];
   const db = await getDb();
   const rows = await db
@@ -34,27 +54,41 @@ export async function filterOwnedRepairIds(ids: string[], ownerId: number): Prom
 
 export async function createRepair(data: typeof repairs.$inferInsert) {
   const db = await getDb();
-  await db.insert(repairs).values({ ...data, attachments: (data.attachments ?? []) as any });
+  await db
+    .insert(repairs)
+    .values({ ...data, attachments: (data.attachments ?? []) as any });
   return data;
 }
 
-export async function updateRepair(id: string, ownerId: number, data: Partial<Repair>) {
+export async function updateRepair(
+  id: string,
+  ownerId: number,
+  data: Partial<Repair>
+) {
   const db = await getDb();
   const normalized: any = { ...data };
-  if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
-  await db.update(repairs).set(normalized).where(and(eq(repairs.id, id), eq(repairs.ownerId, ownerId)));
+  if ("attachments" in normalized)
+    normalized.attachments = normalized.attachments ?? [];
+  await db
+    .update(repairs)
+    .set(normalized)
+    .where(and(eq(repairs.id, id), eq(repairs.ownerId, ownerId)));
   return data;
 }
 
 export async function deleteRepair(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(repairs).where(and(eq(repairs.id, id), eq(repairs.ownerId, ownerId)));
+  await db
+    .delete(repairs)
+    .where(and(eq(repairs.id, id), eq(repairs.ownerId, ownerId)));
   return true;
 }
 
 // ── Repair Quotes ─────────────────────────────────────────────────────────────
 
-async function attachPayments(quoteRows: RepairQuote[]): Promise<RepairQuoteWithPayments[]> {
+async function attachPayments(
+  quoteRows: RepairQuote[]
+): Promise<RepairQuoteWithPayments[]> {
   if (quoteRows.length === 0) return [];
   const db = await getDb();
   const ids = quoteRows.map(q => q.id);
@@ -70,7 +104,9 @@ async function attachPayments(quoteRows: RepairQuote[]): Promise<RepairQuoteWith
   return quoteRows.map(q => ({ ...q, payments: byQuote[q.id] ?? [] }));
 }
 
-export async function getRepairQuotes(repairId: string): Promise<RepairQuoteWithPayments[]> {
+export async function getRepairQuotes(
+  repairId: string
+): Promise<RepairQuoteWithPayments[]> {
   const db = await getDb();
   const rows = await db
     .select()
@@ -84,13 +120,17 @@ export async function getRepairQuoteCounts(repairIds: string[]) {
   if (repairIds.length === 0) return [];
   const db = await getDb();
   const rows = await db
-    .select({ repairId: repairQuotes.repairId, selected: repairQuotes.selected })
+    .select({
+      repairId: repairQuotes.repairId,
+      selected: repairQuotes.selected,
+    })
     .from(repairQuotes)
     .where(inArray(repairQuotes.repairId, repairIds));
 
   const map: Record<string, { total: number; hasSelected: boolean }> = {};
   for (const row of rows) {
-    if (!map[row.repairId]) map[row.repairId] = { total: 0, hasSelected: false };
+    if (!map[row.repairId])
+      map[row.repairId] = { total: 0, hasSelected: false };
     map[row.repairId].total++;
     if (row.selected) map[row.repairId].hasSelected = true;
   }
@@ -99,17 +139,26 @@ export async function getRepairQuoteCounts(repairIds: string[]) {
 
 export async function getRepairQuoteById(id: string) {
   const db = await getDb();
-  const result = await db.select().from(repairQuotes).where(eq(repairQuotes.id, id)).limit(1);
+  const result = await db
+    .select()
+    .from(repairQuotes)
+    .where(eq(repairQuotes.id, id))
+    .limit(1);
   return result[0] ?? null;
 }
 
-export async function createRepairQuote(data: typeof repairQuotes.$inferInsert) {
+export async function createRepairQuote(
+  data: typeof repairQuotes.$inferInsert
+) {
   const db = await getDb();
   await db.insert(repairQuotes).values(data);
   return data;
 }
 
-export async function updateRepairQuote(id: string, data: Partial<RepairQuote>) {
+export async function updateRepairQuote(
+  id: string,
+  data: Partial<RepairQuote>
+) {
   const db = await getDb();
   await db.update(repairQuotes).set(data).where(eq(repairQuotes.id, id));
   return data;
@@ -117,9 +166,15 @@ export async function updateRepairQuote(id: string, data: Partial<RepairQuote>) 
 
 export async function selectRepairQuote(repairId: string, quoteId: string) {
   const db = await getDb();
-  await db.transaction(async (tx) => {
-    await tx.update(repairQuotes).set({ selected: false }).where(eq(repairQuotes.repairId, repairId));
-    await tx.update(repairQuotes).set({ selected: true }).where(eq(repairQuotes.id, quoteId));
+  await db.transaction(async tx => {
+    await tx
+      .update(repairQuotes)
+      .set({ selected: false })
+      .where(eq(repairQuotes.repairId, repairId));
+    await tx
+      .update(repairQuotes)
+      .set({ selected: true })
+      .where(eq(repairQuotes.id, quoteId));
   });
 }
 
@@ -131,7 +186,9 @@ export async function deleteRepairQuote(id: string) {
 
 // ── Repair quote payments ─────────────────────────────────────────────────────
 
-export async function getRepairQuotePayments(quoteId: string): Promise<RepairQuotePayment[]> {
+export async function getRepairQuotePayments(
+  quoteId: string
+): Promise<RepairQuotePayment[]> {
   const db = await getDb();
   return await db
     .select()
@@ -140,7 +197,9 @@ export async function getRepairQuotePayments(quoteId: string): Promise<RepairQuo
     .orderBy(repairQuotePayments.date);
 }
 
-export async function createRepairQuotePayment(data: typeof repairQuotePayments.$inferInsert): Promise<RepairQuotePayment> {
+export async function createRepairQuotePayment(
+  data: typeof repairQuotePayments.$inferInsert
+): Promise<RepairQuotePayment> {
   const db = await getDb();
   await db.insert(repairQuotePayments).values(data);
   return data as RepairQuotePayment;
@@ -150,6 +209,11 @@ export async function deleteRepairQuotePayment(id: string, quoteId: string) {
   const db = await getDb();
   await db
     .delete(repairQuotePayments)
-    .where(and(eq(repairQuotePayments.id, id), eq(repairQuotePayments.quoteId, quoteId)));
+    .where(
+      and(
+        eq(repairQuotePayments.id, id),
+        eq(repairQuotePayments.quoteId, quoteId)
+      )
+    );
   return true;
 }

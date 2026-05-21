@@ -33,7 +33,9 @@ export default function Login() {
             <Home className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">HomeVault</h1>
-          <p className="text-muted-foreground mt-2">Your property, fully managed</p>
+          <p className="text-muted-foreground mt-2">
+            Your property, fully managed
+          </p>
         </div>
 
         <div className="bg-card rounded-2xl shadow-sm border p-8 space-y-6">
@@ -41,9 +43,16 @@ export default function Login() {
             <>
               <div className="text-center space-y-1">
                 <h2 className="text-xl font-semibold">Welcome back</h2>
-                <p className="text-sm text-muted-foreground">Sign in to access your property dashboard</p>
+                <p className="text-sm text-muted-foreground">
+                  Sign in to access your property dashboard
+                </p>
               </div>
-              <Button className="w-full h-11 text-base" onClick={() => { window.location.href = getLoginUrl(); }}>
+              <Button
+                className="w-full h-11 text-base"
+                onClick={() => {
+                  window.location.href = getLoginUrl();
+                }}
+              >
                 <LogIn className="w-4 h-4 mr-2" />
                 Sign in
               </Button>
@@ -52,7 +61,9 @@ export default function Login() {
             <div className="space-y-4">
               <div className="text-center space-y-1">
                 <h2 className="text-xl font-semibold">Local Development</h2>
-                <p className="text-sm text-muted-foreground">Sign in with the built-in dev account</p>
+                <p className="text-sm text-muted-foreground">
+                  Sign in with the built-in dev account
+                </p>
               </div>
               <Button
                 className="w-full h-11 text-base"
@@ -64,16 +75,28 @@ export default function Login() {
                 <LogIn className="w-4 h-4 mr-2" />
                 Dev Login
               </Button>
-              <p className="text-xs text-muted-foreground text-center">Only available in development mode</p>
+              <p className="text-xs text-muted-foreground text-center">
+                Only available in development mode
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                 <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Authentication not configured</p>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                    Authentication not configured
+                  </p>
                   <p className="text-xs text-amber-700 dark:text-amber-400">
-                    Add <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 rounded">VITE_OAUTH_PORTAL_URL</code> and <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 rounded">VITE_APP_ID</code> to your .env file.
+                    Add{" "}
+                    <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
+                      VITE_OAUTH_PORTAL_URL
+                    </code>{" "}
+                    and{" "}
+                    <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
+                      VITE_APP_ID
+                    </code>{" "}
+                    to your .env file.
                   </p>
                 </div>
               </div>

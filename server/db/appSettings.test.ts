@@ -27,7 +27,12 @@ vi.mock("./client", () => ({
   parseJsonArray: (v: any) => (Array.isArray(v) ? v : []),
 }));
 
-import { getSetting, setSetting, deleteSetting, makeSettingCache } from "./appSettings";
+import {
+  getSetting,
+  setSetting,
+  deleteSetting,
+  makeSettingCache,
+} from "./appSettings";
 
 describe("appSettings — module surface", () => {
   it("exports get/set/delete + makeSettingCache", () => {

@@ -308,7 +308,7 @@
         "save": "Connect",
         "success": "Google Drive connected",
         "required": "Paste the refresh token first"
-      }
+      },
       "creds": {
         "label": "OAuth credentials",
         "setupHint": "Enter your Google OAuth 2.0 client credentials to enable file uploads.",

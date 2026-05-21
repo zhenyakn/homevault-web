@@ -107,7 +107,7 @@ export function useSearch() {
           target.tagName === "SELECT");
       if (isEditable) return;
       e.preventDefault();
-      setOpen((v) => !v);
+      setOpen(v => !v);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);

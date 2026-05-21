@@ -5,11 +5,30 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, ChevronLeft, ChevronRight, Plus, Clock, AlignLeft } from "lucide-react";
+import {
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Clock,
+  AlignLeft,
+} from "lucide-react";
 import { toast } from "sonner";
 
 type EventType = "Expense" | "Repair" | "Upgrade" | "Loan" | "Other";
@@ -37,7 +56,13 @@ const EVENT_BADGE_COLORS: Record<string, string> = {
   Other: "bg-gray-100 text-gray-800 hover:bg-gray-200",
 };
 
-const EVENT_TYPES: EventType[] = ["Expense", "Repair", "Upgrade", "Loan", "Other"];
+const EVENT_TYPES: EventType[] = [
+  "Expense",
+  "Repair",
+  "Upgrade",
+  "Loan",
+  "Other",
+];
 
 export default function Calendar() {
   const { t, i18n } = useTranslation();
@@ -58,7 +83,11 @@ export default function Calendar() {
   const startDate = new Date(year, month, 1).toISOString().split("T")[0];
   const endDate = new Date(year, month + 1, 0).toISOString().split("T")[0];
 
-  const { data: events = [], isLoading, refetch } = trpc.calendar.list.useQuery({ startDate, endDate });
+  const {
+    data: events = [],
+    isLoading,
+    refetch,
+  } = trpc.calendar.list.useQuery({ startDate, endDate });
 
   const createMutation = trpc.calendar.create.useMutation({
     onSuccess: () => {
@@ -67,7 +96,7 @@ export default function Calendar() {
       resetForm();
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`${error.message}`);
     },
   });
@@ -77,7 +106,7 @@ export default function Calendar() {
       toast.success(t("calendar.eventDeleted"));
       refetch();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`${error.message}`);
     },
   });
@@ -113,12 +142,14 @@ export default function Calendar() {
   // Locale-aware short day names: anchor on a known Sunday (Jan 5 2025)
   const dayNames = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(2025, 0, 5 + i);
-    return new Intl.DateTimeFormat(i18n.language, { weekday: "short" }).format(d);
+    return new Intl.DateTimeFormat(i18n.language, { weekday: "short" }).format(
+      d
+    );
   });
 
   const eventsByDate = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
-    events.forEach((event) => {
+    events.forEach(event => {
       if (!map[event.date]) map[event.date] = [];
       map[event.date].push(event);
     });
@@ -131,7 +162,9 @@ export default function Calendar() {
     setIsDayDialogOpen(true);
   };
 
-  const selectedDateEvents = selectedDate ? eventsByDate[selectedDate] || [] : [];
+  const selectedDateEvents = selectedDate
+    ? eventsByDate[selectedDate] || []
+    : [];
 
   const upcomingEvents = useMemo(() => {
     const today = new Date().toISOString().split("T")[0];
@@ -139,7 +172,7 @@ export default function Calendar() {
     next30Days.setDate(next30Days.getDate() + 30);
     const next30DaysStr = next30Days.toISOString().split("T")[0];
     return events
-      .filter((e) => e.date >= today && e.date <= next30DaysStr)
+      .filter(e => e.date >= today && e.date <= next30DaysStr)
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [events]);
 
@@ -160,37 +193,72 @@ export default function Calendar() {
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">{t("calendar.eventTitle")}</Label>
-                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  required
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date">{t("common.date")}</Label>
-                  <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                  <Input
+                    id="date"
+                    type="date"
+                    value={date}
+                    onChange={e => setDate(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="time">{t("calendar.timeOptional")}</Label>
-                  <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                  <Input
+                    id="time"
+                    type="time"
+                    value={time}
+                    onChange={e => setTime(e.target.value)}
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="eventType">{t("calendar.eventType")}</Label>
-                <Select value={eventType} onValueChange={(val) => setEventType(val as EventType)}>
+                <Select
+                  value={eventType}
+                  onValueChange={val => setEventType(val as EventType)}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder={t("common.select") + " " + t("calendar.eventType")} />
+                    <SelectValue
+                      placeholder={
+                        t("common.select") + " " + t("calendar.eventType")
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {EVENT_TYPES.map((et) => (
-                      <SelectItem key={et} value={et}>{t(`calendar.eventTypes.${et}`)}</SelectItem>
+                    {EVENT_TYPES.map(et => (
+                      <SelectItem key={et} value={et}>
+                        {t(`calendar.eventTypes.${et}`)}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">{t("common.notes")}</Label>
-                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                />
               </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                {createMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending && (
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                )}
                 {t("calendar.saveEvent")}
               </Button>
             </form>
@@ -200,25 +268,44 @@ export default function Calendar() {
 
       <div className="grid grid-cols-2 border border-border rounded-lg divide-x divide-border overflow-hidden">
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">{t("calendar.thisMonth")}</p>
-          <p className="text-xl font-semibold tabular-nums mt-1">{events.length}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("calendar.thisMonth")}
+          </p>
+          <p className="text-xl font-semibold tabular-nums mt-1">
+            {events.length}
+          </p>
         </div>
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">{t("calendar.upcoming30")}</p>
-          <p className="text-xl font-semibold tabular-nums mt-1">{upcomingEvents.length}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("calendar.upcoming30")}
+          </p>
+          <p className="text-xl font-semibold tabular-nums mt-1">
+            {upcomingEvents.length}
+          </p>
         </div>
       </div>
 
       <div className="border border-border rounded-lg overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <p className="text-sm font-medium">
-            {currentDate.toLocaleString(i18n.language, { month: "long" })} {year}
+            {currentDate.toLocaleString(i18n.language, { month: "long" })}{" "}
+            {year}
           </p>
           <div className="flex gap-1.5">
-            <Button variant="outline" size="icon" className="h-7 w-7" onClick={prevMonth}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7"
+              onClick={prevMonth}
+            >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="outline" size="icon" className="h-7 w-7" onClick={nextMonth}>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-7 w-7"
+              onClick={nextMonth}
+            >
               <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -230,18 +317,22 @@ export default function Calendar() {
             </div>
           ) : (
             <div className="grid grid-cols-7 gap-1 text-center">
-              {dayNames.map((day) => (
+              {dayNames.map(day => (
                 <div key={day} className="font-semibold text-sm py-2">
                   {day}
                 </div>
               ))}
-              {blanks.map((blank) => (
-                <div key={`blank-${blank}`} className="p-2 border border-transparent" />
+              {blanks.map(blank => (
+                <div
+                  key={`blank-${blank}`}
+                  className="p-2 border border-transparent"
+                />
               ))}
-              {days.map((day) => {
+              {days.map(day => {
                 const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const dayEvents = eventsByDate[dateStr] || [];
-                const isToday = new Date().toISOString().split("T")[0] === dateStr;
+                const isToday =
+                  new Date().toISOString().split("T")[0] === dateStr;
                 return (
                   <div
                     key={day}
@@ -250,9 +341,13 @@ export default function Calendar() {
                       isToday ? "border-primary bg-primary/5" : "border-border"
                     }`}
                   >
-                    <div className={`text-sm font-medium ${isToday ? "text-primary" : ""}`}>{day}</div>
+                    <div
+                      className={`text-sm font-medium ${isToday ? "text-primary" : ""}`}
+                    >
+                      {day}
+                    </div>
                     <div className="mt-1 flex flex-wrap gap-1 justify-center">
-                      {dayEvents.slice(0, 3).map((event) => (
+                      {dayEvents.slice(0, 3).map(event => (
                         <div
                           key={event.id}
                           className={`w-2 h-2 rounded-full ${EVENT_COLORS[event.category ?? "Other"] ?? EVENT_COLORS["Other"]}`}
@@ -260,7 +355,9 @@ export default function Calendar() {
                         />
                       ))}
                       {dayEvents.length > 3 && (
-                        <div className="text-[10px] text-muted-foreground">+{dayEvents.length - 3}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          +{dayEvents.length - 3}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -272,16 +369,25 @@ export default function Calendar() {
       </div>
 
       <div>
-        <p className="text-sm font-medium mb-3">{t("calendar.upcomingEvents")}</p>
+        <p className="text-sm font-medium mb-3">
+          {t("calendar.upcomingEvents")}
+        </p>
         <div>
           {upcomingEvents.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">{t("calendar.noUpcoming")}</div>
+            <div className="text-center py-6 text-muted-foreground">
+              {t("calendar.noUpcoming")}
+            </div>
           ) : (
             <div className="space-y-4">
-              {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
+              {upcomingEvents.map(event => (
+                <div
+                  key={event.id}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
                   <div className="flex items-start gap-4">
-                    <div className={`w-3 h-3 mt-1.5 rounded-full ${EVENT_COLORS[event.category ?? "Other"] ?? EVENT_COLORS["Other"]}`} />
+                    <div
+                      className={`w-3 h-3 mt-1.5 rounded-full ${EVENT_COLORS[event.category ?? "Other"] ?? EVENT_COLORS["Other"]}`}
+                    />
                     <div>
                       <h4 className="font-semibold">{event.title}</h4>
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -289,8 +395,16 @@ export default function Calendar() {
                       </div>
                     </div>
                   </div>
-                  <Badge className={EVENT_BADGE_COLORS[event.category ?? "Other"] ?? EVENT_BADGE_COLORS["Other"]} variant="outline">
-                    {t(`calendar.eventTypes.${event.category ?? "Other"}`, { defaultValue: event.category ?? "Other" })}
+                  <Badge
+                    className={
+                      EVENT_BADGE_COLORS[event.category ?? "Other"] ??
+                      EVENT_BADGE_COLORS["Other"]
+                    }
+                    variant="outline"
+                  >
+                    {t(`calendar.eventTypes.${event.category ?? "Other"}`, {
+                      defaultValue: event.category ?? "Other",
+                    })}
                   </Badge>
                 </div>
               ))}
@@ -302,28 +416,48 @@ export default function Calendar() {
       <Dialog open={isDayDialogOpen} onOpenChange={setIsDayDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("calendar.eventsFor", { date: selectedDate ? formatDate(selectedDate) : "" })}</DialogTitle>
+            <DialogTitle>
+              {t("calendar.eventsFor", {
+                date: selectedDate ? formatDate(selectedDate) : "",
+              })}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             {selectedDateEvents.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">{t("calendar.noEventsDate")}</p>
+              <p className="text-center text-muted-foreground py-4">
+                {t("calendar.noEventsDate")}
+              </p>
             ) : (
-              selectedDateEvents.map((event) => (
+              selectedDateEvents.map(event => (
                 <div key={event.id} className="p-4 border rounded-lg space-y-2">
                   <div className="flex justify-between items-start">
                     <h4 className="font-semibold">{event.title}</h4>
-                    <Badge className={EVENT_BADGE_COLORS[event.category ?? "Other"] ?? EVENT_BADGE_COLORS["Other"]} variant="outline">
-                      {t(`calendar.eventTypes.${event.category ?? "Other"}`, { defaultValue: event.category ?? "Other" })}
+                    <Badge
+                      className={
+                        EVENT_BADGE_COLORS[event.category ?? "Other"] ??
+                        EVENT_BADGE_COLORS["Other"]
+                      }
+                      variant="outline"
+                    >
+                      {t(`calendar.eventTypes.${event.category ?? "Other"}`, {
+                        defaultValue: event.category ?? "Other",
+                      })}
                     </Badge>
                   </div>
                   {event.notes && (
                     <div className="text-sm flex items-start mt-2">
                       <AlignLeft className="me-1 h-3 w-3 mt-0.5 text-muted-foreground" />
-                      <span className="text-muted-foreground">{event.notes}</span>
+                      <span className="text-muted-foreground">
+                        {event.notes}
+                      </span>
                     </div>
                   )}
                   <div className="flex justify-end mt-2">
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(event.id)}>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(event.id)}
+                    >
                       {t("common.delete")}
                     </Button>
                   </div>

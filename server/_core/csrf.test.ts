@@ -13,16 +13,22 @@ import {
 // enforces. `csrfRequireMiddleware` skips when NODE_ENV=test, which is what
 // the route tests rely on — here we want to exercise the real logic.
 const origNodeEnv = process.env.NODE_ENV;
-beforeEach(() => { process.env.NODE_ENV = "development"; });
-afterEach(() => { process.env.NODE_ENV = origNodeEnv; });
+beforeEach(() => {
+  process.env.NODE_ENV = "development";
+});
+afterEach(() => {
+  process.env.NODE_ENV = origNodeEnv;
+});
 
 function startApp() {
   const app = express();
   app.use(csrfIssueMiddleware);
   app.get("/safe", (_req, res) => res.json({ ok: true }));
-  app.post("/danger", csrfRequireMiddleware, (_req, res) => res.json({ ok: true }));
+  app.post("/danger", csrfRequireMiddleware, (_req, res) =>
+    res.json({ ok: true })
+  );
   const server = http.createServer(app);
-  return new Promise<{ url: string; close: () => Promise<void> }>((resolve) => {
+  return new Promise<{ url: string; close: () => Promise<void> }>(resolve => {
     server.listen(0, "127.0.0.1", () => {
       const port = (server.address() as AddressInfo).port;
       resolve({
@@ -35,8 +41,12 @@ function startApp() {
 
 describe("csrfIssueMiddleware", () => {
   let app: { url: string; close: () => Promise<void> };
-  beforeEach(async () => { app = await startApp(); });
-  afterEach(async () => { await app.close(); });
+  beforeEach(async () => {
+    app = await startApp();
+  });
+  afterEach(async () => {
+    await app.close();
+  });
 
   it("issues a csrf_token cookie on first request", async () => {
     const res = await fetch(`${app.url}/safe`);
@@ -54,8 +64,12 @@ describe("csrfIssueMiddleware", () => {
 
 describe("csrfRequireMiddleware", () => {
   let app: { url: string; close: () => Promise<void> };
-  beforeEach(async () => { app = await startApp(); });
-  afterEach(async () => { await app.close(); });
+  beforeEach(async () => {
+    app = await startApp();
+  });
+  afterEach(async () => {
+    await app.close();
+  });
 
   it("403 when both cookie and header are missing", async () => {
     const res = await fetch(`${app.url}/danger`, { method: "POST" });

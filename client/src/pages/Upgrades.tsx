@@ -9,37 +9,64 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Loader2, Plus, Trash2, Download, AlertTriangle, CheckCircle2,
-  Hammer, ListChecks, FolderOpen,
+  Loader2,
+  Plus,
+  Trash2,
+  Download,
+  AlertTriangle,
+  CheckCircle2,
+  Hammer,
+  ListChecks,
+  FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── Types & constants ────────────────────────────────────────────────────────
 
 const STATUS_BADGE: Record<string, string> = {
-  idea:        "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  planning:    "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  in_progress: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-  completed:   "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
-  cancelled:   "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500",
+  idea: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+  planning:
+    "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+  in_progress:
+    "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+  completed:
+    "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
+  cancelled: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500",
 };
 
 function barColor(spent: number, budget: number) {
   if (budget === 0) return "bg-primary";
   const pct = spent / budget;
-  if (pct >= 1)   return "bg-red-500";
+  if (pct >= 1) return "bg-red-500";
   if (pct >= 0.8) return "bg-amber-400";
   return "bg-primary";
 }
 
 // ─── Add project dialog ───────────────────────────────────────────────────────
 
-function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+function AddProjectDialog({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const createMutation = trpc.upgrades.create.useMutation({
@@ -54,7 +81,9 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
   const blank = { title: "", description: "", estimatedCost: "", notes: "" };
   const [f, setF] = useState(blank);
 
-  useEffect(() => { if (!open) setF(blank); }, [open]);
+  useEffect(() => {
+    if (!open) setF(blank);
+  }, [open]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +97,12 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
   };
 
   return (
-    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={v => {
+        if (!v) onClose();
+      }}
+    >
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{t("upgrades.newProject")}</DialogTitle>
@@ -95,7 +129,9 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="estimatedCost">{t("upgradeDetail.budgetField")}</Label>
+            <Label htmlFor="estimatedCost">
+              {t("upgradeDetail.budgetField")}
+            </Label>
             <Input
               id="estimatedCost"
               type="number"
@@ -105,7 +141,9 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
               value={f.estimatedCost}
               onChange={e => setF({ ...f, estimatedCost: e.target.value })}
             />
-            <p className="text-xs text-muted-foreground">{t("upgrades.budgetHint")}</p>
+            <p className="text-xs text-muted-foreground">
+              {t("upgrades.budgetHint")}
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="notes">{t("common.notes")}</Label>
@@ -116,8 +154,14 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
               onChange={e => setF({ ...f, notes: e.target.value })}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-            {createMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={createMutation.isPending}
+          >
+            {createMutation.isPending && (
+              <Loader2 className="me-2 h-4 w-4 animate-spin" />
+            )}
             {t("upgrades.createProject")}
           </Button>
         </form>
@@ -129,7 +173,11 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
 // ─── Upgrade card row ─────────────────────────────────────────────────────────
 
 function UpgradeRow({
-  upgrade, counts, isDone, onDelete, onClick,
+  upgrade,
+  counts,
+  isDone,
+  onDelete,
+  onClick,
 }: {
   upgrade: Upgrade;
   counts?: { total: number; done: number; needsAction: number };
@@ -147,20 +195,36 @@ function UpgradeRow({
     <div
       className={cn(
         "flex items-start gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer",
-        isDone && "opacity-70",
+        isDone && "opacity-70"
       )}
       onClick={onClick}
     >
       <div className="flex-1 min-w-0">
         {/* Title row */}
         <div className="flex items-center gap-2 flex-wrap">
-          <p className={cn("text-sm font-medium", isDone && "text-muted-foreground")}>{upgrade.title}</p>
-          <Badge className={cn("text-xs h-5 border-0 shrink-0", STATUS_BADGE[status] ?? STATUS_BADGE.planning)}>{t(`status.${status}`, { defaultValue: status })}</Badge>
+          <p
+            className={cn(
+              "text-sm font-medium",
+              isDone && "text-muted-foreground"
+            )}
+          >
+            {upgrade.title}
+          </p>
+          <Badge
+            className={cn(
+              "text-xs h-5 border-0 shrink-0",
+              STATUS_BADGE[status] ?? STATUS_BADGE.planning
+            )}
+          >
+            {t(`status.${status}`, { defaultValue: status })}
+          </Badge>
         </div>
 
         {/* Description */}
         {upgrade.description && (
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">{upgrade.description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            {upgrade.description}
+          </p>
         )}
 
         {/* Item counts row */}
@@ -177,7 +241,8 @@ function UpgradeRow({
             )}
             {isDone && counts.done === counts.total && (
               <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                <CheckCircle2 className="h-3 w-3" />{t("dashboard.allComplete")}
+                <CheckCircle2 className="h-3 w-3" />
+                {t("dashboard.allComplete")}
               </span>
             )}
           </div>
@@ -189,13 +254,22 @@ function UpgradeRow({
             <div className="flex justify-between text-xs text-muted-foreground">
               <span className="tabular-nums">
                 {formatCurrency(spent)} {t("dashboard.paid")}
-                {spent > budget && <span className="text-red-500 font-medium ms-1">· {t("dashboard.overBudget")}</span>}
+                {spent > budget && (
+                  <span className="text-red-500 font-medium ms-1">
+                    · {t("dashboard.overBudget")}
+                  </span>
+                )}
               </span>
-              <span className="tabular-nums">{formatCurrency(budget)} {t("dashboard.envelope")}</span>
+              <span className="tabular-nums">
+                {formatCurrency(budget)} {t("dashboard.envelope")}
+              </span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
               <div
-                className={cn("h-full transition-all rounded-full", barColor(spent, budget))}
+                className={cn(
+                  "h-full transition-all rounded-full",
+                  barColor(spent, budget)
+                )}
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -213,7 +287,8 @@ function UpgradeRow({
       {/* Delete button */}
       <div className="shrink-0" onClick={e => e.stopPropagation()}>
         <Button
-          size="sm" variant="ghost"
+          size="sm"
+          variant="ghost"
           className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
           onClick={onDelete}
           title={t("upgrades.deleteTitle")}
@@ -228,23 +303,36 @@ function UpgradeRow({
 // ─── Section ──────────────────────────────────────────────────────────────────
 
 function Section({
-  title, count, extra, children, empty,
+  title,
+  count,
+  extra,
+  children,
+  empty,
 }: {
-  title: string; count: number; extra?: React.ReactNode; children: React.ReactNode; empty?: React.ReactNode;
+  title: string;
+  count: number;
+  extra?: React.ReactNode;
+  children: React.ReactNode;
+  empty?: React.ReactNode;
 }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{title}</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            {title}
+          </h2>
           <span className="text-xs text-muted-foreground">({count})</span>
         </div>
         {extra}
       </div>
-      {count === 0
-        ? empty
-        : <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">{children}</div>
-      }
+      {count === 0 ? (
+        empty
+      ) : (
+        <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -260,28 +348,37 @@ export default function Upgrades() {
   const upgradeIds = upgrades.map(u => u.id);
   const { data: rawCounts = [] } = trpc.upgradeItems.countByUpgrade.useQuery(
     { upgradeIds },
-    { enabled: upgradeIds.length > 0 },
+    { enabled: upgradeIds.length > 0 }
   );
   const countMap = Object.fromEntries(rawCounts.map(c => [c.upgradeId, c]));
 
   const deleteMutation = trpc.upgrades.delete.useMutation({
-    onSuccess: () => { toast.success(t("upgrades.projectDeleted")); utils.upgrades.list.invalidate(); },
+    onSuccess: () => {
+      toast.success(t("upgrades.projectDeleted"));
+      utils.upgrades.list.invalidate();
+    },
     onError: e => toast.error(`${t("upgrades.failedDeleteMsg")}: ${e.message}`),
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleExportCSV = () => {
-    if (!upgrades.length) { toast.error(t("upgrades.nothingToExport")); return; }
+    if (!upgrades.length) {
+      toast.error(t("upgrades.nothingToExport"));
+      return;
+    }
     const headers = ["Name", "Status", "Budget", "Paid", "Remaining", "Notes"];
     const rows = upgrades.map((u: any) => [
-      u.title, u.status || "planning",
+      u.title,
+      u.status || "planning",
       ((u.estimatedCost ?? 0) / 100).toFixed(2),
       ((u.actualCost || 0) / 100).toFixed(2),
       (((u.estimatedCost ?? 0) - (u.actualCost || 0)) / 100).toFixed(2),
       u.notes || "",
     ]);
-    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = [headers, ...rows]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -290,11 +387,12 @@ export default function Upgrades() {
     toast.success(t("upgrades.exported"));
   };
 
-  if (isLoading) return (
-    <div className="flex h-full items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
 
   // ── Sections ────────────────────────────────────────────────────────────────
   const inProgress = upgrades
@@ -305,12 +403,14 @@ export default function Upgrades() {
     .filter(u => u.status === "planning")
     .sort((a, b) => (b.estimatedCost ?? 0) - (a.estimatedCost ?? 0));
 
-  const done = upgrades
-    .filter(u => u.status === "completed");
+  const done = upgrades.filter(u => u.status === "completed");
 
   // ── Stats ───────────────────────────────────────────────────────────────────
-  const activeBudget  = inProgress.reduce((s, u) => s + (u.estimatedCost ?? 0), 0);
-  const activePaid    = inProgress.reduce((s, u) => s + (u.actualCost ?? 0), 0);
+  const activeBudget = inProgress.reduce(
+    (s, u) => s + (u.estimatedCost ?? 0),
+    0
+  );
+  const activePaid = inProgress.reduce((s, u) => s + (u.actualCost ?? 0), 0);
   const investedTotal = done.reduce((s, u) => s + (u.actualCost ?? 0), 0);
   const doneTotalInvestment = done.reduce((s, u) => s + (u.actualCost ?? 0), 0);
 
@@ -321,7 +421,8 @@ export default function Upgrades() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">{t("upgrades.title")}</h1>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 me-1.5" />{t("upgrades.newProject")}
+            <Plus className="h-3.5 w-3.5 me-1.5" />
+            {t("upgrades.newProject")}
           </Button>
         </div>
 
@@ -338,27 +439,37 @@ export default function Upgrades() {
             </p>
           </div>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 me-1.5" />{t("upgrades.startFirst")}
+            <Plus className="h-3.5 w-3.5 me-1.5" />
+            {t("upgrades.startFirst")}
           </Button>
         </div>
 
-        <AddProjectDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+        <AddProjectDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{t("upgrades.title")}</h1>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground" onClick={handleExportCSV} title={t("common.exportCsv")}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-muted-foreground"
+            onClick={handleExportCSV}
+            title={t("common.exportCsv")}
+          >
             <Download className="h-4 w-4" />
           </Button>
           <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 me-1.5" />{t("upgrades.newProject")}
+            <Plus className="h-3.5 w-3.5 me-1.5" />
+            {t("upgrades.newProject")}
           </Button>
         </div>
       </div>
@@ -366,24 +477,42 @@ export default function Upgrades() {
       {/* Stats strip */}
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">{t("upgrades.activeBudget")}</p>
-          <p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(activeBudget)}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("upgrades.activeBudget")}
+          </p>
+          <p className="text-xl font-semibold tabular-nums mt-1">
+            {formatCurrency(activeBudget)}
+          </p>
           {activePaid > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">{formatCurrency(activePaid)} {t("upgrades.paidSoFar")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+              {formatCurrency(activePaid)} {t("upgrades.paidSoFar")}
+            </p>
           )}
         </div>
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">{t("upgrades.activeProjects")}</p>
-          <p className="text-xl font-semibold tabular-nums mt-1">{inProgress.length}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("upgrades.activeProjects")}
+          </p>
+          <p className="text-xl font-semibold tabular-nums mt-1">
+            {inProgress.length}
+          </p>
           {planned.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">{planned.length} {t("upgrades.planned")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {planned.length} {t("upgrades.planned")}
+            </p>
           )}
         </div>
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">{t("upgrades.invested")}</p>
-          <p className="text-xl font-semibold tabular-nums mt-1">{formatCurrency(investedTotal)}</p>
+          <p className="text-xs text-muted-foreground">
+            {t("upgrades.invested")}
+          </p>
+          <p className="text-xl font-semibold tabular-nums mt-1">
+            {formatCurrency(investedTotal)}
+          </p>
           {done.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-0.5">{done.length} {t("upgrades.done")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {done.length} {t("upgrades.done")}
+            </p>
           )}
         </div>
       </div>
@@ -397,7 +526,10 @@ export default function Upgrades() {
               upgrade={u}
               counts={countMap[u.id]}
               isDone={false}
-              onDelete={() => { if (confirm(t("upgrades.deleteConfirm"))) deleteMutation.mutate({ id: u.id }); }}
+              onDelete={() => {
+                if (confirm(t("upgrades.deleteConfirm")))
+                  deleteMutation.mutate({ id: u.id });
+              }}
               onClick={() => navigate(`/upgrades/${u.id}`)}
             />
           ))}
@@ -411,7 +543,10 @@ export default function Upgrades() {
           count={planned.length}
           extra={
             <p className="text-xs text-muted-foreground tabular-nums">
-              {formatCurrency(planned.reduce((s, u) => s + (u.estimatedCost ?? 0), 0))} {t("upgrades.activeBudget").toLowerCase()}
+              {formatCurrency(
+                planned.reduce((s, u) => s + (u.estimatedCost ?? 0), 0)
+              )}{" "}
+              {t("upgrades.activeBudget").toLowerCase()}
             </p>
           }
         >
@@ -421,7 +556,10 @@ export default function Upgrades() {
               upgrade={u}
               counts={countMap[u.id]}
               isDone={false}
-              onDelete={() => { if (confirm(t("upgrades.deleteConfirm"))) deleteMutation.mutate({ id: u.id }); }}
+              onDelete={() => {
+                if (confirm(t("upgrades.deleteConfirm")))
+                  deleteMutation.mutate({ id: u.id });
+              }}
               onClick={() => navigate(`/upgrades/${u.id}`)}
             />
           ))}
@@ -434,9 +572,11 @@ export default function Upgrades() {
           title={t("upgrades.done")}
           count={done.length}
           extra={
-            doneTotalInvestment > 0
-              ? <p className="text-xs text-muted-foreground tabular-nums">{formatCurrency(doneTotalInvestment)} {t("upgrades.invested")}</p>
-              : undefined
+            doneTotalInvestment > 0 ? (
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {formatCurrency(doneTotalInvestment)} {t("upgrades.invested")}
+              </p>
+            ) : undefined
           }
           empty={null}
         >
@@ -446,7 +586,10 @@ export default function Upgrades() {
               upgrade={u}
               counts={countMap[u.id]}
               isDone={true}
-              onDelete={() => { if (confirm(t("upgrades.deleteConfirm"))) deleteMutation.mutate({ id: u.id }); }}
+              onDelete={() => {
+                if (confirm(t("upgrades.deleteConfirm")))
+                  deleteMutation.mutate({ id: u.id });
+              }}
               onClick={() => navigate(`/upgrades/${u.id}`)}
             />
           ))}
@@ -457,13 +600,21 @@ export default function Upgrades() {
       {inProgress.length === 0 && planned.length === 0 && (
         <div className="border border-dashed border-border rounded-lg px-4 py-8 text-center space-y-2">
           <p className="text-sm text-muted-foreground">{t("common.noData")}</p>
-          <Button size="sm" variant="outline" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-3.5 w-3.5 me-1.5" />{t("upgrades.newProject")}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setDialogOpen(true)}
+          >
+            <Plus className="h-3.5 w-3.5 me-1.5" />
+            {t("upgrades.newProject")}
           </Button>
         </div>
       )}
 
-      <AddProjectDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <AddProjectDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+      />
     </div>
   );
 }

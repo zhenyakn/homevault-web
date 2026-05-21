@@ -37,5 +37,10 @@ export function getBackendByName(name: StorageBackendName): StorageBackend {
 }
 
 export { s3Backend, gdriveBackend };
-export type { StorageBackend, StorageBackendName, UploadMeta, DownloadResult } from "./types";
+export type {
+  StorageBackend,
+  StorageBackendName,
+  UploadMeta,
+  DownloadResult,
+} from "./types";
 export { StorageNotConfiguredError, StorageOperationError } from "./types";

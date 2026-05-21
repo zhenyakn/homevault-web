@@ -55,7 +55,9 @@ describe("HomeVault Router Structure", () => {
   it("auth.logout clears session", async () => {
     const ctx = createTestContext();
     const clearedCookies: string[] = [];
-    (ctx.res as any).clearCookie = (name: string) => { clearedCookies.push(name); };
+    (ctx.res as any).clearCookie = (name: string) => {
+      clearedCookies.push(name);
+    };
     const caller = appRouter.createCaller(ctx);
     const result = await caller.auth.logout();
     expect(result).toEqual({ success: true });
@@ -116,9 +118,7 @@ describe("Input Validation — expenses", () => {
 describe("Input Validation — repairs", () => {
   it("rejects repair with empty title", async () => {
     const caller = appRouter.createCaller(createTestContext());
-    await expect(
-      caller.repairs.create({ title: "" })
-    ).rejects.toThrow();
+    await expect(caller.repairs.create({ title: "" })).rejects.toThrow();
   });
 
   it("accepts repair with only the required title field", async () => {
@@ -134,9 +134,7 @@ describe("Input Validation — repairs", () => {
 describe("Input Validation — upgrades", () => {
   it("rejects upgrade with empty title", async () => {
     const caller = appRouter.createCaller(createTestContext());
-    await expect(
-      caller.upgrades.create({ title: "" })
-    ).rejects.toThrow();
+    await expect(caller.upgrades.create({ title: "" })).rejects.toThrow();
   });
 
   it("rejects upgrade with negative estimatedCost", async () => {

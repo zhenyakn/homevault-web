@@ -62,7 +62,9 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 
-type LucideIcon = React.ComponentType<React.SVGProps<SVGSVGElement> & { className?: string }>;
+type LucideIcon = React.ComponentType<
+  React.SVGProps<SVGSVGElement> & { className?: string }
+>;
 type NavItem = { icon: LucideIcon; key: string; path: string };
 type NavGroup = { labelKey: string; items: NavItem[] };
 
@@ -70,48 +72,49 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: "nav.group.overview",
     items: [
-      { icon: Home,    key: "nav.dashboard", path: "/" },
+      { icon: Home, key: "nav.dashboard", path: "/" },
       { icon: Calendar, key: "nav.calendar", path: "/calendar" },
     ],
   },
   {
     labelKey: "nav.group.finances",
     items: [
-      { icon: Receipt,      key: "nav.expenses",      path: "/expenses" },
-      { icon: DollarSign,   key: "nav.loans",          path: "/loans" },
-      { icon: ShoppingCart, key: "nav.purchaseCosts",  path: "/purchase-costs" },
+      { icon: Receipt, key: "nav.expenses", path: "/expenses" },
+      { icon: DollarSign, key: "nav.loans", path: "/loans" },
+      { icon: ShoppingCart, key: "nav.purchaseCosts", path: "/purchase-costs" },
     ],
   },
   {
     labelKey: "nav.group.property",
     items: [
-      { icon: Wrench,     key: "nav.repairs",   path: "/repairs" },
-      { icon: TrendingUp, key: "nav.upgrades",  path: "/upgrades" },
-      { icon: Package,    key: "nav.inventory", path: "/inventory" },
-      { icon: Heart,      key: "nav.wishlist",  path: "/wishlist" },
+      { icon: Wrench, key: "nav.repairs", path: "/repairs" },
+      { icon: TrendingUp, key: "nav.upgrades", path: "/upgrades" },
+      { icon: Package, key: "nav.inventory", path: "/inventory" },
+      { icon: Heart, key: "nav.wishlist", path: "/wishlist" },
     ],
   },
   {
     labelKey: "nav.group.account",
-    items: [
-      { icon: Settings, key: "nav.settings", path: "/settings" },
-    ],
+    items: [{ icon: Settings, key: "nav.settings", path: "/settings" }],
   },
 ];
 
 // Page → (section label key, page label key) for breadcrumb
 const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
-  "/":               { sectionKey: "nav.group.overview",  pageKey: "nav.dashboard"     },
-  "/calendar":       { sectionKey: "nav.group.overview",  pageKey: "nav.calendar"      },
-  "/portfolio":      { sectionKey: "nav.group.overview",  pageKey: "nav.portfolio"     },
-  "/expenses":       { sectionKey: "nav.group.finances",  pageKey: "nav.expenses"      },
-  "/loans":          { sectionKey: "nav.group.finances",  pageKey: "nav.loans"         },
-  "/purchase-costs": { sectionKey: "nav.group.finances",  pageKey: "nav.purchaseCosts" },
-  "/repairs":        { sectionKey: "nav.group.property",  pageKey: "nav.repairs"       },
-  "/upgrades":       { sectionKey: "nav.group.property",  pageKey: "nav.upgrades"      },
-  "/inventory":      { sectionKey: "nav.group.property",  pageKey: "nav.inventory"     },
-  "/wishlist":       { sectionKey: "nav.group.property",  pageKey: "nav.wishlist"      },
-  "/settings":       { sectionKey: "nav.group.account",   pageKey: "nav.settings"      },
+  "/": { sectionKey: "nav.group.overview", pageKey: "nav.dashboard" },
+  "/calendar": { sectionKey: "nav.group.overview", pageKey: "nav.calendar" },
+  "/portfolio": { sectionKey: "nav.group.overview", pageKey: "nav.portfolio" },
+  "/expenses": { sectionKey: "nav.group.finances", pageKey: "nav.expenses" },
+  "/loans": { sectionKey: "nav.group.finances", pageKey: "nav.loans" },
+  "/purchase-costs": {
+    sectionKey: "nav.group.finances",
+    pageKey: "nav.purchaseCosts",
+  },
+  "/repairs": { sectionKey: "nav.group.property", pageKey: "nav.repairs" },
+  "/upgrades": { sectionKey: "nav.group.property", pageKey: "nav.upgrades" },
+  "/inventory": { sectionKey: "nav.group.property", pageKey: "nav.inventory" },
+  "/wishlist": { sectionKey: "nav.group.property", pageKey: "nav.wishlist" },
+  "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -120,8 +123,14 @@ const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
 
 const AVATAR_COLORS = [
-  "bg-blue-500", "bg-green-500", "bg-purple-500", "bg-orange-500",
-  "bg-pink-500", "bg-teal-500", "bg-indigo-500", "bg-red-500",
+  "bg-blue-500",
+  "bg-green-500",
+  "bg-purple-500",
+  "bg-orange-500",
+  "bg-pink-500",
+  "bg-teal-500",
+  "bg-indigo-500",
+  "bg-red-500",
 ];
 
 function getAvatarColor(index: number) {
@@ -130,7 +139,12 @@ function getAvatarColor(index: number) {
 
 function getInitials(name: string | null | undefined) {
   if (!name) return "?";
-  return name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  return name
+    .split(" ")
+    .map(w => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 }
 
 // ── Property Switcher ─────────────────────────────────────────────────────────
@@ -150,7 +164,8 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
 
-  const activeProperty = properties?.find(p => p.id === activePropertyId) ?? properties?.[0];
+  const activeProperty =
+    properties?.find(p => p.id === activePropertyId) ?? properties?.[0];
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
@@ -196,11 +211,16 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
                 <Home className="h-3 w-3 text-primary" />
               </div>
               <span className="flex-1 truncate">{p.houseName}</span>
-              {p.id === activePropertyId && <Check className="h-3.5 w-3.5 ml-2 shrink-0" />}
+              {p.id === activePropertyId && (
+                <Check className="h-3.5 w-3.5 ml-2 shrink-0" />
+              )}
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => setShowAdd(true)} className="cursor-pointer">
+          <DropdownMenuItem
+            onClick={() => setShowAdd(true)}
+            className="cursor-pointer"
+          >
             <Plus className="h-4 w-4 me-2" />
             {t("common.addProperty")}
           </DropdownMenuItem>
@@ -222,9 +242,21 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
               onKeyDown={e => e.key === "Enter" && handleAdd()}
             />
             <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowAdd(false)}>{t("common.cancel")}</Button>
-              <Button size="sm" onClick={handleAdd} disabled={!newName.trim() || createMutation.isPending}>
-                {createMutation.isPending ? t("common.adding") : t("common.add")}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAdd(false)}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAdd}
+                disabled={!newName.trim() || createMutation.isPending}
+              >
+                {createMutation.isPending
+                  ? t("common.adding")
+                  : t("common.add")}
               </Button>
             </div>
           </div>
@@ -242,8 +274,8 @@ function ThemeToggle({ compact }: { compact?: boolean }) {
   const isCollapsed = state === "collapsed";
 
   const options = [
-    { value: "light"  as const, icon: Sun,     label: "Light"  },
-    { value: "dark"   as const, icon: Moon,    label: "Dark"   },
+    { value: "light" as const, icon: Sun, label: "Light" },
+    { value: "dark" as const, icon: Moon, label: "Dark" },
     { value: "system" as const, icon: Monitor, label: "System" },
   ];
 
@@ -284,7 +316,13 @@ function ThemeToggle({ compact }: { compact?: boolean }) {
 
 // ── Layout ────────────────────────────────────────────────────────────────────
 
-export default function DashboardLayout({ children, onSearchOpen }: { children: React.ReactNode; onSearchOpen?: () => void }) {
+export default function DashboardLayout({
+  children,
+  onSearchOpen,
+}: {
+  children: React.ReactNode;
+  onSearchOpen?: () => void;
+}) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
@@ -301,8 +339,16 @@ export default function DashboardLayout({ children, onSearchOpen }: { children: 
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <h1 className="text-2xl font-semibold tracking-tight text-center">Sign in to continue</h1>
-          <Button onClick={() => { window.location.href = getLoginUrl(); }} size="lg" className="w-full">
+          <h1 className="text-2xl font-semibold tracking-tight text-center">
+            Sign in to continue
+          </h1>
+          <Button
+            onClick={() => {
+              window.location.href = getLoginUrl();
+            }}
+            size="lg"
+            className="w-full"
+          >
             Sign in
           </Button>
         </div>
@@ -311,8 +357,13 @@ export default function DashboardLayout({ children, onSearchOpen }: { children: 
   }
 
   return (
-    <SidebarProvider style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}>
-      <DashboardLayoutContent setSidebarWidth={setSidebarWidth} onSearchOpen={onSearchOpen}>
+    <SidebarProvider
+      style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+    >
+      <DashboardLayoutContent
+        setSidebarWidth={setSidebarWidth}
+        onSearchOpen={onSearchOpen}
+      >
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
@@ -359,13 +410,18 @@ function DashboardLayoutContent({
   });
 
   // Breadcrumb lookup
-  const pathKey = Object.keys(PAGE_META).find(p =>
-    p === "/" ? location === "/" : location === p || location.startsWith(p + "/")
-  ) ?? "/";
+  const pathKey =
+    Object.keys(PAGE_META).find(p =>
+      p === "/"
+        ? location === "/"
+        : location === p || location.startsWith(p + "/")
+    ) ?? "/";
   const pageMeta = PAGE_META[pathKey];
 
   const isActive = (path: string) =>
-    path === "/" ? location === "/" : location === path || location.startsWith(path + "/");
+    path === "/"
+      ? location === "/"
+      : location === path || location.startsWith(path + "/");
 
   useEffect(() => {
     if (isCollapsed) setIsResizing(false);
@@ -377,7 +433,8 @@ function DashboardLayoutContent({
       const rect = sidebarRef.current?.getBoundingClientRect();
       if (!rect) return;
       const newWidth = isRTL ? rect.right - e.clientX : e.clientX - rect.left;
-      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) setSidebarWidth(newWidth);
+      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH)
+        setSidebarWidth(newWidth);
     };
     const handleMouseUp = () => setIsResizing(false);
     if (isResizing) {
@@ -397,8 +454,12 @@ function DashboardLayoutContent({
   return (
     <>
       <div className="relative" ref={sidebarRef}>
-        <Sidebar collapsible="icon" side={isRTL ? "right" : "left"} className={isRTL ? "border-l" : "border-r"} disableTransition={isResizing}>
-
+        <Sidebar
+          collapsible="icon"
+          side={isRTL ? "right" : "left"}
+          className={isRTL ? "border-l" : "border-r"}
+          disableTransition={isResizing}
+        >
           {/* ── Header: logo + property ───────────────────────────────── */}
           <SidebarHeader className="h-14 justify-center">
             <div className="flex items-center gap-2 px-2 w-full">
@@ -423,7 +484,11 @@ function DashboardLayoutContent({
                     className="h-7 w-7 flex items-center justify-center hover:bg-sidebar-accent rounded-md transition-colors focus:outline-none shrink-0"
                     aria-label="Collapse sidebar"
                   >
-                    {isRTL ? <PanelRight className="h-3.5 w-3.5 text-muted-foreground" /> : <PanelLeft className="h-3.5 w-3.5 text-muted-foreground" />}
+                    {isRTL ? (
+                      <PanelRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : (
+                      <PanelLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
                   </button>
                 </>
               )}
@@ -468,16 +533,24 @@ function DashboardLayoutContent({
                     <div
                       key={profile.id}
                       className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
-                        profile.id === user?.id ? "bg-accent text-accent-foreground" : "text-muted-foreground"
+                        profile.id === user?.id
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground"
                       }`}
                     >
                       <Avatar className="h-6 w-6">
-                        <AvatarFallback className={`text-[10px] text-white ${getAvatarColor(index)}`}>
+                        <AvatarFallback
+                          className={`text-[10px] text-white ${getAvatarColor(index)}`}
+                        >
                           {getInitials(profile.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="truncate">{profile.name || "Unknown"}</span>
-                      {profile.id === user?.id && <Check className="h-3 w-3 ml-auto shrink-0" />}
+                      <span className="truncate">
+                        {profile.name || "Unknown"}
+                      </span>
+                      {profile.id === user?.id && (
+                        <Check className="h-3 w-3 ml-auto shrink-0" />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -490,15 +563,21 @@ function DashboardLayoutContent({
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className={`flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isCollapsed ? "justify-center" : "text-start"}`}>
+                <button
+                  className={`flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isCollapsed ? "justify-center" : "text-start"}`}
+                >
                   <Avatar className="h-9 w-9 border shrink-0">
                     <AvatarFallback className="text-xs font-medium">
                       {getInitials(user?.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">{user?.name || "-"}</p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">{user?.email || "-"}</p>
+                    <p className="text-sm font-medium truncate leading-none">
+                      {user?.name || "-"}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-1.5">
+                      {user?.email || "-"}
+                    </p>
                   </div>
                 </button>
               </DropdownMenuTrigger>
@@ -506,23 +585,37 @@ function DashboardLayoutContent({
                 {profiles && profiles.length > 1 && (
                   <>
                     <div className="px-2 py-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">{t("common.household")}</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {t("common.household")}
+                      </p>
                     </div>
                     {profiles.map((profile: any, index: number) => (
-                      <DropdownMenuItem key={profile.id} className="cursor-pointer">
+                      <DropdownMenuItem
+                        key={profile.id}
+                        className="cursor-pointer"
+                      >
                         <Avatar className="h-5 w-5 mr-2">
-                          <AvatarFallback className={`text-[9px] text-white ${getAvatarColor(index)}`}>
+                          <AvatarFallback
+                            className={`text-[9px] text-white ${getAvatarColor(index)}`}
+                          >
                             {getInitials(profile.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="truncate">{profile.name || "Unknown"}</span>
-                        {profile.id === user?.id && <Check className="h-3 w-3 ml-auto" />}
+                        <span className="truncate">
+                          {profile.name || "Unknown"}
+                        </span>
+                        {profile.id === user?.id && (
+                          <Check className="h-3 w-3 ml-auto" />
+                        )}
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  onClick={logout}
+                  className="cursor-pointer text-destructive focus:text-destructive"
+                >
                   <LogOut className="me-2 h-4 w-4" />
                   {t("common.signOut")}
                 </DropdownMenuItem>
@@ -534,7 +627,9 @@ function DashboardLayoutContent({
         {/* Resize handle */}
         <div
           className={`absolute top-0 ${isRTL ? "left-0" : "right-0"} w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
-          onMouseDown={() => { if (!isCollapsed) setIsResizing(true); }}
+          onMouseDown={() => {
+            if (!isCollapsed) setIsResizing(true);
+          }}
           style={{ zIndex: 50 }}
         />
       </div>
@@ -568,7 +663,9 @@ function DashboardLayoutContent({
                 <>
                   <span>{t(pageMeta.sectionKey)}</span>
                   <ChevronRight className="h-3 w-3 opacity-50" />
-                  <span className="text-foreground font-medium">{t(pageMeta.pageKey)}</span>
+                  <span className="text-foreground font-medium">
+                    {t(pageMeta.pageKey)}
+                  </span>
                 </>
               )}
             </div>
@@ -580,7 +677,9 @@ function DashboardLayoutContent({
               aria-label={t("search.dialogTitle")}
             >
               <Search className="h-3.5 w-3.5 shrink-0" />
-              <span className="flex-1 text-xs text-start">{t("search.placeholder")}</span>
+              <span className="flex-1 text-xs text-start">
+                {t("search.placeholder")}
+              </span>
               <kbd className="hidden sm:inline-flex items-center rounded border bg-background px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
                 ⌘K
               </kbd>

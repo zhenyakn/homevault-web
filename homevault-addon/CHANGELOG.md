@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.4.1
+
 - fix(addon): actually disable upgrade-insecure-requests (helmet defaults re-add it)
 - fix(addon): drop CSP upgrade-insecure-requests so HTTP-served HA works
 - fix(addon): allow same-origin framing so HA ingress can embed the addon
@@ -38,7 +39,7 @@
 - docs: log HA add-on alignment in trace.md
 - feat(addon): align HA add-on with v2 schema and recent hardening changes
 - docs: update trace.md and lessonslearned.md for session 2026-05-07
-- feat(logging): replace console.* with structured pino logging (P10)
+- feat(logging): replace console.\* with structured pino logging (P10)
 - feat(P9): add optional limit/offset pagination to all list procedures
 - feat(P8): add rate limiting to auth and API endpoints
 - refactor(P5): split db.ts into per-entity modules under server/db/
@@ -234,21 +235,27 @@
 - Initial project bootstrap
 
 ## 0.4.0
+
 - fix(addon): actually disable upgrade-insecure-requests (helmet defaults re-add it)
 
 ## 0.3.9
+
 - fix(addon): drop CSP upgrade-insecure-requests so HTTP-served HA works
 
 ## 0.3.8
+
 - fix(addon): allow same-origin framing so HA ingress can embed the addon
 
 ## 0.3.7
+
 - fix(addon): use ZipArchive class for archiver@8 ESM API
 
 ## 0.3.6
+
 - Internal improvements and dependency updates
 
 ## 0.2.6
+
 - fix(ci): unbreak amd64 addon image publish
 - fix(ci): trigger build on release publish and correct tag pattern
 - Fix archiver ESM import for addon startup
@@ -270,20 +277,25 @@
 - feat(storage): add Google Drive backend with proxied downloads
 
 ## 0.2.5
+
 - chore: release v0.2.6 — repair seed scenarios + UI polish
 - feat(ui): redesign — green brand, grouped nav, desktop topbar, bento dashboard
 
 ## 0.2.4
+
 - fix(i18n): add missing locale keys and replace hardcoded strings in repair/upgrade detail pages
 - refactor: payment tables migration, dashboard SQL aggregates, migration runner fixes
 - docs: log v0.2.2–v0.2.4 hotfixes in trace.md and lessonslearned.md
 
 ## 0.2.3
+
 - fix(addon): add upgradeItems to v1 schema reset (ownerId was NOT NULL)
 
 ## 0.2.2
+
 - fix(addon): v1 schema reset — drop legacy tables before CREATE TABLE recreates them
 
 ## 0.2.1
+
 - fix(addon): add loans.attachments and wishlistItems.attachments to convergence
 - docs: log v0.2.1 hotfix and HA migration lesson in trace + lessonslearned

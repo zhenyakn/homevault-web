@@ -1,10 +1,17 @@
 import { eq, desc, and, inArray } from "drizzle-orm";
-import { loans, loanRepayments, type Loan, type LoanRepayment } from "../../drizzle/schema";
+import {
+  loans,
+  loanRepayments,
+  type Loan,
+  type LoanRepayment,
+} from "../../drizzle/schema";
 import { getDb } from "./client";
 
 export type LoanWithRepayments = Loan & { repayments: LoanRepayment[] };
 
-async function attachRepayments(loanRows: Loan[]): Promise<LoanWithRepayments[]> {
+async function attachRepayments(
+  loanRows: Loan[]
+): Promise<LoanWithRepayments[]> {
   if (loanRows.length === 0) return [];
   const db = await getDb();
   const ids = loanRows.map(l => l.id);
@@ -20,7 +27,12 @@ async function attachRepayments(loanRows: Loan[]): Promise<LoanWithRepayments[]>
   return loanRows.map(l => ({ ...l, repayments: byLoan[l.id] ?? [] }));
 }
 
-export async function getLoans(userId: number, propertyId: number, limit = 500, offset = 0): Promise<LoanWithRepayments[]> {
+export async function getLoans(
+  userId: number,
+  propertyId: number,
+  limit = 500,
+  offset = 0
+): Promise<LoanWithRepayments[]> {
   const db = await getDb();
   const rows = await db
     .select()
@@ -32,7 +44,9 @@ export async function getLoans(userId: number, propertyId: number, limit = 500, 
   return attachRepayments(rows);
 }
 
-export async function getLoanById(id: string): Promise<LoanWithRepayments | null> {
+export async function getLoanById(
+  id: string
+): Promise<LoanWithRepayments | null> {
   const db = await getDb();
   const result = await db.select().from(loans).where(eq(loans.id, id)).limit(1);
   if (!result[0]) return null;
@@ -49,23 +63,35 @@ export async function createLoan(data: typeof loans.$inferInsert) {
   return data;
 }
 
-export async function updateLoan(id: string, ownerId: number, data: Partial<Loan>) {
+export async function updateLoan(
+  id: string,
+  ownerId: number,
+  data: Partial<Loan>
+) {
   const db = await getDb();
   const normalized: any = { ...data };
-  if ("attachments" in normalized) normalized.attachments = normalized.attachments ?? [];
-  await db.update(loans).set(normalized).where(and(eq(loans.id, id), eq(loans.ownerId, ownerId)));
+  if ("attachments" in normalized)
+    normalized.attachments = normalized.attachments ?? [];
+  await db
+    .update(loans)
+    .set(normalized)
+    .where(and(eq(loans.id, id), eq(loans.ownerId, ownerId)));
   return data;
 }
 
 export async function deleteLoan(id: string, ownerId: number) {
   const db = await getDb();
-  await db.delete(loans).where(and(eq(loans.id, id), eq(loans.ownerId, ownerId)));
+  await db
+    .delete(loans)
+    .where(and(eq(loans.id, id), eq(loans.ownerId, ownerId)));
   return true;
 }
 
 // ── Loan repayments ───────────────────────────────────────────────────────────
 
-export async function getLoanRepayments(loanId: string): Promise<LoanRepayment[]> {
+export async function getLoanRepayments(
+  loanId: string
+): Promise<LoanRepayment[]> {
   const db = await getDb();
   return await db
     .select()
@@ -74,7 +100,9 @@ export async function getLoanRepayments(loanId: string): Promise<LoanRepayment[]
     .orderBy(loanRepayments.date);
 }
 
-export async function createLoanRepayment(data: typeof loanRepayments.$inferInsert): Promise<LoanRepayment> {
+export async function createLoanRepayment(
+  data: typeof loanRepayments.$inferInsert
+): Promise<LoanRepayment> {
   const db = await getDb();
   await db.insert(loanRepayments).values(data);
   return data as LoanRepayment;

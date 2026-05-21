@@ -33,7 +33,11 @@ export async function getDb(): Promise<Db> {
 export function parseJsonArray(value: unknown): any[] {
   if (Array.isArray(value)) return value;
   if (typeof value === "string") {
-    try { return JSON.parse(value) ?? []; } catch { return []; }
+    try {
+      return JSON.parse(value) ?? [];
+    } catch {
+      return [];
+    }
   }
   return [];
 }

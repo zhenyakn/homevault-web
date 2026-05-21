@@ -1,11 +1,7 @@
 import { useEffect, useRef, useState, KeyboardEvent } from "react";
 import { useHashLocation } from "wouter/use-hash-location";
 import { useTranslation } from "react-i18next";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Loader2,
   Search,
@@ -20,20 +16,20 @@ import { cn } from "@/lib/utils";
 import type { SearchResultItem } from "../hooks/useSearch";
 
 const TYPE_ICONS: Record<SearchResultItem["type"], React.ReactNode> = {
-  expense:      <DollarSign   className="w-4 h-4" />,
-  repair:       <Wrench       className="w-4 h-4" />,
-  upgrade:      <TrendingUp   className="w-4 h-4" />,
-  loan:         <CreditCard   className="w-4 h-4" />,
-  wishlist:     <Heart        className="w-4 h-4" />,
+  expense: <DollarSign className="w-4 h-4" />,
+  repair: <Wrench className="w-4 h-4" />,
+  upgrade: <TrendingUp className="w-4 h-4" />,
+  loan: <CreditCard className="w-4 h-4" />,
+  wishlist: <Heart className="w-4 h-4" />,
   purchaseCost: <ShoppingCart className="w-4 h-4" />,
 };
 
 const TYPE_COLORS: Record<SearchResultItem["type"], string> = {
-  expense:      "text-orange-500 bg-orange-50 dark:bg-orange-950/40",
-  repair:       "text-red-500   bg-red-50   dark:bg-red-950/40",
-  upgrade:      "text-blue-500  bg-blue-50  dark:bg-blue-950/40",
-  loan:         "text-purple-500 bg-purple-50 dark:bg-purple-950/40",
-  wishlist:     "text-pink-500  bg-pink-50  dark:bg-pink-950/40",
+  expense: "text-orange-500 bg-orange-50 dark:bg-orange-950/40",
+  repair: "text-red-500   bg-red-50   dark:bg-red-950/40",
+  upgrade: "text-blue-500  bg-blue-50  dark:bg-blue-950/40",
+  loan: "text-purple-500 bg-purple-50 dark:bg-purple-950/40",
+  wishlist: "text-pink-500  bg-pink-50  dark:bg-pink-950/40",
   purchaseCost: "text-teal-500  bg-teal-50  dark:bg-teal-950/40",
 };
 
@@ -64,7 +60,9 @@ export function SearchModal({
 
   // Scroll active item into view
   useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    const el = listRef.current?.querySelector<HTMLElement>(
+      '[aria-selected="true"]'
+    );
     el?.scrollIntoView({ block: "nearest" });
   }, [activeIdx]);
 
@@ -76,10 +74,10 @@ export function SearchModal({
   const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIdx((i) => Math.min(i + 1, results.length - 1));
+      setActiveIdx(i => Math.min(i + 1, results.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIdx((i) => Math.max(i - 1, 0));
+      setActiveIdx(i => Math.max(i - 1, 0));
     } else if (e.key === "Enter" && results[activeIdx]) {
       go(results[activeIdx]);
     } else if (e.key === "Escape") {
@@ -88,11 +86,11 @@ export function SearchModal({
   };
 
   const typeLabels: Record<SearchResultItem["type"], string> = {
-    expense:      t("search.typeExpense"),
-    repair:       t("search.typeRepair"),
-    upgrade:      t("search.typeUpgrade"),
-    loan:         t("search.typeLoan"),
-    wishlist:     t("search.typeWishlist"),
+    expense: t("search.typeExpense"),
+    repair: t("search.typeRepair"),
+    upgrade: t("search.typeUpgrade"),
+    loan: t("search.typeLoan"),
+    wishlist: t("search.typeWishlist"),
     purchaseCost: t("search.typePurchase"),
   };
 
@@ -101,7 +99,7 @@ export function SearchModal({
   const showHint = query.trim().length < 2;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent
         className="max-w-lg p-0 gap-0 overflow-hidden"
         aria-describedby={undefined}
@@ -119,7 +117,7 @@ export function SearchModal({
             ref={inputRef}
             autoFocus
             value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
+            onChange={e => onQueryChange(e.target.value)}
             onKeyDown={handleKey}
             placeholder={t("search.placeholder")}
             className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
@@ -187,9 +185,15 @@ export function SearchModal({
         {/* Footer */}
         {results.length > 0 && (
           <div className="flex items-center gap-3 px-4 py-2 border-t text-[10px] text-muted-foreground bg-muted/30">
-            <span><kbd className="font-mono">↑↓</kbd> {t("search.kbdNavigate")}</span>
-            <span><kbd className="font-mono">↵</kbd> {t("search.kbdOpen")}</span>
-            <span><kbd className="font-mono">Esc</kbd> {t("search.kbdClose")}</span>
+            <span>
+              <kbd className="font-mono">↑↓</kbd> {t("search.kbdNavigate")}
+            </span>
+            <span>
+              <kbd className="font-mono">↵</kbd> {t("search.kbdOpen")}
+            </span>
+            <span>
+              <kbd className="font-mono">Esc</kbd> {t("search.kbdClose")}
+            </span>
           </div>
         )}
       </DialogContent>

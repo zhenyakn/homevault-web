@@ -89,7 +89,9 @@ describe("tamper detection", () => {
   });
 
   it("rejects unknown version prefix", () => {
-    expect(() => decryptSecret("v9:abc:def")).toThrow(/unknown envelope version/);
+    expect(() => decryptSecret("v9:abc:def")).toThrow(
+      /unknown envelope version/
+    );
   });
 
   it("rejects a different KEK (e.g. JWT_SECRET rotated)", () => {

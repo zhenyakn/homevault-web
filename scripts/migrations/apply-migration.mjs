@@ -15,8 +15,14 @@ const connection = await mysql.createConnection(process.env.DATABASE_URL);
 
 console.log("Applying migration...");
 
-const sql = readFileSync(join(__dirname, "../../drizzle/migrations/0000_initial.sql"), "utf8");
-const statements = sql.split(";").map(s => s.trim()).filter(Boolean);
+const sql = readFileSync(
+  join(__dirname, "../../drizzle/migrations/0000_initial.sql"),
+  "utf8"
+);
+const statements = sql
+  .split(";")
+  .map(s => s.trim())
+  .filter(Boolean);
 
 for (const stmt of statements) {
   try {

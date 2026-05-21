@@ -15,7 +15,9 @@ export function registerOAuthRoutes(app: Express) {
   // If we don't have an OAuth server configured, or we're in NO_AUTH mode,
   // skip registering the OAuth callback entirely.
   if (!ENV.oAuthServerUrl || ENV.noAuth) {
-    logger.info("[OAuth] OAUTH_SERVER_URL not set or NO_AUTH enabled — OAuth routes disabled");
+    logger.info(
+      "[OAuth] OAUTH_SERVER_URL not set or NO_AUTH enabled — OAuth routes disabled"
+    );
     return;
   }
 

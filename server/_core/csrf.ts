@@ -29,7 +29,8 @@ const TOKEN_BYTES = 32;
 function buildCookieOptions(req: Request) {
   // Match the session cookie's secure/SameSite calculation.
   const xfp = req.headers["x-forwarded-proto"];
-  const proto = typeof xfp === "string" ? xfp.split(",")[0].trim() : req.protocol;
+  const proto =
+    typeof xfp === "string" ? xfp.split(",")[0].trim() : req.protocol;
   const secure = ENV.isProduction || proto === "https";
   return {
     httpOnly: false, // intentional — JS must read this
@@ -49,7 +50,11 @@ function newToken(): string {
  * (or if the client clears it), issues a fresh one. Idempotent and free of
  * side-effects on the request body, so safe to mount globally.
  */
-export function csrfIssueMiddleware(req: Request, res: Response, next: NextFunction) {
+export function csrfIssueMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   const existing = readCookie(req, CSRF_COOKIE);
   if (!existing) {
     res.cookie(CSRF_COOKIE, newToken(), buildCookieOptions(req));
@@ -65,7 +70,11 @@ export function csrfIssueMiddleware(req: Request, res: Response, next: NextFunct
  * thread the header through their fetch wrappers. Production + dev both
  * enforce.
  */
-export function csrfRequireMiddleware(req: Request, res: Response, next: NextFunction) {
+export function csrfRequireMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   if (process.env.NODE_ENV === "test") return next();
   const cookie = readCookie(req, CSRF_COOKIE);
   const header = req.headers[CSRF_HEADER];

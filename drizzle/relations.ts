@@ -11,10 +11,10 @@ import {
 } from "./schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
-  expenses:      many(expenses),
-  repairs:       many(repairs),
-  upgrades:      many(upgrades),
-  loans:         many(loans),
+  expenses: many(expenses),
+  repairs: many(repairs),
+  upgrades: many(upgrades),
+  loans: many(loans),
   wishlistItems: many(wishlistItems),
   purchaseCosts: many(purchaseCosts),
   calendarEvents: many(calendarEvents, { relationName: "createdBy" }),
@@ -37,11 +37,17 @@ export const loansRelations = relations(loans, ({ one }) => ({
 }));
 
 export const wishlistRelations = relations(wishlistItems, ({ one }) => ({
-  owner: one(users, { fields: [wishlistItems.ownerId], references: [users.id] }),
+  owner: one(users, {
+    fields: [wishlistItems.ownerId],
+    references: [users.id],
+  }),
 }));
 
 export const purchaseCostsRelations = relations(purchaseCosts, ({ one }) => ({
-  owner: one(users, { fields: [purchaseCosts.ownerId], references: [users.id] }),
+  owner: one(users, {
+    fields: [purchaseCosts.ownerId],
+    references: [users.id],
+  }),
 }));
 
 export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({

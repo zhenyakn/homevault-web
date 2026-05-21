@@ -1,4 +1,9 @@
-import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  hkdfSync,
+  randomBytes,
+} from "crypto";
 
 /**
  * AES-256-GCM envelope for at-rest secrets.
@@ -26,7 +31,7 @@ const ENVELOPE_VERSION = "v1";
 const PURPOSE = "app_settings";
 const SALT = `homevault.${PURPOSE}.${ENVELOPE_VERSION}`;
 const NONCE_BYTES = 12; // AES-GCM standard
-const KEY_BYTES = 32;   // AES-256
+const KEY_BYTES = 32; // AES-256
 
 let _kek: Buffer | null = null;
 let _kekFromSecret: string | null = null;
@@ -37,10 +42,18 @@ function getKek(): Buffer {
   // sticky for honest key derivation.
   const secret = process.env.JWT_SECRET || "";
   if (!secret || secret.length < 16) {
-    throw new Error("[secrets] JWT_SECRET must be set and >=16 chars before secrets.ts is used");
+    throw new Error(
+      "[secrets] JWT_SECRET must be set and >=16 chars before secrets.ts is used"
+    );
   }
   if (_kek && _kekFromSecret === secret) return _kek;
-  const derived = hkdfSync("sha256", Buffer.from(secret, "utf8"), Buffer.from(SALT, "utf8"), Buffer.from(PURPOSE, "utf8"), KEY_BYTES);
+  const derived = hkdfSync(
+    "sha256",
+    Buffer.from(secret, "utf8"),
+    Buffer.from(SALT, "utf8"),
+    Buffer.from(PURPOSE, "utf8"),
+    KEY_BYTES
+  );
   _kek = Buffer.from(derived);
   _kekFromSecret = secret;
   return _kek;
@@ -80,14 +93,16 @@ export function encryptSecret(plaintext: string): string {
  */
 export function decryptSecret(envelope: string): string {
   const parts = envelope.split(":");
-  if (parts.length !== 3) throw new Error("[secrets] malformed envelope: expected 3 parts");
+  if (parts.length !== 3)
+    throw new Error("[secrets] malformed envelope: expected 3 parts");
   const [version, nonceB64, sealedB64] = parts;
   if (version !== ENVELOPE_VERSION) {
     throw new Error(`[secrets] unknown envelope version: ${version}`);
   }
   const nonce = Buffer.from(nonceB64, "base64url");
   const sealed = Buffer.from(sealedB64, "base64url");
-  if (sealed.length < 16) throw new Error("[secrets] ciphertext too short for GCM tag");
+  if (sealed.length < 16)
+    throw new Error("[secrets] ciphertext too short for GCM tag");
   const ct = sealed.subarray(0, sealed.length - 16);
   const tag = sealed.subarray(sealed.length - 16);
 
@@ -103,7 +118,9 @@ export function decryptSecret(envelope: string): string {
  * treat as legacy plaintext and return as-is. Used by the gdrive callers to
  * migrate forward without a SQL data migration.
  */
-export function readMaybeEncrypted(value: string | null | undefined): string | null {
+export function readMaybeEncrypted(
+  value: string | null | undefined
+): string | null {
   if (value == null) return null;
   if (!isEncryptedEnvelope(value)) return value;
   return decryptSecret(value);

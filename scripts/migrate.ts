@@ -10,7 +10,7 @@
  * Usage:  pnpm run db:migrate
  */
 
-import fs   from "fs";
+import fs from "fs";
 import path from "path";
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
@@ -24,10 +24,10 @@ const MIGRATIONS_DIR = path.resolve("drizzle");
 
 // MySQL error codes that mean "already exists" — safe to ignore for idempotency
 const IGNORABLE = new Set([
-  "ER_DUP_FIELDNAME",          // column already exists
-  "ER_TABLE_EXISTS_ERROR",     // table already exists
-  "ER_DUP_KEYNAME",            // index already exists
-  "ER_FK_DUP_NAME",            // FK constraint name already exists
+  "ER_DUP_FIELDNAME", // column already exists
+  "ER_TABLE_EXISTS_ERROR", // table already exists
+  "ER_DUP_KEYNAME", // index already exists
+  "ER_FK_DUP_NAME", // FK constraint name already exists
   "ER_CANT_DROP_FIELD_OR_KEY", // dropping index/column that doesn't exist
 ]);
 
@@ -91,10 +91,7 @@ async function run() {
       }
     }
 
-    await conn.execute(
-      "INSERT INTO _migrations (filename) VALUES (?)",
-      [file]
-    );
+    await conn.execute("INSERT INTO _migrations (filename) VALUES (?)", [file]);
     console.log(`  [done]`);
   }
 

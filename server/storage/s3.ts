@@ -6,15 +6,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
-import type {
-  StorageBackend,
-  UploadMeta,
-  DownloadResult,
-} from "./types";
-import {
-  StorageNotConfiguredError,
-  StorageOperationError,
-} from "./types";
+import type { StorageBackend, UploadMeta, DownloadResult } from "./types";
+import { StorageNotConfiguredError, StorageOperationError } from "./types";
 
 /**
  * S3-compatible storage backend (Cloudflare R2, AWS S3, B2, MinIO, …).
@@ -44,7 +37,7 @@ function getClient(): { client: S3Client; bucket: string } {
   if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
     throw new StorageNotConfiguredError(
       "S3 storage is not configured. Set STORAGE_ENDPOINT, STORAGE_BUCKET, " +
-      "STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY in your .env file.",
+        "STORAGE_ACCESS_KEY_ID and STORAGE_SECRET_ACCESS_KEY in your .env file."
     );
   }
   const client = new S3Client({
@@ -52,7 +45,8 @@ function getClient(): { client: S3Client; bucket: string } {
     region,
     credentials: { accessKeyId, secretAccessKey },
     // Required for path-style URLs on local MinIO / localstack
-    forcePathStyle: endpoint.includes("localhost") || endpoint.includes("minio"),
+    forcePathStyle:
+      endpoint.includes("localhost") || endpoint.includes("minio"),
   });
   return { client, bucket };
 }
@@ -83,11 +77,15 @@ export const s3Backend: StorageBackend = {
           Key: key,
           Body: buffer,
           ContentType: meta.mimeType,
-        }),
+        })
       );
       return { externalId: key };
     } catch (err) {
-      throw new StorageOperationError("s3", `S3 upload failed: ${(err as Error).message}`, err);
+      throw new StorageOperationError(
+        "s3",
+        `S3 upload failed: ${(err as Error).message}`,
+        err
+      );
     }
   },
 
@@ -97,7 +95,7 @@ export const s3Backend: StorageBackend = {
       const url = await getSignedUrl(
         client,
         new GetObjectCommand({ Bucket: bucket, Key: externalId }),
-        { expiresIn: SIGNED_URL_TTL_SECONDS },
+        { expiresIn: SIGNED_URL_TTL_SECONDS }
       );
       // We don't know the stored mimeType at this layer; the route reads it
       // from the `files` table and uses it for the Content-Type header on
@@ -105,16 +103,26 @@ export const s3Backend: StorageBackend = {
       // the value here is informational only.
       return { kind: "redirect", url, mimeType: "application/octet-stream" };
     } catch (err) {
-      throw new StorageOperationError("s3", `S3 signed-URL failed: ${(err as Error).message}`, err);
+      throw new StorageOperationError(
+        "s3",
+        `S3 signed-URL failed: ${(err as Error).message}`,
+        err
+      );
     }
   },
 
   async delete(externalId: string): Promise<void> {
     const { client, bucket } = getClient();
     try {
-      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: externalId }));
+      await client.send(
+        new DeleteObjectCommand({ Bucket: bucket, Key: externalId })
+      );
     } catch (err) {
-      throw new StorageOperationError("s3", `S3 delete failed: ${(err as Error).message}`, err);
+      throw new StorageOperationError(
+        "s3",
+        `S3 delete failed: ${(err as Error).message}`,
+        err
+      );
     }
   },
 };

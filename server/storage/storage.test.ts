@@ -122,11 +122,13 @@ describe("S3Backend.upload — not configured", () => {
         ownerUserId: 1,
         originalName: "x.txt",
         mimeType: "text/plain",
-      }),
+      })
     ).rejects.toThrow(StorageNotConfiguredError);
   });
 
   it("download throws StorageNotConfiguredError when env vars are missing", async () => {
-    await expect(s3Backend.download("some-key")).rejects.toThrow(StorageNotConfiguredError);
+    await expect(s3Backend.download("some-key")).rejects.toThrow(
+      StorageNotConfiguredError
+    );
   });
 });

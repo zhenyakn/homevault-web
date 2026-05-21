@@ -4,16 +4,26 @@ import { getDb } from "./client";
 
 export async function getProperty(propertyId: number = 1) {
   const db = await getDb();
-  const result = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
+  const result = await db
+    .select()
+    .from(properties)
+    .where(eq(properties.id, propertyId))
+    .limit(1);
   return result.length > 0 ? result[0] : null;
 }
 
 export async function getPropertiesByUser(userId: number) {
   const db = await getDb();
-  return await db.select().from(properties).where(eq(properties.userId, userId));
+  return await db
+    .select()
+    .from(properties)
+    .where(eq(properties.userId, userId));
 }
 
-export async function checkPropertyOwnership(userId: number, propertyId: number): Promise<boolean> {
+export async function checkPropertyOwnership(
+  userId: number,
+  propertyId: number
+): Promise<boolean> {
   const db = await getDb();
   const result = await db
     .select({ id: properties.id })
@@ -23,13 +33,21 @@ export async function checkPropertyOwnership(userId: number, propertyId: number)
   return result.length > 0;
 }
 
-export async function createProperty(userId: number, data: Partial<typeof properties.$inferInsert> = {}) {
+export async function createProperty(
+  userId: number,
+  data: Partial<typeof properties.$inferInsert> = {}
+) {
   const db = await getDb();
-  const result = await db.insert(properties).values({ userId, houseName: "New Property", ...data });
+  const result = await db
+    .insert(properties)
+    .values({ userId, houseName: "New Property", ...data });
   return result[0];
 }
 
-export async function updateProperty(propertyId: number, data: Partial<Property>) {
+export async function updateProperty(
+  propertyId: number,
+  data: Partial<Property>
+) {
   const db = await getDb();
   await db.update(properties).set(data).where(eq(properties.id, propertyId));
   return await getProperty(propertyId);

@@ -5,15 +5,22 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 
 type Stats = NonNullable<RouterOutputs["dashboard"]["stats"]>;
 type OverdueExpense = Stats["overdueExpenses"][number];
-type StaleRepair    = Stats["staleRepairs"][number];
+type StaleRepair = Stats["staleRepairs"][number];
 type DecisionUpgrade = Stats["upgradesNeedingDecision"][number];
-type ActiveUpgrade  = Stats["activeUpgrades"][number];
+type ActiveUpgrade = Stats["activeUpgrades"][number];
 type LoanSummaryItem = Stats["loanSummary"][number];
-type OpenRepair     = Stats["openRepairs"][number];
-type CalEvent       = RouterOutputs["calendar"]["list"][number];
+type OpenRepair = Stats["openRepairs"][number];
+type CalEvent = RouterOutputs["calendar"]["list"][number];
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, AlertCircle, CheckCircle2, ChevronRight, Loader2, Settings } from "lucide-react";
+import {
+  ArrowRight,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Loader2,
+  Settings,
+} from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { format, isToday, isTomorrow } from "date-fns";
@@ -21,40 +28,51 @@ import { format, isToday, isTomorrow } from "date-fns";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_DOT: Record<string, string> = {
-  idea:        "bg-slate-400",
-  planning:    "bg-violet-400",
+  idea: "bg-slate-400",
+  planning: "bg-violet-400",
   in_progress: "bg-orange-400",
-  completed:   "bg-emerald-400",
-  cancelled:   "bg-rose-400",
+  completed: "bg-emerald-400",
+  cancelled: "bg-rose-400",
 };
 
 const CAT_COLOR: Record<string, string> = {
-  Mortgage:    "#2B7A55",
-  Utility:     "#eab308",
-  Insurance:   "#a855f7",
-  Tax:         "#f43f5e",
+  Mortgage: "#2B7A55",
+  Utility: "#eab308",
+  Insurance: "#a855f7",
+  Tax: "#f43f5e",
   Maintenance: "#f97316",
-  Other:       "#9ca3af",
+  Other: "#9ca3af",
 };
 
 function barColor(pct: number) {
   if (pct >= 100) return "bg-rose-500";
-  if (pct >= 80)  return "bg-amber-400";
+  if (pct >= 80) return "bg-amber-400";
   return "bg-primary";
 }
 
 function relDate(d: string, t: (k: string) => string) {
   const dt = new Date(d);
-  if (isToday(dt))    return t("dashboard.today");
+  if (isToday(dt)) return t("dashboard.today");
   if (isTomorrow(dt)) return t("dashboard.tomorrow");
   return format(dt, "MMM d");
 }
 
 // ── Card shell ────────────────────────────────────────────────────────────────
 
-function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+function Card({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className={cn("h-full border border-border rounded-xl bg-card p-4 shadow-xs", className)}>
+    <div
+      className={cn(
+        "h-full border border-border rounded-xl bg-card p-4 shadow-xs",
+        className
+      )}
+    >
       {children}
     </div>
   );
@@ -70,23 +88,47 @@ function CardLabel({ children }: { children: React.ReactNode }) {
 
 // ── OpenItemsCard ─────────────────────────────────────────────────────────────
 
-function OpenItemsCard({ openRepairs, overdueExpenses, activeUpgrades }: {
+function OpenItemsCard({
+  openRepairs,
+  overdueExpenses,
+  activeUpgrades,
+}: {
   openRepairs: OpenRepair[];
   overdueExpenses: OverdueExpense[];
   activeUpgrades: ActiveUpgrade[];
 }) {
   const { t } = useTranslation();
 
-  const urgent   = openRepairs.filter(r => r.priority === "urgent").length;
-  const high     = openRepairs.filter(r => r.priority === "high").length;
-  const overdue  = overdueExpenses.length;
-  const inProg   = activeUpgrades.length;
+  const urgent = openRepairs.filter(r => r.priority === "urgent").length;
+  const high = openRepairs.filter(r => r.priority === "high").length;
+  const overdue = overdueExpenses.length;
+  const inProg = activeUpgrades.length;
 
   const rows = [
-    { label: t("dashboard.urgentRepairs"), count: urgent,  color: urgent  > 0 ? "text-rose-500"  : "text-muted-foreground", dot: "bg-rose-500"  },
-    { label: t("dashboard.highPriority"),  count: high,    color: high    > 0 ? "text-orange-500" : "text-muted-foreground", dot: "bg-orange-500" },
-    { label: t("dashboard.activeUpgrades"), count: inProg, color: inProg  > 0 ? "text-foreground" : "text-muted-foreground", dot: "bg-amber-400"  },
-    { label: t("dashboard.overdueBills"),  count: overdue, color: overdue > 0 ? "text-rose-500"  : "text-muted-foreground", dot: "bg-rose-500"  },
+    {
+      label: t("dashboard.urgentRepairs"),
+      count: urgent,
+      color: urgent > 0 ? "text-rose-500" : "text-muted-foreground",
+      dot: "bg-rose-500",
+    },
+    {
+      label: t("dashboard.highPriority"),
+      count: high,
+      color: high > 0 ? "text-orange-500" : "text-muted-foreground",
+      dot: "bg-orange-500",
+    },
+    {
+      label: t("dashboard.activeUpgrades"),
+      count: inProg,
+      color: inProg > 0 ? "text-foreground" : "text-muted-foreground",
+      dot: "bg-amber-400",
+    },
+    {
+      label: t("dashboard.overdueBills"),
+      count: overdue,
+      color: overdue > 0 ? "text-rose-500" : "text-muted-foreground",
+      dot: "bg-rose-500",
+    },
   ];
 
   return (
@@ -102,10 +144,14 @@ function OpenItemsCard({ openRepairs, overdueExpenses, activeUpgrades }: {
             )}
           >
             <span className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
-              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", row.dot)} />
+              <span
+                className={cn("w-1.5 h-1.5 rounded-full shrink-0", row.dot)}
+              />
               {row.label}
             </span>
-            <span className={cn("text-[15px] font-bold tabular-nums", row.color)}>
+            <span
+              className={cn("text-[15px] font-bold tabular-nums", row.color)}
+            >
               {row.count}
             </span>
           </div>
@@ -117,60 +163,105 @@ function OpenItemsCard({ openRepairs, overdueExpenses, activeUpgrades }: {
 
 // ── SpendCard ─────────────────────────────────────────────────────────────────
 
-function SpendCard({ spent, baseline, pct, remaining, cats, cur }: {
-  spent: number; baseline: number; pct: number; remaining: number;
-  cats: Record<string, number>; cur: string;
+function SpendCard({
+  spent,
+  baseline,
+  pct,
+  remaining,
+  cats,
+  cur,
+}: {
+  spent: number;
+  baseline: number;
+  pct: number;
+  remaining: number;
+  cats: Record<string, number>;
+  cur: string;
 }) {
   const { t } = useTranslation();
   const fmt = (n: number) => formatCurrency(n, cur);
   const now = new Date();
-  const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
-  const top = Object.entries(cats).sort(([, a], [, b]) => b - a).slice(0, 5);
+  const daysLeft =
+    new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() -
+    now.getDate();
+  const top = Object.entries(cats)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5);
 
   return (
     <Card>
       <div className="flex items-center justify-between mb-3">
-        <CardLabel>{t("dashboard.monthlySpend")} · {format(now, "MMM yyyy")}</CardLabel>
-        <p className="text-xs text-muted-foreground -mt-3">{daysLeft} {t("dashboard.daysLeft")}</p>
+        <CardLabel>
+          {t("dashboard.monthlySpend")} · {format(now, "MMM yyyy")}
+        </CardLabel>
+        <p className="text-xs text-muted-foreground -mt-3">
+          {daysLeft} {t("dashboard.daysLeft")}
+        </p>
       </div>
 
-      <div className="text-3xl font-bold tracking-tight tabular-nums">{fmt(spent)}</div>
+      <div className="text-3xl font-bold tracking-tight tabular-nums">
+        {fmt(spent)}
+      </div>
       {baseline > 0 ? (
         <>
           <p className="text-xs text-muted-foreground mt-1 mb-4">
-            {t("expenses.of")} {fmt(baseline)} {t("dashboard.ofRecurringBaseline")}
+            {t("expenses.of")} {fmt(baseline)}{" "}
+            {t("dashboard.ofRecurringBaseline")}
             {remaining > 0 && (
-              <> · <span className="text-primary font-medium">{fmt(remaining)} {t("dashboard.remaining")}</span></>
+              <>
+                {" "}
+                ·{" "}
+                <span className="text-primary font-medium">
+                  {fmt(remaining)} {t("dashboard.remaining")}
+                </span>
+              </>
             )}
           </p>
           <div className="h-1.5 w-full rounded-full bg-border overflow-hidden mb-1.5">
             <div
-              className={cn("h-full rounded-full transition-all duration-500", barColor(pct))}
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                barColor(pct)
+              )}
               style={{ width: `${Math.min(pct, 100)}%` }}
             />
           </div>
-          <p className="text-[11px] text-muted-foreground text-right mb-4">{pct}{t("dashboard.ofBaseline")}</p>
+          <p className="text-[11px] text-muted-foreground text-right mb-4">
+            {pct}
+            {t("dashboard.ofBaseline")}
+          </p>
         </>
       ) : (
-        <p className="text-xs text-muted-foreground mt-1 mb-4">{t("dashboard.addRecurring")}</p>
+        <p className="text-xs text-muted-foreground mt-1 mb-4">
+          {t("dashboard.addRecurring")}
+        </p>
       )}
 
-      {top.length > 0 && top.map(([cat, amount]) => (
-        <div key={cat} className="flex items-center gap-2.5 py-1.5 border-t border-border">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: CAT_COLOR[cat] ?? "#9ca3af" }} />
-          <span className="flex-1 text-xs text-muted-foreground">{cat}</span>
-          <div className="w-14 h-[3px] bg-border rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full"
-              style={{
-                width: `${Math.round((amount / spent) * 100)}%`,
-                background: CAT_COLOR[cat] ?? "#9ca3af",
-              }}
+      {top.length > 0 &&
+        top.map(([cat, amount]) => (
+          <div
+            key={cat}
+            className="flex items-center gap-2.5 py-1.5 border-t border-border"
+          >
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ background: CAT_COLOR[cat] ?? "#9ca3af" }}
             />
+            <span className="flex-1 text-xs text-muted-foreground">{cat}</span>
+            <div className="w-14 h-[3px] bg-border rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.round((amount / spent) * 100)}%`,
+                  background: CAT_COLOR[cat] ?? "#9ca3af",
+                }}
+              />
+            </div>
+            <span className="text-xs font-semibold tabular-nums w-16 text-right">
+              {fmt(amount)}
+            </span>
           </div>
-          <span className="text-xs font-semibold tabular-nums w-16 text-right">{fmt(amount)}</span>
-        </div>
-      ))}
+        ))}
     </Card>
   );
 }
@@ -187,39 +278,55 @@ function LoansCard({ loans, cur }: { loans: LoanSummaryItem[]; cur: string }) {
   return (
     <Card>
       <CardLabel>{t("loans.title")}</CardLabel>
-      <div className="text-2xl font-bold tracking-tight tabular-nums mb-1">{fmt(totalOutstanding)}</div>
-      <p className="text-xs text-muted-foreground mb-4">{t("dashboard.totalOutstanding")}</p>
+      <div className="text-2xl font-bold tracking-tight tabular-nums mb-1">
+        {fmt(totalOutstanding)}
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        {t("dashboard.totalOutstanding")}
+      </p>
 
       {loans.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-4">{t("dashboard.noActiveLoans")}</p>
+        <p className="text-sm text-muted-foreground text-center py-4">
+          {t("dashboard.noActiveLoans")}
+        </p>
       ) : (
         <>
           <div className="h-px bg-border mb-3" />
           <div className="space-y-3">
             {loans.map(l => {
-              const repaid    = l.repaid    ?? 0;
-              const remaining = l.remaining ?? Math.max(0, (l.totalAmount ?? 0) - repaid);
-              const pct       = l.pct       ?? 0;
+              const repaid = l.repaid ?? 0;
+              const remaining =
+                l.remaining ?? Math.max(0, (l.totalAmount ?? 0) - repaid);
+              const pct = l.pct ?? 0;
               return (
                 <div key={l.id}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[12.5px] font-medium text-foreground truncate flex-1 mr-2">{l.lender}</span>
+                    <span className="text-[12.5px] font-medium text-foreground truncate flex-1 mr-2">
+                      {l.lender}
+                    </span>
                     {l.paidOff ? (
                       <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 shrink-0">
                         <CheckCircle2 className="h-3 w-3" />
                       </span>
                     ) : (
-                      <span className="text-xs text-muted-foreground shrink-0">{pct}% repaid</span>
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {pct}% repaid
+                      </span>
                     )}
                   </div>
                   <p className="text-[11px] text-muted-foreground mb-1.5">
                     {fmt(remaining)} {t("dashboard.remaining")}
                     {l.interestRate ? ` · ${l.interestRate}%` : ""}
-                    {l.endDate ? ` · until ${format(new Date(l.endDate), "MMM yyyy")}` : ""}
+                    {l.endDate
+                      ? ` · until ${format(new Date(l.endDate), "MMM yyyy")}`
+                      : ""}
                   </p>
                   <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
                     <div
-                      className={cn("h-full rounded-full transition-all", l.paidOff ? "bg-emerald-500" : "bg-primary")}
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        l.paidOff ? "bg-emerald-500" : "bg-primary"
+                      )}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -241,7 +348,13 @@ function LoansCard({ loans, cur }: { loans: LoanSummaryItem[]; cur: string }) {
 
 // ── AttentionCard ─────────────────────────────────────────────────────────────
 
-function AttentionCard({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
+function AttentionCard({
+  overdue,
+  stale,
+  decisionNeeded,
+  cur,
+  onMarkPaid,
+}: {
   overdue: OverdueExpense[];
   stale: StaleRepair[];
   decisionNeeded: DecisionUpgrade[];
@@ -251,10 +364,11 @@ function AttentionCard({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
   const { t } = useTranslation();
   const [, nav] = useLocation();
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
-  const dismiss = (k: string) => setDismissed(p => new Set([...Array.from(p), k]));
+  const dismiss = (k: string) =>
+    setDismissed(p => new Set([...Array.from(p), k]));
 
-  const visOverdue  = overdue.filter(e => !dismissed.has(`exp-${e.id}`));
-  const visStale    = stale.filter(r => !dismissed.has(`rep-${r.id}`));
+  const visOverdue = overdue.filter(e => !dismissed.has(`exp-${e.id}`));
+  const visStale = stale.filter(r => !dismissed.has(`rep-${r.id}`));
   const visDecision = decisionNeeded.filter(u => !dismissed.has(`upg-${u.id}`));
   const total = visOverdue.length + visStale.length + visDecision.length;
 
@@ -279,7 +393,10 @@ function AttentionCard({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
       ) : (
         <div className="space-y-2">
           {visOverdue.map(e => (
-            <div key={e.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/50">
+            <div
+              key={e.id}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/50"
+            >
               <div className="w-7 h-7 rounded-md bg-rose-500 flex items-center justify-center shrink-0">
                 <AlertCircle className="h-3.5 w-3.5 text-white" />
               </div>
@@ -288,7 +405,8 @@ function AttentionCard({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
                   {e.label} {t("dashboard.unpaidSuffix")}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {formatCurrency(e.amount, cur)} · {t("dashboard.due")} {relDate(e.date, t)}
+                  {formatCurrency(e.amount, cur)} · {t("dashboard.due")}{" "}
+                  {relDate(e.date, t)}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -297,7 +415,10 @@ function AttentionCard({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
                 </span>
                 <button
                   className="text-[11px] font-semibold px-2 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
-                  onClick={() => { onMarkPaid(e.id); dismiss(`exp-${e.id}`); }}
+                  onClick={() => {
+                    onMarkPaid(e.id);
+                    dismiss(`exp-${e.id}`);
+                  }}
                 >
                   {t("dashboard.markPaid")}
                 </button>
@@ -306,14 +427,20 @@ function AttentionCard({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
           ))}
 
           {visStale.map(r => (
-            <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50">
+            <div
+              key={r.id}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50"
+            >
               <div className="w-7 h-7 rounded-md bg-orange-500 flex items-center justify-center shrink-0">
                 <AlertCircle className="h-3.5 w-3.5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-semibold text-foreground truncate">{r.label}</p>
+                <p className="text-[12.5px] font-semibold text-foreground truncate">
+                  {r.label}
+                </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {r.priority} · {r.status}{r.contractor ? ` · ${r.contractor}` : ""}
+                  {r.priority} · {r.status}
+                  {r.contractor ? ` · ${r.contractor}` : ""}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -331,13 +458,20 @@ function AttentionCard({ overdue, stale, decisionNeeded, cur, onMarkPaid }: {
           ))}
 
           {visDecision.map(u => (
-            <div key={u.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900/50">
+            <div
+              key={u.id}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900/50"
+            >
               <div className="w-7 h-7 rounded-md bg-blue-500 flex items-center justify-center shrink-0">
                 <AlertCircle className="h-3.5 w-3.5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-semibold text-foreground truncate">{u.label}</p>
-                <p className="text-[11px] text-muted-foreground">{t("dashboard.quotesReceived")}</p>
+                <p className="text-[12.5px] font-semibold text-foreground truncate">
+                  {u.label}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("dashboard.quotesReceived")}
+                </p>
               </div>
               <button
                 className="text-[11px] font-semibold px-2 py-1 rounded-md bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900 hover:opacity-75 transition-opacity shrink-0"
@@ -372,7 +506,9 @@ function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
       </div>
 
       {upcoming.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">{t("dashboard.nothingScheduled")}</p>
+        <p className="text-sm text-muted-foreground text-center py-6">
+          {t("dashboard.nothingScheduled")}
+        </p>
       ) : (
         <div className="space-y-1.5">
           {upcoming.map(e => {
@@ -384,12 +520,20 @@ function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
                 onClick={() => nav("/calendar")}
               >
                 <div className="w-9 h-9 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0">
-                  <span className="text-[14px] font-extrabold text-primary leading-none">{format(d, "d")}</span>
-                  <span className="text-[8.5px] font-bold uppercase text-primary/70">{format(d, "MMM")}</span>
+                  <span className="text-[14px] font-extrabold text-primary leading-none">
+                    {format(d, "d")}
+                  </span>
+                  <span className="text-[8.5px] font-bold uppercase text-primary/70">
+                    {format(d, "MMM")}
+                  </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12.5px] font-medium text-foreground truncate">{e.title}</p>
-                  <p className="text-[11px] text-muted-foreground">{e.category}</p>
+                  <p className="text-[12.5px] font-medium text-foreground truncate">
+                    {e.title}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {e.category}
+                  </p>
                 </div>
                 <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
               </div>
@@ -403,7 +547,11 @@ function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
 
 // ── UpgradesCard ──────────────────────────────────────────────────────────────
 
-function UpgradesCard({ activeUpgrades, countMap, cur }: {
+function UpgradesCard({
+  activeUpgrades,
+  countMap,
+  cur,
+}: {
   activeUpgrades: ActiveUpgrade[];
   countMap: Record<string, { total: number; done: number }>;
   cur: string;
@@ -431,25 +579,48 @@ function UpgradesCard({ activeUpgrades, countMap, cur }: {
               className="flex items-center gap-3 py-2.5 border-t border-border first:border-t-0 -mx-1 px-1 rounded-md cursor-pointer hover:bg-muted/40 transition-colors"
               onClick={() => nav(`/upgrades/${u.id}`)}
             >
-              <div className={cn("w-2 h-2 rounded-full shrink-0", STATUS_DOT[u.status ?? ""] ?? "bg-muted-foreground/40")} />
+              <div
+                className={cn(
+                  "w-2 h-2 rounded-full shrink-0",
+                  STATUS_DOT[u.status ?? ""] ?? "bg-muted-foreground/40"
+                )}
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{u.label}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {t(`status.${u.status}`, { defaultValue: t("upgrades.inProgress") })}
-                  {counts ? ` · ${counts.done}/${counts.total} ${t("upgradeDetail.items").toLowerCase()}` : ""}
+                  {t(`status.${u.status}`, {
+                    defaultValue: t("upgrades.inProgress"),
+                  })}
+                  {counts
+                    ? ` · ${counts.done}/${counts.total} ${t("upgradeDetail.items").toLowerCase()}`
+                    : ""}
                 </p>
                 <div className="h-[2px] w-full bg-border rounded-full overflow-hidden mt-1.5">
                   <div
-                    className={cn("h-full rounded-full transition-all", barColor(u.pct))}
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      barColor(u.pct)
+                    )}
                     style={{ width: `${Math.min(u.pct, 100)}%` }}
                   />
                 </div>
               </div>
               <div className="text-right shrink-0">
-                <p className={cn("text-sm font-bold tabular-nums", u.pct >= 100 ? "text-rose-500" : u.pct >= 80 ? "text-amber-500" : "")}>
+                <p
+                  className={cn(
+                    "text-sm font-bold tabular-nums",
+                    u.pct >= 100
+                      ? "text-rose-500"
+                      : u.pct >= 80
+                        ? "text-amber-500"
+                        : ""
+                  )}
+                >
                   {fmt(u.spent)}
                 </p>
-                <p className="text-[11px] text-muted-foreground">/ {fmt(u.budget)}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  / {fmt(u.budget)}
+                </p>
               </div>
             </div>
           );
@@ -473,7 +644,7 @@ export default function Dashboard() {
   const utils = trpc.useUtils();
 
   const { data: stats, isLoading, error } = trpc.dashboard.stats.useQuery();
-  const { data: calEvents = [] }          = trpc.calendar.list.useQuery({});
+  const { data: calEvents = [] } = trpc.calendar.list.useQuery({});
 
   const markPaid = trpc.expenses.markAsPaid.useMutation({
     onSuccess: () => utils.dashboard.stats.invalidate(),
@@ -499,37 +670,52 @@ export default function Dashboard() {
     const now = new Date();
     const in7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     return calEvents
-      .filter(e => { const d = new Date(e.date); return d >= now && d <= in7; })
+      .filter(e => {
+        const d = new Date(e.date);
+        return d >= now && d <= in7;
+      })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(0, 6);
   }, [calEvents]);
 
   const greeting = () => {
     const h = new Date().getHours();
-    return h < 12 ? t("dashboard.goodMorning") : h < 18 ? t("dashboard.goodAfternoon") : t("dashboard.goodEvening");
+    return h < 12
+      ? t("dashboard.goodMorning")
+      : h < 18
+        ? t("dashboard.goodAfternoon")
+        : t("dashboard.goodEvening");
   };
 
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-[50vh]">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  );
-
-  if (error || !stats) return (
-    <div className="flex flex-col items-center justify-center gap-4 h-[50vh] text-center">
-      <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
-      <div>
-        <p className="text-sm font-medium">{t("dashboard.loadError", "Couldn't load dashboard")}</p>
-        <p className="text-xs text-muted-foreground mt-1">
-          {error?.message ?? t("dashboard.loadErrorHint", "Your data may still be loading or no property is set up yet.")}
-        </p>
+  if (isLoading)
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
-      <Button variant="outline" size="sm" onClick={() => nav("/settings")}>
-        <Settings className="h-3.5 w-3.5 me-1.5" />
-        {t("nav.settings")}
-      </Button>
-    </div>
-  );
+    );
+
+  if (error || !stats)
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 h-[50vh] text-center">
+        <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
+        <div>
+          <p className="text-sm font-medium">
+            {t("dashboard.loadError", "Couldn't load dashboard")}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {error?.message ??
+              t(
+                "dashboard.loadErrorHint",
+                "Your data may still be loading or no property is set up yet."
+              )}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => nav("/settings")}>
+          <Settings className="h-3.5 w-3.5 me-1.5" />
+          {t("nav.settings")}
+        </Button>
+      </div>
+    );
 
   const s = stats;
   const cur = s.currency ?? "ILS";
@@ -545,7 +731,10 @@ export default function Dashboard() {
           <p className="text-sm text-muted-foreground mt-0.5">
             {format(new Date(), "EEEE, MMMM d, yyyy")}
             {s.propertyName && (
-              <> · <span className="text-foreground/70">{s.propertyName}</span></>
+              <>
+                {" "}
+                · <span className="text-foreground/70">{s.propertyName}</span>
+              </>
             )}
           </p>
         </div>
@@ -553,9 +742,13 @@ export default function Dashboard() {
 
       {/* Bento grid — cards in the same row stretch to equal height via h-full on Card */}
       <div className="grid grid-cols-12 gap-3.5">
-
         {/* Row 1: Monthly spend + Loans (conditional) + Open Items */}
-        <div className={cn("col-span-12", hasLoans ? "lg:col-span-5" : "lg:col-span-9")}>
+        <div
+          className={cn(
+            "col-span-12",
+            hasLoans ? "lg:col-span-5" : "lg:col-span-9"
+          )}
+        >
           <SpendCard
             spent={s.monthSpent}
             baseline={s.monthlyRecurring}
@@ -588,7 +781,10 @@ export default function Dashboard() {
             decisionNeeded={s.upgradesNeedingDecision ?? []}
             cur={cur}
             onMarkPaid={id =>
-              markPaid.mutate({ id, paidDate: new Date().toISOString().split("T")[0] })
+              markPaid.mutate({
+                id,
+                paidDate: new Date().toISOString().split("T")[0],
+              })
             }
           />
         </div>
@@ -607,7 +803,6 @@ export default function Dashboard() {
             />
           </div>
         )}
-
       </div>
     </div>
   );

@@ -22,15 +22,22 @@ const hoisted = vi.hoisted(() => {
   class FakeOAuth2 {
     credentials: any = {};
     constructor(_opts: any) {}
-    setCredentials(c: any) { this.credentials = c; }
+    setCredentials(c: any) {
+      this.credentials = c;
+    }
     on() {}
     generateAuthUrl(opts: any) {
-      const scopes = Array.isArray(opts.scope) ? opts.scope.join(" ") : opts.scope;
+      const scopes = Array.isArray(opts.scope)
+        ? opts.scope.join(" ")
+        : opts.scope;
       return `https://accounts.google.com/o/oauth2/v2/auth?scope=${encodeURIComponent(scopes)}&prompt=${opts.prompt}`;
     }
     getToken(code: string) {
-      if (code === "no-refresh") return Promise.resolve({ tokens: { access_token: "x" } });
-      return Promise.resolve({ tokens: { refresh_token: "rt-" + code, access_token: "at-" + code } });
+      if (code === "no-refresh")
+        return Promise.resolve({ tokens: { access_token: "x" } });
+      return Promise.resolve({
+        tokens: { refresh_token: "rt-" + code, access_token: "at-" + code },
+      });
     }
   }
 
@@ -39,12 +46,20 @@ const hoisted = vi.hoisted(() => {
 
 vi.mock("../db/appSettings", () => ({
   getSetting: async (k: string) => hoisted.fakeSettings.get(k) ?? null,
-  setSetting: async (k: string, v: string) => { hoisted.fakeSettings.set(k, v); },
-  deleteSetting: async (k: string) => { hoisted.fakeSettings.delete(k); },
+  setSetting: async (k: string, v: string) => {
+    hoisted.fakeSettings.set(k, v);
+  },
+  deleteSetting: async (k: string) => {
+    hoisted.fakeSettings.delete(k);
+  },
   makeSettingCache: (k: string) => ({
     get: async () => hoisted.fakeSettings.get(k) ?? null,
-    set: async (v: string) => { hoisted.fakeSettings.set(k, v); },
-    clear: async () => { hoisted.fakeSettings.delete(k); },
+    set: async (v: string) => {
+      hoisted.fakeSettings.set(k, v);
+    },
+    clear: async () => {
+      hoisted.fakeSettings.delete(k);
+    },
     invalidate: () => {},
   }),
 }));
@@ -85,9 +100,14 @@ import { readMaybeEncrypted, encryptSecret } from "../_core/secrets";
 // decrypted plaintext, not the raw envelope (which has a random nonce).
 const stored = (k: string) => readMaybeEncrypted(fakeSettings.get(k) ?? null);
 // Helper to seed a value the way production code would (encrypted).
-const seedEncrypted = (k: string, v: string) => fakeSettings.set(k, encryptSecret(v));
+const seedEncrypted = (k: string, v: string) =>
+  fakeSettings.set(k, encryptSecret(v));
 
-const ENV_KEYS = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_OAUTH_REDIRECT_URI"];
+const ENV_KEYS = [
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "GOOGLE_OAUTH_REDIRECT_URI",
+];
 const ENV_SNAP: Record<string, string | undefined> = {};
 const fakeSettings = hoisted.fakeSettings;
 const driveStub = hoisted.driveStub;
@@ -127,15 +147,19 @@ describe("isGoogleEnvConfigured", () => {
 });
 
 describe("buildConnectAuthUrl", () => {
-  it("requests the least-privilege drive.file scope with prompt=consent", () => {
-    const url = buildConnectAuthUrl();
-    expect(url).toContain("scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.file");
+  it("requests the least-privilege drive.file scope with prompt=consent", async () => {
+    const url = await buildConnectAuthUrl();
+    expect(url).toContain(
+      "scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fdrive.file"
+    );
     expect(url).toContain("prompt=consent");
   });
 
-  it("throws StorageNotConfiguredError when env vars are missing", () => {
+  it("throws StorageNotConfiguredError when env vars are missing", async () => {
     delete process.env.GOOGLE_CLIENT_ID;
-    expect(() => buildConnectAuthUrl()).toThrow(StorageNotConfiguredError);
+    await expect(buildConnectAuthUrl()).rejects.toThrow(
+      StorageNotConfiguredError
+    );
   });
 });
 
@@ -149,13 +173,17 @@ describe("completeConnect", () => {
     const { email } = await completeConnect("good-code");
     expect(email).toBe("owner@example.com");
     // Persisted as an AES-GCM envelope (M1 hardening) — never plaintext.
-    expect(fakeSettings.get(GDRIVE_KEYS.refreshToken)!.startsWith("v1:")).toBe(true);
+    expect(fakeSettings.get(GDRIVE_KEYS.refreshToken)!.startsWith("v1:")).toBe(
+      true
+    );
     expect(stored(GDRIVE_KEYS.refreshToken)).toBe("rt-good-code");
     expect(stored(GDRIVE_KEYS.connectedEmail)).toBe("owner@example.com");
   });
 
   it("throws StorageOperationError when Google does not return a refresh_token", async () => {
-    await expect(completeConnect("no-refresh")).rejects.toThrow(StorageOperationError);
+    await expect(completeConnect("no-refresh")).rejects.toThrow(
+      StorageOperationError
+    );
     expect(fakeSettings.has(GDRIVE_KEYS.refreshToken)).toBe(false);
   });
 
@@ -216,7 +244,9 @@ describe("disconnect + status", () => {
 
   it("completeConnect clears a stale tokenBroken flag", async () => {
     fakeSettings.set(GDRIVE_KEYS.tokenBroken, "1");
-    oauth2userinfoStub.userinfo.get.mockResolvedValueOnce({ data: { email: "x@x" } });
+    oauth2userinfoStub.userinfo.get.mockResolvedValueOnce({
+      data: { email: "x@x" },
+    });
     await completeConnect("good-code");
     expect(fakeSettings.has(GDRIVE_KEYS.tokenBroken)).toBe(false);
   });
@@ -238,7 +268,9 @@ describe("validateDriveConnection (F3)", () => {
   it("calls drive.about.get and clears a stale tokenBroken flag on success", async () => {
     seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
     fakeSettings.set(GDRIVE_KEYS.tokenBroken, "1");
-    driveStub.about.get.mockResolvedValueOnce({ data: { user: { emailAddress: "x@x" } } });
+    driveStub.about.get.mockResolvedValueOnce({
+      data: { user: { emailAddress: "x@x" } },
+    });
 
     await validateDriveConnection();
     expect(driveStub.about.get).toHaveBeenCalledTimes(1);
@@ -247,7 +279,9 @@ describe("validateDriveConnection (F3)", () => {
 
   it("flips tokenBroken=1 when Drive returns invalid_grant", async () => {
     seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
-    const err: any = new Error("invalid_grant: Token has been expired or revoked.");
+    const err: any = new Error(
+      "invalid_grant: Token has been expired or revoked."
+    );
     err.code = "invalid_grant";
     driveStub.about.get.mockRejectedValueOnce(err);
 
@@ -257,7 +291,9 @@ describe("validateDriveConnection (F3)", () => {
 
   it("swallows non-revocation errors (Drive 5xx blips) without flipping tokenBroken", async () => {
     seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
-    driveStub.about.get.mockRejectedValueOnce(new Error("Internal server error"));
+    driveStub.about.get.mockRejectedValueOnce(
+      new Error("Internal server error")
+    );
 
     await validateDriveConnection();
     expect(fakeSettings.has(GDRIVE_KEYS.tokenBroken)).toBe(false);
@@ -265,7 +301,9 @@ describe("validateDriveConnection (F3)", () => {
 
   it("is throttled — repeat calls inside the 5-minute window skip the Drive probe", async () => {
     seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
-    driveStub.about.get.mockResolvedValue({ data: { user: { emailAddress: "x@x" } } });
+    driveStub.about.get.mockResolvedValue({
+      data: { user: { emailAddress: "x@x" } },
+    });
 
     await validateDriveConnection();
     await validateDriveConnection();
@@ -279,7 +317,12 @@ describe("validateDriveConnection (F3)", () => {
 describe("gdriveBackend.upload", () => {
   it("throws StorageNotConfiguredError when not connected", async () => {
     await expect(
-      gdriveBackend.upload(Buffer.from("x"), { ownerUserId: 1, propertyId: 1, originalName: "x.pdf", mimeType: "application/pdf" }),
+      gdriveBackend.upload(Buffer.from("x"), {
+        ownerUserId: 1,
+        propertyId: 1,
+        originalName: "x.pdf",
+        mimeType: "application/pdf",
+      })
     ).rejects.toThrow(StorageNotConfiguredError);
   });
 
@@ -308,7 +351,10 @@ describe("gdriveBackend.upload", () => {
 
     // The 3rd folder created is the userId (as string), nested under property-7.
     const thirdCall = driveStub.files.create.mock.calls[2]![0];
-    expect(thirdCall.requestBody).toMatchObject({ name: "42", parents: ["property-7-fid"] });
+    expect(thirdCall.requestBody).toMatchObject({
+      name: "42",
+      parents: ["property-7-fid"],
+    });
 
     // The file is created inside the user folder.
     const lastCall = driveStub.files.create.mock.calls.at(-1)![0];
@@ -321,8 +367,12 @@ describe("gdriveBackend.upload", () => {
 
     // New folder-cache keys (encrypted at rest).
     expect(stored(GDRIVE_KEYS.rootFolderId)).toBe("root-fid");
-    expect(stored(GDRIVE_KEYS.propertyFolderPrefix + "7")).toBe("property-7-fid");
-    expect(stored(GDRIVE_KEYS.userPropertyFolderPrefix + "7.42")).toBe("user-fid");
+    expect(stored(GDRIVE_KEYS.propertyFolderPrefix + "7")).toBe(
+      "property-7-fid"
+    );
+    expect(stored(GDRIVE_KEYS.userPropertyFolderPrefix + "7.42")).toBe(
+      "user-fid"
+    );
   });
 
   it("reuses cached folder ids on subsequent uploads (no listing)", async () => {
@@ -331,7 +381,9 @@ describe("gdriveBackend.upload", () => {
     seedEncrypted(GDRIVE_KEYS.propertyFolderPrefix + "7", "property-7-fid");
     seedEncrypted(GDRIVE_KEYS.userPropertyFolderPrefix + "7.42", "user-fid");
 
-    driveStub.files.create.mockResolvedValueOnce({ data: { id: "drive-file-id" } });
+    driveStub.files.create.mockResolvedValueOnce({
+      data: { id: "drive-file-id" },
+    });
 
     await gdriveBackend.upload(Buffer.from("data"), {
       ownerUserId: 42,
@@ -357,7 +409,7 @@ describe("gdriveBackend.upload", () => {
         propertyId: 1,
         originalName: "x.pdf",
         mimeType: "application/pdf",
-      }),
+      })
     ).rejects.toThrow(StorageOperationError);
   });
 
@@ -368,7 +420,9 @@ describe("gdriveBackend.upload", () => {
     seedEncrypted(GDRIVE_KEYS.propertyFolderPrefix + "1", "p-fid");
     seedEncrypted(GDRIVE_KEYS.userPropertyFolderPrefix + "1.1", "user-fid");
 
-    const err: any = new Error("invalid_grant: Token has been expired or revoked.");
+    const err: any = new Error(
+      "invalid_grant: Token has been expired or revoked."
+    );
     err.code = "invalid_grant";
     driveStub.files.create.mockRejectedValueOnce(err);
 
@@ -378,7 +432,7 @@ describe("gdriveBackend.upload", () => {
         propertyId: 1,
         originalName: "x.pdf",
         mimeType: "application/pdf",
-      }),
+      })
     ).rejects.toThrow(StorageNotConfiguredError);
 
     expect(fakeSettings.get(GDRIVE_KEYS.tokenBroken)).toBe("1");
@@ -391,7 +445,9 @@ describe("gdriveBackend.upload", () => {
     seedEncrypted(GDRIVE_KEYS.propertyFolderPrefix + "1", "p-fid");
     seedEncrypted(GDRIVE_KEYS.userPropertyFolderPrefix + "1.1", "user-fid");
 
-    const err: any = new Error("storageQuotaExceeded: The user's Drive storage quota has been exceeded.");
+    const err: any = new Error(
+      "storageQuotaExceeded: The user's Drive storage quota has been exceeded."
+    );
     err.errors = [{ reason: "storageQuotaExceeded" }];
     driveStub.files.create.mockRejectedValueOnce(err);
 
@@ -420,7 +476,12 @@ describe("gdriveBackend.download", () => {
   it("returns a stream + mimeType from Drive metadata", async () => {
     driveStub.files.get
       .mockResolvedValueOnce({
-        data: { id: "did", mimeType: "image/png", size: "1234", trashed: false },
+        data: {
+          id: "did",
+          mimeType: "image/png",
+          size: "1234",
+          trashed: false,
+        },
       })
       .mockResolvedValueOnce({
         data: Readable.from(Buffer.from("png-bytes")),
@@ -439,12 +500,16 @@ describe("gdriveBackend.download", () => {
     driveStub.files.get.mockResolvedValueOnce({
       data: { id: "did", mimeType: "image/png", size: "0", trashed: true },
     });
-    await expect(gdriveBackend.download("did")).rejects.toThrow(StorageOperationError);
+    await expect(gdriveBackend.download("did")).rejects.toThrow(
+      StorageOperationError
+    );
   });
 
   it("wraps Drive errors with StorageOperationError", async () => {
     driveStub.files.get.mockRejectedValueOnce(new Error("404"));
-    await expect(gdriveBackend.download("did")).rejects.toThrow(StorageOperationError);
+    await expect(gdriveBackend.download("did")).rejects.toThrow(
+      StorageOperationError
+    );
   });
 });
 
@@ -470,7 +535,9 @@ describe("gdriveBackend.delete", () => {
 
   it("wraps non-404 errors as StorageOperationError", async () => {
     driveStub.files.delete.mockRejectedValueOnce(new Error("500"));
-    await expect(gdriveBackend.delete("did")).rejects.toThrow(StorageOperationError);
+    await expect(gdriveBackend.delete("did")).rejects.toThrow(
+      StorageOperationError
+    );
   });
 });
 
@@ -480,10 +547,18 @@ describe("folder lookup uses existing folder when present", () => {
   it("does not create a folder if list returns one (matches per-property layout)", async () => {
     seedEncrypted(GDRIVE_KEYS.refreshToken, "rt");
     driveStub.files.list
-      .mockResolvedValueOnce({ data: { files: [{ id: "root-fid", name: "HomeVault" }] } })
-      .mockResolvedValueOnce({ data: { files: [{ id: "p-fid", name: "property-9" }] } })
-      .mockResolvedValueOnce({ data: { files: [{ id: "user-fid", name: "1" }] } });
-    driveStub.files.create.mockResolvedValueOnce({ data: { id: "drive-file-id" } });
+      .mockResolvedValueOnce({
+        data: { files: [{ id: "root-fid", name: "HomeVault" }] },
+      })
+      .mockResolvedValueOnce({
+        data: { files: [{ id: "p-fid", name: "property-9" }] },
+      })
+      .mockResolvedValueOnce({
+        data: { files: [{ id: "user-fid", name: "1" }] },
+      });
+    driveStub.files.create.mockResolvedValueOnce({
+      data: { id: "drive-file-id" },
+    });
 
     await gdriveBackend.upload(Buffer.from("x"), {
       ownerUserId: 1,

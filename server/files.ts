@@ -130,7 +130,7 @@ export async function listFilesForOwner(opts: {
  * prevent fileId enumeration. */
 export async function getFileForOwner(
   id: string,
-  ownerUserId: number,
+  ownerUserId: number
 ): Promise<FileRecord | null> {
   const db = await getDb();
   const rows = await db
@@ -140,8 +140,8 @@ export async function getFileForOwner(
       and(
         eq(files.id, id),
         eq(files.ownerUserId, ownerUserId),
-        isNull(files.deletedAt),
-      ),
+        isNull(files.deletedAt)
+      )
     )
     .limit(1);
   return rows[0] ?? null;
@@ -156,7 +156,7 @@ export async function getFileForOwner(
  */
 export async function deleteFileForOwner(
   id: string,
-  ownerUserId: number,
+  ownerUserId: number
 ): Promise<{ deleted: boolean; backendError?: string }> {
   const row = await getFileForOwner(id, ownerUserId);
   if (!row) return { deleted: false };
@@ -220,7 +220,7 @@ export async function syncAttachmentRemovals(opts: {
  */
 export async function deleteAttachmentList(
   list: string[] | null | undefined,
-  ownerUserId: number,
+  ownerUserId: number
 ): Promise<{ removed: number; errors: number }> {
   return syncAttachmentRemovals({
     oldList: list,
@@ -274,7 +274,7 @@ export async function uploadAndRegister(opts: {
  * counts make a successful cleanup auditable.
  */
 export async function deleteAllFilesForOwner(
-  ownerUserId: number,
+  ownerUserId: number
 ): Promise<{ attempted: number; deleted: number; errors: number }> {
   const db = await getDb();
   const rows = await db
@@ -299,7 +299,7 @@ export async function deleteAllFilesForOwner(
  */
 export async function deleteAllFilesForProperty(
   propertyId: number,
-  ownerUserId: number,
+  ownerUserId: number
 ): Promise<{ deleted: number; errors: number }> {
   let deleted = 0;
   let errors = 0;
@@ -313,8 +313,8 @@ export async function deleteAllFilesForProperty(
       and(
         eq(files.propertyId, propertyId),
         eq(files.ownerUserId, ownerUserId),
-        isNull(files.deletedAt),
-      ),
+        isNull(files.deletedAt)
+      )
     );
   for (const r of propertyRows) {
     const out = await deleteFileForOwner(r.id, ownerUserId);
@@ -324,7 +324,14 @@ export async function deleteAllFilesForProperty(
 
   // Legacy rows — files.propertyId is NULL but the entity still belongs to
   // this property. Reach them via the entity tables' attachments columns.
-  const tables = [expenses, repairs, upgrades, loans, wishlistItems, purchaseCosts] as const;
+  const tables = [
+    expenses,
+    repairs,
+    upgrades,
+    loans,
+    wishlistItems,
+    purchaseCosts,
+  ] as const;
   const seenIds = new Set<string>(propertyRows.map(r => r.id));
   for (const t of tables) {
     const entityRows = await db
@@ -355,7 +362,7 @@ export async function deleteAllFilesForProperty(
  * rows are assumed already-cleaned or unrecoverable.
  */
 export async function reapOrphanedFiles(
-  ownerUserId: number,
+  ownerUserId: number
 ): Promise<{ retried: number; succeeded: number; failed: number }> {
   const db = await getDb();
   const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
@@ -366,8 +373,8 @@ export async function reapOrphanedFiles(
       and(
         eq(files.ownerUserId, ownerUserId),
         isNotNull(files.deletedAt),
-        gte(files.deletedAt, cutoff),
-      ),
+        gte(files.deletedAt, cutoff)
+      )
     );
 
   let succeeded = 0;
@@ -380,7 +387,7 @@ export async function reapOrphanedFiles(
     } catch (err) {
       logger.warn(
         { id: row.id, err: (err as Error).message },
-        "[files] reaper failed for this row — will retry on next reap",
+        "[files] reaper failed for this row — will retry on next reap"
       );
       failed++;
     }
