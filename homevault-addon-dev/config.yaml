@@ -1,5 +1,5 @@
 name: HomeVault (Dev)
-version: "0.0.0-dev.0"
+version: "0.0.0-dev.1"
 slug: homevault-dev
 description: Dev-channel build of HomeVault for testing pre-release features. Not for production data.
 url: https://github.com/zhenyakn/homevault-web/tree/dev
