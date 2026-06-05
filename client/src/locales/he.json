@@ -81,7 +81,8 @@
     "failedSave": "שגיאה בשמירה",
     "failedDelete": "שגיאה במחיקה",
     "validAmount": "אנא הכנס סכום תקין",
-    "clearFilter": "נקה"
+    "clearFilter": "נקה",
+    "progress": "התקדמות"
   },
   "categories": {
     "Mortgage": "משכנתא",
@@ -299,7 +300,7 @@
         "save": "התחבר",
         "success": "Google Drive מחובר",
         "required": "הדבק את ה-refresh token תחילה"
-      }
+      },
       "creds": {
         "label": "אישורי OAuth",
         "setupHint": "הזן את אישורי OAuth 2.0 מ-Google כדי לאפשר העלאת קבצים.",

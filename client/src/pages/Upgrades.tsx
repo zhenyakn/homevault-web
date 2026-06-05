@@ -18,16 +18,10 @@ import {
   Hammer, ListChecks, FolderOpen,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ListSection } from "@/components/ListSection";
+import { statusBadgeClass } from "@/lib/badges";
 
-// ─── Types & constants ────────────────────────────────────────────────────────
-
-const STATUS_BADGE: Record<string, string> = {
-  idea:        "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  planning:    "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  in_progress: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-  completed:   "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
-  cancelled:   "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500",
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function barColor(spent: number, budget: number) {
   if (budget === 0) return "bg-primary";
@@ -73,8 +67,8 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
         <DialogHeader>
           <DialogTitle>{t("upgrades.newProject")}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
+        <form onSubmit={submit} className="space-y-3 pt-1">
+          <div className="space-y-1.5">
             <Label htmlFor="title">{t("upgradeDetail.projectName")}</Label>
             <Input
               id="title"
@@ -84,7 +78,7 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
               onChange={e => setF({ ...f, title: e.target.value })}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="description">{t("common.description")}</Label>
             <Textarea
               id="description"
@@ -94,7 +88,7 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
               onChange={e => setF({ ...f, description: e.target.value })}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="estimatedCost">{t("upgradeDetail.budgetField")}</Label>
             <Input
               id="estimatedCost"
@@ -107,7 +101,7 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
             />
             <p className="text-xs text-muted-foreground">{t("upgrades.budgetHint")}</p>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="notes">{t("common.notes")}</Label>
             <Textarea
               id="notes"
@@ -116,10 +110,13 @@ function AddProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
               onChange={e => setF({ ...f, notes: e.target.value })}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-            {createMutation.isPending && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
-            {t("upgrades.createProject")}
-          </Button>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>{t("common.cancel")}</Button>
+            <Button type="submit" size="sm" disabled={createMutation.isPending}>
+              {createMutation.isPending && <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" />}
+              {t("upgrades.createProject")}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
@@ -155,7 +152,7 @@ function UpgradeRow({
         {/* Title row */}
         <div className="flex items-center gap-2 flex-wrap">
           <p className={cn("text-sm font-medium", isDone && "text-muted-foreground")}>{upgrade.title}</p>
-          <Badge className={cn("text-xs h-5 border-0 shrink-0", STATUS_BADGE[status] ?? STATUS_BADGE.planning)}>{t(`status.${status}`, { defaultValue: status })}</Badge>
+          <Badge className={cn("text-xs h-5 border-0 shrink-0", statusBadgeClass(status))}>{t(`status.${status}`, { defaultValue: status })}</Badge>
         </div>
 
         {/* Description */}
@@ -221,30 +218,6 @@ function UpgradeRow({
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
-    </div>
-  );
-}
-
-// ─── Section ──────────────────────────────────────────────────────────────────
-
-function Section({
-  title, count, extra, children, empty,
-}: {
-  title: string; count: number; extra?: React.ReactNode; children: React.ReactNode; empty?: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{title}</h2>
-          <span className="text-xs text-muted-foreground">({count})</span>
-        </div>
-        {extra}
-      </div>
-      {count === 0
-        ? empty
-        : <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">{children}</div>
-      }
     </div>
   );
 }
@@ -390,7 +363,7 @@ export default function Upgrades() {
 
       {/* In Progress */}
       {inProgress.length > 0 && (
-        <Section title={t("upgrades.inProgress")} count={inProgress.length}>
+        <ListSection title={t("upgrades.inProgress")} count={inProgress.length}>
           {inProgress.map(u => (
             <UpgradeRow
               key={u.id}
@@ -401,12 +374,12 @@ export default function Upgrades() {
               onClick={() => navigate(`/upgrades/${u.id}`)}
             />
           ))}
-        </Section>
+        </ListSection>
       )}
 
       {/* Planned */}
       {planned.length > 0 && (
-        <Section
+        <ListSection
           title={t("upgrades.planned")}
           count={planned.length}
           extra={
@@ -425,12 +398,12 @@ export default function Upgrades() {
               onClick={() => navigate(`/upgrades/${u.id}`)}
             />
           ))}
-        </Section>
+        </ListSection>
       )}
 
       {/* Done */}
       {done.length > 0 && (
-        <Section
+        <ListSection
           title={t("upgrades.done")}
           count={done.length}
           extra={
@@ -438,7 +411,6 @@ export default function Upgrades() {
               ? <p className="text-xs text-muted-foreground tabular-nums">{formatCurrency(doneTotalInvestment)} {t("upgrades.invested")}</p>
               : undefined
           }
-          empty={null}
         >
           {done.map(u => (
             <UpgradeRow
@@ -450,7 +422,7 @@ export default function Upgrades() {
               onClick={() => navigate(`/upgrades/${u.id}`)}
             />
           ))}
-        </Section>
+        </ListSection>
       )}
 
       {/* Show "no active projects" only when there are some upgrades but none active */}
