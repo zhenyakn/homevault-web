@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useParams } from "wouter";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
@@ -8,6 +8,7 @@ type RepairQuote = RouterOutputs["repairQuotes"]["list"][number];
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -17,22 +18,27 @@ import {
 } from "@/components/ui/dialog";
 import {
   Loader2,
-  ArrowLeft,
   Plus,
   Pencil,
   Trash2,
   Check,
-  Phone,
   Clock,
-  ShieldCheck,
   FileText,
 } from "lucide-react";
-import { formatCurrency, formatDate, asArray } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatCurrency, formatDate, asArray, cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { FileUpload } from "@/components/FileUpload";
+import {
+  DetailHeader,
+  StatusStepperCard,
+  DetailSectionHeader,
+  DetailSummaryCard,
+  NotesCard,
+  CollapsibleCard,
+} from "@/components/DetailPage";
+import { LogPaymentDialog } from "@/components/LogPaymentDialog";
+import { priorityBadgeClass } from "@/lib/badges";
 
-// ── Types & constants ─────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const STATUSES = [
   "open",
@@ -43,73 +49,9 @@ const STATUSES = [
 ] as const;
 type RepairStatus = (typeof STATUSES)[number];
 
-const PRIORITY_COLOR: Record<string, string> = {
-  low: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  medium:
-    "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400",
-  high: "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
-  urgent: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400",
-};
-
 const ils = (n: number) => Math.round(n * 100);
 
-// ── Status stepper ────────────────────────────────────────────────────────────
-
-function StatusStepper({
-  status,
-  onChange,
-  loading,
-}: {
-  status: string;
-  onChange: (s: RepairStatus) => void;
-  loading: boolean;
-}) {
-  const { t } = useTranslation();
-  const currentIdx = STATUSES.indexOf(status as RepairStatus);
-  return (
-    <div className="flex items-center gap-0 flex-wrap gap-y-2">
-      {STATUSES.map((s, i) => {
-        const done = i < currentIdx;
-        const active = s === status;
-        const isLast = i === STATUSES.length - 1;
-        return (
-          <div key={s} className="flex items-center">
-            <button
-              onClick={() => !loading && onChange(s)}
-              disabled={loading}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border",
-                active &&
-                  "bg-indigo-500 text-white border-indigo-500 shadow-sm",
-                done &&
-                  "bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
-                !active &&
-                  !done &&
-                  "bg-muted text-muted-foreground border-transparent hover:border-border",
-                loading && "opacity-50 cursor-wait"
-              )}
-            >
-              {done && <Check className="h-3 w-3" />}
-              {t(`status.${s}`, { defaultValue: s })}
-            </button>
-            {!isLast && (
-              <div
-                className={cn(
-                  "h-px w-4 shrink-0",
-                  i < currentIdx
-                    ? "bg-indigo-200 dark:bg-indigo-900/50"
-                    : "bg-border"
-                )}
-              />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── QuoteDialog (add / edit) ──────────────────────────────────────────────────
+// ── QuoteDialog (add / edit) ─────────────────────────────────────────────────
 
 function QuoteDialog({
   open,
@@ -292,130 +234,7 @@ function QuoteDialog({
   );
 }
 
-// ── LogPaymentDialog ──────────────────────────────────────────────────────────
-
-function LogPaymentDialog({
-  open,
-  onOpenChange,
-  quoteId,
-  repairId,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  quoteId: string;
-  repairId: string;
-}) {
-  const { t } = useTranslation();
-  const utils = trpc.useUtils();
-  const logMut = trpc.repairQuotes.logPayment.useMutation({
-    onSuccess: () => {
-      utils.repairQuotes.list.invalidate({ repairId });
-      utils.repairs.list.invalidate();
-      onOpenChange(false);
-      toast.success(t("repairDetail.paymentLogged"));
-    },
-  });
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [notes, setNotes] = useState("");
-  const [receipt, setReceipt] = useState<
-    { url: string; filename: string; mimeType: string; size: number }[]
-  >([]);
-
-  useEffect(() => {
-    if (!open) {
-      setAmount("");
-      setDate(new Date().toISOString().split("T")[0]);
-      setNotes("");
-      setReceipt([]);
-    }
-  }, [open]);
-
-  const handleSave = async () => {
-    if (!amount || isNaN(parseFloat(amount))) {
-      toast.error(t("common.validAmount"));
-      return;
-    }
-    try {
-      await logMut.mutateAsync({
-        quoteId,
-        amount: ils(parseFloat(amount)),
-        date,
-        notes: notes || undefined,
-        receipt: receipt[0]?.url,
-      });
-    } catch {
-      toast.error(t("repairDetail.failedLogPayment"));
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{t("repairDetail.logPayment")}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 pt-1">
-          <div className="space-y-1.5">
-            <Label>{t("repairDetail.amountRequired")}</Label>
-            <Input
-              type="number"
-              min="0"
-              value={amount}
-              onChange={e => setAmount(e.target.value)}
-              placeholder="0"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("common.date")}</Label>
-            <Input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("common.notes")}</Label>
-            <Input
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              placeholder="e.g. Deposit"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label>
-              {t("common.receipt")} ({t("common.optional")})
-            </Label>
-            <FileUpload
-              onUpload={f => setReceipt([f])}
-              existingFiles={receipt}
-              onRemove={() => setReceipt([])}
-              maxFiles={1}
-              accept="image/*,.pdf"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-            >
-              {t("common.cancel")}
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={logMut.isPending}>
-              {logMut.isPending && (
-                <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" />
-              )}
-              {t("repairDetail.logPayment")}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ── QuoteCard ─────────────────────────────────────────────────────────────────
+// ── QuoteCard ────────────────────────────────────────────────────────────────
 
 function QuoteCard({
   quote,
@@ -443,37 +262,29 @@ function QuoteCard({
       utils.repairs.list.invalidate();
     },
   });
+  const logMut = trpc.repairQuotes.logPayment.useMutation({
+    onSuccess: () => {
+      utils.repairQuotes.list.invalidate({ repairId });
+      utils.repairs.list.invalidate();
+      setLogOpen(false);
+      toast.success(t("repairDetail.paymentLogged"));
+    },
+  });
 
   const [logOpen, setLogOpen] = useState(false);
-  // Normalize: MariaDB may return JSON columns as strings instead of parsed arrays
-  const payments = asArray(quote.payments);
-  const totalPaid = (payments as { amount: number }[]).reduce(
-    (s, p) => s + p.amount,
-    0
-  );
+  const payments = asArray(quote.payments) as {
+    id: string;
+    date: string;
+    amount: number;
+    notes?: string;
+  }[];
+  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
 
-  return (
-    <div
-      className={cn(
-        "border rounded-lg overflow-hidden transition-all",
-        quote.selected
-          ? "border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-200 dark:ring-indigo-900/50"
-          : "border-border"
-      )}
-    >
-      {/* Header */}
-      <div
-        className={cn(
-          "flex items-center justify-between gap-2 px-4 py-3",
-          quote.selected
-            ? "bg-indigo-50/60 dark:bg-indigo-950/20"
-            : "bg-muted/30"
-        )}
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          {quote.selected && (
-            <Check className="h-4 w-4 text-indigo-500 shrink-0" />
-          )}
+  const header = (
+    <>
+      {quote.selected && <Check className="h-4 w-4 text-indigo-500 shrink-0" />}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
           <p className="font-semibold text-sm truncate">{quote.contractor}</p>
           {quote.selected && (
             <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 shrink-0">
@@ -481,33 +292,157 @@ function QuoteCard({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        {quote.amount > 0 && (
+          <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+            {formatCurrency(quote.amount)} {t("repairDetail.quoted")}
+          </p>
+        )}
+      </div>
+    </>
+  );
+
+  const headerActions = (
+    <button
+      type="button"
+      className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted/50 transition-colors"
+      onClick={e => {
+        e.stopPropagation();
+        onEdit();
+      }}
+      title={t("repairDetail.editQuote")}
+    >
+      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+    </button>
+  );
+
+  return (
+    <CollapsibleCard
+      header={header}
+      headerActions={headerActions}
+      selected={quote.selected ?? false}
+      defaultExpanded={quote.selected ?? false}
+    >
+      <div className="px-4 py-3 space-y-3">
+        {/* Selected bar */}
+        {quote.selected && (
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{t("common.selected")}</span>
+            <span className="tabular-nums">
+              {t("upgradeDetail.paidLabel")}{" "}
+              <span className="text-foreground font-semibold">
+                {formatCurrency(totalPaid)}
+              </span>
+              {quote.amount > 0 ? ` / ${formatCurrency(quote.amount)}` : ""}
+            </span>
+          </div>
+        )}
+
+        {/* Details */}
+        {(quote.date || quote.notes) && (
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            {quote.date && (
+              <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                {formatDate(quote.date)}
+              </div>
+            )}
+            {quote.notes && (
+              <div className="col-span-2 flex items-start gap-1.5 text-muted-foreground text-xs whitespace-pre-wrap">
+                <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                {quote.notes}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Payments */}
+        {(payments.length > 0 || quote.selected) && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+                {t("repairDetail.payments")}
+              </p>
+              {quote.selected && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs px-2"
+                  onClick={() => setLogOpen(true)}
+                >
+                  <Plus className="h-3 w-3 me-1" />
+                  {t("repairDetail.logPayment")}
+                </Button>
+              )}
+            </div>
+            {payments.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {t("repairDetail.noPayments")}
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {payments.map(p => (
+                  <div
+                    key={p.id}
+                    className="group/pay flex items-center justify-between text-xs gap-2"
+                  >
+                    <span className="text-muted-foreground truncate">
+                      {formatDate(p.date)}
+                      {p.notes ? ` · ${p.notes}` : ""}
+                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="tabular-nums font-medium">
+                        {formatCurrency(p.amount)}
+                      </span>
+                      <button
+                        type="button"
+                        className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-destructive opacity-0 group-hover/pay:opacity-100 transition-opacity"
+                        onClick={() =>
+                          delPayMut.mutate({
+                            quoteId: quote.id,
+                            paymentId: p.id,
+                          })
+                        }
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <div className="pt-1 border-t border-border flex justify-between text-xs font-semibold">
+                  <span className="text-muted-foreground">
+                    {t("repairDetail.totalPaid")}
+                  </span>
+                  <span className="tabular-nums">
+                    {formatCurrency(totalPaid)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Footer actions */}
+        <div className="flex gap-2 flex-wrap">
           {!quote.selected && (
             <Button
-              variant="ghost"
               size="sm"
-              className="h-7 text-xs px-2"
+              variant="outline"
+              className="h-7 text-xs"
+              disabled={selectMut.isPending}
               onClick={() => selectMut.mutate({ repairId, quoteId: quote.id })}
             >
-              {selectMut.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                t("common.select")
-              )}
+              <Check className="h-3 w-3 me-1" />
+              {t("common.select")}
             </Button>
           )}
           <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={onEdit}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-destructive hover:text-destructive"
+            size="sm"
+            variant="outline"
+            className={cn(
+              "h-7 w-7 p-0 text-destructive hover:text-destructive",
+              quote.selected && "ms-auto"
+            )}
+            disabled={deleteMut.isPending}
             onClick={() => {
               if (confirm(t("repairDetail.deleteQuoteConfirm")))
                 deleteMut.mutate({ id: quote.id });
@@ -518,112 +453,22 @@ function QuoteCard({
         </div>
       </div>
 
-      {/* Details */}
-      <div className="px-4 py-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm border-t border-border">
-        {quote.amount > 0 && (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <span className="font-semibold text-foreground">
-              {formatCurrency(quote.amount, "ILS")}
-            </span>
-            {t("repairDetail.quoted")}
-          </div>
-        )}
-        {quote.date && (
-          <div className="flex items-center gap-1.5 text-muted-foreground">
-            <Clock className="h-3.5 w-3.5 shrink-0" />
-            {quote.date}
-          </div>
-        )}
-        {quote.notes && (
-          <div className="col-span-2 flex items-start gap-1.5 text-muted-foreground">
-            <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-            {quote.notes}
-          </div>
-        )}
-      </div>
-
-      {/* Payments */}
-      {(payments.length > 0 || quote.selected) && (
-        <div className="border-t border-border px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
-              {t("repairDetail.payments")}
-            </p>
-            {quote.selected && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 text-xs px-2"
-                onClick={() => setLogOpen(true)}
-              >
-                <Plus className="h-3 w-3 me-1" />
-                {t("repairDetail.logPayment")}
-              </Button>
-            )}
-          </div>
-          {payments.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {t("repairDetail.noPayments")}
-            </p>
-          ) : (
-            <div className="space-y-1">
-              {(
-                payments as {
-                  id: string;
-                  date: string;
-                  amount: number;
-                  notes?: string;
-                }[]
-              ).map(p => (
-                <div
-                  key={p.id}
-                  className="group/pay flex items-center gap-3 text-sm py-1"
-                >
-                  <span className="text-muted-foreground text-xs w-20 shrink-0">
-                    {formatDate(p.date)}
-                  </span>
-                  <span className="font-semibold flex-1">
-                    {formatCurrency(p.amount, "ILS")}
-                  </span>
-                  {p.notes && (
-                    <span className="text-xs text-muted-foreground truncate">
-                      {p.notes}
-                    </span>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 opacity-0 group-hover/pay:opacity-100 text-destructive hover:text-destructive shrink-0"
-                    onClick={() =>
-                      delPayMut.mutate({ quoteId: quote.id, paymentId: p.id })
-                    }
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-              <div className="pt-1 border-t border-border flex justify-between text-xs font-semibold">
-                <span className="text-muted-foreground">
-                  {t("repairDetail.totalPaid")}
-                </span>
-                <span>{formatCurrency(totalPaid, "ILS")}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       <LogPaymentDialog
         open={logOpen}
         onOpenChange={setLogOpen}
-        quoteId={quote.id}
-        repairId={repairId}
+        title={t("repairDetail.logPayment")}
+        amountLabel={t("repairDetail.amountRequired")}
+        submitLabel={t("repairDetail.logPayment")}
+        isPending={logMut.isPending}
+        onSubmit={async values => {
+          await logMut.mutateAsync({ quoteId: quote.id, ...values });
+        }}
       />
-    </div>
+    </CollapsibleCard>
   );
 }
 
-// ── EditRepairDialog ──────────────────────────────────────────────────────────
+// ── EditRepairDialog ─────────────────────────────────────────────────────────
 
 function EditRepairDialog({
   open,
@@ -760,7 +605,7 @@ function EditRepairDialog({
   );
 }
 
-// ── RepairDetail ──────────────────────────────────────────────────────────────
+// ── RepairDetail ─────────────────────────────────────────────────────────────
 
 export default function RepairDetail() {
   const { t } = useTranslation();
@@ -787,11 +632,14 @@ export default function RepairDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
 
-  const handleStatusChange = async (status: RepairStatus) => {
+  const handleStatusChange = async (status: string) => {
     if (!repair || status === repair.status) return;
     setStatusLoading(true);
     try {
-      await updateMut.mutateAsync({ id: repair.id, data: { status } });
+      await updateMut.mutateAsync({
+        id: repair.id,
+        data: { status: status as RepairStatus },
+      });
     } catch {
       toast.error(t("repairDetail.failedUpdateStatus"));
     } finally {
@@ -820,95 +668,87 @@ export default function RepairDetail() {
   const totalPaid = (
     asArray(selectedQuote?.payments) as { amount: number }[]
   ).reduce((s, p) => s + p.amount, 0);
+  const quotedAmount = selectedQuote?.amount ?? 0;
+  const summaryProgress =
+    quotedAmount > 0 ? (totalPaid / quotedAmount) * 100 : 0;
 
   return (
     <div className="max-w-4xl space-y-6">
-      {/* Back + header */}
-      <div>
-        <button
-          onClick={() => nav("/repairs")}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" /> {t("repairs.title")}
-        </button>
-
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5 flex-wrap mb-1">
-              <span
-                className={cn(
-                  "text-[11px] font-semibold px-2 py-0.5 rounded-full border",
-                  PRIORITY_COLOR[repair.priority as string] ??
-                    PRIORITY_COLOR.medium
-                )}
-              >
-                {t(`priority.${repair.priority}`)}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {t("repairs.dateLogged")}{" "}
-                {formatDate(repair.reportedDate ?? "")}
-              </span>
-              {totalPaid > 0 && (
-                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                  {formatCurrency(totalPaid, "ILS")} {t("repairs.paidCost")}
-                </span>
+      <DetailHeader
+        backLabel={t("repairs.title")}
+        onBack={() => nav("/repairs")}
+        title={repair.title}
+        description={repair.description}
+        editLabel={t("common.edit")}
+        onEdit={() => setEditOpen(true)}
+        meta={
+          <>
+            <Badge
+              className={cn(
+                "text-xs h-5 border-0 shrink-0",
+                priorityBadgeClass(repair.priority)
               )}
-            </div>
-            <h1 className="text-xl font-bold tracking-tight">{repair.title}</h1>
-            {repair.description && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {repair.description}
-              </p>
-            )}
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-3.5 w-3.5 me-1.5" />
-            {t("common.edit")}
-          </Button>
-        </div>
-      </div>
+            >
+              {t(`priority.${repair.priority}`)}
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {t("repairs.dateLogged")} {formatDate(repair.reportedDate ?? "")}
+            </span>
+          </>
+        }
+      />
 
-      {/* Status stepper */}
-      <div className="border border-border rounded-lg p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-3">
-          {t("repairDetail.progress")}
-        </p>
-        <div className="overflow-x-auto pb-1">
-          <StatusStepper
-            status={repair.status ?? "open"}
-            onChange={handleStatusChange}
-            loading={statusLoading}
-          />
-        </div>
-      </div>
+      <StatusStepperCard
+        label={t("common.progress")}
+        steps={STATUSES}
+        currentStatus={repair.status ?? "open"}
+        onChange={handleStatusChange}
+        loading={statusLoading}
+        getStepLabel={s => t(`status.${s}`, { defaultValue: s })}
+      />
 
-      {/* Quotes section */}
+      {selectedQuote && (
+        <DetailSummaryCard
+          stats={[
+            {
+              value: formatCurrency(quotedAmount),
+              label: t("repairDetail.quoted"),
+              sub: selectedQuote.contractor,
+            },
+            {
+              value: formatCurrency(totalPaid),
+              label: t("dashboard.paid"),
+            },
+          ]}
+          progress={summaryProgress}
+          progressLeft={t("upgradeDetail.budgetUsed", {
+            pct: Math.round(summaryProgress),
+          })}
+          progressRight={`${formatCurrency(totalPaid)} ${t("dashboard.paid")}`}
+        />
+      )}
+
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-              {t("repairDetail.contractors")}
-            </p>
-            <div className="flex-1 h-px bg-border w-16" />
-            {quotes.length > 0 && (
-              <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                {quotes.length}{" "}
-                {quotes.length !== 1 ? t("repairs.quotes") : t("repairs.quote")}
-              </span>
-            )}
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setEditQuote(null);
-              setQuoteOpen(true);
-            }}
-          >
-            <Plus className="h-3.5 w-3.5 me-1.5" />
-            {t("repairDetail.addQuote")}
-          </Button>
-        </div>
+        <DetailSectionHeader
+          label={t("repairDetail.contractors")}
+          count={quotes.length}
+          countSuffix={
+            quotes.length !== 1 ? t("repairs.quotes") : t("repairs.quote")
+          }
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditQuote(null);
+                setQuoteOpen(true);
+              }}
+            >
+              <Plus className="h-3.5 w-3.5 me-1.5" />
+              {t("repairDetail.addQuote")}
+            </Button>
+          }
+        />
 
         {quotesLoading ? (
           <div className="flex justify-center py-8">
@@ -953,17 +793,7 @@ export default function RepairDetail() {
         )}
       </div>
 
-      {/* Notes */}
-      {repair.notes && (
-        <div className="border border-border rounded-lg p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
-            {t("common.notes")}
-          </p>
-          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-            {repair.notes}
-          </p>
-        </div>
-      )}
+      <NotesCard label={t("common.notes")} notes={repair.notes} />
 
       <QuoteDialog
         open={quoteOpen}

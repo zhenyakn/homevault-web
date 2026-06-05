@@ -34,8 +34,14 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ListSection } from "@/components/ListSection";
+import {
+  statusBadgeClass,
+  priorityBadgeClass,
+  priorityAccentClass,
+} from "@/lib/badges";
 
-// ─── Types & constants ────────────────────────────────────────────────────────
+// ─── Sort orders ──────────────────────────────────────────────────────────────
 
 const PRIORITY_ORDER: Record<string, number> = {
   urgent: 0,
@@ -49,34 +55,6 @@ const STATUS_ORDER: Record<string, number> = {
   waiting_for_contractor: 2,
   open: 3,
   cancelled: 4,
-};
-
-const PRIORITY_BADGE: Record<string, string> = {
-  low: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  medium:
-    "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400",
-  high: "bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
-  urgent: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
-};
-
-const STATUS_BADGE: Record<string, string> = {
-  open: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
-  in_progress:
-    "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400",
-  waiting_for_parts:
-    "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  waiting_for_contractor:
-    "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-  completed:
-    "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
-  cancelled: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500",
-};
-
-const PRIORITY_ACCENT: Record<string, string> = {
-  low: "ltr:border-l-zinc-300 rtl:border-r-zinc-300 dark:ltr:border-l-zinc-600 dark:rtl:border-r-zinc-600",
-  medium: "ltr:border-l-yellow-400 rtl:border-r-yellow-400",
-  high: "ltr:border-l-orange-400 rtl:border-r-orange-400",
-  urgent: "ltr:border-l-red-500 rtl:border-r-red-500",
 };
 
 // ─── Add repair dialog ────────────────────────────────────────────────────────
@@ -133,8 +111,8 @@ function AddRepairDialog({
         <DialogHeader>
           <DialogTitle>{t("repairs.logRepair")}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
+        <form onSubmit={submit} className="space-y-3 pt-1">
+          <div className="space-y-1.5">
             <Label htmlFor="title">{t("repairs.description")} *</Label>
             <Input
               id="title"
@@ -144,7 +122,7 @@ function AddRepairDialog({
               onChange={e => setF({ ...f, title: e.target.value })}
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="description">{t("repairs.details")}</Label>
             <Textarea
               id="description"
@@ -155,7 +133,7 @@ function AddRepairDialog({
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>{t("repairs.priority")} *</Label>
               <Select
                 value={f.priority}
@@ -173,7 +151,7 @@ function AddRepairDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>{t("repairs.dateLogged")}</Label>
               <Input
                 type="date"
@@ -185,16 +163,17 @@ function AddRepairDialog({
           <p className="text-xs text-muted-foreground">
             {t("repairs.addContext")}
           </p>
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={createMutation.isPending}
-          >
-            {createMutation.isPending && (
-              <Loader2 className="me-2 h-4 w-4 animate-spin" />
-            )}
-            {t("repairs.logRepair")}
-          </Button>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" size="sm" onClick={onClose}>
+              {t("common.cancel")}
+            </Button>
+            <Button type="submit" size="sm" disabled={createMutation.isPending}>
+              {createMutation.isPending && (
+                <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" />
+              )}
+              {t("repairs.logRepair")}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
@@ -224,7 +203,7 @@ function RepairRow({
     <div
       className={cn(
         "flex items-start gap-4 ltr:pl-3 ltr:pr-4 rtl:pr-3 rtl:pl-4 py-3.5 ltr:border-l-2 rtl:border-r-2 hover:bg-muted/30 transition-colors cursor-pointer",
-        PRIORITY_ACCENT[priority] ?? PRIORITY_ACCENT.medium,
+        priorityAccentClass(priority),
         isDone && "opacity-70"
       )}
       onClick={onClick}
@@ -243,7 +222,7 @@ function RepairRow({
           <Badge
             className={cn(
               "text-xs h-5 border-0 shrink-0",
-              STATUS_BADGE[status] ?? STATUS_BADGE.open
+              statusBadgeClass(status)
             )}
           >
             {t(`status.${status}`, { defaultValue: status })}
@@ -251,7 +230,7 @@ function RepairRow({
           <Badge
             className={cn(
               "text-xs h-5 border-0 shrink-0",
-              PRIORITY_BADGE[priority] ?? PRIORITY_BADGE.medium
+              priorityBadgeClass(priority)
             )}
           >
             {t(`priority.${priority}`, { defaultValue: priority })}
@@ -326,39 +305,6 @@ function RepairRow({
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
-    </div>
-  );
-}
-
-// ─── Section ──────────────────────────────────────────────────────────────────
-
-function Section({
-  title,
-  count,
-  extra,
-  children,
-}: {
-  title: string;
-  count: number;
-  extra?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-            {title}
-          </h2>
-          <span className="text-xs text-muted-foreground">({count})</span>
-        </div>
-        {extra}
-      </div>
-      {count > 0 && (
-        <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
-          {children}
-        </div>
-      )}
     </div>
   );
 }
@@ -550,7 +496,7 @@ export default function Repairs() {
 
       {/* Open */}
       {openRepairs.length > 0 && (
-        <Section title={t("repairs.open")} count={openRepairs.length}>
+        <ListSection title={t("repairs.open")} count={openRepairs.length}>
           {openRepairs.map(r => (
             <RepairRow
               key={r.id}
@@ -564,7 +510,7 @@ export default function Repairs() {
               onClick={() => navigate(`/repairs/${r.id}`)}
             />
           ))}
-        </Section>
+        </ListSection>
       )}
 
       {/* Empty open */}
@@ -584,7 +530,7 @@ export default function Repairs() {
 
       {/* Resolved */}
       {resolved.length > 0 && (
-        <Section
+        <ListSection
           title={t("repairs.resolved")}
           count={resolved.length}
           extra={
@@ -608,7 +554,7 @@ export default function Repairs() {
               onClick={() => navigate(`/repairs/${r.id}`)}
             />
           ))}
-        </Section>
+        </ListSection>
       )}
 
       <AddRepairDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />

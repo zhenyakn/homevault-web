@@ -81,7 +81,8 @@
     "failedSave": "שגיאה בשמירה",
     "failedDelete": "שגיאה במחיקה",
     "validAmount": "אנא הכנס סכום תקין",
-    "clearFilter": "נקה"
+    "clearFilter": "נקה",
+    "progress": "התקדמות"
   },
   "categories": {
     "Mortgage": "משכנתא",

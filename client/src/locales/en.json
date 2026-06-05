@@ -81,7 +81,8 @@
     "failedSave": "Failed to save",
     "failedDelete": "Failed to delete",
     "validAmount": "Please enter a valid amount",
-    "clearFilter": "Clear"
+    "clearFilter": "Clear",
+    "progress": "Progress"
   },
   "propertyType": {
     "Apartment": "Apartment",
