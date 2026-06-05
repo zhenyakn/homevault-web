@@ -5,7 +5,10 @@ import { createContext } from "./_core/context";
 import { logger } from "./_core/logger";
 import { csrfRequireMiddleware } from "./_core/csrf";
 import { uploadAndRegister } from "./files";
-import { StorageNotConfiguredError, StorageOperationError } from "./storage/types";
+import {
+  StorageNotConfiguredError,
+  StorageOperationError,
+} from "./storage/types";
 import type { Request, Response } from "express";
 
 /**
@@ -54,7 +57,7 @@ let _active = 0;
 const _waiters: Array<() => void> = [];
 
 function acquireSlot(): Promise<() => void> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const grant = () => {
       _active++;
       resolve(() => {
@@ -79,8 +82,8 @@ const upload = multer({
     } else {
       cb(
         new Error(
-          `File type '${file.mimetype}' is not allowed. Use images, PDFs, or Office documents.`,
-        ),
+          `File type '${file.mimetype}' is not allowed. Use images, PDFs, or Office documents.`
+        )
       );
     }
   },
@@ -99,7 +102,10 @@ const router = Router();
  * Magic-byte detection rejects the entire class of "HTML payload pretending
  * to be image/png" tricks the browser MIME header allowed.
  */
-async function sniffAndValidate(buffer: Buffer, browserMime: string): Promise<{
+async function sniffAndValidate(
+  buffer: Buffer,
+  browserMime: string
+): Promise<{
   mimeType: string;
   rejected?: string;
 }> {
@@ -122,106 +128,136 @@ async function sniffAndValidate(buffer: Buffer, browserMime: string): Promise<{
   if (sniff.mime !== browserMime) {
     logger.warn(
       { browserMime, sniffMime: sniff.mime },
-      "[Upload] sniffed MIME does not match browser MIME — using sniffed value",
+      "[Upload] sniffed MIME does not match browser MIME — using sniffed value"
     );
   }
   return { mimeType: sniff.mime };
 }
 
-router.post("/api/upload", csrfRequireMiddleware, (req: Request, res: Response) => {
-  upload.single("file")(req, res, async (multerErr) => {
-    if (multerErr) {
-      const status = multerErr.code === "LIMIT_FILE_SIZE" ? 413 : 400;
-      res.status(status).json({ error: multerErr.message });
-      return;
-    }
-
-    const release = await acquireSlot();
-    try {
-      const ctx = await createContext({ req, res } as any);
-      if (!ctx.user) {
-        res.status(401).json({ error: "Unauthorized" });
+router.post(
+  "/api/upload",
+  csrfRequireMiddleware,
+  (req: Request, res: Response) => {
+    upload.single("file")(req, res, async multerErr => {
+      if (multerErr) {
+        const status = multerErr.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+        res.status(status).json({ error: multerErr.message });
         return;
       }
 
-      const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) {
-        res.status(400).json({ error: "No file provided" });
-        return;
-      }
-      if (file.size > MAX_FILE_BYTES) {
-        res.status(413).json({ error: "File exceeds 16MB limit" });
-        return;
-      }
-
-      const sniff = await sniffAndValidate(file.buffer, file.mimetype);
-      if (sniff.rejected) {
-        res.status(415).json({ error: sniff.rejected });
-        return;
-      }
-
+      const release = await acquireSlot();
       try {
-        const { record, url } = await uploadAndRegister({
-          buffer: file.buffer,
-          originalName: file.originalname,
-          // Persist the AUTHORITATIVE mime type, not the browser's.
-          mimeType: sniff.mimeType,
-          ownerUserId: ctx.user.id,
-          propertyId: ctx.propertyId,
-        });
-        res.json({
-          id: record.id,
-          url,
-          filename: record.originalName,
-          mimeType: record.mimeType,
-          size: record.size,
-        });
-      } catch (storageError) {
-        if (storageError instanceof StorageNotConfiguredError) {
-          // "Drive needs reconnecting" is communicated as a structured code so
-          // the frontend can branch to a specific UI (link to Settings) rather
-          // than showing a generic "Upload failed" toast.
-          const reconnect = /reconnect|invalid_grant|expired or revoked/i.test(storageError.message);
-          logger.warn({ message: storageError.message, reconnect }, "[Upload] not configured");
-          res.status(503).json({
-            error: storageError.message,
-            code: reconnect ? "RECONNECT_REQUIRED" : "STORAGE_NOT_CONFIGURED",
-          });
+        const ctx = await createContext({ req, res } as any);
+        if (!ctx.user) {
+          res.status(401).json({ error: "Unauthorized" });
           return;
         }
-        if (storageError instanceof StorageOperationError) {
-          // Drive quota exhaustion: surface 507 + a code the UI can render.
-          const quota = /DRIVE_QUOTA_EXCEEDED|storageQuotaExceeded|storage quota/i.test(
-            storageError.message,
-          );
-          logger.error(
-            { backend: storageError.backend, message: storageError.message, quota },
-            "[Upload] storage error",
-          );
-          if (quota) {
-            res.status(507).json({
-              error: "Your Google Drive is full. Free up space or upgrade your plan.",
-              code: "DRIVE_QUOTA_EXCEEDED",
+
+        const file = (req as any).file as Express.Multer.File | undefined;
+        if (!file) {
+          res.status(400).json({ error: "No file provided" });
+          return;
+        }
+        if (file.size > MAX_FILE_BYTES) {
+          res.status(413).json({ error: "File exceeds 16MB limit" });
+          return;
+        }
+
+        const sniff = await sniffAndValidate(file.buffer, file.mimetype);
+        if (sniff.rejected) {
+          res.status(415).json({ error: sniff.rejected });
+          return;
+        }
+
+        try {
+          const { record, url } = await uploadAndRegister({
+            buffer: file.buffer,
+            originalName: file.originalname,
+            // Persist the AUTHORITATIVE mime type, not the browser's.
+            mimeType: sniff.mimeType,
+            ownerUserId: ctx.user.id,
+            propertyId: ctx.propertyId,
+          });
+          res.json({
+            id: record.id,
+            url,
+            filename: record.originalName,
+            mimeType: record.mimeType,
+            size: record.size,
+          });
+        } catch (storageError) {
+          if (storageError instanceof StorageNotConfiguredError) {
+            // "Drive needs reconnecting" is communicated as a structured code so
+            // the frontend can branch to a specific UI (link to Settings) rather
+            // than showing a generic "Upload failed" toast.
+            const reconnect =
+              /reconnect|invalid_grant|expired or revoked/i.test(
+                storageError.message
+              );
+            logger.warn(
+              { message: storageError.message, reconnect },
+              "[Upload] not configured"
+            );
+            res.status(503).json({
+              error: storageError.message,
+              code: reconnect ? "RECONNECT_REQUIRED" : "STORAGE_NOT_CONFIGURED",
             });
             return;
           }
-          res.status(502).json({ error: "File upload failed — see server logs." });
-          return;
+          if (storageError instanceof StorageOperationError) {
+            // Drive quota exhaustion: surface 507 + a code the UI can render.
+            const quota =
+              /DRIVE_QUOTA_EXCEEDED|storageQuotaExceeded|storage quota/i.test(
+                storageError.message
+              );
+            logger.error(
+              {
+                backend: storageError.backend,
+                message: storageError.message,
+                quota,
+              },
+              "[Upload] storage error"
+            );
+            if (quota) {
+              res.status(507).json({
+                error:
+                  "Your Google Drive is full. Free up space or upgrade your plan.",
+                code: "DRIVE_QUOTA_EXCEEDED",
+              });
+              return;
+            }
+            res
+              .status(502)
+              .json({ error: "File upload failed — see server logs." });
+            return;
+          }
+          logger.error(
+            { err: (storageError as Error).message },
+            "[Upload] unknown error"
+          );
+          res
+            .status(500)
+            .json({ error: "File upload failed. Please try again." });
         }
-        logger.error({ err: (storageError as Error).message }, "[Upload] unknown error");
-        res.status(500).json({ error: "File upload failed. Please try again." });
+      } catch (error) {
+        logger.error(
+          { err: (error as Error).message },
+          "[Upload] handler error"
+        );
+        res
+          .status(500)
+          .json({ error: (error as Error).message || "Upload failed" });
+      } finally {
+        release();
       }
-    } catch (error) {
-      logger.error({ err: (error as Error).message }, "[Upload] handler error");
-      res.status(500).json({ error: (error as Error).message || "Upload failed" });
-    } finally {
-      release();
-    }
-  });
-});
+    });
+  }
+);
 
 export { router as uploadRouter };
 
 // ─── Test hooks ──────────────────────────────────────────────────────────────
 
-export function _currentActiveUploadsForTests(): number { return _active; }
+export function _currentActiveUploadsForTests(): number {
+  return _active;
+}

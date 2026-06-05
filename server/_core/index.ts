@@ -32,7 +32,9 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: skipInTest,
-  message: { error: "Too many authentication attempts, please try again later." },
+  message: {
+    error: "Too many authentication attempts, please try again later.",
+  },
 });
 
 // General API: generous — 300 requests per minute per IP (single-household usage)
@@ -106,7 +108,10 @@ if (process.argv.includes("--seed-mock-only")) {
       const user = await db.getUserByOpenId(openId);
       if (!user) throw new Error("Could not find or create owner user");
       const propertyId = await db.seedMockProperty(user.id);
-      logger.info({ propertyId }, "[Seed] Demo property created/updated. Exiting.");
+      logger.info(
+        { propertyId },
+        "[Seed] Demo property created/updated. Exiting."
+      );
       process.exit(0);
     } catch (err) {
       logger.error({ err }, "[Seed] Failed");
@@ -174,52 +179,53 @@ async function startServer() {
   // layer for any byte we let the user retrieve.
   app.use(
     helmet({
-      contentSecurityPolicy: process.env.NODE_ENV === "production"
-        ? {
-            useDefaults: true,
-            directives: {
-              defaultSrc: ["'self'"],
-              scriptSrc: ["'self'", "https://maps.googleapis.com"],
-              styleSrc: ["'self'", "'unsafe-inline'"], // Radix UI inline styles
-              imgSrc: ["'self'", "data:", "blob:", "https:"],
-              connectSrc: ["'self'", "https://maps.googleapis.com"],
-              fontSrc: ["'self'", "data:"],
-              frameSrc: ["'self'"],
-              // Same-origin framing allowed so the addon renders inside the
-              // Home Assistant UI's <iframe src="…/api/hassio_ingress/…">.
-              // Both the HA UI and the ingress proxy are served from the same
-              // origin, so 'self' lets HA embed us while still blocking
-              // cross-origin clickjacking.
-              frameAncestors: ["'self'"],
-              baseUri: ["'self'"],
-              formAction: ["'self'"],
-              objectSrc: ["'none'"],
-              // Explicitly disable `upgrade-insecure-requests`.
-              //
-              // The HA addon is commonly proxied through Home Assistant on
-              // plain HTTP (e.g. http://homeassistant.local:8123). With the
-              // directive enabled the browser rewrites every subresource URL
-              // — including the addon's own bundled JS/CSS — to https://,
-              // which fails the TLS handshake on HTTP installs and leaves
-              // users with a white/black blank page.
-              //
-              // `useDefaults: true` (above) MERGES our directives with
-              // helmet's defaults, and helmet's default CSP includes
-              // `upgrade-insecure-requests`. Simply omitting the key here
-              // leaves the default in place — to actually drop a default
-              // directive we have to set it to `null` per helmet's docs.
-              //
-              // `'self'` on script/style/connect already prevents mixed-
-              // content downgrades from arbitrary origins; adding upgrade-
-              // insecure-requests on top breaks more than it protects when
-              // the operator's HA is HTTP-only.
-              upgradeInsecureRequests: null,
-            },
-          }
-        : false,
+      contentSecurityPolicy:
+        process.env.NODE_ENV === "production"
+          ? {
+              useDefaults: true,
+              directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "https://maps.googleapis.com"],
+                styleSrc: ["'self'", "'unsafe-inline'"], // Radix UI inline styles
+                imgSrc: ["'self'", "data:", "blob:", "https:"],
+                connectSrc: ["'self'", "https://maps.googleapis.com"],
+                fontSrc: ["'self'", "data:"],
+                frameSrc: ["'self'"],
+                // Same-origin framing allowed so the addon renders inside the
+                // Home Assistant UI's <iframe src="…/api/hassio_ingress/…">.
+                // Both the HA UI and the ingress proxy are served from the same
+                // origin, so 'self' lets HA embed us while still blocking
+                // cross-origin clickjacking.
+                frameAncestors: ["'self'"],
+                baseUri: ["'self'"],
+                formAction: ["'self'"],
+                objectSrc: ["'none'"],
+                // Explicitly disable `upgrade-insecure-requests`.
+                //
+                // The HA addon is commonly proxied through Home Assistant on
+                // plain HTTP (e.g. http://homeassistant.local:8123). With the
+                // directive enabled the browser rewrites every subresource URL
+                // — including the addon's own bundled JS/CSS — to https://,
+                // which fails the TLS handshake on HTTP installs and leaves
+                // users with a white/black blank page.
+                //
+                // `useDefaults: true` (above) MERGES our directives with
+                // helmet's defaults, and helmet's default CSP includes
+                // `upgrade-insecure-requests`. Simply omitting the key here
+                // leaves the default in place — to actually drop a default
+                // directive we have to set it to `null` per helmet's docs.
+                //
+                // `'self'` on script/style/connect already prevents mixed-
+                // content downgrades from arbitrary origins; adding upgrade-
+                // insecure-requests on top breaks more than it protects when
+                // the operator's HA is HTTP-only.
+                upgradeInsecureRequests: null,
+              },
+            }
+          : false,
       crossOriginEmbedderPolicy: false, // breaks Google Maps iframe
       referrerPolicy: { policy: "no-referrer" },
-    }),
+    })
   );
 
   // CSRF cookie issuance is global — every response sees the cookie so the
@@ -257,7 +263,10 @@ async function startServer() {
           expiresInMs: ONE_YEAR_MS,
         });
         const cookieOptions = getSessionCookieOptions(req);
-        res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+        res.cookie(COOKIE_NAME, token, {
+          ...cookieOptions,
+          maxAge: ONE_YEAR_MS,
+        });
         res.json({ ok: true });
       } catch (err) {
         logger.error({ err }, "[Dev Login] Failed");
@@ -323,7 +332,10 @@ async function startServer() {
   const port = await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
-    logger.warn({ preferredPort, port }, "Preferred port is busy, using alternative");
+    logger.warn(
+      { preferredPort, port },
+      "Preferred port is busy, using alternative"
+    );
   }
 
   server.listen(port, host, () => {

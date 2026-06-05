@@ -13,11 +13,17 @@ import { describe, it, expect } from "vitest";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
-const schemaSrc    = readFileSync(resolve(ROOT, "drizzle/schema.ts"), "utf-8");
-const migrationRaw = readFileSync(resolve(ROOT, "apply-migration-addon.mjs"), "utf-8");
-const configYaml   = readFileSync(resolve(ROOT, "homevault-addon/config.yaml"), "utf-8");
-const runSh        = readFileSync(resolve(ROOT, "homevault-addon/run.sh"), "utf-8");
-const lockfile     = readFileSync(resolve(ROOT, "pnpm-lock.yaml"), "utf-8");
+const schemaSrc = readFileSync(resolve(ROOT, "drizzle/schema.ts"), "utf-8");
+const migrationRaw = readFileSync(
+  resolve(ROOT, "apply-migration-addon.mjs"),
+  "utf-8"
+);
+const configYaml = readFileSync(
+  resolve(ROOT, "homevault-addon/config.yaml"),
+  "utf-8"
+);
+const runSh = readFileSync(resolve(ROOT, "homevault-addon/run.sh"), "utf-8");
+const lockfile = readFileSync(resolve(ROOT, "pnpm-lock.yaml"), "utf-8");
 
 // Unescape template-literal backticks so SQL reads as plain SQL.
 // In the .mjs source file: \`tableName\` → normalized: `tableName`
@@ -103,7 +109,7 @@ function parseMigrationColumns(src: string): Map<string, Set<string>> {
 }
 
 // Materialise once; all describe blocks share these maps.
-const schemaTables    = parseSchemaColumns(schemaSrc);
+const schemaTables = parseSchemaColumns(schemaSrc);
 const migrationTables = parseMigrationColumns(migration);
 
 // ── 1. Table coverage ────────────────────────────────────────────────────────
@@ -129,7 +135,7 @@ describe("addon migration — every schema column is covered (CREATE TABLE or AL
         expect(
           migrationCols.has(col),
           `Column \`${tableName}\`.\`${col}\` is defined in drizzle/schema.ts ` +
-          `but is absent from apply-migration-addon.mjs (not in CREATE TABLE and no ALTER TABLE ADD COLUMN)`
+            `but is absent from apply-migration-addon.mjs (not in CREATE TABLE and no ALTER TABLE ADD COLUMN)`
         ).toBe(true);
       });
     }
@@ -141,7 +147,9 @@ describe("addon migration — every schema column is covered (CREATE TABLE or AL
 describe("addon migration — removed columns do not reappear", () => {
   it("upgrades CREATE TABLE does not include `phase` (dropped in 0009)", () => {
     const block =
-      migration.match(/CREATE TABLE IF NOT EXISTS `upgrades`[\s\S]*?ENGINE=InnoDB/)?.[0] ?? "";
+      migration.match(
+        /CREATE TABLE IF NOT EXISTS `upgrades`[\s\S]*?ENGINE=InnoDB/
+      )?.[0] ?? "";
     // Only flag actual column definitions (type keyword follows the name), not index references
     expect(block).not.toMatch(/`phase`\s+\w/);
   });

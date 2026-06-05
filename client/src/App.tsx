@@ -45,7 +45,9 @@ function SignInPage() {
             <Home className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">HomeVault</h1>
-          <p className="text-muted-foreground mt-2">Your property, fully managed</p>
+          <p className="text-muted-foreground mt-2">
+            Your property, fully managed
+          </p>
         </div>
 
         <div className="bg-card rounded-2xl shadow-sm border p-8 space-y-6">
@@ -59,7 +61,9 @@ function SignInPage() {
               </div>
               <Button
                 className="w-full h-11 text-base"
-                onClick={() => { window.location.href = getLoginUrl(); }}
+                onClick={() => {
+                  window.location.href = getLoginUrl();
+                }}
               >
                 <LogIn className="w-4 h-4 mr-2" />
                 Sign in
@@ -97,12 +101,15 @@ function SignInPage() {
                   </p>
                   <p className="text-xs text-amber-700 dark:text-amber-400">
                     Add the following to your{" "}
-                    <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 rounded">.env</code>{" "}file:
+                    <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 rounded">
+                      .env
+                    </code>{" "}
+                    file:
                   </p>
                 </div>
               </div>
               <pre className="text-xs bg-muted rounded-lg p-4 overflow-x-auto font-mono">
-{`VITE_OAUTH_PORTAL_URL=https://your-oauth-server
+                {`VITE_OAUTH_PORTAL_URL=https://your-oauth-server
 VITE_APP_ID=your-app-id
 OAUTH_SERVER_URL=https://your-oauth-server
 OWNER_OPEN_ID=your-open-id`}

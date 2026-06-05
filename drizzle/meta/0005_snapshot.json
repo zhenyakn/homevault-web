@@ -106,23 +106,17 @@
       "indexes": {
         "calendar_date_idx": {
           "name": "calendar_date_idx",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": false
         },
         "calendar_created_by_idx": {
           "name": "calendar_created_by_idx",
-          "columns": [
-            "createdById"
-          ],
+          "columns": ["createdById"],
           "isUnique": false
         },
         "calendar_property_idx": {
           "name": "calendar_property_idx",
-          "columns": [
-            "propertyId"
-          ],
+          "columns": ["propertyId"],
           "isUnique": false
         }
       },
@@ -131,12 +125,8 @@
           "name": "calendarEvents_createdById_users_id_fk",
           "tableFrom": "calendarEvents",
           "tableTo": "users",
-          "columnsFrom": [
-            "createdById"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["createdById"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -144,12 +134,8 @@
           "name": "calendarEvents_propertyId_properties_id_fk",
           "tableFrom": "calendarEvents",
           "tableTo": "properties",
-          "columnsFrom": [
-            "propertyId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["propertyId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -157,9 +143,7 @@
       "compositePrimaryKeys": {
         "calendarEvents_id": {
           "name": "calendarEvents_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -289,30 +273,22 @@
       "indexes": {
         "expense_date_idx": {
           "name": "expense_date_idx",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": false
         },
         "expense_owner_idx": {
           "name": "expense_owner_idx",
-          "columns": [
-            "ownerId"
-          ],
+          "columns": ["ownerId"],
           "isUnique": false
         },
         "expense_category_idx": {
           "name": "expense_category_idx",
-          "columns": [
-            "category"
-          ],
+          "columns": ["category"],
           "isUnique": false
         },
         "expense_property_idx": {
           "name": "expense_property_idx",
-          "columns": [
-            "propertyId"
-          ],
+          "columns": ["propertyId"],
           "isUnique": false
         }
       },
@@ -321,12 +297,8 @@
           "name": "expenses_ownerId_users_id_fk",
           "tableFrom": "expenses",
           "tableTo": "users",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ownerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -334,12 +306,8 @@
           "name": "expenses_propertyId_properties_id_fk",
           "tableFrom": "expenses",
           "tableTo": "properties",
-          "columnsFrom": [
-            "propertyId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["propertyId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -347,9 +315,7 @@
       "compositePrimaryKeys": {
         "expenses_id": {
           "name": "expenses_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -419,23 +385,17 @@
       "indexes": {
         "loanRepayment_loanId_idx": {
           "name": "loanRepayment_loanId_idx",
-          "columns": [
-            "loanId"
-          ],
+          "columns": ["loanId"],
           "isUnique": false
         },
         "loanRepayment_owner_idx": {
           "name": "loanRepayment_owner_idx",
-          "columns": [
-            "ownerId"
-          ],
+          "columns": ["ownerId"],
           "isUnique": false
         },
         "loanRepayment_date_idx": {
           "name": "loanRepayment_date_idx",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": false
         }
       },
@@ -444,12 +404,8 @@
           "name": "loanRepayments_loanId_loans_id_fk",
           "tableFrom": "loanRepayments",
           "tableTo": "loans",
-          "columnsFrom": [
-            "loanId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["loanId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -457,12 +413,8 @@
           "name": "loanRepayments_ownerId_users_id_fk",
           "tableFrom": "loanRepayments",
           "tableTo": "users",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ownerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -470,9 +422,7 @@
       "compositePrimaryKeys": {
         "loanRepayments_id": {
           "name": "loanRepayments_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -587,16 +537,12 @@
       "indexes": {
         "loan_owner_idx": {
           "name": "loan_owner_idx",
-          "columns": [
-            "ownerId"
-          ],
+          "columns": ["ownerId"],
           "isUnique": false
         },
         "loan_property_idx": {
           "name": "loan_property_idx",
-          "columns": [
-            "propertyId"
-          ],
+          "columns": ["propertyId"],
           "isUnique": false
         }
       },
@@ -605,12 +551,8 @@
           "name": "loans_ownerId_users_id_fk",
           "tableFrom": "loans",
           "tableTo": "users",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ownerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -618,12 +560,8 @@
           "name": "loans_propertyId_properties_id_fk",
           "tableFrom": "loans",
           "tableTo": "properties",
-          "columnsFrom": [
-            "propertyId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["propertyId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -631,9 +569,7 @@
       "compositePrimaryKeys": {
         "loans_id": {
           "name": "loans_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -869,12 +805,8 @@
           "name": "properties_userId_users_id_fk",
           "tableFrom": "properties",
           "tableTo": "users",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -882,9 +814,7 @@
       "compositePrimaryKeys": {
         "properties_id": {
           "name": "properties_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -984,23 +914,17 @@
       "indexes": {
         "purchase_cost_date_idx": {
           "name": "purchase_cost_date_idx",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": false
         },
         "purchase_cost_owner_idx": {
           "name": "purchase_cost_owner_idx",
-          "columns": [
-            "ownerId"
-          ],
+          "columns": ["ownerId"],
           "isUnique": false
         },
         "purchase_cost_property_idx": {
           "name": "purchase_cost_property_idx",
-          "columns": [
-            "propertyId"
-          ],
+          "columns": ["propertyId"],
           "isUnique": false
         }
       },
@@ -1009,12 +933,8 @@
           "name": "purchaseCosts_ownerId_users_id_fk",
           "tableFrom": "purchaseCosts",
           "tableTo": "users",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ownerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1022,12 +942,8 @@
           "name": "purchaseCosts_propertyId_properties_id_fk",
           "tableFrom": "purchaseCosts",
           "tableTo": "properties",
-          "columnsFrom": [
-            "propertyId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["propertyId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1035,9 +951,7 @@
       "compositePrimaryKeys": {
         "purchaseCosts_id": {
           "name": "purchaseCosts_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1145,9 +1059,7 @@
       "indexes": {
         "repairQuote_repairId_idx": {
           "name": "repairQuote_repairId_idx",
-          "columns": [
-            "repairId"
-          ],
+          "columns": ["repairId"],
           "isUnique": false
         }
       },
@@ -1156,12 +1068,8 @@
           "name": "repairQuotes_repairId_repairs_id_fk",
           "tableFrom": "repairQuotes",
           "tableTo": "repairs",
-          "columnsFrom": [
-            "repairId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["repairId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1169,9 +1077,7 @@
       "compositePrimaryKeys": {
         "repairQuotes_id": {
           "name": "repairQuotes_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1314,30 +1220,22 @@
       "indexes": {
         "repair_status_idx": {
           "name": "repair_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "repair_priority_idx": {
           "name": "repair_priority_idx",
-          "columns": [
-            "priority"
-          ],
+          "columns": ["priority"],
           "isUnique": false
         },
         "repair_owner_idx": {
           "name": "repair_owner_idx",
-          "columns": [
-            "ownerId"
-          ],
+          "columns": ["ownerId"],
           "isUnique": false
         },
         "repair_property_idx": {
           "name": "repair_property_idx",
-          "columns": [
-            "propertyId"
-          ],
+          "columns": ["propertyId"],
           "isUnique": false
         }
       },
@@ -1346,12 +1244,8 @@
           "name": "repairs_ownerId_users_id_fk",
           "tableFrom": "repairs",
           "tableTo": "users",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ownerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1359,12 +1253,8 @@
           "name": "repairs_propertyId_properties_id_fk",
           "tableFrom": "repairs",
           "tableTo": "properties",
-          "columnsFrom": [
-            "propertyId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["propertyId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1372,9 +1262,7 @@
       "compositePrimaryKeys": {
         "repairs_id": {
           "name": "repairs_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1482,23 +1370,17 @@
       "indexes": {
         "upgradeItem_upgradeId_idx": {
           "name": "upgradeItem_upgradeId_idx",
-          "columns": [
-            "upgradeId"
-          ],
+          "columns": ["upgradeId"],
           "isUnique": false
         },
         "upgradeItem_propertyId_idx": {
           "name": "upgradeItem_propertyId_idx",
-          "columns": [
-            "propertyId"
-          ],
+          "columns": ["propertyId"],
           "isUnique": false
         },
         "upgradeItem_owner_idx": {
           "name": "upgradeItem_owner_idx",
-          "columns": [
-            "ownerId"
-          ],
+          "columns": ["ownerId"],
           "isUnique": false
         }
       },
@@ -1507,12 +1389,8 @@
           "name": "upgradeItems_upgradeId_upgrades_id_fk",
           "tableFrom": "upgradeItems",
           "tableTo": "upgrades",
-          "columnsFrom": [
-            "upgradeId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["upgradeId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1520,12 +1398,8 @@
           "name": "upgradeItems_propertyId_properties_id_fk",
           "tableFrom": "upgradeItems",
           "tableTo": "properties",
-          "columnsFrom": [
-            "propertyId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["propertyId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1533,12 +1407,8 @@
           "name": "upgradeItems_ownerId_users_id_fk",
           "tableFrom": "upgradeItems",
           "tableTo": "users",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ownerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1546,9 +1416,7 @@
       "compositePrimaryKeys": {
         "upgradeItems_id": {
           "name": "upgradeItems_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1656,9 +1524,7 @@
       "indexes": {
         "upgradeOption_upgradeId_idx": {
           "name": "upgradeOption_upgradeId_idx",
-          "columns": [
-            "upgradeId"
-          ],
+          "columns": ["upgradeId"],
           "isUnique": false
         }
       },
@@ -1667,12 +1533,8 @@
           "name": "upgradeOptions_upgradeId_upgrades_id_fk",
           "tableFrom": "upgradeOptions",
           "tableTo": "upgrades",
-          "columnsFrom": [
-            "upgradeId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["upgradeId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1680,9 +1542,7 @@
       "compositePrimaryKeys": {
         "upgradeOptions_id": {
           "name": "upgradeOptions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1798,23 +1658,17 @@
       "indexes": {
         "upgrade_status_idx": {
           "name": "upgrade_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         },
         "upgrade_owner_idx": {
           "name": "upgrade_owner_idx",
-          "columns": [
-            "ownerId"
-          ],
+          "columns": ["ownerId"],
           "isUnique": false
         },
         "upgrade_property_idx": {
           "name": "upgrade_property_idx",
-          "columns": [
-            "propertyId"
-          ],
+          "columns": ["propertyId"],
           "isUnique": false
         }
       },
@@ -1823,12 +1677,8 @@
           "name": "upgrades_ownerId_users_id_fk",
           "tableFrom": "upgrades",
           "tableTo": "users",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ownerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1836,12 +1686,8 @@
           "name": "upgrades_propertyId_properties_id_fk",
           "tableFrom": "upgrades",
           "tableTo": "properties",
-          "columnsFrom": [
-            "propertyId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["propertyId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1849,9 +1695,7 @@
       "compositePrimaryKeys": {
         "upgrades_id": {
           "name": "upgrades_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1932,9 +1776,7 @@
       "indexes": {
         "openId_idx": {
           "name": "openId_idx",
-          "columns": [
-            "openId"
-          ],
+          "columns": ["openId"],
           "isUnique": false
         }
       },
@@ -1942,17 +1784,13 @@
       "compositePrimaryKeys": {
         "users_id": {
           "name": "users_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "users_openId_unique": {
           "name": "users_openId_unique",
-          "columns": [
-            "openId"
-          ]
+          "columns": ["openId"]
         }
       },
       "checkConstraint": {}
@@ -2037,23 +1875,17 @@
       "indexes": {
         "wishlist_priority_idx": {
           "name": "wishlist_priority_idx",
-          "columns": [
-            "priority"
-          ],
+          "columns": ["priority"],
           "isUnique": false
         },
         "wishlist_owner_idx": {
           "name": "wishlist_owner_idx",
-          "columns": [
-            "ownerId"
-          ],
+          "columns": ["ownerId"],
           "isUnique": false
         },
         "wishlist_property_idx": {
           "name": "wishlist_property_idx",
-          "columns": [
-            "propertyId"
-          ],
+          "columns": ["propertyId"],
           "isUnique": false
         }
       },
@@ -2062,12 +1894,8 @@
           "name": "wishlistItems_ownerId_users_id_fk",
           "tableFrom": "wishlistItems",
           "tableTo": "users",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ownerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2075,12 +1903,8 @@
           "name": "wishlistItems_propertyId_properties_id_fk",
           "tableFrom": "wishlistItems",
           "tableTo": "properties",
-          "columnsFrom": [
-            "propertyId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["propertyId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2088,9 +1912,7 @@
       "compositePrimaryKeys": {
         "wishlistItems_id": {
           "name": "wishlistItems_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},

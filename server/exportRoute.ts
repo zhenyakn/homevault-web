@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { ZipArchive } from "archiver";
+import * as archiver from "archiver";
 import path from "node:path";
 import { Readable } from "stream";
 import { and, eq, isNull } from "drizzle-orm";
@@ -33,6 +33,15 @@ import {
  * Streaming, owner-scoped, rate-limited via the `/api/export` limiter wired
  * in `server/_core/index.ts`. No CSRF (GET).
  */
+// archiver@8 exposes its format classes (ZipArchive, …) as named ESM exports
+// and ships no default export; @types/archiver@7 hasn't caught up, so reach
+// ZipArchive off the namespace import with an explicit constructor type.
+const ZipArchive = (
+  archiver as unknown as {
+    ZipArchive: new (opts?: archiver.ArchiverOptions) => archiver.Archiver;
+  }
+).ZipArchive;
+
 const router = Router();
 
 router.get("/api/export/files.zip", async (req: Request, res: Response) => {
@@ -51,13 +60,16 @@ router.get("/api/export/files.zip", async (req: Request, res: Response) => {
 
   const today = new Date().toISOString().split("T")[0];
   res.setHeader("Content-Type", "application/zip");
-  res.setHeader("Content-Disposition", buildContentDisposition(`homevault-files-${today}.zip`));
+  res.setHeader(
+    "Content-Disposition",
+    buildContentDisposition(`homevault-files-${today}.zip`)
+  );
   res.setHeader("Cache-Control", "private, no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
 
   const zip = new ZipArchive({ zlib: { level: 6 } });
   let aborted = false;
-  zip.on("error", (err) => {
+  zip.on("error", (err: Error) => {
     logger.error({ err: err.message }, "[export] archiver error");
     aborted = true;
     if (!res.headersSent) {
@@ -83,7 +95,8 @@ router.get("/api/export/files.zip", async (req: Request, res: Response) => {
 
   for (const row of rows) {
     if (aborted) break;
-    const folder = row.propertyId == null ? "legacy" : `property-${row.propertyId}`;
+    const folder =
+      row.propertyId == null ? "legacy" : `property-${row.propertyId}`;
     // Strip any directory component a malicious / clumsy `originalName` may
     // carry (e.g. `../etc/passwd.txt`) so the ZIP layout stays flat under
     // the per-property folder. Defence-in-depth — most extractors reject
@@ -98,7 +111,7 @@ router.get("/api/export/files.zip", async (req: Request, res: Response) => {
         zip.append(result.stream as Readable, { name: entryName });
         // Wait for this entry to drain before queuing the next, so we don't
         // pile huge streams in memory on slow links.
-        await new Promise<void>((resolve) => {
+        await new Promise<void>(resolve => {
           (result.stream as Readable).on("end", resolve);
           (result.stream as Readable).on("error", resolve);
         });
@@ -107,13 +120,16 @@ router.get("/api/export/files.zip", async (req: Request, res: Response) => {
         // the ZIP. (Alternative: an HTTP-level redirect won't fit a ZIP.)
         const resp = await fetch(result.url);
         if (!resp.ok || !resp.body) {
-          logger.warn({ id: row.id, status: resp.status }, "[export] skipped (S3 fetch failed)");
+          logger.warn(
+            { id: row.id, status: resp.status },
+            "[export] skipped (S3 fetch failed)"
+          );
           continue;
         }
         // Convert WHATWG ReadableStream → Node Readable so archiver can stream.
         const nodeStream = Readable.fromWeb(resp.body as any);
         zip.append(nodeStream, { name: entryName });
-        await new Promise<void>((resolve) => {
+        await new Promise<void>(resolve => {
           nodeStream.on("end", resolve);
           nodeStream.on("error", resolve);
         });
@@ -122,14 +138,20 @@ router.get("/api/export/files.zip", async (req: Request, res: Response) => {
       const isCfg = err instanceof StorageNotConfiguredError;
       const isOp = err instanceof StorageOperationError;
       logger.warn(
-        { id: row.id, kind: isCfg ? "not-configured" : isOp ? "backend" : "unknown", err: (err as Error).message },
-        "[export] skipped (backend error)",
+        {
+          id: row.id,
+          kind: isCfg ? "not-configured" : isOp ? "backend" : "unknown",
+          err: (err as Error).message,
+        },
+        "[export] skipped (backend error)"
       );
       // Skip the file; keep the export going. A README inside the ZIP lists
       // skipped entries.
       zip.append(
-        Buffer.from(`Could not fetch "${row.originalName}" from storage backend.\n`),
-        { name: `${folder}/_SKIPPED__${row.id}.txt` },
+        Buffer.from(
+          `Could not fetch "${row.originalName}" from storage backend.\n`
+        ),
+        { name: `${folder}/_SKIPPED__${row.id}.txt` }
       );
       continue;
     }

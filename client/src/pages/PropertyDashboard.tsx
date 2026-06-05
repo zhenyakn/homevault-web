@@ -17,7 +17,15 @@ import {
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
-function StatRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string | number | null | undefined }) {
+function StatRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number | null | undefined;
+}) {
   if (value == null || value === "") return null;
   return (
     <div className="flex items-center gap-3 py-2 border-b border-border last:border-0">
@@ -46,9 +54,14 @@ export default function PropertyDashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
         <Home className="h-12 w-12 text-muted-foreground" />
-        <h2 className="text-lg font-semibold">{t("property.notFound", "No property found")}</h2>
+        <h2 className="text-lg font-semibold">
+          {t("property.notFound", "No property found")}
+        </h2>
         <p className="text-sm text-muted-foreground max-w-xs">
-          {t("property.notFoundDesc", "Go to Settings to configure your property details.")}
+          {t(
+            "property.notFoundDesc",
+            "Go to Settings to configure your property details."
+          )}
         </p>
         <Button asChild variant="default">
           <Link href="/settings">{t("nav.settings", "Settings")}</Link>
@@ -88,24 +101,60 @@ export default function PropertyDashboard() {
       {/* Key details */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">{t("property.details", "Property Details")}</CardTitle>
+          <CardTitle className="text-base">
+            {t("property.details", "Property Details")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <StatRow icon={Calendar} label={t("property.purchaseDate", "Purchase Date")} value={property.purchaseDate} />
+          <StatRow
+            icon={Calendar}
+            label={t("property.purchaseDate", "Purchase Date")}
+            value={property.purchaseDate}
+          />
           <StatRow
             icon={DollarSign}
             label={t("property.purchasePrice", "Purchase Price")}
-            value={property.purchasePrice ? formatter.format(property.purchasePrice) : null}
+            value={
+              property.purchasePrice
+                ? formatter.format(property.purchasePrice)
+                : null
+            }
           />
-          <StatRow icon={Ruler} label={t("property.size", "Size")} value={property.squareMeters ? `${property.squareMeters} m²` : null} />
-          <StatRow icon={Layers} label={t("property.rooms", "Rooms")} value={property.rooms} />
-          <StatRow icon={Building2} label={t("property.floor", "Floor")} value={property.floor} />
-          <StatRow icon={Calendar} label={t("property.yearBuilt", "Year Built")} value={property.yearBuilt} />
-          <StatRow icon={ParkingSquare} label={t("property.parking", "Parking Spots")} value={property.parkingSpots} />
+          <StatRow
+            icon={Ruler}
+            label={t("property.size", "Size")}
+            value={property.squareMeters ? `${property.squareMeters} m²` : null}
+          />
+          <StatRow
+            icon={Layers}
+            label={t("property.rooms", "Rooms")}
+            value={property.rooms}
+          />
+          <StatRow
+            icon={Building2}
+            label={t("property.floor", "Floor")}
+            value={property.floor}
+          />
+          <StatRow
+            icon={Calendar}
+            label={t("property.yearBuilt", "Year Built")}
+            value={property.yearBuilt}
+          />
+          <StatRow
+            icon={ParkingSquare}
+            label={t("property.parking", "Parking Spots")}
+            value={property.parkingSpots}
+          />
           <StatRow
             icon={Warehouse}
             label={t("property.storage", "Storage")}
-            value={property.hasStorage != null ? (property.hasStorage ? t("common.yes", "Yes") : t("common.no", "No")) : null}
+            value={
+              property.hasStorage != null
+                ? property.hasStorage
+                  ? t("common.yes", "Yes")
+                  : t("common.no", "No")
+                : null
+            }
           />
         </CardContent>
       </Card>
@@ -113,7 +162,9 @@ export default function PropertyDashboard() {
       {/* Quick action */}
       <div className="flex justify-end">
         <Button variant="outline" asChild>
-          <Link href="/settings">{t("property.editSettings", "Edit in Settings")}</Link>
+          <Link href="/settings">
+            {t("property.editSettings", "Edit in Settings")}
+          </Link>
         </Button>
       </div>
     </div>

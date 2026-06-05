@@ -11,7 +11,10 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 const url = process.env.DATABASE_URL;
-if (!url) { console.error("DATABASE_URL not set"); process.exit(1); }
+if (!url) {
+  console.error("DATABASE_URL not set");
+  process.exit(1);
+}
 
 const conn = await mysql.createConnection(url);
 
@@ -20,7 +23,10 @@ const run = async (sql, label) => {
     await conn.execute(sql);
     console.log(`✓ ${label}`);
   } catch (e) {
-    if (e.code === "ER_DUP_FIELDNAME" || e.message?.includes("Duplicate column")) {
+    if (
+      e.code === "ER_DUP_FIELDNAME" ||
+      e.message?.includes("Duplicate column")
+    ) {
       console.log(`- ${label} (already applied)`);
     } else {
       throw e;

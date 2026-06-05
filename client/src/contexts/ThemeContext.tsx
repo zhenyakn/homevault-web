@@ -12,7 +12,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 function getSystemTheme(): "light" | "dark" {
   if (typeof window === "undefined") return "light";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 function resolveTheme(theme: Theme): "light" | "dark" {
@@ -32,7 +34,9 @@ export function ThemeProvider({
     try {
       const stored = localStorage.getItem("homevault-theme") as Theme | null;
       if (stored && ["light", "dark", "system"].includes(stored)) return stored;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return defaultTheme;
   });
 
@@ -56,7 +60,11 @@ export function ThemeProvider({
 
   const setTheme = (next: Theme) => {
     setThemeState(next);
-    try { localStorage.setItem("homevault-theme", next); } catch { /* ignore */ }
+    try {
+      localStorage.setItem("homevault-theme", next);
+    } catch {
+      /* ignore */
+    }
   };
 
   return (

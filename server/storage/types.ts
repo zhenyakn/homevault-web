@@ -24,7 +24,12 @@ export interface UploadMeta {
 
 export type DownloadResult =
   // Stream the content back through the app server.
-  | { kind: "stream"; stream: NodeJS.ReadableStream; mimeType: string; size?: number }
+  | {
+      kind: "stream";
+      stream: NodeJS.ReadableStream;
+      mimeType: string;
+      size?: number;
+    }
   // Browser should follow a 302 to a short-lived URL (S3 presigned URL).
   | { kind: "redirect"; url: string; mimeType: string };
 

@@ -24,7 +24,9 @@ describe("rfc8187Encode", () => {
 
   it("encodes multi-byte UTF-8 bytes (Hebrew)", () => {
     // ש = 0xD7 0xA9
-    expect(rfc8187Encode("שלום.pdf")).toMatch(/^%D7%A9%D7%9C%D7%95%D7%9D\.pdf$/);
+    expect(rfc8187Encode("שלום.pdf")).toMatch(
+      /^%D7%A9%D7%9C%D7%95%D7%9D\.pdf$/
+    );
   });
 
   it("encodes emoji bytes correctly", () => {
@@ -60,6 +62,8 @@ describe("buildContentDisposition", () => {
   });
 
   it("supports inline override", () => {
-    expect(buildContentDisposition("x.pdf", "inline").startsWith("inline;")).toBe(true);
+    expect(
+      buildContentDisposition("x.pdf", "inline").startsWith("inline;")
+    ).toBe(true);
   });
 });

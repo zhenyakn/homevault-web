@@ -32,7 +32,9 @@ vi.mock("./db/client", async () => {
 
   function makeSelect() {
     return {
-      from() { return this; },
+      from() {
+        return this;
+      },
       where(_w: any) {
         // Thenable so `await db.select().from().where()` returns the next
         // batch from fakeRowBatches.
@@ -41,28 +43,56 @@ vi.mock("./db/client", async () => {
         // The two queues are independent — picking the right one is up to
         // the caller / test setup.
         return {
-          then(resolve: any) { resolve(fakeRowBatches.shift() ?? []); },
-          orderBy() { return this; },
+          then(resolve: any) {
+            resolve(fakeRowBatches.shift() ?? []);
+          },
+          orderBy() {
+            return this;
+          },
           limit() {
             const single = fakeRows.shift();
             return Promise.resolve(single ? [single] : []);
           },
-          offset() { return Promise.resolve(fakeRowBatches.shift() ?? []); },
+          offset() {
+            return Promise.resolve(fakeRowBatches.shift() ?? []);
+          },
         };
       },
     };
   }
   const db = {
     select: (_proj?: any) => makeSelect(),
-    insert: () => ({ values: (v: any) => { inserted.push(v); return Promise.resolve(); } }),
-    update: () => ({ set: (s: any) => ({ where: (_w: any) => { updated.push(s); return Promise.resolve(); } }) }),
-    delete: () => ({ where: (_w: any) => { deleted.push(true); return Promise.resolve(); } }),
+    insert: () => ({
+      values: (v: any) => {
+        inserted.push(v);
+        return Promise.resolve();
+      },
+    }),
+    update: () => ({
+      set: (s: any) => ({
+        where: (_w: any) => {
+          updated.push(s);
+          return Promise.resolve();
+        },
+      }),
+    }),
+    delete: () => ({
+      where: (_w: any) => {
+        deleted.push(true);
+        return Promise.resolve();
+      },
+    }),
   };
   return {
     getDb: async () => db,
     parseJsonArray: (v: any) => (Array.isArray(v) ? v : []),
-    __setRows: (rows: any[]) => { fakeRows.length = 0; fakeRows.push(...rows); },
-    __pushRowBatch: (rows: any[]) => { fakeRowBatches.push(rows); },
+    __setRows: (rows: any[]) => {
+      fakeRows.length = 0;
+      fakeRows.push(...rows);
+    },
+    __pushRowBatch: (rows: any[]) => {
+      fakeRowBatches.push(rows);
+    },
     __getUpdated: () => updated,
     __getInserted: () => inserted,
     __getDeleted: () => deleted,
@@ -110,7 +140,9 @@ describe("buildProxyUrl / parseProxyUrl", () => {
   });
 
   it("strips query strings when parsing", () => {
-    expect(parseProxyUrl("/api/files/abc12345/x.pdf?cb=1")).toEqual({ id: "abc12345" });
+    expect(parseProxyUrl("/api/files/abc12345/x.pdf?cb=1")).toEqual({
+      id: "abc12345",
+    });
   });
 
   it("returns null for legacy https:// URLs", () => {
@@ -279,7 +311,17 @@ describe("syncAttachmentRemovals", () => {
 
   it("dedupes duplicate entries in oldList so each id is processed once", async () => {
     (client as any).__setRows([
-      { id: "abc12345", backend: "gdrive", externalId: "ext1", originalName: "a.pdf", mimeType: "application/pdf", size: 1, ownerUserId: 1, createdAt: new Date(), deletedAt: null },
+      {
+        id: "abc12345",
+        backend: "gdrive",
+        externalId: "ext1",
+        originalName: "a.pdf",
+        mimeType: "application/pdf",
+        size: 1,
+        ownerUserId: 1,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ]);
     mockBackend.delete.mockResolvedValueOnce(undefined);
     const result = await syncAttachmentRemovals({
@@ -292,7 +334,17 @@ describe("syncAttachmentRemovals", () => {
 
   it("reports backend errors via the errors counter but still returns deleted=true", async () => {
     (client as any).__setRows([
-      { id: "abc12345", backend: "gdrive", externalId: "ext1", originalName: "a.pdf", mimeType: "application/pdf", size: 1, ownerUserId: 1, createdAt: new Date(), deletedAt: null },
+      {
+        id: "abc12345",
+        backend: "gdrive",
+        externalId: "ext1",
+        originalName: "a.pdf",
+        mimeType: "application/pdf",
+        size: 1,
+        ownerUserId: 1,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ]);
     mockBackend.delete.mockRejectedValueOnce(new Error("Quota exceeded"));
     const result = await syncAttachmentRemovals({
@@ -315,20 +367,46 @@ describe("deleteAttachmentList", () => {
 
   it("deletes every managed entry", async () => {
     (client as any).__setRows([
-      { id: "abc12345", backend: "gdrive", externalId: "e1", originalName: "a", mimeType: "a/b", size: 0, ownerUserId: 1, createdAt: new Date(), deletedAt: null },
-      { id: "def67890", backend: "gdrive", externalId: "e2", originalName: "b", mimeType: "a/b", size: 0, ownerUserId: 1, createdAt: new Date(), deletedAt: null },
+      {
+        id: "abc12345",
+        backend: "gdrive",
+        externalId: "e1",
+        originalName: "a",
+        mimeType: "a/b",
+        size: 0,
+        ownerUserId: 1,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
+      {
+        id: "def67890",
+        backend: "gdrive",
+        externalId: "e2",
+        originalName: "b",
+        mimeType: "a/b",
+        size: 0,
+        ownerUserId: 1,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ]);
     mockBackend.delete.mockResolvedValue(undefined);
     const result = await deleteAttachmentList(
       ["/api/files/abc12345", "/api/files/def67890"],
-      1,
+      1
     );
     expect(result.removed).toBe(2);
   });
 
   it("handles null/empty list", async () => {
-    expect(await deleteAttachmentList(null, 1)).toEqual({ removed: 0, errors: 0 });
-    expect(await deleteAttachmentList([], 1)).toEqual({ removed: 0, errors: 0 });
+    expect(await deleteAttachmentList(null, 1)).toEqual({
+      removed: 0,
+      errors: 0,
+    });
+    expect(await deleteAttachmentList([], 1)).toEqual({
+      removed: 0,
+      errors: 0,
+    });
   });
 });
 
@@ -349,10 +427,12 @@ describe("uploadAndRegister", () => {
       ownerUserId: 42,
       propertyId: 9,
     });
-    expect(mockBackend.upload).toHaveBeenCalledWith(
-      expect.any(Buffer),
-      { ownerUserId: 42, propertyId: 9, originalName: "hi.txt", mimeType: "text/plain" },
-    );
+    expect(mockBackend.upload).toHaveBeenCalledWith(expect.any(Buffer), {
+      ownerUserId: 42,
+      propertyId: 9,
+      originalName: "hi.txt",
+      mimeType: "text/plain",
+    });
     expect(result.record.externalId).toBe("drive-xyz");
     expect(result.record.size).toBe(5);
     expect(result.record.ownerUserId).toBe(42);
@@ -369,7 +449,7 @@ describe("uploadAndRegister", () => {
         mimeType: "text/plain",
         ownerUserId: 1,
         propertyId: 1,
-      }),
+      })
     ).rejects.toThrow("Drive 401");
   });
 });
@@ -448,8 +528,16 @@ describe("reapOrphanedFiles", () => {
 
   it("counts failures separately and keeps going", async () => {
     const row = (id: string) => ({
-      id, backend: "gdrive" as const, externalId: `ext-${id}`, originalName: `${id}`,
-      mimeType: "x", size: 0, ownerUserId: 7, propertyId: 1, createdAt: new Date(), deletedAt: new Date(),
+      id,
+      backend: "gdrive" as const,
+      externalId: `ext-${id}`,
+      originalName: `${id}`,
+      mimeType: "x",
+      size: 0,
+      ownerUserId: 7,
+      propertyId: 1,
+      createdAt: new Date(),
+      deletedAt: new Date(),
     });
     (client as any).__pushRowBatch([row("a"), row("b")]);
     mockBackend.delete

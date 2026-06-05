@@ -22,18 +22,20 @@ export function ListSection({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{title}</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            {title}
+          </h2>
           <span className="text-xs text-muted-foreground">({count})</span>
         </div>
         {extra}
       </div>
-      {count === 0
-        ? empty
-        : (
-          <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
-            {children}
-          </div>
-        )}
+      {count === 0 ? (
+        empty
+      ) : (
+        <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

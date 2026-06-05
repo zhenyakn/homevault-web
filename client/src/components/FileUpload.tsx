@@ -59,7 +59,10 @@ export function FileUpload({
       });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: t("fileUpload.uploadFailed"), code: undefined }));
+        const err = await resp.json().catch(() => ({
+          error: t("fileUpload.uploadFailed"),
+          code: undefined,
+        }));
         // Specific UX paths for the two error codes the server promises.
         // Falling through to the generic toast for anything else.
         if (err.code === "RECONNECT_REQUIRED") {
@@ -67,7 +70,9 @@ export function FileUpload({
             description: t("fileUpload.reconnectDesc"),
             action: {
               label: t("fileUpload.openSettings"),
-              onClick: () => { window.location.hash = "#/settings/integrations"; },
+              onClick: () => {
+                window.location.hash = "#/settings/integrations";
+              },
             },
           });
           return;

@@ -7,7 +7,9 @@ import { z } from "zod";
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   JWT_SECRET: z.string().min(16),
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
   VITE_APP_ID: z.string().default(""),
   OAUTH_SERVER_URL: z.string().default(""),
   OWNER_OPEN_ID: z.string().default(""),
@@ -32,7 +34,10 @@ describe("ENV validation schema", () => {
   });
 
   it("rejects missing DATABASE_URL", () => {
-    const result = envSchema.safeParse({ ...validEnv, DATABASE_URL: undefined });
+    const result = envSchema.safeParse({
+      ...validEnv,
+      DATABASE_URL: undefined,
+    });
     expect(result.success).toBe(false);
   });
 
@@ -52,7 +57,10 @@ describe("ENV validation schema", () => {
   });
 
   it("accepts exactly 16-character JWT_SECRET", () => {
-    const result = envSchema.safeParse({ ...validEnv, JWT_SECRET: "1234567890123456" });
+    const result = envSchema.safeParse({
+      ...validEnv,
+      JWT_SECRET: "1234567890123456",
+    });
     expect(result.success).toBe(true);
   });
 

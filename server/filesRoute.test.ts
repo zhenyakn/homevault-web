@@ -18,18 +18,26 @@ vi.mock("./_core/context", () => ({
   }),
 }));
 
-const filesState: { rows: any[]; deleted: string[] } = { rows: [], deleted: [] };
+const filesState: { rows: any[]; deleted: string[] } = {
+  rows: [],
+  deleted: [],
+};
 
 vi.mock("./files", async () => {
   return {
-    buildProxyUrl: (id: string, name: string) => `/api/files/${id}/${encodeURIComponent(name)}`,
+    buildProxyUrl: (id: string, name: string) =>
+      `/api/files/${id}/${encodeURIComponent(name)}`,
     parseProxyUrl: (url: string) => {
       if (!url.startsWith("/api/files/")) return null;
       const id = url.slice("/api/files/".length).split("/")[0]!;
       return { id };
     },
     getFileForOwner: async (id: string, ownerUserId: number) => {
-      return filesState.rows.find(r => r.id === id && r.ownerUserId === ownerUserId) ?? null;
+      return (
+        filesState.rows.find(
+          r => r.id === id && r.ownerUserId === ownerUserId
+        ) ?? null
+      );
     },
     deleteFileForOwner: async (id: string, _ownerUserId: number) => {
       filesState.deleted.push(id);
@@ -39,8 +47,18 @@ vi.mock("./files", async () => {
 });
 
 const backendStub = {
-  s3: { name: "s3" as const, download: vi.fn(), delete: vi.fn(), upload: vi.fn() },
-  gdrive: { name: "gdrive" as const, download: vi.fn(), delete: vi.fn(), upload: vi.fn() },
+  s3: {
+    name: "s3" as const,
+    download: vi.fn(),
+    delete: vi.fn(),
+    upload: vi.fn(),
+  },
+  gdrive: {
+    name: "gdrive" as const,
+    download: vi.fn(),
+    delete: vi.fn(),
+    upload: vi.fn(),
+  },
 };
 
 vi.mock("./storage", () => ({
@@ -51,8 +69,13 @@ vi.mock("./storage", () => ({
 }));
 
 vi.mock("./storage/types", async () => {
-  class StorageNotConfiguredError extends Error { code = "STORAGE_NOT_CONFIGURED" as const; }
-  class StorageOperationError extends Error { code = "STORAGE_OPERATION_FAILED" as const; backend: any; }
+  class StorageNotConfiguredError extends Error {
+    code = "STORAGE_NOT_CONFIGURED" as const;
+  }
+  class StorageOperationError extends Error {
+    code = "STORAGE_OPERATION_FAILED" as const;
+    backend: any;
+  }
   return { StorageNotConfiguredError, StorageOperationError };
 });
 
@@ -64,7 +87,7 @@ function startApp() {
   const app = express();
   app.use(filesRouter);
   const server = http.createServer(app);
-  return new Promise<{ url: string; close: () => Promise<void> }>((resolve) => {
+  return new Promise<{ url: string; close: () => Promise<void> }>(resolve => {
     server.listen(0, "127.0.0.1", () => {
       const port = (server.address() as AddressInfo).port;
       resolve({
@@ -103,7 +126,17 @@ describe("GET /api/files/:id", () => {
 
   it("404 when the file does not exist or belongs to someone else", async () => {
     filesState.rows = [
-      { id: "abc12345", ownerUserId: 99, backend: "gdrive", externalId: "ext", originalName: "x.pdf", mimeType: "application/pdf", size: 0, createdAt: new Date(), deletedAt: null },
+      {
+        id: "abc12345",
+        ownerUserId: 99,
+        backend: "gdrive",
+        externalId: "ext",
+        originalName: "x.pdf",
+        mimeType: "application/pdf",
+        size: 0,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ];
     const res = await fetchUrl(`${app.url}/api/files/abc12345`);
     expect(res.status).toBe(404);
@@ -111,7 +144,17 @@ describe("GET /api/files/:id", () => {
 
   it("302-redirects when backend returns kind:'redirect'", async () => {
     filesState.rows = [
-      { id: "s3file12", ownerUserId: 7, backend: "s3", externalId: "uploads/7/x.pdf", originalName: "x.pdf", mimeType: "application/pdf", size: 0, createdAt: new Date(), deletedAt: null },
+      {
+        id: "s3file12",
+        ownerUserId: 7,
+        backend: "s3",
+        externalId: "uploads/7/x.pdf",
+        originalName: "x.pdf",
+        mimeType: "application/pdf",
+        size: 0,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ];
     backendStub.s3.download.mockResolvedValueOnce({
       kind: "redirect",
@@ -120,12 +163,24 @@ describe("GET /api/files/:id", () => {
     });
     const res = await fetchUrl(`${app.url}/api/files/s3file12`);
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("https://signed.example.com/x.pdf");
+    expect(res.headers.get("location")).toBe(
+      "https://signed.example.com/x.pdf"
+    );
   });
 
   it("streams content with forced attachment + octet-stream + hardened headers (H2/H3 fix)", async () => {
     filesState.rows = [
-      { id: "gd123456", ownerUserId: 7, backend: "gdrive", externalId: "drive-id", originalName: "hello.txt", mimeType: "text/plain", size: 5, createdAt: new Date(), deletedAt: null },
+      {
+        id: "gd123456",
+        ownerUserId: 7,
+        backend: "gdrive",
+        externalId: "drive-id",
+        originalName: "hello.txt",
+        mimeType: "text/plain",
+        size: 5,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ];
     backendStub.gdrive.download.mockResolvedValueOnce({
       kind: "stream",
@@ -140,10 +195,14 @@ describe("GET /api/files/:id", () => {
     expect(res.headers.get("content-type")).toBe("application/octet-stream");
     // Force attachment — browser saves to disk, never renders.
     expect(res.headers.get("content-disposition")).toMatch(/^attachment;/);
-    expect(res.headers.get("content-disposition")).toContain("filename*=UTF-8''");
+    expect(res.headers.get("content-disposition")).toContain(
+      "filename*=UTF-8''"
+    );
     // Defense-in-depth headers
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
-    expect(res.headers.get("content-security-policy")).toContain("default-src 'none'");
+    expect(res.headers.get("content-security-policy")).toContain(
+      "default-src 'none'"
+    );
     expect(res.headers.get("cross-origin-resource-policy")).toBe("same-origin");
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
     // Body still streams correctly.
@@ -152,7 +211,17 @@ describe("GET /api/files/:id", () => {
 
   it("forces attachment even for HTML/SVG mimeTypes stored in the DB (XSS defense)", async () => {
     filesState.rows = [
-      { id: "evil1234", ownerUserId: 7, backend: "gdrive", externalId: "drive-id", originalName: "evil.svg", mimeType: "image/svg+xml", size: 5, createdAt: new Date(), deletedAt: null },
+      {
+        id: "evil1234",
+        ownerUserId: 7,
+        backend: "gdrive",
+        externalId: "drive-id",
+        originalName: "evil.svg",
+        mimeType: "image/svg+xml",
+        size: 5,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ];
     backendStub.gdrive.download.mockResolvedValueOnce({
       kind: "stream",
@@ -167,7 +236,17 @@ describe("GET /api/files/:id", () => {
 
   it("RFC 8187-encodes non-ASCII filenames (CR/LF can't break the header)", async () => {
     filesState.rows = [
-      { id: "uni12345", ownerUserId: 7, backend: "gdrive", externalId: "drive-id", originalName: "שלום\r\nSet-Cookie:evil.pdf", mimeType: "application/pdf", size: 0, createdAt: new Date(), deletedAt: null },
+      {
+        id: "uni12345",
+        ownerUserId: 7,
+        backend: "gdrive",
+        externalId: "drive-id",
+        originalName: "שלום\r\nSet-Cookie:evil.pdf",
+        mimeType: "application/pdf",
+        size: 0,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ];
     backendStub.gdrive.download.mockResolvedValueOnce({
       kind: "stream",
@@ -185,20 +264,44 @@ describe("GET /api/files/:id", () => {
 
   it("502 when backend throws", async () => {
     filesState.rows = [
-      { id: "gd234567", ownerUserId: 7, backend: "gdrive", externalId: "drive-id", originalName: "h.txt", mimeType: "text/plain", size: 0, createdAt: new Date(), deletedAt: null },
+      {
+        id: "gd234567",
+        ownerUserId: 7,
+        backend: "gdrive",
+        externalId: "drive-id",
+        originalName: "h.txt",
+        mimeType: "text/plain",
+        size: 0,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ];
     const { StorageOperationError } = await import("./storage/types");
-    backendStub.gdrive.download.mockRejectedValueOnce(new StorageOperationError("gdrive" as any, "boom"));
+    backendStub.gdrive.download.mockRejectedValueOnce(
+      new StorageOperationError("gdrive" as any, "boom")
+    );
     const res = await fetchUrl(`${app.url}/api/files/gd234567`);
     expect(res.status).toBe(502);
   });
 
   it("503 when backend is not configured (e.g. token revoked)", async () => {
     filesState.rows = [
-      { id: "gd345678", ownerUserId: 7, backend: "gdrive", externalId: "drive-id", originalName: "h.txt", mimeType: "text/plain", size: 0, createdAt: new Date(), deletedAt: null },
+      {
+        id: "gd345678",
+        ownerUserId: 7,
+        backend: "gdrive",
+        externalId: "drive-id",
+        originalName: "h.txt",
+        mimeType: "text/plain",
+        size: 0,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ];
     const { StorageNotConfiguredError } = await import("./storage/types");
-    backendStub.gdrive.download.mockRejectedValueOnce(new StorageNotConfiguredError("not connected"));
+    backendStub.gdrive.download.mockRejectedValueOnce(
+      new StorageNotConfiguredError("not connected")
+    );
     const res = await fetchUrl(`${app.url}/api/files/gd345678`);
     expect(res.status).toBe(503);
   });
@@ -217,18 +320,42 @@ describe("DELETE /api/files/:id", () => {
 
   it("removes the file when owned by the caller", async () => {
     filesState.rows = [
-      { id: "gd456789", ownerUserId: 7, backend: "gdrive", externalId: "drive-id", originalName: "h.txt", mimeType: "text/plain", size: 0, createdAt: new Date(), deletedAt: null },
+      {
+        id: "gd456789",
+        ownerUserId: 7,
+        backend: "gdrive",
+        externalId: "drive-id",
+        originalName: "h.txt",
+        mimeType: "text/plain",
+        size: 0,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ];
-    const res = await fetchUrl(`${app.url}/api/files/gd456789`, { method: "DELETE" });
+    const res = await fetchUrl(`${app.url}/api/files/gd456789`, {
+      method: "DELETE",
+    });
     expect(res.status).toBe(200);
     expect(filesState.deleted).toContain("gd456789");
   });
 
   it("404 when not the owner", async () => {
     filesState.rows = [
-      { id: "gd567890", ownerUserId: 99, backend: "gdrive", externalId: "drive-id", originalName: "h.txt", mimeType: "text/plain", size: 0, createdAt: new Date(), deletedAt: null },
+      {
+        id: "gd567890",
+        ownerUserId: 99,
+        backend: "gdrive",
+        externalId: "drive-id",
+        originalName: "h.txt",
+        mimeType: "text/plain",
+        size: 0,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     ];
-    const res = await fetchUrl(`${app.url}/api/files/gd567890`, { method: "DELETE" });
+    const res = await fetchUrl(`${app.url}/api/files/gd567890`, {
+      method: "DELETE",
+    });
     expect(res.status).toBe(404);
     expect(filesState.deleted.length).toBe(0);
   });

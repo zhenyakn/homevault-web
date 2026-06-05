@@ -10,7 +10,10 @@ import * as dotenv from "dotenv";
 dotenv.config();
 
 const url = process.env.DATABASE_URL;
-if (!url) { console.error("DATABASE_URL not set"); process.exit(1); }
+if (!url) {
+  console.error("DATABASE_URL not set");
+  process.exit(1);
+}
 
 const conn = await mysql.createConnection(url);
 
@@ -19,7 +22,11 @@ const run = async (sql, label) => {
     await conn.execute(sql);
     console.log(`✓ ${label}`);
   } catch (e) {
-    if (e.code === "ER_DUP_FIELDNAME" || e.code === "ER_DUP_KEY" || e.message.includes("Duplicate column")) {
+    if (
+      e.code === "ER_DUP_FIELDNAME" ||
+      e.code === "ER_DUP_KEY" ||
+      e.message.includes("Duplicate column")
+    ) {
       console.log(`- ${label} (already applied)`);
     } else {
       throw e;
@@ -38,13 +45,19 @@ await run(
 );
 
 // Ensure the seed property row exists
-await conn.execute(
-  `INSERT IGNORE INTO properties (id, userId) VALUES (1, 1)`
-);
+await conn.execute(`INSERT IGNORE INTO properties (id, userId) VALUES (1, 1)`);
 console.log("✓ seed property row (id=1)");
 
 // All module tables
-const tables = ["expenses", "repairs", "upgrades", "loans", "wishlistItems", "purchaseCosts", "calendarEvents"];
+const tables = [
+  "expenses",
+  "repairs",
+  "upgrades",
+  "loans",
+  "wishlistItems",
+  "purchaseCosts",
+  "calendarEvents",
+];
 for (const t of tables) {
   await run(
     `ALTER TABLE \`${t}\` ADD COLUMN propertyId INT NOT NULL DEFAULT 1`,

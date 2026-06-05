@@ -28,7 +28,7 @@ export const users = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
     lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   },
-  (table) => ({
+  table => ({
     openIdIdx: index("openId_idx").on(table.openId),
   })
 );
@@ -107,7 +107,7 @@ export const expenses = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
+  table => ({
     propertyIdx: index("expense_property_idx").on(table.propertyId),
     ownerIdx: index("expense_owner_idx").on(table.ownerId),
   })
@@ -147,9 +147,12 @@ export const repairs = mysqlTable(
     ])
       .default("open")
       .notNull(),
-    priority: mysqlEnum("priority", ["low", "medium", "high", "urgent"]).default(
-      "medium"
-    ),
+    priority: mysqlEnum("priority", [
+      "low",
+      "medium",
+      "high",
+      "urgent",
+    ]).default("medium"),
     reportedDate: varchar("reportedDate", { length: 20 }),
     completedDate: varchar("completedDate", { length: 20 }),
     cost: int("cost"),
@@ -159,7 +162,7 @@ export const repairs = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
+  table => ({
     propertyIdx: index("repair_property_idx").on(table.propertyId),
     ownerIdx: index("repair_owner_idx").on(table.ownerId),
   })
@@ -182,7 +185,7 @@ export const repairQuotes = mysqlTable(
     selected: boolean("selected").default(false),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  (table) => ({
+  table => ({
     repairIdx: index("quote_repair_idx").on(table.repairId),
   })
 );
@@ -203,7 +206,7 @@ export const repairQuotePayments = mysqlTable(
     receipt: text("receipt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  (table) => ({
+  table => ({
     quoteIdx: index("rqpay_quote_idx").on(table.quoteId),
   })
 );
@@ -242,7 +245,9 @@ export const upgrades = mysqlTable(
     ])
       .default("idea")
       .notNull(),
-    priority: mysqlEnum("priority", ["low", "medium", "high"]).default("medium"),
+    priority: mysqlEnum("priority", ["low", "medium", "high"]).default(
+      "medium"
+    ),
     estimatedCost: int("estimatedCost"),
     actualCost: int("actualCost"),
     startDate: varchar("startDate", { length: 20 }),
@@ -254,7 +259,7 @@ export const upgrades = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
+  table => ({
     propertyIdx: index("upgrade_property_idx").on(table.propertyId),
     ownerIdx: index("upgrade_owner_idx").on(table.ownerId),
   })
@@ -278,7 +283,7 @@ export const upgradeOptions = mysqlTable(
     selected: boolean("selected").default(false),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  (table) => ({
+  table => ({
     upgradeIdx: index("option_upgrade_idx").on(table.upgradeId),
   })
 );
@@ -299,13 +304,14 @@ export const upgradeOptionPayments = mysqlTable(
     receipt: text("receipt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  (table) => ({
+  table => ({
     optionIdx: index("uopay_option_idx").on(table.optionId),
   })
 );
 
 export type UpgradeOptionPayment = typeof upgradeOptionPayments.$inferSelect;
-export type InsertUpgradeOptionPayment = typeof upgradeOptionPayments.$inferInsert;
+export type InsertUpgradeOptionPayment =
+  typeof upgradeOptionPayments.$inferInsert;
 
 export const upgradeItems = mysqlTable(
   "upgradeItems",
@@ -324,7 +330,7 @@ export const upgradeItems = mysqlTable(
     notes: text("notes"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  (table) => ({
+  table => ({
     upgradeIdx: index("item_upgrade_idx").on(table.upgradeId),
   })
 );
@@ -363,7 +369,7 @@ export const loans = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
+  table => ({
     propertyIdx: index("loan_property_idx").on(table.propertyId),
     ownerIdx: index("loan_owner_idx").on(table.ownerId),
   })
@@ -384,7 +390,7 @@ export const loanRepayments = mysqlTable(
     notes: text("notes"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  (table) => ({
+  table => ({
     loanIdx: index("lrep_loan_idx").on(table.loanId),
   })
 );
@@ -412,7 +418,9 @@ export const wishlistItems = mysqlTable(
       "Other",
     ]),
     estimatedPrice: int("estimatedPrice"),
-    priority: mysqlEnum("priority", ["low", "medium", "high"]).default("medium"),
+    priority: mysqlEnum("priority", ["low", "medium", "high"]).default(
+      "medium"
+    ),
     status: mysqlEnum("status", ["wanted", "saved", "purchased"]).default(
       "wanted"
     ),
@@ -422,7 +430,7 @@ export const wishlistItems = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
+  table => ({
     propertyIdx: index("wishlist_property_idx").on(table.propertyId),
     ownerIdx: index("wishlist_owner_idx").on(table.ownerId),
   })
@@ -458,7 +466,7 @@ export const purchaseCosts = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
+  table => ({
     propertyIdx: index("purchaseCost_property_idx").on(table.propertyId),
     ownerIdx: index("purchaseCost_owner_idx").on(table.ownerId),
   })
@@ -501,7 +509,7 @@ export const calendarEvents = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
+  table => ({
     propertyIdx: index("calendar_property_idx").on(table.propertyId),
     ownerIdx: index("calendar_owner_idx").on(table.ownerId),
   })
@@ -541,7 +549,9 @@ export const inventoryItems = mysqlTable(
     brand: varchar("brand", { length: 200 }),
     store: varchar("store", { length: 200 }),
     warrantyExpiry: varchar("warrantyExpiry", { length: 20 }),
-    condition: mysqlEnum("condition", ["New", "Good", "Fair", "Poor"]).default("Good"),
+    condition: mysqlEnum("condition", ["New", "Good", "Fair", "Poor"]).default(
+      "Good"
+    ),
     notes: text("notes"),
     tags: json("tags").$type<string[]>(),
     photoUrl: text("photoUrl"),
@@ -549,7 +559,7 @@ export const inventoryItems = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (table) => ({
+  table => ({
     propertyIdx: index("inventoryItem_property_idx").on(table.propertyId),
     ownerIdx: index("inventoryItem_owner_idx").on(table.ownerId),
     categoryIdx: index("inventoryItem_category_idx").on(table.category),
@@ -564,14 +574,11 @@ export type InsertInventoryItem = typeof inventoryItems.$inferInsert;
 // Used to persist secrets that should not live in env vars (e.g. the Google
 // Drive OAuth refresh token) plus cached lookups such as the per-user Drive
 // folder IDs.
-export const appSettings = mysqlTable(
-  "app_settings",
-  {
-    key: varchar("key", { length: 64 }).primaryKey(),
-    value: text("value").notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  },
-);
+export const appSettings = mysqlTable("app_settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
 
 export type AppSetting = typeof appSettings.$inferSelect;
 export type InsertAppSetting = typeof appSettings.$inferInsert;
@@ -606,11 +613,11 @@ export const files = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     deletedAt: timestamp("deletedAt"),
   },
-  (table) => ({
+  table => ({
     ownerIdx: index("files_owner_idx").on(table.ownerUserId),
     backendIdx: index("files_backend_idx").on(table.backend),
     propertyIdx: index("files_property_idx").on(table.propertyId),
-  }),
+  })
 );
 
 export type FileRecord = typeof files.$inferSelect;

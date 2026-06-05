@@ -45,11 +45,12 @@ export function rfc8187Encode(name: string): string {
  */
 export function buildContentDisposition(
   name: string,
-  disposition: "attachment" | "inline" = "attachment",
+  disposition: "attachment" | "inline" = "attachment"
 ): string {
-  const asciiFallback = name
-    .replace(/[\x00-\x1f\x7f"\\]/g, "_")
-    .replace(/[^\x20-\x7e]/g, "_")
-    .slice(0, 200) || "file";
+  const asciiFallback =
+    name
+      .replace(/[\x00-\x1f\x7f"\\]/g, "_")
+      .replace(/[^\x20-\x7e]/g, "_")
+      .slice(0, 200) || "file";
   return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${rfc8187Encode(name)}`;
 }

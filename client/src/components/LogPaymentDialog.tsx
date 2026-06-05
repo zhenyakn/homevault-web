@@ -7,13 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { FileUpload } from "@/components/FileUpload";
 
 export type LogPaymentValues = {
   amount: number; // in cents
-  date: string;   // YYYY-MM-DD
+  date: string; // YYYY-MM-DD
   notes?: string;
   receipt?: string;
 };
@@ -44,7 +47,10 @@ export function LogPaymentDialog({
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState("");
   const [receipt, setReceipt] = useState<{
-    url: string; filename: string; mimeType: string; size: number;
+    url: string;
+    filename: string;
+    mimeType: string;
+    size: number;
   } | null>(null);
 
   useEffect(() => {
@@ -112,11 +118,17 @@ export function LogPaymentDialog({
             />
           </div>
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
               {t("common.cancel")}
             </Button>
             <Button size="sm" onClick={handleSave} disabled={isPending}>
-              {isPending && <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" />}
+              {isPending && (
+                <Loader2 className="h-3.5 w-3.5 me-1.5 animate-spin" />
+              )}
               {submitLabel}
             </Button>
           </div>

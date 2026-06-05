@@ -1,13 +1,33 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
-  MOCK_PROPERTY_NAME, mockProperty, mockExpenses, mockRepairs,
-  mockUpgrades, mockLoans, mockWishlist, mockPurchaseCosts, mockCalendarEvents, mockInventory,
+  MOCK_PROPERTY_NAME,
+  mockProperty,
+  mockExpenses,
+  mockRepairs,
+  mockUpgrades,
+  mockLoans,
+  mockWishlist,
+  mockPurchaseCosts,
+  mockCalendarEvents,
+  mockInventory,
 } from "../mockData.js";
 import {
-  properties, expenses, repairs, repairQuotes, repairQuotePayments,
-  upgrades, upgradeOptions, upgradeOptionPayments, upgradeItems,
-  loans, loanRepayments, wishlistItems, purchaseCosts, calendarEvents, inventoryItems,
+  properties,
+  expenses,
+  repairs,
+  repairQuotes,
+  repairQuotePayments,
+  upgrades,
+  upgradeOptions,
+  upgradeOptionPayments,
+  upgradeItems,
+  loans,
+  loanRepayments,
+  wishlistItems,
+  purchaseCosts,
+  calendarEvents,
+  inventoryItems,
 } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { deleteAllFilesForOwner } from "../files";
@@ -23,26 +43,41 @@ export async function deleteAllUserData(userId: number) {
     const summary = await deleteAllFilesForOwner(userId);
     logger.info({ userId, summary }, "[deleteAllUserData] reaped files");
   } catch (err) {
-    logger.error({ userId, err: (err as Error).message }, "[deleteAllUserData] file reap failed");
+    logger.error(
+      { userId, err: (err as Error).message },
+      "[deleteAllUserData] file reap failed"
+    );
   }
 
   const db = await getDb();
-  await db.transaction(async (tx) => {
+  await db.transaction(async tx => {
     const userRepairIds = (
-      await tx.select({ id: repairs.id }).from(repairs).where(eq(repairs.ownerId, userId))
+      await tx
+        .select({ id: repairs.id })
+        .from(repairs)
+        .where(eq(repairs.ownerId, userId))
     ).map(r => r.id);
 
     if (userRepairIds.length > 0) {
-      await tx.delete(repairQuotes).where(inArray(repairQuotes.repairId, userRepairIds));
+      await tx
+        .delete(repairQuotes)
+        .where(inArray(repairQuotes.repairId, userRepairIds));
     }
 
     const userUpgradeIds = (
-      await tx.select({ id: upgrades.id }).from(upgrades).where(eq(upgrades.ownerId, userId))
+      await tx
+        .select({ id: upgrades.id })
+        .from(upgrades)
+        .where(eq(upgrades.ownerId, userId))
     ).map(u => u.id);
 
     if (userUpgradeIds.length > 0) {
-      await tx.delete(upgradeOptions).where(inArray(upgradeOptions.upgradeId, userUpgradeIds));
-      await tx.delete(upgradeItems).where(inArray(upgradeItems.upgradeId, userUpgradeIds));
+      await tx
+        .delete(upgradeOptions)
+        .where(inArray(upgradeOptions.upgradeId, userUpgradeIds));
+      await tx
+        .delete(upgradeItems)
+        .where(inArray(upgradeItems.upgradeId, userUpgradeIds));
     }
 
     await Promise.all([
@@ -62,37 +97,60 @@ export async function deleteAllUserData(userId: number) {
 export async function seedMockProperty(userId: number): Promise<number> {
   const db = await getDb();
 
-  const existing = await db.select({ id: properties.id })
+  const existing = await db
+    .select({ id: properties.id })
     .from(properties)
-    .where(and(eq(properties.userId, userId), eq(properties.houseName, MOCK_PROPERTY_NAME)))
+    .where(
+      and(
+        eq(properties.userId, userId),
+        eq(properties.houseName, MOCK_PROPERTY_NAME)
+      )
+    )
     .limit(1);
 
   let propertyId: number;
 
   if (existing.length > 0) {
     propertyId = existing[0].id;
-    await db.update(properties).set(mockProperty).where(eq(properties.id, propertyId));
+    await db
+      .update(properties)
+      .set(mockProperty)
+      .where(eq(properties.id, propertyId));
   } else {
-    const [res] = await db.insert(properties).values({ userId, ...mockProperty });
+    const [res] = await db
+      .insert(properties)
+      .values({ userId, ...mockProperty });
     propertyId = (res as any).insertId as number;
   }
 
   const existingRepairIds = (
-    await db.select({ id: repairs.id }).from(repairs).where(eq(repairs.propertyId, propertyId))
+    await db
+      .select({ id: repairs.id })
+      .from(repairs)
+      .where(eq(repairs.propertyId, propertyId))
   ).map(r => r.id);
 
   if (existingRepairIds.length > 0) {
-    await db.delete(repairQuotes).where(inArray(repairQuotes.repairId, existingRepairIds));
+    await db
+      .delete(repairQuotes)
+      .where(inArray(repairQuotes.repairId, existingRepairIds));
   }
 
   const existingUpgradeIds = (
-    await db.select({ id: upgrades.id }).from(upgrades).where(eq(upgrades.propertyId, propertyId))
+    await db
+      .select({ id: upgrades.id })
+      .from(upgrades)
+      .where(eq(upgrades.propertyId, propertyId))
   ).map(u => u.id);
 
   if (existingUpgradeIds.length > 0) {
     await Promise.all([
-      db.delete(upgradeOptions).where(inArray(upgradeOptions.upgradeId, existingUpgradeIds)),
-      db.delete(upgradeItems).where(inArray(upgradeItems.upgradeId, existingUpgradeIds)),
+      db
+        .delete(upgradeOptions)
+        .where(inArray(upgradeOptions.upgradeId, existingUpgradeIds)),
+      db
+        .delete(upgradeItems)
+        .where(inArray(upgradeItems.upgradeId, existingUpgradeIds)),
     ]);
   }
 
@@ -111,13 +169,25 @@ export async function seedMockProperty(userId: number): Promise<number> {
   const pid = propertyId;
 
   await db.insert(expenses).values(
-    mockExpenses.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid, attachments: [] as any }))
+    mockExpenses.map(e => ({
+      id: nanoid(),
+      ...e,
+      ownerId: oid,
+      propertyId: pid,
+      attachments: [] as any,
+    }))
   );
 
   for (const r of mockRepairs) {
     const { quotes, ...repairCore } = r as any;
     const repairId = nanoid();
-    await db.insert(repairs).values({ id: repairId, ...repairCore, ownerId: oid, propertyId: pid, attachments: [] as any });
+    await db.insert(repairs).values({
+      id: repairId,
+      ...repairCore,
+      ownerId: oid,
+      propertyId: pid,
+      attachments: [] as any,
+    });
     if (quotes?.length) {
       const quoteRows = quotes.map((q: any) => {
         const { payments: _p, ...quoteCore } = q;
@@ -128,7 +198,11 @@ export async function seedMockProperty(userId: number): Promise<number> {
         const pyms: any[] = quotes[i].payments ?? [];
         if (pyms.length) {
           await db.insert(repairQuotePayments).values(
-            pyms.map((p: any) => ({ id: nanoid(), quoteId: quoteRows[i].id, ...p }))
+            pyms.map((p: any) => ({
+              id: nanoid(),
+              quoteId: quoteRows[i].id,
+              ...p,
+            }))
           );
         }
       }
@@ -138,7 +212,13 @@ export async function seedMockProperty(userId: number): Promise<number> {
   for (const u of mockUpgrades) {
     const { options, items, ...upgradeCore } = u as any;
     const upgradeId = nanoid();
-    await db.insert(upgrades).values({ id: upgradeId, ...upgradeCore, ownerId: oid, propertyId: pid, attachments: [] as any });
+    await db.insert(upgrades).values({
+      id: upgradeId,
+      ...upgradeCore,
+      ownerId: oid,
+      propertyId: pid,
+      attachments: [] as any,
+    });
     if (options?.length) {
       const optRows = options.map((opt: any) => {
         const { payments: _p, ...optCore } = opt;
@@ -149,26 +229,38 @@ export async function seedMockProperty(userId: number): Promise<number> {
         const pyms: any[] = options[i].payments ?? [];
         if (pyms.length) {
           await db.insert(upgradeOptionPayments).values(
-            pyms.map((p: any) => ({ id: nanoid(), optionId: optRows[i].id, ...p }))
+            pyms.map((p: any) => ({
+              id: nanoid(),
+              optionId: optRows[i].id,
+              ...p,
+            }))
           );
         }
       }
     }
     if (items?.length) {
-      await db.insert(upgradeItems).values(
-        items.map((item: any) => ({ id: nanoid(), upgradeId, ...item }))
-      );
+      await db
+        .insert(upgradeItems)
+        .values(
+          items.map((item: any) => ({ id: nanoid(), upgradeId, ...item }))
+        );
     }
   }
 
   for (const l of mockLoans) {
     const { repayments, ...loanCore } = l as any;
     const loanId = nanoid();
-    await db.insert(loans).values({ id: loanId, ...loanCore, attachments: [] as any, ownerId: oid, propertyId: pid });
+    await db.insert(loans).values({
+      id: loanId,
+      ...loanCore,
+      attachments: [] as any,
+      ownerId: oid,
+      propertyId: pid,
+    });
     if (repayments?.length) {
-      await db.insert(loanRepayments).values(
-        repayments.map((r: any) => ({ id: nanoid(), loanId, ...r }))
-      );
+      await db
+        .insert(loanRepayments)
+        .values(repayments.map((r: any) => ({ id: nanoid(), loanId, ...r })));
     }
   }
 
@@ -193,11 +285,21 @@ export async function seedMockProperty(userId: number): Promise<number> {
   );
 
   await db.insert(calendarEvents).values(
-    mockCalendarEvents.map(e => ({ id: nanoid(), ...e, ownerId: oid, propertyId: pid }))
+    mockCalendarEvents.map(e => ({
+      id: nanoid(),
+      ...e,
+      ownerId: oid,
+      propertyId: pid,
+    }))
   );
 
   await db.insert(inventoryItems).values(
-    mockInventory.map(item => ({ id: nanoid(), ...item, ownerId: oid, propertyId: pid }))
+    mockInventory.map(item => ({
+      id: nanoid(),
+      ...item,
+      ownerId: oid,
+      propertyId: pid,
+    }))
   );
 
   return propertyId;

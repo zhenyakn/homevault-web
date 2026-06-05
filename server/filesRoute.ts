@@ -4,10 +4,7 @@ import { createContext } from "./_core/context";
 import { logger } from "./_core/logger";
 import { csrfRequireMiddleware } from "./_core/csrf";
 import { buildContentDisposition } from "./_core/rfc8187";
-import {
-  deleteFileForOwner,
-  getFileForOwner,
-} from "./files";
+import { deleteFileForOwner, getFileForOwner } from "./files";
 import { getBackendByName } from "./storage";
 import {
   StorageNotConfiguredError,
@@ -98,11 +95,14 @@ router.get(["/api/files/:id", "/api/files/:id/:name"], async (req, res) => {
     // octet-stream so the browser never tries to render the body. The
     // filename is the only place where row metadata leaks back to the client.
     res.setHeader("Content-Type", "application/octet-stream");
-    res.setHeader("Content-Disposition", buildContentDisposition(row.originalName, "attachment"));
+    res.setHeader(
+      "Content-Disposition",
+      buildContentDisposition(row.originalName, "attachment")
+    );
     if (result.size) res.setHeader("Content-Length", String(result.size));
     res.setHeader("Cache-Control", "private, no-store");
 
-    result.stream.on("error", (err) => {
+    result.stream.on("error", err => {
       logger.error({ err: err.message, id: row.id }, "[files] stream error");
       if (res.headersSent) {
         res.destroy();
@@ -117,7 +117,10 @@ router.get(["/api/files/:id", "/api/files/:id/:name"], async (req, res) => {
       return;
     }
     if (err instanceof StorageOperationError) {
-      logger.error({ backend: err.backend, err: err.message }, "[files] backend error");
+      logger.error(
+        { backend: err.backend, err: err.message },
+        "[files] backend error"
+      );
       res.status(502).json({ error: "Backend returned an error" });
       return;
     }
@@ -132,7 +135,10 @@ router.delete("/api/files/:id", csrfRequireMiddleware, async (req, res) => {
   const { row, userId } = loaded;
 
   const result = await deleteFileForOwner(row.id, userId);
-  res.json({ deleted: result.deleted, backendError: result.backendError ?? null });
+  res.json({
+    deleted: result.deleted,
+    backendError: result.backendError ?? null,
+  });
 });
 
 export { router as filesRouter };

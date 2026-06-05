@@ -116,12 +116,12 @@ export const searchRouter = router({
       ]);
 
       return {
-        expenses: expenseRows.map((r) => ({ ...r, type: "expense" as const })),
-        repairs: repairRows.map((r) => ({ ...r, type: "repair" as const })),
-        upgrades: upgradeRows.map((r) => ({ ...r, type: "upgrade" as const })),
-        loans: loanRows.map((r) => ({ ...r, type: "loan" as const })),
-        wishlist: wishlistRows.map((r) => ({ ...r, type: "wishlist" as const })),
-        purchaseCosts: purchaseCostRows.map((r) => ({
+        expenses: expenseRows.map(r => ({ ...r, type: "expense" as const })),
+        repairs: repairRows.map(r => ({ ...r, type: "repair" as const })),
+        upgrades: upgradeRows.map(r => ({ ...r, type: "upgrade" as const })),
+        loans: loanRows.map(r => ({ ...r, type: "loan" as const })),
+        wishlist: wishlistRows.map(r => ({ ...r, type: "wishlist" as const })),
+        purchaseCosts: purchaseCostRows.map(r => ({
           ...r,
           type: "purchaseCost" as const,
         })),

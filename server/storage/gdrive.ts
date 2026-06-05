@@ -3,15 +3,8 @@ import { Readable } from "stream";
 
 // OAuth2Client type is re-exported via google.auth.OAuth2 instance.
 type OAuth2Client = InstanceType<typeof google.auth.OAuth2>;
-import type {
-  StorageBackend,
-  UploadMeta,
-  DownloadResult,
-} from "./types";
-import {
-  StorageNotConfiguredError,
-  StorageOperationError,
-} from "./types";
+import type { StorageBackend, UploadMeta, DownloadResult } from "./types";
+import { StorageNotConfiguredError, StorageOperationError } from "./types";
 import { getSetting, setSetting, deleteSetting } from "../db/appSettings";
 import { encryptSecret, readMaybeEncrypted } from "../_core/secrets";
 import { logger } from "../_core/logger";
@@ -35,7 +28,10 @@ async function getEncryptedSetting(key: string): Promise<string | null> {
   try {
     return readMaybeEncrypted(raw);
   } catch (err) {
-    logger.error({ key, err: (err as Error).message }, "[gdrive] could not decrypt setting; treating as unset");
+    logger.error(
+      { key, err: (err as Error).message },
+      "[gdrive] could not decrypt setting; treating as unset"
+    );
     return null;
   }
 }
@@ -74,8 +70,8 @@ export const GDRIVE_KEYS = {
   // Per-property layout used by NEW uploads. Folder names in Drive use the
   // form "property-<id>". We never delete the old cache rows — file IDs
   // continue to work regardless of folder location.
-  propertyFolderPrefix: "gdrive.propertyFolder.",                 // + <propertyId>
-  userPropertyFolderPrefix: "gdrive.userPropertyFolder.",         // + <propertyId>.<userId>
+  propertyFolderPrefix: "gdrive.propertyFolder.", // + <propertyId>
+  userPropertyFolderPrefix: "gdrive.userPropertyFolder.", // + <propertyId>.<userId>
   // Flipped to "1" the moment a Drive call returns invalid_grant. Cleared on
   // a successful re-connect. Lets the status endpoint + Settings UI show
   // "Reconnect needed" instead of silently failing every upload.
@@ -101,7 +97,12 @@ async function readCredentials(): Promise<{
   const envSecret = process.env.GOOGLE_CLIENT_SECRET || "";
   const envRedirect = process.env.GOOGLE_OAUTH_REDIRECT_URI || "";
   if (envId && envSecret && envRedirect) {
-    return { clientId: envId, clientSecret: envSecret, redirectUri: envRedirect, fromEnv: true };
+    return {
+      clientId: envId,
+      clientSecret: envSecret,
+      redirectUri: envRedirect,
+      fromEnv: true,
+    };
   }
   const [clientId, clientSecret, redirectUri] = await Promise.all([
     getEncryptedSetting(GDRIVE_KEYS.clientId),
@@ -134,7 +135,7 @@ async function buildOAuthClientAsync(): Promise<OAuth2Client> {
   const { clientId, clientSecret, redirectUri } = await readCredentials();
   if (!clientId || !clientSecret || !redirectUri) {
     throw new StorageNotConfiguredError(
-      "Google Drive OAuth is not configured. Open Settings → Integrations to set up your Google OAuth credentials.",
+      "Google Drive OAuth is not configured. Open Settings → Integrations to set up your Google OAuth credentials."
     );
   }
   return new google.auth.OAuth2({ clientId, clientSecret, redirectUri });
@@ -148,15 +149,19 @@ async function getAuthedClient(): Promise<OAuth2Client> {
   const refreshToken = await getEncryptedSetting(GDRIVE_KEYS.refreshToken);
   if (!refreshToken) {
     throw new StorageNotConfiguredError(
-      "Google Drive is not connected. Open Settings → Integrations and click Connect to authorise the app.",
+      "Google Drive is not connected. Open Settings → Integrations and click Connect to authorise the app."
     );
   }
   client.setCredentials({ refresh_token: refreshToken });
   // Keep persisted token in sync if Google ever rotates it.
   client.on("tokens", (tokens: { refresh_token?: string | null }) => {
     if (tokens.refresh_token && tokens.refresh_token !== refreshToken) {
-      setEncryptedSetting(GDRIVE_KEYS.refreshToken, tokens.refresh_token).catch((err) =>
-        logger.error({ err }, "[gdrive] failed to persist rotated refresh token"),
+      setEncryptedSetting(GDRIVE_KEYS.refreshToken, tokens.refresh_token).catch(
+        err =>
+          logger.error(
+            { err },
+            "[gdrive] failed to persist rotated refresh token"
+          )
       );
     }
   });
@@ -174,7 +179,7 @@ const _pending: Map<string, Promise<string>> = new Map();
 async function ensureFolder(
   drive: drive_v3.Drive,
   name: string,
-  parentId: string | null,
+  parentId: string | null
 ): Promise<string> {
   // INVARIANT: `name` and `parentId` must ALWAYS come from app-controlled
   // sources — either constant strings declared in this file, a numeric
@@ -182,15 +187,21 @@ async function ensureFolder(
   // call. NEVER pass user-supplied input here; the Drive query language
   // has no parameterisation, only single-quote escaping below.
   if (
-    typeof name !== "string"
-    || name.length === 0
-    || /[\r\n\0]/.test(name)
-    || name.includes("\\")
+    typeof name !== "string" ||
+    name.length === 0 ||
+    /[\r\n\0]/.test(name) ||
+    name.includes("\\")
   ) {
-    throw new StorageOperationError("gdrive", "ensureFolder: refusing unsafe folder name");
+    throw new StorageOperationError(
+      "gdrive",
+      "ensureFolder: refusing unsafe folder name"
+    );
   }
   if (parentId !== null && !/^[A-Za-z0-9_-]{1,128}$/.test(parentId)) {
-    throw new StorageOperationError("gdrive", "ensureFolder: refusing unsafe parentId");
+    throw new StorageOperationError(
+      "gdrive",
+      "ensureFolder: refusing unsafe parentId"
+    );
   }
 
   // Lookup by name + parent. trashed=false to ignore deleted folders.
@@ -218,7 +229,10 @@ async function ensureFolder(
     fields: "id",
   });
   if (!created.data.id) {
-    throw new StorageOperationError("gdrive", "Drive returned no id for created folder");
+    throw new StorageOperationError(
+      "gdrive",
+      "Drive returned no id for created folder"
+    );
   }
   return created.data.id;
 }
@@ -229,7 +243,7 @@ async function ensureFolder(
  * NOT to wrap them. */
 function memoizeFolder(
   cacheKey: string,
-  factory: () => Promise<string>,
+  factory: () => Promise<string>
 ): Promise<string> {
   const inFlight = _pending.get(cacheKey);
   if (inFlight) return inFlight;
@@ -248,7 +262,7 @@ function memoizeFolder(
 
 async function ensureRootFolder(drive: drive_v3.Drive): Promise<string> {
   return memoizeFolder(GDRIVE_KEYS.rootFolderId, () =>
-    ensureFolder(drive, ROOT_FOLDER_NAME, null),
+    ensureFolder(drive, ROOT_FOLDER_NAME, null)
   );
 }
 
@@ -264,16 +278,16 @@ async function ensureRootFolder(drive: drive_v3.Drive): Promise<string> {
 async function ensureUploadTargetFolder(
   drive: drive_v3.Drive,
   propertyId: number,
-  ownerUserId: number,
+  ownerUserId: number
 ): Promise<string> {
   const root = await ensureRootFolder(drive);
   const propertyFolder = await memoizeFolder(
     GDRIVE_KEYS.propertyFolderPrefix + propertyId,
-    () => ensureFolder(drive, `property-${propertyId}`, root),
+    () => ensureFolder(drive, `property-${propertyId}`, root)
   );
   return memoizeFolder(
     `${GDRIVE_KEYS.userPropertyFolderPrefix}${propertyId}.${ownerUserId}`,
-    () => ensureFolder(drive, String(ownerUserId), propertyFolder),
+    () => ensureFolder(drive, String(ownerUserId), propertyFolder)
   );
 }
 
@@ -291,7 +305,11 @@ export async function _resetGoogleDriveCachesForTests(): Promise<void> {
 
 function wrapError(action: string, err: unknown): StorageOperationError {
   const msg = (err as Error)?.message ?? String(err);
-  return new StorageOperationError("gdrive", `Drive ${action} failed: ${msg}`, err);
+  return new StorageOperationError(
+    "gdrive",
+    `Drive ${action} failed: ${msg}`,
+    err
+  );
 }
 
 /**
@@ -311,41 +329,46 @@ function wrapError(action: string, err: unknown): StorageOperationError {
 async function classifyAndThrow(action: string, err: unknown): Promise<never> {
   const msg = (err as Error)?.message ?? String(err);
   const code = (err as any)?.code;
-  const reason = (err as any)?.errors?.[0]?.reason
-    ?? (err as any)?.response?.data?.error?.errors?.[0]?.reason;
+  const reason =
+    (err as any)?.errors?.[0]?.reason ??
+    (err as any)?.response?.data?.error?.errors?.[0]?.reason;
   const responseError = (err as any)?.response?.data?.error;
-  const googleErrorCode = typeof responseError === "string"
-    ? responseError
-    : responseError?.message ?? "";
+  const googleErrorCode =
+    typeof responseError === "string"
+      ? responseError
+      : (responseError?.message ?? "");
 
   // ── invalid_grant — refresh token revoked / expired ────────────────────
   const looksLikeInvalidGrant =
-    code === "invalid_grant"
-    || /invalid_grant/i.test(msg)
-    || /invalid_grant/i.test(googleErrorCode)
-    || /Token has been expired or revoked/i.test(msg)
-    || /Token has been expired or revoked/i.test(googleErrorCode);
+    code === "invalid_grant" ||
+    /invalid_grant/i.test(msg) ||
+    /invalid_grant/i.test(googleErrorCode) ||
+    /Token has been expired or revoked/i.test(msg) ||
+    /Token has been expired or revoked/i.test(googleErrorCode);
   if (looksLikeInvalidGrant) {
     try {
       await setSetting(GDRIVE_KEYS.tokenBroken, "1");
     } catch (writeErr) {
-      logger.warn({ err: (writeErr as Error).message }, "[gdrive] could not persist tokenBroken flag");
+      logger.warn(
+        { err: (writeErr as Error).message },
+        "[gdrive] could not persist tokenBroken flag"
+      );
     }
     throw new StorageNotConfiguredError(
-      "Google Drive needs reconnecting (invalid_grant). Open Settings → Integrations and click Reconnect.",
+      "Google Drive needs reconnecting (invalid_grant). Open Settings → Integrations and click Reconnect."
     );
   }
 
   // ── storageQuotaExceeded — Drive is full ───────────────────────────────
   const looksLikeQuota =
-    reason === "storageQuotaExceeded"
-    || /storageQuotaExceeded/i.test(msg)
-    || /storage quota.*exceeded/i.test(msg);
+    reason === "storageQuotaExceeded" ||
+    /storageQuotaExceeded/i.test(msg) ||
+    /storage quota.*exceeded/i.test(msg);
   if (looksLikeQuota) {
     throw new StorageOperationError(
       "gdrive",
       `DRIVE_QUOTA_EXCEEDED: ${msg}`,
-      err,
+      err
     );
   }
 
@@ -361,7 +384,11 @@ export const gdriveBackend: StorageBackend = {
 
     let folderId: string;
     try {
-      folderId = await ensureUploadTargetFolder(drive, meta.propertyId, meta.ownerUserId);
+      folderId = await ensureUploadTargetFolder(
+        drive,
+        meta.propertyId,
+        meta.ownerUserId
+      );
     } catch (err) {
       await classifyAndThrow("folder lookup", err);
     }
@@ -408,7 +435,7 @@ export const gdriveBackend: StorageBackend = {
 
       const resp = await drive.files.get(
         { fileId: externalId, alt: "media" },
-        { responseType: "stream" },
+        { responseType: "stream" }
       );
       return {
         kind: "stream",
@@ -454,13 +481,15 @@ export async function buildConnectAuthUrl(state?: string): Promise<string> {
   });
 }
 
-export async function completeConnect(code: string): Promise<{ email: string | null }> {
+export async function completeConnect(
+  code: string
+): Promise<{ email: string | null }> {
   const client = await buildOAuthClientAsync();
   const { tokens } = await client.getToken(code);
   if (!tokens.refresh_token) {
     throw new StorageOperationError(
       "gdrive",
-      "Google did not return a refresh_token. Re-run the connect flow with prompt=consent, or revoke the app at https://myaccount.google.com/permissions and try again.",
+      "Google did not return a refresh_token. Re-run the connect flow with prompt=consent, or revoke the app at https://myaccount.google.com/permissions and try again."
     );
   }
   await setEncryptedSetting(GDRIVE_KEYS.refreshToken, tokens.refresh_token);
@@ -484,7 +513,9 @@ export async function completeConnect(code: string): Promise<{ email: string | n
 
 /** Save a refresh token obtained outside the built-in OAuth flow (e.g. from
  *  Google's OAuth Playground). Validates the token against Drive before saving. */
-export async function connectWithRefreshToken(refreshToken: string): Promise<{ email: string | null }> {
+export async function connectWithRefreshToken(
+  refreshToken: string
+): Promise<{ email: string | null }> {
   const client = await buildOAuthClientAsync();
   client.setCredentials({ refresh_token: refreshToken });
   // Validate before saving — a bad token should surface as a clear error, not
@@ -495,7 +526,7 @@ export async function connectWithRefreshToken(refreshToken: string): Promise<{ e
   } catch (err) {
     throw new StorageOperationError(
       "gdrive",
-      "Refresh token rejected by Google. Make sure you authorised the drive.file scope and are using the correct OAuth client credentials.",
+      "Refresh token rejected by Google. Make sure you authorised the drive.file scope and are using the correct OAuth client credentials."
     );
   }
   await setEncryptedSetting(GDRIVE_KEYS.refreshToken, refreshToken);
@@ -507,7 +538,10 @@ export async function connectWithRefreshToken(refreshToken: string): Promise<{ e
     email = me.data.email ?? null;
     if (email) await setEncryptedSetting(GDRIVE_KEYS.connectedEmail, email);
   } catch (err) {
-    logger.warn({ err }, "[gdrive] could not fetch user email after manual token connect");
+    logger.warn(
+      { err },
+      "[gdrive] could not fetch user email after manual token connect"
+    );
   }
   return { email };
 }
@@ -554,7 +588,9 @@ export async function saveGoogleCredentials(opts: {
     setEncryptedSetting(GDRIVE_KEYS.redirectUri, opts.redirectUri),
   ];
   if (opts.clientSecret) {
-    writes.push(setEncryptedSetting(GDRIVE_KEYS.clientSecret, opts.clientSecret));
+    writes.push(
+      setEncryptedSetting(GDRIVE_KEYS.clientSecret, opts.clientSecret)
+    );
   }
   await Promise.all(writes);
 }
@@ -643,7 +679,7 @@ export async function validateDriveConnection(): Promise<void> {
         }
         logger.warn(
           { err: (classified as Error).message },
-          "[gdrive] heartbeat probe failed (non-revocation)",
+          "[gdrive] heartbeat probe failed (non-revocation)"
         );
       }
     } finally {

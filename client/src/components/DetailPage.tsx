@@ -1,6 +1,13 @@
 import * as React from "react";
 import { useState } from "react";
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Pencil, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Loader2,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,11 +47,22 @@ export function DetailHeader({
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
-          {meta && <div className="flex items-center gap-2.5 flex-wrap mb-1">{meta}</div>}
+          {meta && (
+            <div className="flex items-center gap-2.5 flex-wrap mb-1">
+              {meta}
+            </div>
+          )}
           <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-          {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
+          {description && (
+            <p className="text-sm text-muted-foreground mt-1">{description}</p>
+          )}
         </div>
-        <Button variant="outline" size="sm" onClick={onEdit} className="shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onEdit}
+          className="shrink-0"
+        >
           <Pencil className="h-3.5 w-3.5 me-1.5" />
           {editLabel}
         </Button>
@@ -91,10 +109,14 @@ export function StatusStepperCard({
                   disabled={loading}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all border whitespace-nowrap",
-                    active && "bg-indigo-500 text-white border-indigo-500 shadow-sm",
-                    done && "bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
-                    !active && !done && "bg-muted text-muted-foreground border-transparent hover:border-border",
-                    loading && "opacity-50 cursor-wait",
+                    active &&
+                      "bg-indigo-500 text-white border-indigo-500 shadow-sm",
+                    done &&
+                      "bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50",
+                    !active &&
+                      !done &&
+                      "bg-muted text-muted-foreground border-transparent hover:border-border",
+                    loading && "opacity-50 cursor-wait"
                   )}
                 >
                   {done && <Check className="h-3 w-3" />}
@@ -104,7 +126,9 @@ export function StatusStepperCard({
                   <div
                     className={cn(
                       "h-px w-4 shrink-0",
-                      i < currentIdx ? "bg-indigo-200 dark:bg-indigo-900/50" : "bg-border",
+                      i < currentIdx
+                        ? "bg-indigo-200 dark:bg-indigo-900/50"
+                        : "bg-border"
                     )}
                   />
                 )}
@@ -139,7 +163,8 @@ export function DetailSectionHeader({
         <div className="flex-1 h-px bg-border max-w-16" />
         {count !== undefined && count > 0 && (
           <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border shrink-0">
-            {count}{countSuffix ? ` ${countSuffix}` : ""}
+            {count}
+            {countSuffix ? ` ${countSuffix}` : ""}
           </span>
         )}
       </div>
@@ -175,7 +200,7 @@ export function DetailSummaryCard({
       <div
         className={cn(
           "grid gap-2 text-center",
-          stats.length === 3 ? "grid-cols-3" : "grid-cols-2",
+          stats.length === 3 ? "grid-cols-3" : "grid-cols-2"
         )}
       >
         {stats.map((s, i) => (
@@ -183,7 +208,7 @@ export function DetailSummaryCard({
             <p
               className={cn(
                 "text-base font-bold tabular-nums",
-                s.muted && "text-muted-foreground",
+                s.muted && "text-muted-foreground"
               )}
             >
               {s.value}
@@ -192,7 +217,9 @@ export function DetailSummaryCard({
               {s.label}
             </p>
             {s.sub && (
-              <p className="text-[10px] text-muted-foreground truncate">{s.sub}</p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {s.sub}
+              </p>
             )}
           </div>
         ))}
@@ -217,14 +244,22 @@ export function DetailSummaryCard({
 
 // ── NotesCard ───────────────────────────────────────────────────────────────
 
-export function NotesCard({ label, notes }: { label: string; notes?: string | null }) {
+export function NotesCard({
+  label,
+  notes,
+}: {
+  label: string;
+  notes?: string | null;
+}) {
   if (!notes) return null;
   return (
     <div className="border border-border rounded-lg p-4">
       <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
         {label}
       </p>
-      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{notes}</p>
+      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+        {notes}
+      </p>
     </div>
   );
 }
@@ -251,13 +286,13 @@ export function CollapsibleCard({
         "border rounded-lg overflow-hidden transition-all",
         selected
           ? "border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-200 dark:ring-indigo-900/50"
-          : "border-border",
+          : "border-border"
       )}
     >
       <div
         className={cn(
           "flex items-center justify-between gap-2 px-4 py-3",
-          selected ? "bg-indigo-50/60 dark:bg-indigo-950/20" : "bg-muted/30",
+          selected ? "bg-indigo-50/60 dark:bg-indigo-950/20" : "bg-muted/30"
         )}
       >
         <button

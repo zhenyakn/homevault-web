@@ -1,4 +1,10 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
 
 const STORAGE_KEY = "hv_active_property_id";
 
@@ -18,7 +24,8 @@ const PropertyContext = createContext<PropertyContextType>({
 });
 
 export function PropertyProvider({ children }: { children: ReactNode }) {
-  const [activePropertyId, setActivePropertyId] = useState<number>(getStoredPropertyId);
+  const [activePropertyId, setActivePropertyId] =
+    useState<number>(getStoredPropertyId);
 
   const switchProperty = useCallback((id: number) => {
     localStorage.setItem(STORAGE_KEY, String(id));

@@ -6,7 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2, Save, Home, Settings, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { MapView } from "@/components/Map";
@@ -19,13 +25,15 @@ export default function PropertySettings() {
       toast.success("Property settings updated successfully");
       utils.property.get.invalidate();
     },
-    onError: (error) => {
+    onError: error => {
       toast.error(`Failed to update property: ${error.message}`);
     },
   });
 
   const mapRef = useRef<google.maps.Map | null>(null);
-  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(
+    null
+  );
 
   const [formData, setFormData] = useState({
     houseName: "",
@@ -55,7 +63,9 @@ export default function PropertySettings() {
         latitude: property.latitude ? String(property.latitude) : "",
         longitude: property.longitude ? String(property.longitude) : "",
         purchaseDate: property.purchaseDate || "",
-        purchasePrice: property.purchasePrice ? property.purchasePrice / 100 : 0,
+        purchasePrice: property.purchasePrice
+          ? property.purchasePrice / 100
+          : 0,
         squareMeters: property.squareMeters || 0,
         rooms: property.rooms || 0,
         yearBuilt: property.yearBuilt || 0,
@@ -87,7 +97,7 @@ export default function PropertySettings() {
           });
         }
         // Save coordinates so the map can load from stored lat/lng on next visit
-        setFormData((prev) => ({
+        setFormData(prev => ({
           ...prev,
           latitude: String(location.lat()),
           longitude: String(location.lng()),
@@ -96,30 +106,35 @@ export default function PropertySettings() {
     });
   }, [formData.address, formData.houseName]);
 
-  const handleMapReady = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-    if (formData.address) {
-      geocodeAddress();
-    }
-  }, [formData.address, geocodeAddress]);
+  const handleMapReady = useCallback(
+    (map: google.maps.Map) => {
+      mapRef.current = map;
+      if (formData.address) {
+        geocodeAddress();
+      }
+    },
+    [formData.address, geocodeAddress]
+  );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value, type } = e.target;
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [name]: type === "number" ? Number(value) : value,
     }));
   };
 
   const handleCheckedChange = (checked: boolean) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       hasStorage: checked,
     }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       [name]: value,
     }));
@@ -145,7 +160,9 @@ export default function PropertySettings() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Property Settings</h1>
-        <p className="text-muted-foreground">Manage your property details and preferences.</p>
+        <p className="text-muted-foreground">
+          Manage your property details and preferences.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -323,7 +340,8 @@ export default function PropertySettings() {
                 onMapReady={handleMapReady}
               />
               <p className="text-xs text-muted-foreground mt-2">
-                Enter your address above and click the pin icon to locate your property on the map.
+                Enter your address above and click the pin icon to locate your
+                property on the map.
               </p>
             </CardContent>
           </Card>
@@ -351,13 +369,17 @@ export default function PropertySettings() {
                   <Label htmlFor="currencyCode">Currency Code</Label>
                   <Select
                     value={formData.currencyCode}
-                    onValueChange={(val) => handleSelectChange("currencyCode", val)}
+                    onValueChange={val =>
+                      handleSelectChange("currencyCode", val)
+                    }
                   >
                     <SelectTrigger id="currencyCode">
                       <SelectValue placeholder="Select currency code" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ILS">ILS (Israeli New Shekel)</SelectItem>
+                      <SelectItem value="ILS">
+                        ILS (Israeli New Shekel)
+                      </SelectItem>
                       <SelectItem value="USD">USD (US Dollar)</SelectItem>
                       <SelectItem value="EUR">EUR (Euro)</SelectItem>
                       <SelectItem value="GBP">GBP (British Pound)</SelectItem>
@@ -368,15 +390,21 @@ export default function PropertySettings() {
                   <Label htmlFor="timezone">Timezone</Label>
                   <Select
                     value={formData.timezone}
-                    onValueChange={(val) => handleSelectChange("timezone", val)}
+                    onValueChange={val => handleSelectChange("timezone", val)}
                   >
                     <SelectTrigger id="timezone">
                       <SelectValue placeholder="Select timezone" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Asia/Jerusalem">Asia/Jerusalem</SelectItem>
-                      <SelectItem value="America/New_York">America/New_York</SelectItem>
-                      <SelectItem value="Europe/London">Europe/London</SelectItem>
+                      <SelectItem value="Asia/Jerusalem">
+                        Asia/Jerusalem
+                      </SelectItem>
+                      <SelectItem value="America/New_York">
+                        America/New_York
+                      </SelectItem>
+                      <SelectItem value="Europe/London">
+                        Europe/London
+                      </SelectItem>
                       <SelectItem value="UTC">UTC</SelectItem>
                     </SelectContent>
                   </Select>
