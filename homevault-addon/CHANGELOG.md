@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.4.2
+## 0.4.3
+- chore: prettier-ignore the release-bot-maintained addon CHANGELOG
+- feat(storage): add local-disk backend + S3 surfacing + live backend switcher
 - ci: add .nvmrc pinning Node 22
 - refactor(ui): unify Upgrades & Repairs detail pages via shared scaffolding
 - ci: add non-prod dev release pipeline
@@ -243,6 +245,10 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.4.2
+- chore: prettier-ignore the release-bot-maintained addon CHANGELOG
+- feat(storage): add local-disk backend + S3 surfacing + live backend switcher
 
 ## 0.4.1
 - ci: add .nvmrc pinning Node 22
