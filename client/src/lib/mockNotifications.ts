@@ -105,6 +105,42 @@ export const mockNotifications: MockNotification[] = [
     read: true,
     url: "/calendar",
   },
+  {
+    id: "n6",
+    category: "expense",
+    title: "Electricity bill paid",
+    body: "₪410 marked as paid for May.",
+    minutesAgo: 60 * 72,
+    read: true,
+    url: "/expenses",
+  },
+  {
+    id: "n7",
+    category: "repair",
+    title: "New quote received",
+    body: "Plumber sent a ₪1,200 quote for the bathroom leak.",
+    minutesAgo: 60 * 80,
+    read: true,
+    url: "/repairs",
+  },
+  {
+    id: "n8",
+    category: "warranty",
+    title: "Dishwasher warranty expiring soon",
+    body: "Bosch SMS warranty ends in 30 days.",
+    minutesAgo: 60 * 96,
+    read: true,
+    url: "/inventory",
+  },
+  {
+    id: "n9",
+    category: "calendar",
+    title: "Home insurance renewal",
+    body: "Policy renews on the 1st — review your coverage.",
+    minutesAgo: 60 * 120,
+    read: true,
+    url: "/calendar",
+  },
 ];
 
 /**

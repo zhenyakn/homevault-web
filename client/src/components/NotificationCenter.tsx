@@ -26,7 +26,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import type { NotificationCategory } from "@/lib/mockNotifications";
 import {
@@ -111,7 +110,7 @@ export function NotificationCenter({ className }: { className?: string }) {
             {t("notifs.empty")}
           </div>
         ) : (
-          <ScrollArea className="max-h-96">
+          <div className="max-h-96 overflow-y-auto overscroll-contain">
             <ul className="divide-y divide-border">
               {notifications.map(n => {
                 const Icon = CATEGORY_ICON[n.category];
@@ -154,7 +153,7 @@ export function NotificationCenter({ className }: { className?: string }) {
                 );
               })}
             </ul>
-          </ScrollArea>
+          </div>
         )}
 
         <div className="border-t px-3 py-2 text-center">
