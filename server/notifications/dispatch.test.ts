@@ -143,7 +143,11 @@ describe("dispatchNotification", () => {
     );
     expect(record).toHaveBeenCalledTimes(2);
     expect(record).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: "inapp", status: "sent", dedupeKey: payload.dedupeKey })
+      expect.objectContaining({
+        channel: "inapp",
+        status: "sent",
+        dedupeKey: payload.dedupeKey,
+      })
     );
     expect(record).toHaveBeenCalledWith(
       expect.objectContaining({ channel: "email", status: "failed" })

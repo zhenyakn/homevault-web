@@ -10,7 +10,9 @@ import { runMigrations } from "../server/_core/migrate";
 
 runMigrations()
   .then(({ applied, skipped }) => {
-    console.log(`\nMigrations complete — ${applied} applied, ${skipped} skipped.`);
+    console.log(
+      `\nMigrations complete — ${applied} applied, ${skipped} skipped.`
+    );
     process.exit(0);
   })
   .catch(err => {

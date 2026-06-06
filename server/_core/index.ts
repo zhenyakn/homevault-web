@@ -178,7 +178,10 @@ async function startServer() {
       });
       logger.info({ applied, skipped }, "[migrate] boot migration complete");
     } catch (err) {
-      logger.error({ err }, "[migrate] boot migration failed — aborting startup");
+      logger.error(
+        { err },
+        "[migrate] boot migration failed — aborting startup"
+      );
       process.exit(1);
     }
   }
@@ -400,9 +403,7 @@ async function startServer() {
           secret_token: ENV.telegramWebhookSecret || undefined,
         })
         .then(() => logger.info({ url }, "[telegram] webhook set"))
-        .catch(err =>
-          logger.warn({ err }, "[telegram] failed to set webhook")
-        );
+        .catch(err => logger.warn({ err }, "[telegram] failed to set webhook"));
     }
   });
 }

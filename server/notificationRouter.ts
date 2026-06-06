@@ -18,9 +18,7 @@ const channelEnum = z.enum(
 
 export const notificationRouter = router({
   // ── Preferences & destinations ─────────────────────────────────────────────
-  getPrefs: protectedProcedure.query(({ ctx }) =>
-    notif.getPrefs(ctx.user.id)
-  ),
+  getPrefs: protectedProcedure.query(({ ctx }) => notif.getPrefs(ctx.user.id)),
 
   /** Channel destinations + connection state for the Settings UI. */
   getStatus: protectedProcedure.query(async ({ ctx }) => {

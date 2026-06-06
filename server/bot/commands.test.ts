@@ -24,7 +24,10 @@ describe("parseCommand — link", () => {
     });
   });
   it("uses only the first token", () => {
-    expect(parseCommand("/link CODE junk")).toEqual({ type: "link", code: "CODE" });
+    expect(parseCommand("/link CODE junk")).toEqual({
+      type: "link",
+      code: "CODE",
+    });
   });
   it("is invalid without a code", () => {
     const r = parseCommand("/link");
@@ -34,7 +37,10 @@ describe("parseCommand — link", () => {
 
 describe("parseCommand — paid", () => {
   it("extracts the id", () => {
-    expect(parseCommand("/paid exp-123")).toEqual({ type: "paid", id: "exp-123" });
+    expect(parseCommand("/paid exp-123")).toEqual({
+      type: "paid",
+      id: "exp-123",
+    });
   });
   it("is invalid without an id", () => {
     expect(parseCommand("/paid").type).toBe("invalid");

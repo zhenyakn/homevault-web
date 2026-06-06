@@ -134,10 +134,14 @@ function registerHandlers(b: Bot) {
         ]);
         const overdue = getOverdueExpenses(expenses, today);
         const lines: string[] = [];
-        for (const o of overdue) lines.push(`• ${o.label} (${o.amount}) — due ${o.date}`);
-        for (const r of stats.staleRepairs) lines.push(`• ${r.label} — repair needs attention`);
+        for (const o of overdue)
+          lines.push(`• ${o.label} (${o.amount}) — due ${o.date}`);
+        for (const r of stats.staleRepairs)
+          lines.push(`• ${r.label} — repair needs attention`);
         await ctx.reply(
-          lines.length ? `Needs attention:\n${lines.join("\n")}` : "Nothing overdue. 🎉"
+          lines.length
+            ? `Needs attention:\n${lines.join("\n")}`
+            : "Nothing overdue. 🎉"
         );
         return;
       }

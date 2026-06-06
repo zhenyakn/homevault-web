@@ -47,7 +47,14 @@ describe("collectDueReminders — expenses", () => {
     const r = collectDueReminders(
       base({
         expenses: [
-          { id: "e1", name: "Tax", amount: 4200, date: "2026-06-01", isRecurring: true, isPaid: false },
+          {
+            id: "e1",
+            name: "Tax",
+            amount: 4200,
+            date: "2026-06-01",
+            isRecurring: true,
+            isPaid: false,
+          },
         ],
       })
     );
@@ -60,8 +67,22 @@ describe("collectDueReminders — expenses", () => {
     const r = collectDueReminders(
       base({
         expenses: [
-          { id: "p", name: "Paid", amount: 1, date: "2026-06-01", isRecurring: true, isPaid: true },
-          { id: "n", name: "OneOff", amount: 1, date: "2026-06-01", isRecurring: false, isPaid: false },
+          {
+            id: "p",
+            name: "Paid",
+            amount: 1,
+            date: "2026-06-01",
+            isRecurring: true,
+            isPaid: true,
+          },
+          {
+            id: "n",
+            name: "OneOff",
+            amount: 1,
+            date: "2026-06-01",
+            isRecurring: false,
+            isPaid: false,
+          },
         ],
       })
     );
@@ -72,8 +93,22 @@ describe("collectDueReminders — expenses", () => {
     const r = collectDueReminders(
       base({
         expenses: [
-          { id: "u", name: "Water", amount: 100, date: "2026-05-01", nextDueDate: "2026-06-08", isPaid: false },
-          { id: "far", name: "Later", amount: 1, date: "2026-05-01", nextDueDate: "2026-06-20", isPaid: false },
+          {
+            id: "u",
+            name: "Water",
+            amount: 100,
+            date: "2026-05-01",
+            nextDueDate: "2026-06-08",
+            isPaid: false,
+          },
+          {
+            id: "far",
+            name: "Later",
+            amount: 1,
+            date: "2026-05-01",
+            nextDueDate: "2026-06-20",
+            isPaid: false,
+          },
         ],
       })
     );
@@ -85,7 +120,14 @@ describe("collectDueReminders — expenses", () => {
       base({
         prefs: { ...allOn, remindExpenses: false },
         expenses: [
-          { id: "e1", name: "Tax", amount: 1, date: "2026-06-01", isRecurring: true, isPaid: false },
+          {
+            id: "e1",
+            name: "Tax",
+            amount: 1,
+            date: "2026-06-01",
+            isRecurring: true,
+            isPaid: false,
+          },
         ],
       })
     );
@@ -96,9 +138,18 @@ describe("collectDueReminders — expenses", () => {
 describe("collectDueReminders — loans", () => {
   it("flags loan payments due within the window and respects the toggle", () => {
     const input = base({
-      loans: [{ id: "l1", name: "Mortgage", monthlyPayment: 6150, nextPaymentDate: "2026-06-07" }],
+      loans: [
+        {
+          id: "l1",
+          name: "Mortgage",
+          monthlyPayment: 6150,
+          nextPaymentDate: "2026-06-07",
+        },
+      ],
     });
-    expect(collectDueReminders(input)[0].dedupeKey).toBe("loan-due:l1:2026-06-07");
+    expect(collectDueReminders(input)[0].dedupeKey).toBe(
+      "loan-due:l1:2026-06-07"
+    );
     expect(
       collectDueReminders({ ...input, prefs: { ...allOn, remindLoans: false } })
     ).toHaveLength(0);
@@ -111,7 +162,12 @@ describe("collectDueReminders — calendar", () => {
     const r = collectDueReminders(
       base({
         calendarEvents: [
-          { id: "c1", title: "Inspection", date: "2026-06-14", reminderDaysBefore: 10 },
+          {
+            id: "c1",
+            title: "Inspection",
+            date: "2026-06-14",
+            reminderDaysBefore: 10,
+          },
         ],
       })
     );
@@ -132,7 +188,11 @@ describe("collectDueReminders — calendar", () => {
 describe("collectDueReminders — warranty (always on)", () => {
   it("flags warranties expiring within the window", () => {
     const r = collectDueReminders(
-      base({ warrantyItems: [{ id: "w1", name: "Fridge", warrantyExpiry: "2026-06-08" }] })
+      base({
+        warrantyItems: [
+          { id: "w1", name: "Fridge", warrantyExpiry: "2026-06-08" },
+        ],
+      })
     );
     expect(r[0].dedupeKey).toBe("warranty:w1:2026-06-08");
     expect(r[0].category).toBe("warranty");
@@ -141,11 +201,16 @@ describe("collectDueReminders — warranty (always on)", () => {
 
 describe("collectDueReminders — stale repairs", () => {
   it("flags stale repairs only when remindRepairs is on", () => {
-    const input = base({ staleRepairs: [{ id: "r1", label: "Roof leak", days: 6 }] });
+    const input = base({
+      staleRepairs: [{ id: "r1", label: "Roof leak", days: 6 }],
+    });
     const r = collectDueReminders(input);
     expect(r[0].dedupeKey).toBe("repair-stale:r1:2026-06-06");
     expect(
-      collectDueReminders({ ...input, prefs: { ...allOn, remindRepairs: false } })
+      collectDueReminders({
+        ...input,
+        prefs: { ...allOn, remindRepairs: false },
+      })
     ).toHaveLength(0);
   });
 });

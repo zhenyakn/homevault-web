@@ -52,14 +52,22 @@ export function parseCommand(raw: string): ParsedCommand {
 
     case "link": {
       if (!rest) {
-        return { type: "invalid", command: "link", reason: "Usage: /link <code>" };
+        return {
+          type: "invalid",
+          command: "link",
+          reason: "Usage: /link <code>",
+        };
       }
       return { type: "link", code: rest.split(/\s+/)[0] };
     }
 
     case "paid": {
       if (!rest) {
-        return { type: "invalid", command: "paid", reason: "Usage: /paid <id>" };
+        return {
+          type: "invalid",
+          command: "paid",
+          reason: "Usage: /paid <id>",
+        };
       }
       return { type: "paid", id: rest.split(/\s+/)[0] };
     }

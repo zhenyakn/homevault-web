@@ -85,7 +85,9 @@ export function withinLeadWindow(
 
 // ── Sweep ─────────────────────────────────────────────────────────────────────
 
-export function collectDueReminders(input: ReminderInput): NotificationPayload[] {
+export function collectDueReminders(
+  input: ReminderInput
+): NotificationPayload[] {
   const { today, prefs } = input;
   const lead = Math.max(0, prefs.reminderDaysBefore ?? 0);
   const out: NotificationPayload[] = [];
