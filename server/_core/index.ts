@@ -21,6 +21,10 @@ import * as db from "../db";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./env";
 import { logger } from "./logger";
+import { webhookCallback } from "grammy";
+import { getBot } from "../bot/telegram";
+import { startReminderScheduler } from "../notifications/scheduler";
+import { runMigrations } from "./migrate";
 
 // Rate limiters. NODE_ENV=test bypasses all of these so the test suite isn't
 // throttled — the limit logic itself is unit-tested in its own file.
@@ -163,6 +167,22 @@ function hasSessionCookie(cookieHeader?: string): boolean {
 }
 
 async function startServer() {
+  // Apply pending DB migrations before serving, so every deployment converges
+  // on the current schema with no manual step. Skipped under test, and opt-out
+  // via AUTO_MIGRATE=false (the HA add-on migrates in run.sh instead). Fail fast
+  // rather than serve against a half-migrated schema.
+  if (process.env.NODE_ENV !== "test" && ENV.autoMigrate) {
+    try {
+      const { applied, skipped } = await runMigrations({
+        log: msg => logger.info(msg),
+      });
+      logger.info({ applied, skipped }, "[migrate] boot migration complete");
+    } catch (err) {
+      logger.error({ err }, "[migrate] boot migration failed — aborting startup");
+      process.exit(1);
+    }
+  }
+
   const app = express();
   const server = createServer(app);
 
@@ -262,6 +282,20 @@ async function startServer() {
   app.use(storageRouter);
   app.use(exportRouter);
 
+  // Telegram bot webhook. Registered only when a bot token is configured; the
+  // secret token (when set) is verified by grammy against the
+  // X-Telegram-Bot-Api-Secret-Token header.
+  const telegramBot = getBot();
+  if (telegramBot) {
+    app.post(
+      "/api/bot/telegram",
+      webhookCallback(telegramBot, "express", {
+        secretToken: ENV.telegramWebhookSecret || undefined,
+      })
+    );
+    logger.info("[telegram] webhook registered at /api/bot/telegram");
+  }
+
   // Dev-only login bypass — keeps existing dev-server behavior unchanged
   if (process.env.NODE_ENV === "development") {
     app.post("/api/dev/login", authLimiter, async (req, res) => {
@@ -356,5 +390,19 @@ async function startServer() {
 
   server.listen(port, host, () => {
     logger.info({ host, port }, "Server running");
+    // Start the daily reminder sweep (no-op under NODE_ENV=test).
+    startReminderScheduler();
+    // Best-effort: point Telegram at our webhook if a public URL is set.
+    if (telegramBot && ENV.publicBaseUrl) {
+      const url = `${ENV.publicBaseUrl.replace(/\/$/, "")}/api/bot/telegram`;
+      telegramBot.api
+        .setWebhook(url, {
+          secret_token: ENV.telegramWebhookSecret || undefined,
+        })
+        .then(() => logger.info({ url }, "[telegram] webhook set"))
+        .catch(err =>
+          logger.warn({ err }, "[telegram] failed to set webhook")
+        );
+    }
   });
 }

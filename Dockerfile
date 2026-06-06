@@ -30,7 +30,8 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/apply-migration-v3.mjs ./
+# Ship the SQL migrations so the server can auto-migrate on boot.
+COPY --from=builder /app/drizzle ./drizzle
 
 # Non-root user for security
 RUN addgroup -S homevault && adduser -S homevault -G homevault

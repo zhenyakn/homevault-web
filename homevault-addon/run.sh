@@ -16,6 +16,9 @@ export OAUTH_SERVER_URL=$(jq -r '.OAUTH_SERVER_URL // ""' "$OPTIONS")
 export PORT=$(jq -r '.PORT // 3005' "$OPTIONS")
 export HOST="0.0.0.0"
 export NODE_ENV="production"
+# The add-on migrates below via apply-migration-addon.mjs, so disable the
+# server's boot-time auto-migration to avoid running both mechanisms.
+export AUTO_MIGRATE="false"
 export LOG_LEVEL=$(jq -r '.LOG_LEVEL // "info"' "$OPTIONS")
 export STORAGE_ENDPOINT=$(jq -r '.STORAGE_ENDPOINT // ""' "$OPTIONS")
 export STORAGE_BUCKET=$(jq -r '.STORAGE_BUCKET // ""' "$OPTIONS")

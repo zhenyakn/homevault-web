@@ -107,19 +107,23 @@ import {
 } from "lucide-react";
 import { csrfHeaders } from "@/lib/csrf";
 import BotPreview from "@/components/BotPreview";
-import {
-  mockTelegramHandle,
-  mockTelegramLinkCode,
-  type ChannelKey,
-} from "@/lib/mockNotifications";
-import {
-  pushNotification,
-  setChannelConfigured,
-  setChannelDestination,
-  setChannelEnabled,
-  TEST_CATEGORY,
-  useMockNotifications,
-} from "@/hooks/useMockNotifications";
+import { subscribeToWebPush, webPushSupported } from "@/lib/webpush";
+
+type ChannelKey =
+  | "inapp"
+  | "push"
+  | "email"
+  | "webpush"
+  | "telegram"
+  | "whatsapp";
+const CHANNEL_ORDER: ChannelKey[] = [
+  "inapp",
+  "push",
+  "email",
+  "webpush",
+  "telegram",
+  "whatsapp",
+];
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
@@ -1079,39 +1083,84 @@ const CHANNEL_META: Record<ChannelKey, { icon: LucideIcon; needsSetup: boolean }
     whatsapp: { icon: MessageCircle, needsSetup: true },
   };
 
+type ChannelStatus = {
+  email: string | null;
+  whatsappPhone: string | null;
+  telegramLinked: boolean;
+  webPushAvailable: boolean;
+};
+
+/** Whether a channel has everything it needs to deliver (drives Set up vs Test). */
+function channelConfigured(ch: ChannelKey, status?: ChannelStatus): boolean {
+  switch (ch) {
+    case "inapp":
+    case "push":
+      return true;
+    case "email":
+      return Boolean(status?.email);
+    case "telegram":
+      return Boolean(status?.telegramLinked);
+    case "whatsapp":
+      return Boolean(status?.whatsappPhone);
+    case "webpush":
+      return (
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted"
+      );
+  }
+}
+
 /**
- * Delivery-channel toggles (Phase 1, mock) — the "what" of notifications lives
- * here under Notifications: choose which channels deliver. Connecting a channel
- * (destinations, the Telegram bot, etc.) lives under the Integrations tab. A
+ * Delivery-channel toggles — the "what" of notifications lives here under
+ * Notifications: choose which channels deliver. Connecting a channel
+ * (destinations, the Telegram bot, browser push) lives under Integrations. A
  * channel that's enabled but not yet connected shows a "Set up" shortcut.
  */
 function ChannelsBlock() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const { channels } = useMockNotifications();
-
-  const sendTest = (key: ChannelKey) => {
-    const label = t(`settings.ch.${key}`);
-    toast.success(t("settings.ch.testSent", { channel: label }));
-    pushNotification({
-      category: TEST_CATEGORY,
-      title: t("settings.ch.testTitle", { channel: label }),
-      body: t("settings.ch.testBody"),
-    });
-  };
+  const u = trpc.useUtils();
+  const { data: prefs } = trpc.notification.getPrefs.useQuery();
+  const { data: status } = trpc.notification.getStatus.useQuery();
+  const setPref = trpc.notification.setPref.useMutation({
+    onMutate: () => {
+      // optimistic: nothing fancy, just refetch after
+    },
+    onSuccess: () => u.notification.getPrefs.invalidate(),
+    onError: e => toast.error(e.message),
+  });
+  const sendTest = trpc.notification.sendTest.useMutation({
+    onSuccess: (res, vars) => {
+      const label = t(`settings.ch.${vars.channel as ChannelKey}`);
+      if (res.status === "sent") {
+        toast.success(t("settings.ch.testSent", { channel: label }));
+      } else {
+        toast.error(
+          t("settings.ch.testFailed", {
+            channel: label,
+            reason: res.reason ?? res.status,
+          })
+        );
+      }
+      u.notification.listInApp.invalidate();
+    },
+    onError: e => toast.error(e.message),
+  });
 
   return (
     <Group label={t("settings.ch.title")}>
       <div className="px-4 py-2.5">
         <p className="text-xs text-muted-foreground">{t("settings.ch.desc")}</p>
       </div>
-      {channels.map(c => {
-        const meta = CHANNEL_META[c.key];
+      {CHANNEL_ORDER.map(ch => {
+        const meta = CHANNEL_META[ch];
         const Icon = meta.icon;
-        const needsConfig = meta.needsSetup && !c.configured;
+        const enabled = prefs?.[ch] ?? false;
+        const configured = channelConfigured(ch, status);
+        const needsConfig = meta.needsSetup && !configured;
         return (
           <div
-            key={c.key}
+            key={ch}
             className="flex items-center justify-between gap-4 px-4 py-3 min-h-[52px]"
           >
             <div className="flex min-w-0 items-center gap-3">
@@ -1120,17 +1169,15 @@ function ChannelsBlock() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium leading-none">
-                  {t(`settings.ch.${c.key}`)}
+                  {t(`settings.ch.${ch}`)}
                 </p>
                 <p className="mt-0.5 truncate text-xs text-muted-foreground leading-snug">
-                  {c.configured && c.destination
-                    ? c.destination
-                    : t(`settings.ch.${c.key}Hint`)}
+                  {t(`settings.ch.${ch}Hint`)}
                 </p>
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              {c.enabled &&
+              {enabled &&
                 (needsConfig ? (
                   <Button
                     variant="ghost"
@@ -1145,14 +1192,15 @@ function ChannelsBlock() {
                     variant="outline"
                     size="sm"
                     className="h-7 px-2 text-xs"
-                    onClick={() => sendTest(c.key)}
+                    disabled={sendTest.isPending}
+                    onClick={() => sendTest.mutate({ channel: ch })}
                   >
                     {t("settings.ch.sendTest")}
                   </Button>
                 ))}
               <Switch
-                checked={c.enabled}
-                onCheckedChange={v => setChannelEnabled(c.key, v)}
+                checked={enabled}
+                onCheckedChange={v => setPref.mutate({ channel: ch, enabled: v })}
               />
             </div>
           </div>
@@ -1217,16 +1265,28 @@ function ChannelStatusBadge({ configured }: { configured: boolean }) {
 }
 
 /**
- * Telegram bot connection (Phase 1, mock). Lives under Integrations: link-code
- * flow, a faux connected/disconnected state, and the interactive bot preview.
+ * Telegram bot connection (Integrations). Generates a real link code via tRPC;
+ * the user sends "/link <code>" to the bot which binds their chat. Shows the
+ * connected state from notification.getStatus, plus the bot preview.
  */
 function TelegramConnectCard() {
   const { t } = useTranslation();
-  const channel = useMockNotifications().channels.find(c => c.key === "telegram");
-  const connected = Boolean(channel?.configured);
+  const u = trpc.useUtils();
+  const { data: status } = trpc.notification.getStatus.useQuery();
+  const connected = Boolean(status?.telegramLinked);
+  const [code, setCode] = useState<string | null>(null);
+
+  const createCode = trpc.notification.createTelegramLinkCode.useMutation({
+    onSuccess: r => setCode(r.code),
+    onError: e => toast.error(e.message),
+  });
+  const unlink = trpc.notification.unlinkTelegram.useMutation({
+    onSuccess: () => u.notification.getStatus.invalidate(),
+    onError: e => toast.error(e.message),
+  });
 
   const copyCode = () => {
-    navigator.clipboard?.writeText(mockTelegramLinkCode).catch(() => {});
+    if (code) navigator.clipboard?.writeText(code).catch(() => {});
     toast.success(t("settings.ch.codeCopied"));
   };
 
@@ -1253,18 +1313,14 @@ function TelegramConnectCard() {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <p className="text-sm">
-              {t("settings.ch.connectedAs", { handle: mockTelegramHandle })}
-            </p>
+            <p className="text-sm">{t("settings.ch.connected")}</p>
           </div>
           <Button
             variant="outline"
             size="sm"
             className="h-7 px-2 text-xs"
-            onClick={() => {
-              setChannelConfigured("telegram", false);
-              setChannelDestination("telegram", "");
-            }}
+            disabled={unlink.isPending}
+            onClick={() => unlink.mutate()}
           >
             {t("settings.ch.disconnect")}
           </Button>
@@ -1274,32 +1330,32 @@ function TelegramConnectCard() {
           <p className="text-xs text-muted-foreground leading-snug">
             {t("settings.ch.botInstructions")}
           </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-sm font-mono tracking-wider">
-              {mockTelegramLinkCode}
-            </code>
+          {code ? (
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-sm font-mono tracking-wider">
+                {code}
+              </code>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={copyCode}
+                aria-label={t("settings.ch.copyCode")}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
             <Button
-              variant="outline"
-              size="icon"
-              className="h-9 w-9 shrink-0"
-              onClick={copyCode}
-              aria-label={t("settings.ch.copyCode")}
+              variant="secondary"
+              size="sm"
+              className="h-8 w-full text-xs"
+              disabled={createCode.isPending}
+              onClick={() => createCode.mutate()}
             >
-              <Copy className="h-4 w-4" />
+              {t("settings.ch.generateCode")}
             </Button>
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-8 w-full text-xs"
-            onClick={() => {
-              setChannelConfigured("telegram", true);
-              setChannelDestination("telegram", mockTelegramHandle);
-              toast.success(t("settings.ch.connectedToast"));
-            }}
-          >
-            {t("settings.ch.simulateConnect")}
-          </Button>
+          )}
         </>
       )}
 
@@ -1308,18 +1364,77 @@ function TelegramConnectCard() {
   );
 }
 
+/** Editable destination input that saves on blur via setDestinations. */
+function DestinationInput({
+  field,
+  value,
+  placeholder,
+}: {
+  field: "email" | "whatsappPhone";
+  value: string;
+  placeholder: string;
+}) {
+  const u = trpc.useUtils();
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  const save = trpc.notification.setDestinations.useMutation({
+    onSuccess: () => u.notification.getStatus.invalidate(),
+    onError: e => toast.error(e.message),
+  });
+  return (
+    <Input
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => {
+        if (draft !== value) save.mutate({ [field]: draft } as any);
+      }}
+      placeholder={placeholder}
+      className="h-8 text-sm"
+    />
+  );
+}
+
 /**
- * Notification channels under Integrations (Phase 1, mock) — the "plumbing":
- * connect the Telegram bot, set email / WhatsApp destinations, enable browser
- * push. Whether each channel actually delivers is toggled under Notifications.
+ * Notification channels under Integrations — the "plumbing": connect the
+ * Telegram bot, set email / WhatsApp destinations, enable browser push. Whether
+ * each channel actually delivers is toggled under Notifications.
  */
 function NotificationChannelsIntegration() {
   const { t } = useTranslation();
-  const { channels } = useMockNotifications();
-  const byKey = (k: ChannelKey) => channels.find(c => c.key === k);
-  const email = byKey("email");
-  const whatsapp = byKey("whatsapp");
-  const webpush = byKey("webpush");
+  const u = trpc.useUtils();
+  const { data: status } = trpc.notification.getStatus.useQuery();
+  const { data: vapid } = trpc.notification.getVapidPublicKey.useQuery();
+
+  const subscribe = trpc.notification.subscribeWebPush.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        u.notification.getStatus.invalidate(),
+        u.notification.getPrefs.invalidate(),
+      ]);
+      toast.success(t("settings.ch.webpushEnabled"));
+    },
+    onError: e => toast.error(e.message),
+  });
+  const setPref = trpc.notification.setPref.useMutation({
+    onSuccess: () => u.notification.getPrefs.invalidate(),
+  });
+
+  const enableWebPush = async () => {
+    if (!vapid?.key) {
+      toast.error(t("settings.ch.webpushUnavailable"));
+      return;
+    }
+    try {
+      const sub = await subscribeToWebPush(vapid.key);
+      await subscribe.mutateAsync(sub);
+      setPref.mutate({ channel: "webpush", enabled: true });
+    } catch (e: any) {
+      toast.error(e?.message ?? String(e));
+    }
+  };
+
+  const webPushGranted =
+    typeof Notification !== "undefined" && Notification.permission === "granted";
 
   return (
     <div className="space-y-2">
@@ -1333,16 +1448,12 @@ function NotificationChannelsIntegration() {
           icon={<Mail className="h-4 w-4" />}
           name={t("settings.ch.email")}
           description={t("settings.ch.emailCardDesc")}
-          badge={<ChannelStatusBadge configured={Boolean(email?.configured)} />}
+          badge={<ChannelStatusBadge configured={Boolean(status?.email)} />}
           footer={
-            <Input
-              value={email?.destination ?? ""}
-              onChange={e => {
-                setChannelDestination("email", e.target.value);
-                setChannelConfigured("email", e.target.value.trim().length > 0);
-              }}
+            <DestinationInput
+              field="email"
+              value={status?.email ?? ""}
               placeholder={t("settings.ch.emailDest")}
-              className="h-8 text-sm"
             />
           }
         />
@@ -1352,20 +1463,13 @@ function NotificationChannelsIntegration() {
           name={t("settings.ch.whatsapp")}
           description={t("settings.ch.whatsappCardDesc")}
           badge={
-            <ChannelStatusBadge configured={Boolean(whatsapp?.configured)} />
+            <ChannelStatusBadge configured={Boolean(status?.whatsappPhone)} />
           }
           footer={
-            <Input
-              value={whatsapp?.destination ?? ""}
-              onChange={e => {
-                setChannelDestination("whatsapp", e.target.value);
-                setChannelConfigured(
-                  "whatsapp",
-                  e.target.value.trim().length > 0
-                );
-              }}
+            <DestinationInput
+              field="whatsappPhone"
+              value={status?.whatsappPhone ?? ""}
               placeholder={t("settings.ch.whatsappDest")}
-              className="h-8 text-sm"
             />
           }
         />
@@ -1374,26 +1478,17 @@ function NotificationChannelsIntegration() {
           icon={<Globe className="h-4 w-4" />}
           name={t("settings.ch.webpush")}
           description={t("settings.ch.webpushCardDesc")}
-          badge={
-            <ChannelStatusBadge configured={Boolean(webpush?.configured)} />
-          }
+          badge={<ChannelStatusBadge configured={webPushGranted} />}
           action={
             <Button
               variant="outline"
               size="sm"
               className="h-8 text-xs"
-              onClick={() => {
-                const next = !webpush?.configured;
-                setChannelConfigured("webpush", next);
-                toast.success(
-                  next
-                    ? t("settings.ch.webpushEnabled")
-                    : t("settings.ch.webpushDisabled")
-                );
-              }}
+              disabled={subscribe.isPending || !webPushSupported()}
+              onClick={enableWebPush}
             >
-              {webpush?.configured
-                ? t("settings.ch.disable")
+              {webPushGranted
+                ? t("settings.ch.reEnable")
                 : t("settings.ch.enableWebpush")}
             </Button>
           }
