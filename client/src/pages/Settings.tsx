@@ -25,7 +25,7 @@ import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useProperty } from "@/contexts/PropertyContext";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Popover,
   PopoverContent,
@@ -75,6 +87,18 @@ import {
   EyeOff,
   HardDrive,
   Server,
+  Info,
+  Calendar as CalendarIcon,
+  Map as MapIcon,
+  Home,
+  Wallet,
+  Users,
+  Globe,
+  Bell,
+  Blocks,
+  Palette,
+  Database,
+  type LucideIcon,
 } from "lucide-react";
 import { csrfHeaders } from "@/lib/csrf";
 
@@ -91,6 +115,39 @@ const NAV_IDS = [
   "data",
 ] as const;
 type SID = (typeof NAV_IDS)[number];
+
+/** Nav items grouped into logical sections with a leading icon. */
+const NAV_GROUPS: {
+  groupKey: string;
+  items: { id: SID; icon: LucideIcon }[];
+}[] = [
+  {
+    groupKey: "property",
+    items: [
+      { id: "property", icon: Home },
+      { id: "purchase", icon: Wallet },
+      { id: "household", icon: Users },
+    ],
+  },
+  {
+    groupKey: "preferences",
+    items: [
+      { id: "regional", icon: Globe },
+      { id: "notifications", icon: Bell },
+      { id: "appearance", icon: Palette },
+    ],
+  },
+  {
+    groupKey: "system",
+    items: [
+      { id: "integrations", icon: Blocks },
+      { id: "data", icon: Database },
+    ],
+  },
+];
+
+/** Flattened, group-ordered list for the mobile nav strip. */
+const NAV_FLAT = NAV_GROUPS.flatMap(g => g.items);
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 
@@ -163,6 +220,188 @@ function FullRow({
   );
 }
 
+// ─── Design-system primitives ───────────────────────────────────────────────
+
+/** Standard width for a section's right-hand control, so every form field in
+ *  the page aligns to one column. Short numeric inputs use NUM_W. */
+const CONTROL_W = "w-48";
+const NUM_W = "w-24";
+
+/** Section title + one-line description + auto-save indicator. Used by every
+ *  settings section so the hierarchy and spacing are identical across pages. */
+function SectionHeader({
+  title,
+  description,
+  pending,
+}: {
+  title: string;
+  description?: string;
+  pending?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0 space-y-1">
+        <h2 className="text-base font-semibold leading-none">{title}</h2>
+        {description && (
+          <p className="text-sm text-muted-foreground leading-snug">
+            {description}
+          </p>
+        )}
+      </div>
+      <div className="shrink-0 pt-0.5">
+        <Pending show={pending ?? false} />
+      </div>
+    </div>
+  );
+}
+
+/** Inline notice. Wraps the shared Alert with semantic intent colors so we
+ *  stop hand-rolling amber/destructive blocks throughout the page. */
+function Callout({
+  variant = "info",
+  icon,
+  children,
+  className,
+}: {
+  variant?: "info" | "warning" | "success";
+  icon?: ReactNode;
+  children: ReactNode;
+  className?: string;
+}) {
+  const styles: Record<string, string> = {
+    info: "border-border bg-muted/40 text-foreground [&>svg]:text-muted-foreground",
+    warning:
+      "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400",
+    success:
+      "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200 [&>svg]:text-emerald-600 dark:[&>svg]:text-emerald-400",
+  };
+  const fallbackIcon =
+    variant === "warning" ? (
+      <AlertTriangle />
+    ) : variant === "success" ? (
+      <CheckCircle2 />
+    ) : (
+      <Info />
+    );
+  return (
+    <Alert className={cn(styles[variant], className)}>
+      {icon ?? fallbackIcon}
+      <AlertDescription className="text-current/90">
+        {children}
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+/** Labelled sub-input used inside the storage config forms (Local / S3 /
+ *  Drive) so label spacing and input height are uniform. */
+function SubField({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-muted-foreground">
+        {label}
+      </label>
+      {children}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+/** Highlighted summary figure (e.g. total invested). */
+function StatCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3.5">
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold tabular-nums text-foreground">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+/** Destructive confirmation modal with an optional type-to-confirm phrase.
+ *  Replaces the inline expand-in-place danger blocks. */
+function ConfirmDialog({
+  open,
+  onOpenChange,
+  title,
+  description,
+  confirmPhrase,
+  confirmLabel,
+  pending,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  description: ReactNode;
+  confirmPhrase?: string;
+  confirmLabel: string;
+  pending?: boolean;
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslation();
+  const [phrase, setPhrase] = useState("");
+  useEffect(() => {
+    if (!open) setPhrase("");
+  }, [open]);
+  const ready = !confirmPhrase || phrase === confirmPhrase;
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            {title}
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3">
+              <div>{description}</div>
+              {confirmPhrase && (
+                <Input
+                  value={phrase}
+                  placeholder={confirmPhrase}
+                  className="h-9 text-sm"
+                  onChange={e => setPhrase(e.target.value)}
+                  autoFocus
+                />
+              )}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={pending}>
+            {t("common.cancel")}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className={cn(
+              "bg-destructive text-white hover:bg-destructive/90",
+              (!ready || pending) && "pointer-events-none opacity-50"
+            )}
+            disabled={!ready || pending}
+            onClick={e => {
+              e.preventDefault();
+              onConfirm();
+            }}
+          >
+            {pending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            {confirmLabel}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 // ─── Input helpers ────────────────────────────────────────────────────────────
 
 function Field({
@@ -174,7 +413,7 @@ function Field({
   min,
   max,
   step,
-  width = "w-44",
+  width = CONTROL_W,
 }: {
   id?: string;
   value: string;
@@ -226,7 +465,7 @@ function Combobox({
   options,
   placeholder = "Select…",
   search = "Search…",
-  width = "w-52",
+  width = CONTROL_W,
 }: {
   value: string;
   onSelect: (v: string) => void;
@@ -382,10 +621,11 @@ function PropertySection({ p }: { p: any }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{t("settings.property")}</h2>
-        <Pending show={m.isPending} />
-      </div>
+      <SectionHeader
+        title={t("settings.property")}
+        description={t("settings.propertyDesc")}
+        pending={m.isPending}
+      />
 
       <Group label={t("settings.identity")}>
         <Row
@@ -417,7 +657,7 @@ function PropertySection({ p }: { p: any }) {
             value={g("propertyType") || "Apartment"}
             onValueChange={v => save({ propertyType: v })}
           >
-            <SelectTrigger className="h-8 w-40 text-sm">
+            <SelectTrigger className={cn("h-8 text-sm", CONTROL_W)}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -455,10 +695,11 @@ function PropertySection({ p }: { p: any }) {
             />
           </div>
           {g("latitude") && g("longitude") && (
-            <p className="text-xs text-muted-foreground">
+            <Callout variant="info">
+              {t("settings.coordinates")}:{" "}
               {parseFloat(g("latitude")).toFixed(5)},{" "}
               {parseFloat(g("longitude")).toFixed(5)}
-            </p>
+            </Callout>
           )}
         </FullRow>
       </Group>
@@ -466,7 +707,7 @@ function PropertySection({ p }: { p: any }) {
       <Group label={t("settings.specifications")}>
         {specs.map(({ k, lKey, placeholder, step, min, max, suffix }: any) => (
           <Row key={k} label={t(lKey)} htmlFor={`ps-${k}`}>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-end gap-1.5">
               <Field
                 id={`ps-${k}`}
                 type="number"
@@ -475,12 +716,12 @@ function PropertySection({ p }: { p: any }) {
                 max={max}
                 value={p?.[k] ? String(p[k]) : ""}
                 placeholder={placeholder}
-                width="w-20"
+                width={NUM_W}
                 onSave={v => save({ [k]: v ? Number(v) : undefined })}
               />
-              {suffix && (
-                <span className="text-xs text-muted-foreground">{suffix}</span>
-              )}
+              <span className="w-10 shrink-0 text-xs text-muted-foreground">
+                {suffix ?? ""}
+              </span>
             </div>
           </Row>
         ))}
@@ -511,15 +752,16 @@ function PurchaseSection({ p }: { p: any }) {
   const [, nav] = useLocation();
   const price = p?.purchasePrice ?? 0;
   const acq = costs?.reduce((s, c) => s + c.amount, 0) ?? 0;
-  const cur = p?.currency ?? "₪";
-  const fmt = (c: number) => `${cur}${(c / 100).toLocaleString()}`;
+  const code = p?.currencyCode ?? "ILS";
+  const fmt = (c: number) => formatCurrency(c, code);
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{t("settings.purchase")}</h2>
-        <Pending show={m.isPending} />
-      </div>
+      <SectionHeader
+        title={t("settings.purchase")}
+        description={t("settings.purchaseDesc")}
+        pending={m.isPending}
+      />
 
       <Group>
         <Row label={t("settings.purchasePrice")} htmlFor="pu-price">
@@ -530,7 +772,6 @@ function PurchaseSection({ p }: { p: any }) {
             step="0.01"
             value={price ? String(price / 100) : ""}
             placeholder="0.00"
-            width="w-36"
             onSave={v =>
               m.mutate({
                 purchasePrice: v ? Math.round(parseFloat(v) * 100) : undefined,
@@ -543,7 +784,6 @@ function PurchaseSection({ p }: { p: any }) {
             id="pu-date"
             type="date"
             value={p?.purchaseDate ?? ""}
-            width="w-36"
             onSave={v => m.mutate({ purchaseDate: v || undefined })}
           />
         </Row>
@@ -564,16 +804,10 @@ function PurchaseSection({ p }: { p: any }) {
         </Row>
       </Group>
 
-      <Group label={t("settings.totalInvested")}>
-        <div className="px-4 py-4 flex items-baseline justify-between">
-          <p className="text-sm text-muted-foreground">
-            {t("settings.totalInvestedDesc")}
-          </p>
-          <p className="text-base font-semibold tabular-nums">
-            {fmt(price + acq)}
-          </p>
-        </div>
-      </Group>
+      <StatCard
+        label={t("settings.totalInvestedDesc")}
+        value={fmt(price + acq)}
+      />
     </div>
   );
 }
@@ -600,10 +834,11 @@ function HouseholdSection() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{t("settings.household")}</h2>
-        <Pending show={upd.isPending} />
-      </div>
+      <SectionHeader
+        title={t("settings.household")}
+        description={t("settings.householdDesc")}
+        pending={upd.isPending}
+      />
 
       <Group label={t("settings.yourProfile")}>
         <Row label={t("settings.displayName")} htmlFor="h-name">
@@ -629,9 +864,7 @@ function HouseholdSection() {
         </Row>
         <Row label={t("settings.lastSignIn")}>
           <span className="text-sm text-muted-foreground">
-            {me?.lastSignedIn
-              ? new Date(me.lastSignedIn).toLocaleDateString()
-              : "—"}
+            {me?.lastSignedIn ? formatDate(String(me.lastSignedIn)) : "—"}
           </span>
         </Row>
       </Group>
@@ -650,9 +883,11 @@ function HouseholdSection() {
                     {t("settings.you")}
                   </Badge>
                 )}
-                <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
-                  {ini(m.name)}
-                </div>
+                <Avatar className="size-7">
+                  <AvatarFallback className="text-xs font-medium">
+                    {ini(m.name)}
+                  </AvatarFallback>
+                </Avatar>
               </div>
             </Row>
           ))}
@@ -673,10 +908,11 @@ function RegionalSection({ p }: { p: any }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{t("settings.regional")}</h2>
-        <Pending show={m.isPending} />
-      </div>
+      <SectionHeader
+        title={t("settings.regional")}
+        description={t("settings.regionalDesc")}
+        pending={m.isPending}
+      />
 
       <Group label={t("settings.currency")}>
         <Row label={t("settings.currency")}>
@@ -698,7 +934,7 @@ function RegionalSection({ p }: { p: any }) {
             id="r-sym"
             value={g("currency", "₪")}
             placeholder="₪"
-            width="w-16"
+            width={NUM_W}
             onSave={v => m.mutate({ currency: v })}
           />
         </Row>
@@ -767,18 +1003,19 @@ function NotificationsSection({ p }: { p: any }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{t("settings.notifications")}</h2>
-        <Pending show={m.isPending} />
-      </div>
+      <SectionHeader
+        title={t("settings.notifications")}
+        description={t("settings.notificationsDesc")}
+        pending={m.isPending}
+      />
 
       <Group label={t("settings.leadTime")}>
-        <div className="px-4 py-4 space-y-3">
+        <div className="px-4 py-3.5 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm">{t("settings.remind")}</p>
-            <span className="text-sm font-medium tabular-nums text-muted-foreground">
+            <p className="text-sm font-medium">{t("settings.remind")}</p>
+            <Badge variant="secondary" className="tabular-nums font-medium">
               {days} {t("settings.daysBefore")}
-            </span>
+            </Badge>
           </div>
           <Slider
             min={1}
@@ -808,6 +1045,47 @@ function NotificationsSection({ p }: { p: any }) {
   );
 }
 
+/** Directory-style integration entry: icon, name, description, status badge,
+ *  an action slot, and optional footer (e.g. an inline notice). */
+function IntegrationCard({
+  icon,
+  name,
+  description,
+  badge,
+  action,
+  footer,
+}: {
+  icon: ReactNode;
+  name: string;
+  description: string;
+  badge?: ReactNode;
+  action?: ReactNode;
+  footer?: ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-border p-4 space-y-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+            {icon}
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">{name}</p>
+              {badge}
+            </div>
+            <p className="text-xs text-muted-foreground leading-snug">
+              {description}
+            </p>
+          </div>
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+      {footer}
+    </div>
+  );
+}
+
 function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
@@ -816,73 +1094,73 @@ function IntegrationsSection({ p }: { p: any }) {
     onError: e => toast.error(e.message),
   });
   const hasKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
+  const mapsProvider = p?.mapsProvider ?? "google";
+  // Selected storage backend is owned here so the Google Drive panel only
+  // renders when Drive is the selected backend (not always, as before).
+  const [selectedBackend, setSelectedBackend] = useState<BackendName | null>(
+    null
+  );
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{t("settings.integrations")}</h2>
-        <Pending show={m.isPending} />
-      </div>
+      <SectionHeader
+        title={t("settings.integrations")}
+        description={t("settings.integrationsDesc")}
+        pending={m.isPending}
+      />
 
-      <StorageBackendGroup />
-      <FileStorageGroup />
+      <StorageBackendGroup onSelectedChange={setSelectedBackend} />
+      {selectedBackend === "gdrive" && <FileStorageGroup />}
       <StoredFilesGroup />
 
-      <Group label="Google Calendar">
-        <Row
-          label={t("settings.syncEvents")}
-          hint={t("settings.syncEventsHint")}
-          htmlFor="i-sync"
-        >
-          <Switch
-            id="i-sync"
-            checked={p?.calendarSyncEnabled ?? false}
-            onCheckedChange={v => m.mutate({ calendarSyncEnabled: v })}
+      <div className="space-y-2">
+        <p className="px-1 text-xs font-medium text-muted-foreground">
+          {t("settings.moreIntegrations")}
+        </p>
+        <div className="space-y-2">
+          <IntegrationCard
+            icon={<CalendarIcon className="h-4 w-4" />}
+            name={t("settings.calendar")}
+            description={t("settings.syncEventsHint")}
+            badge={
+              <Badge variant="secondary" className="text-[10px] font-normal">
+                {t("settings.comingSoon")}
+              </Badge>
+            }
           />
-        </Row>
-        <Row label={t("settings.connectedAccount")}>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">
-              {t("settings.notConnected")}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              disabled
-            >
-              {t("settings.connect")}
-            </Button>
-          </div>
-        </Row>
-      </Group>
-
-      <Group label={t("settings.maps")}>
-        <Row label={t("settings.provider")}>
-          <ToggleGroup
-            type="single"
-            value={p?.mapsProvider ?? "google"}
-            className="h-8"
-            onValueChange={v => v && m.mutate({ mapsProvider: v as any })}
-          >
-            <ToggleGroupItem value="google" className="text-xs h-8 px-4">
-              Google
-            </ToggleGroupItem>
-            <ToggleGroupItem value="osm" className="text-xs h-8 px-4">
-              OpenStreetMap
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </Row>
-        {!hasKey && (p?.mapsProvider ?? "google") === "google" && (
-          <div className="px-4 py-3 text-xs text-muted-foreground border-t bg-amber-50/60 dark:bg-amber-950/20">
-            Add{" "}
-            <code className="font-mono text-amber-700 dark:text-amber-400">
-              VITE_GOOGLE_MAPS_API_KEY
-            </code>{" "}
-            to <code className="font-mono">.env</code> for geocoding.
-          </div>
-        )}
-      </Group>
+          <IntegrationCard
+            icon={<MapIcon className="h-4 w-4" />}
+            name={t("settings.maps")}
+            description={t("settings.mapsHint")}
+            action={
+              <ToggleGroup
+                type="single"
+                value={mapsProvider}
+                className="h-8"
+                onValueChange={v => v && m.mutate({ mapsProvider: v as any })}
+              >
+                <ToggleGroupItem value="google" className="text-xs h-8 px-4">
+                  Google
+                </ToggleGroupItem>
+                <ToggleGroupItem value="osm" className="text-xs h-8 px-4">
+                  OpenStreetMap
+                </ToggleGroupItem>
+              </ToggleGroup>
+            }
+            footer={
+              !hasKey && mapsProvider === "google" ? (
+                <Callout variant="warning">
+                  <span>
+                    {t("settings.mapsKeyPrefix")}{" "}
+                    <code className="font-mono">VITE_GOOGLE_MAPS_API_KEY</code>{" "}
+                    {t("settings.mapsKeySuffix")}
+                  </span>
+                </Callout>
+              ) : undefined
+            }
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -918,7 +1196,11 @@ type StorageStatus = {
  * self-hostable ones (Local disk, S3-compatible) inline — no .env editing or
  * restart. Google Drive keeps its dedicated panel below for the OAuth flow.
  */
-function StorageBackendGroup() {
+function StorageBackendGroup({
+  onSelectedChange,
+}: {
+  onSelectedChange?: (backend: BackendName) => void;
+}) {
   const { t } = useTranslation();
   const { data: me } = trpc.profiles.current.useQuery();
   const isAdmin = me?.role === "admin";
@@ -927,6 +1209,12 @@ function StorageBackendGroup() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<BackendName>("local");
   const [busy, setBusy] = useState(false);
+
+  // Notify the parent whenever the selected backend changes so it can render
+  // the Google Drive panel only when Drive is selected.
+  useEffect(() => {
+    onSelectedChange?.(tab);
+  }, [tab, onSelectedChange]);
 
   // Local form
   const [localDir, setLocalDir] = useState("");
@@ -1130,19 +1418,19 @@ function StorageBackendGroup() {
                         : "border-border hover:bg-muted/50"
                     )}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-5 w-5" />
                     <span className="font-medium">{opt.label}</span>
                     {isActive ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
+                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
                         <CheckCircle2 className="h-3 w-3" />
                         {t("settings.storage.active")}
                       </span>
                     ) : configured(opt.id) ? (
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {t("settings.storage.configured")}
                       </span>
                     ) : (
-                      <span className="text-[10px] text-muted-foreground/70">
+                      <span className="text-xs text-muted-foreground/70">
                         {t("settings.storage.notConfigured")}
                       </span>
                     )}
@@ -1159,27 +1447,26 @@ function StorageBackendGroup() {
               hint={t("settings.storage.local.hint")}
             >
               <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {t("settings.storage.local.dir")}
-                  </label>
+                <SubField
+                  label={t("settings.storage.local.dir")}
+                  hint={
+                    status?.backends.local.fromEnv
+                      ? t("settings.storage.local.fromEnv")
+                      : undefined
+                  }
+                >
                   <Input
                     value={localDir}
                     onChange={e => setLocalDir(e.target.value)}
                     placeholder="/data/uploads"
                     className="h-8 text-xs font-mono"
                   />
-                  {status?.backends.local.fromEnv && (
-                    <p className="text-xs text-muted-foreground">
-                      {t("settings.storage.local.fromEnv")}
-                    </p>
-                  )}
-                </div>
+                </SubField>
                 <div className="flex items-center justify-between pt-1">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs"
+                    className="text-xs"
                     disabled={busy}
                     onClick={() => void testBackend("local", { dir: localDir })}
                   >
@@ -1188,7 +1475,7 @@ function StorageBackendGroup() {
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
-                      className="h-7 text-xs"
+                      className="text-xs"
                       disabled={busy}
                       onClick={() => void saveLocal()}
                     >
@@ -1201,7 +1488,7 @@ function StorageBackendGroup() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="text-xs"
                         disabled={busy || !configured("local")}
                         onClick={() => void makeActive("local")}
                       >
@@ -1226,10 +1513,7 @@ function StorageBackendGroup() {
                     {t("settings.storage.s3.fromEnv")}
                   </p>
                 )}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {t("settings.storage.s3.endpoint")}
-                  </label>
+                <SubField label={t("settings.storage.s3.endpoint")}>
                   <Input
                     value={s3.endpoint}
                     onChange={e =>
@@ -1238,12 +1522,9 @@ function StorageBackendGroup() {
                     placeholder="https://<account>.r2.cloudflarestorage.com"
                     className="h-8 text-xs font-mono"
                   />
-                </div>
+                </SubField>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      {t("settings.storage.s3.bucket")}
-                    </label>
+                  <SubField label={t("settings.storage.s3.bucket")}>
                     <Input
                       value={s3.bucket}
                       onChange={e =>
@@ -1252,11 +1533,8 @@ function StorageBackendGroup() {
                       placeholder="homevault"
                       className="h-8 text-xs font-mono"
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      {t("settings.storage.s3.region")}
-                    </label>
+                  </SubField>
+                  <SubField label={t("settings.storage.s3.region")}>
                     <Input
                       value={s3.region}
                       onChange={e =>
@@ -1265,12 +1543,9 @@ function StorageBackendGroup() {
                       placeholder="auto"
                       className="h-8 text-xs font-mono"
                     />
-                  </div>
+                  </SubField>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {t("settings.storage.s3.accessKeyId")}
-                  </label>
+                <SubField label={t("settings.storage.s3.accessKeyId")}>
                   <Input
                     value={s3.accessKeyId}
                     onChange={e =>
@@ -1278,11 +1553,8 @@ function StorageBackendGroup() {
                     }
                     className="h-8 text-xs font-mono"
                   />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {t("settings.storage.s3.secret")}
-                  </label>
+                </SubField>
+                <SubField label={t("settings.storage.s3.secret")}>
                   <div className="relative">
                     <Input
                       type={showS3Secret ? "text" : "password"}
@@ -1309,12 +1581,12 @@ function StorageBackendGroup() {
                       )}
                     </button>
                   </div>
-                </div>
+                </SubField>
                 <div className="flex items-center justify-between pt-1">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs"
+                    className="text-xs"
                     disabled={busy}
                     onClick={() =>
                       void testBackend("s3", {
@@ -1331,7 +1603,7 @@ function StorageBackendGroup() {
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
-                      className="h-7 text-xs"
+                      className="text-xs"
                       disabled={busy}
                       onClick={() => void saveS3()}
                     >
@@ -1344,7 +1616,7 @@ function StorageBackendGroup() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="text-xs"
                         disabled={busy || !configured("s3")}
                         onClick={() => void makeActive("s3")}
                       >
@@ -1373,7 +1645,7 @@ function StorageBackendGroup() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="h-7 text-xs"
+                    className="text-xs"
                     disabled={busy || !configured("gdrive")}
                     onClick={() => void makeActive("gdrive")}
                   >
@@ -1688,10 +1960,7 @@ function FileStorageGroup() {
             >
               <div className="space-y-3">
                 {/* Client ID */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {t("settings.fileStorage.creds.clientId")}
-                  </label>
+                <SubField label={t("settings.fileStorage.creds.clientId")}>
                   <Input
                     value={credForm.clientId}
                     onChange={e =>
@@ -1700,12 +1969,16 @@ function FileStorageGroup() {
                     placeholder="123456789-xxxx.apps.googleusercontent.com"
                     className="h-8 text-xs font-mono"
                   />
-                </div>
+                </SubField>
                 {/* Client Secret */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {t("settings.fileStorage.creds.clientSecret")}
-                  </label>
+                <SubField
+                  label={t("settings.fileStorage.creds.clientSecret")}
+                  hint={
+                    status?.secretExists
+                      ? t("settings.fileStorage.creds.secretSaved")
+                      : undefined
+                  }
+                >
                   <div className="relative">
                     <Input
                       type={showSecret ? "text" : "password"}
@@ -1732,17 +2005,12 @@ function FileStorageGroup() {
                       )}
                     </button>
                   </div>
-                  {status?.secretExists && (
-                    <p className="text-xs text-muted-foreground">
-                      {t("settings.fileStorage.creds.secretSaved")}
-                    </p>
-                  )}
-                </div>
+                </SubField>
                 {/* Redirect URI */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    {t("settings.fileStorage.creds.redirectUri")}
-                  </label>
+                <SubField
+                  label={t("settings.fileStorage.creds.redirectUri")}
+                  hint={t("settings.fileStorage.creds.redirectUriHint")}
+                >
                   <Input
                     value={credForm.redirectUri}
                     onChange={e =>
@@ -1751,10 +2019,7 @@ function FileStorageGroup() {
                     placeholder="https://your-server/api/google-drive/callback"
                     className="h-8 text-xs font-mono"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {t("settings.fileStorage.creds.redirectUriHint")}
-                  </p>
-                </div>
+                </SubField>
                 {/* Actions */}
                 <div className="flex items-center justify-between pt-1">
                   <a
@@ -1770,7 +2035,7 @@ function FileStorageGroup() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="text-xs"
                         onClick={() => {
                           setEditingCreds(false);
                           setCredForm(f => ({ ...f, secret: "" }));
@@ -1782,7 +2047,7 @@ function FileStorageGroup() {
                     )}
                     <Button
                       size="sm"
-                      className="h-7 text-xs"
+                      className="text-xs"
                       onClick={() => void handleSaveCredentials()}
                       disabled={savingCreds}
                     >
@@ -1804,7 +2069,7 @@ function FileStorageGroup() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs"
+                className="text-xs"
                 onClick={() => setEditingCreds(true)}
               >
                 {t("settings.fileStorage.creds.edit")}
@@ -1844,34 +2109,35 @@ function FileStorageGroup() {
                   : t("settings.fileStorage.reconnectHintNoEmail")
               }
             >
-              <div className="flex items-center gap-3 border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 rounded-md p-3">
-                <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-300 shrink-0" />
-                <span className="text-xs text-amber-800 dark:text-amber-200 flex-1">
-                  {t("settings.fileStorage.reconnectBannerBody")}
-                </span>
-                <Button
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => {
-                    window.location.href = new URL(
-                      "api/google-drive/connect",
-                      window.location.href
-                    ).href;
-                  }}
-                  disabled={busy}
-                >
-                  {t("settings.fileStorage.reconnect")}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={handleDisconnect}
-                  disabled={busy}
-                >
-                  {t("settings.fileStorage.disconnect")}
-                </Button>
-              </div>
+              <Callout variant="warning">
+                <div className="flex items-center gap-3">
+                  <span className="flex-1">
+                    {t("settings.fileStorage.reconnectBannerBody")}
+                  </span>
+                  <Button
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => {
+                      window.location.href = new URL(
+                        "api/google-drive/connect",
+                        window.location.href
+                      ).href;
+                    }}
+                    disabled={busy}
+                  >
+                    {t("settings.fileStorage.reconnect")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                    onClick={handleDisconnect}
+                    disabled={busy}
+                  >
+                    {t("settings.fileStorage.disconnect")}
+                  </Button>
+                </div>
+              </Callout>
             </FullRow>
           ) : status.connected ? (
             <Row
@@ -1892,7 +2158,7 @@ function FileStorageGroup() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 text-xs"
+                  className="text-xs"
                   onClick={handleDisconnect}
                   disabled={busy}
                 >
@@ -1913,7 +2179,7 @@ function FileStorageGroup() {
                   </span>
                   <Button
                     size="sm"
-                    className="h-7 text-xs"
+                    className="text-xs"
                     onClick={() => {
                       window.location.href = new URL(
                         "api/google-drive/connect",
@@ -1959,20 +2225,20 @@ function FileStorageGroup() {
                         OAuth Playground <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
-                    <input
+                    <Input
                       type="password"
                       value={manualToken}
                       onChange={e => setManualToken(e.target.value)}
                       placeholder={t(
                         "settings.fileStorage.manualToken.placeholder"
                       )}
-                      className="w-full h-8 text-xs font-mono px-3 rounded-md border border-input bg-background"
+                      className="h-8 text-xs font-mono"
                     />
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="text-xs"
                         onClick={() => {
                           setShowManualToken(false);
                           setManualToken("");
@@ -1983,7 +2249,7 @@ function FileStorageGroup() {
                       </Button>
                       <Button
                         size="sm"
-                        className="h-7 text-xs"
+                        className="text-xs"
                         onClick={() => void handleManualToken()}
                         disabled={savingToken}
                       >
@@ -2009,35 +2275,47 @@ function AppearanceSection() {
   const { language, setLanguage } = useLanguage();
   const { t } = useTranslation();
 
+  const THEMES = [
+    { value: "light", label: t("settings.themeLight"), icon: Sun },
+    { value: "dark", label: t("settings.themeDark"), icon: Moon },
+    { value: "system", label: t("settings.themeSystem"), icon: Monitor },
+  ] as const;
+
   return (
     <div className="space-y-5">
-      <h2 className="text-sm font-semibold">{t("settings.appearance")}</h2>
+      <SectionHeader
+        title={t("settings.appearance")}
+        description={t("settings.appearanceDesc")}
+      />
 
-      <Group>
-        <Row label={t("settings.theme")} hint={t("settings.themeHint")}>
-          <ToggleGroup
-            type="single"
-            value={theme}
-            className="h-8"
-            onValueChange={v => v && setTheme(v as any)}
-          >
-            <ToggleGroupItem value="light" className="h-8 px-3 text-xs gap-1.5">
-              <Sun className="h-3.5 w-3.5" />
-              {t("settings.themeLight")}
-            </ToggleGroupItem>
-            <ToggleGroupItem value="dark" className="h-8 px-3 text-xs gap-1.5">
-              <Moon className="h-3.5 w-3.5" />
-              {t("settings.themeDark")}
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="system"
-              className="h-8 px-3 text-xs gap-1.5"
-            >
-              <Monitor className="h-3.5 w-3.5" />
-              {t("settings.themeSystem")}
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </Row>
+      <Group label={t("settings.theme")}>
+        <FullRow label={t("settings.theme")} hint={t("settings.themeHint")}>
+          <div className="grid grid-cols-3 gap-2">
+            {THEMES.map(({ value, label, icon: Icon }) => {
+              const selected = theme === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setTheme(value as any)}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-md border p-3 text-xs transition-colors",
+                    selected
+                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      : "border-border hover:bg-muted/50"
+                  )}
+                  aria-pressed={selected}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="font-medium">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </FullRow>
+      </Group>
+
+      <Group label={t("settings.language")}>
         <Row label={t("settings.language")} hint={t("settings.languageHint")}>
           <ToggleGroup
             type="single"
@@ -2077,7 +2355,6 @@ function DataSection({
   const del = trpc.data.deleteAll.useMutation({
     onSuccess: () => {
       toast.success(t("settings.allRecordsDeleted"));
-      setPhrase("");
       setDanger(false);
     },
     onError: e => toast.error(e.message),
@@ -2086,12 +2363,12 @@ function DataSection({
     onSuccess: () => {
       toast.success(t("settings.propertyDeleted"));
       u.property.list.invalidate();
+      setPropDanger(false);
       switchProperty(1);
     },
     onError: e => toast.error(e.message),
   });
   const [danger, setDanger] = useState(false);
-  const [phrase, setPhrase] = useState("");
   const seed = trpc.data.seedMock.useMutation({
     onSuccess: ({ propertyId }) => {
       toast.success(t("settings.demoRestored"));
@@ -2101,9 +2378,7 @@ function DataSection({
     onError: e => toast.error(e.message),
   });
   const [propDanger, setPropDanger] = useState(false);
-  const [propPhrase, setPropPhrase] = useState("");
   const expected = p?.houseName ?? "My Home";
-  const propExpected = p?.houseName ?? "My Home";
 
   const exportAll = async () => {
     const r = await refetch();
@@ -2121,7 +2396,10 @@ function DataSection({
 
   return (
     <div className="space-y-5">
-      <h2 className="text-sm font-semibold">{t("settings.data")}</h2>
+      <SectionHeader
+        title={t("settings.data")}
+        description={t("settings.dataDesc")}
+      />
 
       <Group label={t("settings.demoData")}>
         <Row
@@ -2131,7 +2409,6 @@ function DataSection({
           <Button
             variant="outline"
             size="sm"
-            className="h-7 text-xs"
             onClick={() => seed.mutate()}
             disabled={seed.isPending}
           >
@@ -2152,7 +2429,6 @@ function DataSection({
           <Button
             variant="outline"
             size="sm"
-            className="h-7 text-xs"
             onClick={exportAll}
             disabled={isFetching}
           >
@@ -2168,7 +2444,7 @@ function DataSection({
           label={t("settings.exportFilesZipLabel")}
           hint={t("settings.exportFilesZipHint")}
         >
-          <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+          <Button variant="outline" size="sm" asChild>
             <a href="/api/export/files.zip" download>
               <Download className="mr-1.5 h-3 w-3" />
               {t("settings.exportFilesZipBtn")}
@@ -2183,139 +2459,68 @@ function DataSection({
       </Group>
 
       <Group label={t("settings.dangerZone")}>
-        {!danger ? (
+        <Row label={t("settings.deleteAll")} hint={t("settings.deleteAllHint")}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
+            onClick={() => setDanger(true)}
+          >
+            {t("settings.deleteAllBtn")}
+          </Button>
+        </Row>
+
+        {canDeleteProperty && (
           <Row
-            label={t("settings.deleteAll")}
-            hint={t("settings.deleteAllHint")}
+            label={t("settings.deleteProperty")}
+            hint={t("settings.deletePropertyHint")}
           >
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-xs text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
-              onClick={() => setDanger(true)}
+              className="text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => setPropDanger(true)}
             >
-              {t("settings.deleteAllBtn")}
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              {t("settings.deletePropertyBtn")}
             </Button>
           </Row>
-        ) : (
-          <div className="px-4 py-4 space-y-3">
-            <p className="text-sm font-medium text-destructive flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              {t("settings.cannotUndo")}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {t("settings.typePrefix")}{" "}
-              <strong className="text-foreground font-medium">
-                {expected}
-              </strong>{" "}
-              {t("settings.typeSuffix")}
-            </p>
-            <Input
-              value={phrase}
-              placeholder={expected}
-              className="h-8 text-sm"
-              onChange={e => setPhrase(e.target.value)}
-              onKeyDown={e => e.key === "Escape" && setDanger(false)}
-              autoFocus
-            />
-            <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                size="sm"
-                className="h-7 text-xs"
-                disabled={phrase !== expected || del.isPending}
-                onClick={() => del.mutate({ confirmationPhrase: phrase })}
-              >
-                {del.isPending && (
-                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                )}
-                {t("settings.confirm")}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => {
-                  setDanger(false);
-                  setPhrase("");
-                }}
-              >
-                {t("common.cancel")}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {canDeleteProperty && (
-          <>
-            {!propDanger ? (
-              <Row
-                label={t("settings.deleteProperty")}
-                hint={t("settings.deletePropertyHint")}
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={() => setPropDanger(true)}
-                >
-                  <Trash2 className="h-3 w-3 mr-1.5" />
-                  {t("settings.deletePropertyBtn")}
-                </Button>
-              </Row>
-            ) : (
-              <div className="px-4 py-4 space-y-3">
-                <p className="text-sm font-medium text-destructive flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  {t("settings.deletePropertyConfirm")}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {t("settings.typePrefix")}{" "}
-                  <strong className="text-foreground font-medium">
-                    {propExpected}
-                  </strong>{" "}
-                  {t("settings.typeSuffix")}
-                </p>
-                <Input
-                  value={propPhrase}
-                  placeholder={propExpected}
-                  className="h-8 text-sm"
-                  onChange={e => setPropPhrase(e.target.value)}
-                  onKeyDown={e => e.key === "Escape" && setPropDanger(false)}
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="h-7 text-xs"
-                    disabled={propPhrase !== propExpected || delProp.isPending}
-                    onClick={() =>
-                      delProp.mutate({ propertyId: activePropertyId })
-                    }
-                  >
-                    {delProp.isPending && (
-                      <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                    )}
-                    {t("settings.deletePropertyConfirmBtn")}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => {
-                      setPropDanger(false);
-                      setPropPhrase("");
-                    }}
-                  >
-                    {t("common.cancel")}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </>
         )}
       </Group>
+
+      <ConfirmDialog
+        open={danger}
+        onOpenChange={setDanger}
+        title={t("settings.cannotUndo")}
+        confirmPhrase={expected}
+        confirmLabel={t("settings.confirm")}
+        pending={del.isPending}
+        onConfirm={() => del.mutate({ confirmationPhrase: expected })}
+        description={
+          <>
+            {t("settings.typePrefix")}{" "}
+            <strong className="text-foreground font-medium">{expected}</strong>{" "}
+            {t("settings.typeSuffix")}
+          </>
+        }
+      />
+
+      <ConfirmDialog
+        open={propDanger}
+        onOpenChange={setPropDanger}
+        title={t("settings.deletePropertyConfirm")}
+        confirmPhrase={expected}
+        confirmLabel={t("settings.deletePropertyConfirmBtn")}
+        pending={delProp.isPending}
+        onConfirm={() => delProp.mutate({ propertyId: activePropertyId })}
+        description={
+          <>
+            {t("settings.typePrefix")}{" "}
+            <strong className="text-foreground font-medium">{expected}</strong>{" "}
+            {t("settings.typeSuffix")}
+          </>
+        }
+      />
     </div>
   );
 }
@@ -2425,7 +2630,7 @@ function StoredFilesGroup() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-xs"
+              className="text-xs"
               onClick={() => setExpanded(e => !e)}
               disabled={list.isLoading || totalCount === 0}
             >
@@ -2437,7 +2642,7 @@ function StoredFilesGroup() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs"
+                className="text-xs"
                 onClick={async () => {
                   try {
                     const r = await reap.mutateAsync();
@@ -2520,7 +2725,7 @@ function StoredFilesGroup() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-7 text-xs"
+                className="text-xs"
                 onClick={() => setPage(p => p + 1)}
                 disabled={list.isFetching}
               >
@@ -2554,8 +2759,6 @@ export default function Settings() {
   const canDeleteProperty =
     (allProperties?.length ?? 0) > 1 && activePropertyId !== 1;
 
-  const NAV = NAV_IDS.map(id => ({ id, label: t(`settings.${id}`) }));
-
   // Sync active tab when the wouter route param changes (e.g. after OAuth
   // callback redirects to /#/settings/integrations).
   useEffect(() => {
@@ -2583,32 +2786,42 @@ export default function Settings() {
 
   return (
     <div className="flex gap-12 min-h-full">
-      {/* Desktop side nav — text only, order flips in RTL via flex direction */}
-      <nav className="hidden md:block w-36 shrink-0 sticky top-4 self-start">
-        <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          {t("settings.title")}
-        </p>
-        {(property?.houseNickname || property?.houseName) && (
-          <p className="mb-3 px-2 text-[11px] text-muted-foreground truncate">
-            {t("settings.editing")}:{" "}
-            <span className="text-foreground font-medium">
-              {property.houseNickname || property.houseName}
-            </span>
+      {/* Desktop side nav — grouped, order flips in RTL via flex direction */}
+      <nav className="hidden md:block w-44 shrink-0 sticky top-4 self-start space-y-5">
+        <div>
+          <p className="px-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+            {t("settings.title")}
           </p>
-        )}
-        {NAV.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => go(id)}
-            className={cn(
-              "w-full text-start px-2 py-1.5 rounded text-sm transition-colors",
-              active === id
-                ? "text-foreground font-medium"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {label}
-          </button>
+          {(property?.houseNickname || property?.houseName) && (
+            <p className="mt-1 px-2 text-[11px] text-muted-foreground truncate">
+              {t("settings.editing")}:{" "}
+              <span className="text-foreground font-medium">
+                {property.houseNickname || property.houseName}
+              </span>
+            </p>
+          )}
+        </div>
+        {NAV_GROUPS.map(group => (
+          <div key={group.groupKey} className="space-y-0.5">
+            <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              {t(`settings.navGroup.${group.groupKey}`)}
+            </p>
+            {group.items.map(({ id, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => go(id)}
+                className={cn(
+                  "flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm transition-colors",
+                  active === id
+                    ? "bg-muted font-medium text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{t(`settings.${id}`)}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
 
@@ -2616,19 +2829,20 @@ export default function Settings() {
       <div className="flex-1 min-w-0 max-w-xl">
         {/* Mobile top nav — inline horizontal scroll strip */}
         <div className="md:hidden -mx-4 mb-4 px-4 border-b">
-          <div className="flex overflow-x-auto gap-0.5 pb-2">
-            {NAV.map(({ id, label }) => (
+          <div className="flex overflow-x-auto gap-1 pb-2">
+            {NAV_FLAT.map(({ id, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => go(id)}
                 className={cn(
-                  "shrink-0 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors",
+                  "inline-flex shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-colors",
                   active === id
                     ? "bg-foreground text-background font-medium"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
-                {label}
+                <Icon className="h-3.5 w-3.5" />
+                {t(`settings.${id}`)}
               </button>
             ))}
           </div>
