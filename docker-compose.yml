@@ -43,21 +43,8 @@ services:
       retries: 5
       start_period: 30s
     restart: unless-stopped
-
-  # Run database migration once at startup
-  migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: node apply-migration-v3.mjs
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=mysql://homevault:${MYSQL_PASSWORD:-changeme}@db:3306/homevault
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: on-failure
+    # Note: the app applies DB migrations automatically on boot (AUTO_MIGRATE,
+    # default on), so no separate migrate step is needed.
 
 volumes:
   mysql_data:

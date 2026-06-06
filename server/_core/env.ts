@@ -33,6 +33,9 @@ const envSchema = z.object({
   ADMIN_SETUP_TOKEN: z.string().default(""),
   NO_AUTH: z.string().default("false"),
   SEED_MOCK_DATA: z.string().default("false"),
+  // Run pending drizzle/*.sql migrations on server boot. Default on; the HA
+  // add-on sets this false because run.sh already migrates via its own script.
+  AUTO_MIGRATE: z.string().default("true"),
   PORT: z.string().default("3005"),
   HOST: z.string().default("0.0.0.0"),
   // ── Notifications (all optional; each adapter no-ops when unset) ──────────
@@ -85,6 +88,7 @@ export const ENV = {
   adminSetupToken: raw.ADMIN_SETUP_TOKEN,
   noAuth: raw.NO_AUTH === "true",
   seedMockData: raw.SEED_MOCK_DATA === "true",
+  autoMigrate: raw.AUTO_MIGRATE !== "false",
   publicBaseUrl: raw.PUBLIC_BASE_URL,
   smtpHost: raw.SMTP_HOST,
   smtpPort: raw.SMTP_PORT,
