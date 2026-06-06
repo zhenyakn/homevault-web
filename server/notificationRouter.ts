@@ -22,6 +22,17 @@ export const notificationRouter = router({
     notif.getPrefs(ctx.user.id)
   ),
 
+  /** Channel destinations + connection state for the Settings UI. */
+  getStatus: protectedProcedure.query(async ({ ctx }) => {
+    const recipient = await notif.getNotificationRecipient(ctx.user.id);
+    return {
+      email: recipient?.email ?? null,
+      whatsappPhone: recipient?.whatsappPhone ?? null,
+      telegramLinked: Boolean(recipient?.telegramChatId),
+      webPushAvailable: Boolean(ENV.vapidPublicKey),
+    };
+  }),
+
   setPref: protectedProcedure
     .input(z.object({ channel: channelEnum, enabled: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
