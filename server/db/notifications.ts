@@ -16,9 +16,8 @@ import {
 } from "../notifications/types";
 
 /** Channels on by default when the user has no explicit preference row. */
-export const DEFAULT_ENABLED_CHANNELS: ReadonlySet<ChannelKey> = new Set<ChannelKey>(
-  ["inapp", "push", "email"]
-);
+export const DEFAULT_ENABLED_CHANNELS: ReadonlySet<ChannelKey> =
+  new Set<ChannelKey>(["inapp", "push", "email"]);
 
 // ── Recipient + channel preferences ───────────────────────────────────────────
 
@@ -33,6 +32,7 @@ export async function getNotificationRecipient(
       email: users.email,
       telegramChatId: users.telegramChatId,
       whatsappPhone: users.whatsappPhone,
+      language: users.language,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -48,7 +48,9 @@ export async function getPrefs(
     .select()
     .from(notificationPrefs)
     .where(eq(notificationPrefs.userId, userId));
-  const byChannel = new Map(rows.map(r => [r.channel as ChannelKey, r.enabled]));
+  const byChannel = new Map(
+    rows.map(r => [r.channel as ChannelKey, r.enabled])
+  );
   const out = {} as Record<ChannelKey, boolean>;
   for (const ch of CHANNEL_KEYS) {
     out[ch] = byChannel.has(ch)
@@ -158,9 +160,7 @@ export async function markRead(id: number, userId: number): Promise<void> {
   await db
     .update(notificationLog)
     .set({ readAt: new Date() })
-    .where(
-      and(eq(notificationLog.id, id), eq(notificationLog.userId, userId))
-    );
+    .where(and(eq(notificationLog.id, id), eq(notificationLog.userId, userId)));
 }
 
 export async function markAllRead(userId: number): Promise<void> {

@@ -248,6 +248,14 @@ export const appRouter = router({
         await db.upsertUser({ openId: ctx.user.openId, name: input.name });
         return { success: true };
       }),
+    // Persist the chosen UI language so server-sent notifications (reminders,
+    // test sends) are delivered in the same language across devices.
+    setLanguage: protectedProcedure
+      .input(z.object({ language: z.enum(["en", "he", "ru"]) }))
+      .mutation(async ({ ctx, input }) => {
+        await db.setUserLanguage(ctx.user.id, input.language);
+        return { success: true };
+      }),
   }),
 
   onboarding: router({

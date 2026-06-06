@@ -873,6 +873,10 @@ async function main() {
     "users ADD whatsappPhone"
   );
   await run(
+    `ALTER TABLE \`users\` ADD COLUMN \`language\` varchar(8) DEFAULT 'en'`,
+    "users ADD language"
+  );
+  await run(
     `CREATE TABLE IF NOT EXISTS \`notification_prefs\` (
       \`id\` int AUTO_INCREMENT PRIMARY KEY,
       \`userId\` int NOT NULL,

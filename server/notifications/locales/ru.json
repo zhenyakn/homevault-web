@@ -1,0 +1,31 @@
+{
+  "expenseOverdue": {
+    "title": "Расход просрочен",
+    "body": "Срок оплаты «{{name}}» ({{amount}}) был {{date}}."
+  },
+  "expenseDue": {
+    "title": "Скоро срок расхода",
+    "body": "Срок оплаты «{{name}}» ({{amount}}) — {{date}}."
+  },
+  "loanDue": {
+    "title": "Скоро платёж по кредиту",
+    "body": "Срок платежа по «{{name}}» — {{date}}.",
+    "bodyWithAmount": "Срок платежа по «{{name}}» ({{amount}}) — {{date}}."
+  },
+  "calendarUpcoming": {
+    "title": "Предстоящее событие",
+    "body": "{{title}} — {{date}}."
+  },
+  "warrantyExpiring": {
+    "title": "Скоро истекает гарантия",
+    "body": "Гарантия на «{{name}}» заканчивается {{date}}."
+  },
+  "repairStale": {
+    "title": "Ремонт требует внимания",
+    "body": "По «{{label}}» нет обновлений уже {{days}}+ дней."
+  },
+  "test": {
+    "title": "Тестовое уведомление HomeVault",
+    "body": "Это тестовое уведомление. Если вы его читаете, канал работает."
+  }
+}

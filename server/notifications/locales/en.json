@@ -1,0 +1,31 @@
+{
+  "expenseOverdue": {
+    "title": "Expense overdue",
+    "body": "{{name}} ({{amount}}) was due on {{date}}."
+  },
+  "expenseDue": {
+    "title": "Expense due soon",
+    "body": "{{name}} ({{amount}}) is due on {{date}}."
+  },
+  "loanDue": {
+    "title": "Loan payment due soon",
+    "body": "{{name}} is due on {{date}}.",
+    "bodyWithAmount": "{{name}} ({{amount}}) is due on {{date}}."
+  },
+  "calendarUpcoming": {
+    "title": "Upcoming event",
+    "body": "{{title}} on {{date}}."
+  },
+  "warrantyExpiring": {
+    "title": "Warranty expiring soon",
+    "body": "{{name}} warranty ends on {{date}}."
+  },
+  "repairStale": {
+    "title": "Repair needs attention",
+    "body": "{{label}} has had no update for {{days}}+ days."
+  },
+  "test": {
+    "title": "HomeVault test notification",
+    "body": "This is a test notification. If you can read it, the channel works."
+  }
+}

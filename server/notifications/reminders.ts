@@ -8,7 +8,7 @@
  * rules trivial to unit-test (see reminders.test.ts).
  */
 
-import type { NotificationPayload } from "./types";
+import type { ReminderMessage } from "./types";
 
 // ── Minimal input shapes (a subset of the Drizzle rows) ───────────────────────
 
@@ -85,10 +85,10 @@ export function withinLeadWindow(
 
 // ── Sweep ─────────────────────────────────────────────────────────────────────
 
-export function collectDueReminders(input: ReminderInput): NotificationPayload[] {
+export function collectDueReminders(input: ReminderInput): ReminderMessage[] {
   const { today, prefs } = input;
   const lead = Math.max(0, prefs.reminderDaysBefore ?? 0);
-  const out: NotificationPayload[] = [];
+  const out: ReminderMessage[] = [];
 
   if (prefs.remindExpenses) {
     for (const e of input.expenses ?? []) {
@@ -97,8 +97,9 @@ export function collectDueReminders(input: ReminderInput): NotificationPayload[]
         out.push({
           dedupeKey: `expense-overdue:${e.id}:${e.date}`,
           category: "expense",
-          title: "Expense overdue",
-          body: `${e.name} (${e.amount}) was due on ${e.date}.`,
+          titleKey: "expenseOverdue.title",
+          bodyKey: "expenseOverdue.body",
+          params: { name: e.name, amount: e.amount, date: e.date },
           url: "/expenses",
         });
       }
@@ -107,8 +108,9 @@ export function collectDueReminders(input: ReminderInput): NotificationPayload[]
         out.push({
           dedupeKey: `expense-due:${e.id}:${e.nextDueDate}`,
           category: "expense",
-          title: "Expense due soon",
-          body: `${e.name} (${e.amount}) is due on ${e.nextDueDate}.`,
+          titleKey: "expenseDue.title",
+          bodyKey: "expenseDue.body",
+          params: { name: e.name, amount: e.amount, date: e.nextDueDate ?? "" },
           url: "/expenses",
         });
       }
@@ -121,10 +123,13 @@ export function collectDueReminders(input: ReminderInput): NotificationPayload[]
         out.push({
           dedupeKey: `loan-due:${l.id}:${l.nextPaymentDate}`,
           category: "loan",
-          title: "Loan payment due soon",
-          body: `${l.name}${
-            l.monthlyPayment ? ` (${l.monthlyPayment})` : ""
-          } is due on ${l.nextPaymentDate}.`,
+          titleKey: "loanDue.title",
+          bodyKey: l.monthlyPayment ? "loanDue.bodyWithAmount" : "loanDue.body",
+          params: {
+            name: l.name,
+            amount: l.monthlyPayment ?? "",
+            date: l.nextPaymentDate ?? "",
+          },
           url: "/loans",
         });
       }
@@ -142,8 +147,9 @@ export function collectDueReminders(input: ReminderInput): NotificationPayload[]
         out.push({
           dedupeKey: `calendar:${c.id}:${c.date}`,
           category: "calendar",
-          title: "Upcoming event",
-          body: `${c.title} on ${c.date}.`,
+          titleKey: "calendarUpcoming.title",
+          bodyKey: "calendarUpcoming.body",
+          params: { title: c.title, date: c.date },
           url: "/calendar",
         });
       }
@@ -157,8 +163,9 @@ export function collectDueReminders(input: ReminderInput): NotificationPayload[]
       out.push({
         dedupeKey: `warranty:${w.id}:${w.warrantyExpiry}`,
         category: "warranty",
-        title: "Warranty expiring soon",
-        body: `${w.name} warranty ends on ${w.warrantyExpiry}.`,
+        titleKey: "warrantyExpiring.title",
+        bodyKey: "warrantyExpiring.body",
+        params: { name: w.name, date: w.warrantyExpiry ?? "" },
         url: "/inventory",
       });
     }
@@ -171,8 +178,9 @@ export function collectDueReminders(input: ReminderInput): NotificationPayload[]
       out.push({
         dedupeKey: `repair-stale:${r.id}:${today}`,
         category: "repair",
-        title: "Repair needs attention",
-        body: `${r.label} has had no update for ${r.days}+ days.`,
+        titleKey: "repairStale.title",
+        bodyKey: "repairStale.body",
+        params: { label: r.label, days: r.days },
         url: "/repairs",
       });
     }

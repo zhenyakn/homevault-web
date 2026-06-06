@@ -5,6 +5,7 @@
  */
 
 import { dispatchNotification } from "./dispatch";
+import { resolveMessage } from "./i18n";
 import { inAppChannel } from "./channels/inapp";
 import { pushChannel } from "./channels/push";
 import { emailChannel } from "./channels/email";
@@ -21,7 +22,7 @@ import type {
   ChannelKey,
   ChannelResult,
   NotificationChannel,
-  NotificationPayload,
+  ReminderMessage,
 } from "./types";
 
 /** All registered channel adapters, in fan-out order. */
@@ -35,18 +36,21 @@ export const channels: NotificationChannel[] = [
 ];
 
 /**
- * Deliver `payload` to `userId` across their enabled, configured channels.
+ * Deliver `message` to `userId` across their enabled, configured channels.
+ * The message is resolved into the recipient's preferred language first, so the
+ * delivered text (and the stored in-app copy) match the user's UI language.
  * Idempotent per (channel, dedupeKey); persists "sent"/"failed" to the log
  * ("skipped" is intentionally not persisted to avoid daily noise).
  */
 export async function notify(
   userId: number,
-  payload: NotificationPayload,
+  message: ReminderMessage,
   opts: { channels?: NotificationChannel[] } = {}
 ): Promise<ChannelResult[]> {
   const recipient = await getNotificationRecipient(userId);
   if (!recipient) return [];
   const enabledChannels = await getEnabledChannels(userId);
+  const payload = resolveMessage(message, recipient.language);
 
   return dispatchNotification(recipient, payload, {
     channels: opts.channels ?? channels,
@@ -75,15 +79,18 @@ export async function notifyTest(
   userId: number,
   channel: ChannelKey
 ): Promise<ChannelResult[]> {
-  const payload: NotificationPayload = {
-    dedupeKey: `test:${channel}:${Date.now()}`,
-    category: "system",
-    title: "HomeVault test notification",
-    body: "This is a test notification. If you can read it, the channel works.",
-    url: "/settings/notifications",
-  };
   const recipient = await getNotificationRecipient(userId);
   if (!recipient) return [];
+  const payload = resolveMessage(
+    {
+      dedupeKey: `test:${channel}:${Date.now()}`,
+      category: "system",
+      titleKey: "test.title",
+      bodyKey: "test.body",
+      url: "/settings/notifications",
+    },
+    recipient.language
+  );
   return dispatchNotification(recipient, payload, {
     channels,
     enabledChannels: new Set([channel]),

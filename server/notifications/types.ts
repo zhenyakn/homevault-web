@@ -32,9 +32,30 @@ export const CHANNEL_KEYS: readonly ChannelKey[] = [
 ] as const;
 
 /**
- * A single notification to deliver. `dedupeKey` is stable for a given logical
- * event (e.g. "expense-due:<id>:<date>") so the same reminder is never sent
- * twice, even if the sweep runs repeatedly.
+ * A language-independent description of a notification. The sweep and test
+ * sender produce these (i18n key + interpolation params); they're resolved into
+ * a `NotificationPayload` per recipient via the recipient's language. Keeping
+ * the keys here (not literal text) is what lets one event be delivered in each
+ * recipient's chosen language.
+ */
+export type ReminderMessage = {
+  dedupeKey: string;
+  category: NotificationCategory;
+  /** i18n key for the title (see server/notifications/locales). */
+  titleKey: string;
+  /** i18n key for the body. */
+  bodyKey: string;
+  /** Interpolation values for the title/body templates. */
+  params?: Record<string, string | number>;
+  /** Optional in-app route the notification links to. */
+  url?: string;
+};
+
+/**
+ * A single notification ready to deliver — the resolved (translated) form a
+ * channel sends and the delivery log stores. `dedupeKey` is stable for a given
+ * logical event (e.g. "expense-due:<id>:<date>") so the same reminder is never
+ * sent twice, even if the sweep runs repeatedly.
  */
 export type NotificationPayload = {
   dedupeKey: string;
@@ -52,6 +73,8 @@ export type Recipient = {
   email?: string | null;
   telegramChatId?: string | null;
   whatsappPhone?: string | null;
+  /** Preferred language; selects the language of the delivered text. */
+  language?: string | null;
 };
 
 /**

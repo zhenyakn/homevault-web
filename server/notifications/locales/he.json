@@ -1,0 +1,31 @@
+{
+  "expenseOverdue": {
+    "title": "הוצאה באיחור",
+    "body": "המועד לתשלום {{name}} ({{amount}}) היה {{date}}."
+  },
+  "expenseDue": {
+    "title": "הוצאה לתשלום בקרוב",
+    "body": "המועד לתשלום {{name}} ({{amount}}) הוא {{date}}."
+  },
+  "loanDue": {
+    "title": "תשלום הלוואה בקרוב",
+    "body": "המועד לתשלום {{name}} הוא {{date}}.",
+    "bodyWithAmount": "המועד לתשלום {{name}} ({{amount}}) הוא {{date}}."
+  },
+  "calendarUpcoming": {
+    "title": "אירוע קרוב",
+    "body": "{{title}} בתאריך {{date}}."
+  },
+  "warrantyExpiring": {
+    "title": "אחריות עומדת לפוג",
+    "body": "האחריות על {{name}} מסתיימת בתאריך {{date}}."
+  },
+  "repairStale": {
+    "title": "תיקון דורש טיפול",
+    "body": "ל-{{label}} אין עדכון כבר {{days}}+ ימים."
+  },
+  "test": {
+    "title": "התראת בדיקה של HomeVault",
+    "body": "זוהי התראת בדיקה. אם אתם קוראים אותה, הערוץ עובד."
+  }
+}

@@ -27,6 +27,8 @@ export const users = mysqlTable(
     // Notification channel destinations (email already lives above).
     telegramChatId: varchar("telegramChatId", { length: 64 }),
     whatsappPhone: varchar("whatsappPhone", { length: 32 }),
+    // Preferred UI language; also drives the language of outbound notifications.
+    language: varchar("language", { length: 8 }).default("en"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
     lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
