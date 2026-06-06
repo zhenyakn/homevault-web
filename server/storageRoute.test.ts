@@ -159,14 +159,24 @@ describe("POST /api/storage/active", () => {
     expect(storageMock.setActiveBackend).not.toHaveBeenCalled();
   });
 
-  it("403 in NO_AUTH mode without the setup token", async () => {
+  it("allows switching to LOCAL in NO_AUTH without the setup token", async () => {
+    // Local disk has no exfiltration vector, so it's gated by admin role only.
     hoisted.envState.noAuth = true;
     hoisted.envState.adminSetupToken = "shared-secret";
     const res = await post("/api/storage/active", { backend: "local" });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    expect(storageMock.setActiveBackend).toHaveBeenCalledWith("local");
   });
 
-  it("allows the mutation in NO_AUTH mode with the correct setup token", async () => {
+  it("403 switching to S3 in NO_AUTH without the setup token", async () => {
+    hoisted.envState.noAuth = true;
+    hoisted.envState.adminSetupToken = "shared-secret";
+    const res = await post("/api/storage/active", { backend: "s3" });
+    expect(res.status).toBe(403);
+    expect(storageMock.setActiveBackend).not.toHaveBeenCalled();
+  });
+
+  it("allows switching to S3 in NO_AUTH with the correct setup token", async () => {
     hoisted.envState.noAuth = true;
     hoisted.envState.adminSetupToken = "shared-secret";
     const res = await fetch(`${app.url}/api/storage/active`, {
@@ -175,7 +185,7 @@ describe("POST /api/storage/active", () => {
         "Content-Type": "application/json",
         "X-Admin-Setup-Token": "shared-secret",
       },
-      body: JSON.stringify({ backend: "local" }),
+      body: JSON.stringify({ backend: "s3" }),
     });
     expect(res.status).toBe(200);
   });
@@ -210,6 +220,14 @@ describe("POST /api/storage/s3", () => {
       accessKeyId: creds.accessKeyId,
     });
     expect(res.status).toBe(400);
+  });
+
+  it("403 in NO_AUTH without the setup token (external binding stays gated)", async () => {
+    hoisted.envState.noAuth = true;
+    hoisted.envState.adminSetupToken = "shared-secret";
+    const res = await post("/api/storage/s3", creds);
+    expect(res.status).toBe(403);
+    expect(storageMock.saveS3Config).not.toHaveBeenCalled();
   });
 
   it("allows omitting the secret when one already exists", async () => {
@@ -253,6 +271,20 @@ describe("POST /api/storage/local", () => {
     const res = await post("/api/storage/local", {});
     expect(res.status).toBe(400);
   });
+
+  it("works in NO_AUTH without the setup token (local is admin-gated only)", async () => {
+    hoisted.envState.noAuth = true;
+    hoisted.envState.adminSetupToken = "shared-secret";
+    const res = await post("/api/storage/local", { dir: "/data/uploads" });
+    expect(res.status).toBe(200);
+    expect(storageMock.saveLocalDir).toHaveBeenCalledWith("/data/uploads");
+  });
+
+  it("403 for non-admin callers", async () => {
+    hoisted.ctxState.user = { id: 2, role: "user" };
+    const res = await post("/api/storage/local", { dir: "/data/uploads" });
+    expect(res.status).toBe(403);
+  });
 });
 
 // ─── /test ───────────────────────────────────────────────────────────────────
@@ -270,5 +302,23 @@ describe("POST /api/storage/test", () => {
   it("400 for an unknown backend", async () => {
     const res = await post("/api/storage/test", { backend: "ftp" });
     expect(res.status).toBe(400);
+  });
+
+  it("tests LOCAL in NO_AUTH without the setup token", async () => {
+    hoisted.envState.noAuth = true;
+    hoisted.envState.adminSetupToken = "shared-secret";
+    const res = await post("/api/storage/test", {
+      backend: "local",
+      dir: "/x",
+    });
+    expect(res.status).toBe(200);
+    expect(storageMock.testBackend).toHaveBeenCalled();
+  });
+
+  it("403 testing S3 in NO_AUTH without the setup token", async () => {
+    hoisted.envState.noAuth = true;
+    hoisted.envState.adminSetupToken = "shared-secret";
+    const res = await post("/api/storage/test", { backend: "s3" });
+    expect(res.status).toBe(403);
   });
 });

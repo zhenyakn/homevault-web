@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from "crypto";
 import type { Request, Response, NextFunction } from "express";
-import { ENV } from "./env";
+import { isSecureRequest } from "./cookies";
 
 /**
  * Double-submit CSRF token.
@@ -27,15 +27,18 @@ export const CSRF_HEADER = "x-csrf-token";
 const TOKEN_BYTES = 32;
 
 function buildCookieOptions(req: Request) {
-  // Match the session cookie's secure/SameSite calculation.
-  const xfp = req.headers["x-forwarded-proto"];
-  const proto =
-    typeof xfp === "string" ? xfp.split(",")[0].trim() : req.protocol;
-  const secure = ENV.isProduction || proto === "https";
+  // Match the session cookie's secure/SameSite calculation EXACTLY
+  // (getSessionCookieOptions → isSecureRequest). Deriving `secure` from the
+  // real request protocol — not `NODE_ENV` — is critical: the Home Assistant
+  // add-on and many self-hosted Docker installs run NODE_ENV=production but are
+  // reached over plain HTTP (HA ingress, http://<lan-ip>:port). Forcing
+  // `Secure` there made browsers silently drop this cookie, so the SPA had no
+  // token to echo and every state-changing POST failed CSRF.
+  const secure = isSecureRequest(req);
   return {
     httpOnly: false, // intentional — JS must read this
     secure,
-    sameSite: secure ? ("strict" as const) : ("lax" as const),
+    sameSite: secure ? ("none" as const) : ("lax" as const),
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   };

@@ -60,6 +60,26 @@ describe("csrfIssueMiddleware", () => {
     });
     expect(res.headers.get("set-cookie")).toBeNull();
   });
+
+  it("issues a non-Secure cookie over plain HTTP so browsers keep it", async () => {
+    // Regression: the add-on / self-hosted Docker run NODE_ENV=production but
+    // are reached over HTTP (HA ingress). A forced-Secure cookie is dropped by
+    // the browser, leaving the SPA with no token to echo → CSRF always fails.
+    process.env.NODE_ENV = "production";
+    const res = await fetch(`${app.url}/safe`);
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain(`${CSRF_COOKIE}=`);
+    expect(setCookie.toLowerCase()).not.toContain("secure");
+  });
+
+  it("issues a Secure cookie when the request is HTTPS (x-forwarded-proto)", async () => {
+    process.env.NODE_ENV = "production";
+    const res = await fetch(`${app.url}/safe`, {
+      headers: { "x-forwarded-proto": "https" },
+    });
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    expect(setCookie.toLowerCase()).toContain("secure");
+  });
 });
 
 describe("csrfRequireMiddleware", () => {
