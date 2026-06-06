@@ -1062,36 +1062,32 @@ function NotificationsSection({ p }: { p: any }) {
       </Group>
 
       <ChannelsBlock />
-      <TelegramConnectCard />
     </div>
   );
 }
 
-/** Channel metadata: icon + whether the channel has a text destination field. */
-const CHANNEL_META: Record<
-  ChannelKey,
-  { icon: LucideIcon; hasDestination: boolean; destKey?: string }
-> = {
-  inapp: { icon: Bell, hasDestination: false },
-  push: { icon: Smartphone, hasDestination: false },
-  email: { icon: Mail, hasDestination: true, destKey: "settings.ch.emailDest" },
-  webpush: { icon: Globe, hasDestination: false },
-  telegram: { icon: Send, hasDestination: false },
-  whatsapp: {
-    icon: MessageCircle,
-    hasDestination: true,
-    destKey: "settings.ch.whatsappDest",
-  },
-};
+/** Channel metadata: icon + whether the channel requires setup (a destination
+ *  or connection) before it can deliver. Setup lives under the Integrations tab;
+ *  the on/off toggles live here under Notifications. */
+const CHANNEL_META: Record<ChannelKey, { icon: LucideIcon; needsSetup: boolean }> =
+  {
+    inapp: { icon: Bell, needsSetup: false },
+    push: { icon: Smartphone, needsSetup: false },
+    email: { icon: Mail, needsSetup: true },
+    webpush: { icon: Globe, needsSetup: true },
+    telegram: { icon: Send, needsSetup: true },
+    whatsapp: { icon: MessageCircle, needsSetup: true },
+  };
 
 /**
- * Multi-channel delivery preview (Phase 1, mock). Lets the user toggle each
- * channel, edit destinations, and fire a "Send test" that pops a toast and
- * drops an item into the header notification center. Backed by the in-memory
- * mock store — no backend yet.
+ * Delivery-channel toggles (Phase 1, mock) — the "what" of notifications lives
+ * here under Notifications: choose which channels deliver. Connecting a channel
+ * (destinations, the Telegram bot, etc.) lives under the Integrations tab. A
+ * channel that's enabled but not yet connected shows a "Set up" shortcut.
  */
 function ChannelsBlock() {
   const { t } = useTranslation();
+  const [, setLocation] = useLocation();
   const { channels } = useMockNotifications();
 
   const sendTest = (key: ChannelKey) => {
@@ -1112,24 +1108,37 @@ function ChannelsBlock() {
       {channels.map(c => {
         const meta = CHANNEL_META[c.key];
         const Icon = meta.icon;
+        const needsConfig = meta.needsSetup && !c.configured;
         return (
-          <div key={c.key} className="px-4 py-3 space-y-2.5">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-none">
-                    {t(`settings.ch.${c.key}`)}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground leading-snug">
-                    {t(`settings.ch.${c.key}Hint`)}
-                  </p>
-                </div>
+          <div
+            key={c.key}
+            className="flex items-center justify-between gap-4 px-4 py-3 min-h-[52px]"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+                <Icon className="h-4 w-4" />
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                {c.enabled && (
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-none">
+                  {t(`settings.ch.${c.key}`)}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground leading-snug">
+                  {t(`settings.ch.${c.key}Hint`)}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              {c.enabled &&
+                (needsConfig ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs text-muted-foreground"
+                    onClick={() => setLocation("/settings/integrations")}
+                  >
+                    {t("settings.ch.setUp")}
+                  </Button>
+                ) : (
                   <Button
                     variant="outline"
                     size="sm"
@@ -1138,99 +1147,15 @@ function ChannelsBlock() {
                   >
                     {t("settings.ch.sendTest")}
                   </Button>
-                )}
-                <Switch
-                  checked={c.enabled}
-                  onCheckedChange={v => setChannelEnabled(c.key, v)}
-                />
-              </div>
-            </div>
-            {meta.hasDestination && c.enabled && (
-              <Input
-                value={c.destination ?? ""}
-                onChange={e => {
-                  setChannelDestination(c.key, e.target.value);
-                  setChannelConfigured(c.key, e.target.value.trim().length > 0);
-                }}
-                placeholder={meta.destKey ? t(meta.destKey) : ""}
-                className="h-8 text-sm"
+                ))}
+              <Switch
+                checked={c.enabled}
+                onCheckedChange={v => setChannelEnabled(c.key, v)}
               />
-            )}
+            </div>
           </div>
         );
       })}
-    </Group>
-  );
-}
-
-/**
- * Telegram bot connection preview (Phase 1, mock). Shows the link-code flow and
- * a faux connected/disconnected toggle, plus the interactive bot transcript.
- */
-function TelegramConnectCard() {
-  const { t } = useTranslation();
-  const [connected, setConnected] = useState(false);
-
-  const copyCode = () => {
-    navigator.clipboard?.writeText(mockTelegramLinkCode).catch(() => {});
-    toast.success(t("settings.ch.codeCopied"));
-  };
-
-  return (
-    <Group label={t("settings.ch.botTitle")}>
-      <div className="space-y-3 px-4 py-3.5">
-        {connected ? (
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <p className="text-sm">
-                {t("settings.ch.connectedAs", { handle: mockTelegramHandle })}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => setConnected(false)}
-            >
-              {t("settings.ch.disconnect")}
-            </Button>
-          </div>
-        ) : (
-          <>
-            <p className="text-xs text-muted-foreground leading-snug">
-              {t("settings.ch.botInstructions")}
-            </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-sm font-mono tracking-wider">
-                {mockTelegramLinkCode}
-              </code>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={copyCode}
-                aria-label={t("settings.ch.copyCode")}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-8 w-full text-xs"
-              onClick={() => {
-                setConnected(true);
-                toast.success(t("settings.ch.connectedToast"));
-              }}
-            >
-              {t("settings.ch.simulateConnect")}
-            </Button>
-          </>
-        )}
-
-        <BotPreview />
-      </div>
     </Group>
   );
 }
@@ -1276,6 +1201,217 @@ function IntegrationCard({
   );
 }
 
+/** Status pill shown on a notification-channel integration card. */
+function ChannelStatusBadge({ configured }: { configured: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <Badge
+      variant={configured ? "secondary" : "outline"}
+      className="text-[10px] font-normal"
+    >
+      {configured ? t("settings.ch.connected") : t("settings.ch.notConnected")}
+    </Badge>
+  );
+}
+
+/**
+ * Telegram bot connection (Phase 1, mock). Lives under Integrations: link-code
+ * flow, a faux connected/disconnected state, and the interactive bot preview.
+ */
+function TelegramConnectCard() {
+  const { t } = useTranslation();
+  const channel = useMockNotifications().channels.find(c => c.key === "telegram");
+  const connected = Boolean(channel?.configured);
+
+  const copyCode = () => {
+    navigator.clipboard?.writeText(mockTelegramLinkCode).catch(() => {});
+    toast.success(t("settings.ch.codeCopied"));
+  };
+
+  return (
+    <div className="rounded-lg border border-border p-4 space-y-3">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+            <Send className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">{t("settings.ch.botTitle")}</p>
+              <ChannelStatusBadge configured={connected} />
+            </div>
+            <p className="text-xs text-muted-foreground leading-snug">
+              {t("settings.ch.telegramHint")}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {connected ? (
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <p className="text-sm">
+              {t("settings.ch.connectedAs", { handle: mockTelegramHandle })}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => {
+              setChannelConfigured("telegram", false);
+              setChannelDestination("telegram", "");
+            }}
+          >
+            {t("settings.ch.disconnect")}
+          </Button>
+        </div>
+      ) : (
+        <>
+          <p className="text-xs text-muted-foreground leading-snug">
+            {t("settings.ch.botInstructions")}
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-sm font-mono tracking-wider">
+              {mockTelegramLinkCode}
+            </code>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-9 w-9 shrink-0"
+              onClick={copyCode}
+              aria-label={t("settings.ch.copyCode")}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-8 w-full text-xs"
+            onClick={() => {
+              setChannelConfigured("telegram", true);
+              setChannelDestination("telegram", mockTelegramHandle);
+              toast.success(t("settings.ch.connectedToast"));
+            }}
+          >
+            {t("settings.ch.simulateConnect")}
+          </Button>
+        </>
+      )}
+
+      <BotPreview />
+    </div>
+  );
+}
+
+/**
+ * Notification channels under Integrations (Phase 1, mock) — the "plumbing":
+ * connect the Telegram bot, set email / WhatsApp destinations, enable browser
+ * push. Whether each channel actually delivers is toggled under Notifications.
+ */
+function NotificationChannelsIntegration() {
+  const { t } = useTranslation();
+  const { channels } = useMockNotifications();
+  const byKey = (k: ChannelKey) => channels.find(c => c.key === k);
+  const email = byKey("email");
+  const whatsapp = byKey("whatsapp");
+  const webpush = byKey("webpush");
+
+  return (
+    <div className="space-y-2">
+      <p className="px-1 text-xs font-medium text-muted-foreground">
+        {t("settings.ch.integrationsTitle")}
+      </p>
+      <div className="space-y-2">
+        <TelegramConnectCard />
+
+        <IntegrationCard
+          icon={<Mail className="h-4 w-4" />}
+          name={t("settings.ch.email")}
+          description={t("settings.ch.emailCardDesc")}
+          badge={<ChannelStatusBadge configured={Boolean(email?.configured)} />}
+          footer={
+            <Input
+              value={email?.destination ?? ""}
+              onChange={e => {
+                setChannelDestination("email", e.target.value);
+                setChannelConfigured("email", e.target.value.trim().length > 0);
+              }}
+              placeholder={t("settings.ch.emailDest")}
+              className="h-8 text-sm"
+            />
+          }
+        />
+
+        <IntegrationCard
+          icon={<MessageCircle className="h-4 w-4" />}
+          name={t("settings.ch.whatsapp")}
+          description={t("settings.ch.whatsappCardDesc")}
+          badge={
+            <ChannelStatusBadge configured={Boolean(whatsapp?.configured)} />
+          }
+          footer={
+            <Input
+              value={whatsapp?.destination ?? ""}
+              onChange={e => {
+                setChannelDestination("whatsapp", e.target.value);
+                setChannelConfigured(
+                  "whatsapp",
+                  e.target.value.trim().length > 0
+                );
+              }}
+              placeholder={t("settings.ch.whatsappDest")}
+              className="h-8 text-sm"
+            />
+          }
+        />
+
+        <IntegrationCard
+          icon={<Globe className="h-4 w-4" />}
+          name={t("settings.ch.webpush")}
+          description={t("settings.ch.webpushCardDesc")}
+          badge={
+            <ChannelStatusBadge configured={Boolean(webpush?.configured)} />
+          }
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => {
+                const next = !webpush?.configured;
+                setChannelConfigured("webpush", next);
+                toast.success(
+                  next
+                    ? t("settings.ch.webpushEnabled")
+                    : t("settings.ch.webpushDisabled")
+                );
+              }}
+            >
+              {webpush?.configured
+                ? t("settings.ch.disable")
+                : t("settings.ch.enableWebpush")}
+            </Button>
+          }
+        />
+
+        <IntegrationCard
+          icon={<Smartphone className="h-4 w-4" />}
+          name={t("settings.ch.push")}
+          description={t("settings.ch.pushCardDesc")}
+          badge={
+            <Badge variant="secondary" className="text-[10px] font-normal">
+              {t("settings.ch.builtIn")}
+            </Badge>
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
 function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
@@ -1302,6 +1438,8 @@ function IntegrationsSection({ p }: { p: any }) {
       <StorageBackendGroup onSelectedChange={setSelectedBackend} />
       {selectedBackend === "gdrive" && <FileStorageGroup />}
       <StoredFilesGroup />
+
+      <NotificationChannelsIntegration />
 
       <div className="space-y-2">
         <p className="px-1 text-xs font-medium text-muted-foreground">
