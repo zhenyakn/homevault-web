@@ -28,6 +28,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
+import NotificationCenter from "@/components/NotificationCenter";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -644,14 +645,17 @@ function DashboardLayoutContent({
                 {pageMeta ? t(pageMeta.pageKey) : "Menu"}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={handleSearchOpen}
-              className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-accent transition-colors"
-              aria-label={t("search.dialogTitle")}
-            >
-              <Search className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-0.5">
+              <NotificationCenter />
+              <button
+                type="button"
+                onClick={handleSearchOpen}
+                className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-accent transition-colors"
+                aria-label={t("search.dialogTitle")}
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -684,6 +688,7 @@ function DashboardLayoutContent({
                 ⌘K
               </kbd>
             </button>
+            <NotificationCenter />
             <ThemeToggle compact />
           </div>
         )}

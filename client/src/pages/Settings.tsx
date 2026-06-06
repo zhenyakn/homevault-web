@@ -98,9 +98,28 @@ import {
   Blocks,
   Palette,
   Database,
+  Mail,
+  Send,
+  MessageCircle,
+  Smartphone,
+  Copy,
   type LucideIcon,
 } from "lucide-react";
 import { csrfHeaders } from "@/lib/csrf";
+import BotPreview from "@/components/BotPreview";
+import {
+  mockTelegramHandle,
+  mockTelegramLinkCode,
+  type ChannelKey,
+} from "@/lib/mockNotifications";
+import {
+  pushNotification,
+  setChannelConfigured,
+  setChannelDestination,
+  setChannelEnabled,
+  TEST_CATEGORY,
+  useMockNotifications,
+} from "@/hooks/useMockNotifications";
 
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
@@ -1041,7 +1060,178 @@ function NotificationsSection({ p }: { p: any }) {
           </Row>
         ))}
       </Group>
+
+      <ChannelsBlock />
+      <TelegramConnectCard />
     </div>
+  );
+}
+
+/** Channel metadata: icon + whether the channel has a text destination field. */
+const CHANNEL_META: Record<
+  ChannelKey,
+  { icon: LucideIcon; hasDestination: boolean; destKey?: string }
+> = {
+  inapp: { icon: Bell, hasDestination: false },
+  push: { icon: Smartphone, hasDestination: false },
+  email: { icon: Mail, hasDestination: true, destKey: "settings.ch.emailDest" },
+  webpush: { icon: Globe, hasDestination: false },
+  telegram: { icon: Send, hasDestination: false },
+  whatsapp: {
+    icon: MessageCircle,
+    hasDestination: true,
+    destKey: "settings.ch.whatsappDest",
+  },
+};
+
+/**
+ * Multi-channel delivery preview (Phase 1, mock). Lets the user toggle each
+ * channel, edit destinations, and fire a "Send test" that pops a toast and
+ * drops an item into the header notification center. Backed by the in-memory
+ * mock store — no backend yet.
+ */
+function ChannelsBlock() {
+  const { t } = useTranslation();
+  const { channels } = useMockNotifications();
+
+  const sendTest = (key: ChannelKey) => {
+    const label = t(`settings.ch.${key}`);
+    toast.success(t("settings.ch.testSent", { channel: label }));
+    pushNotification({
+      category: TEST_CATEGORY,
+      title: t("settings.ch.testTitle", { channel: label }),
+      body: t("settings.ch.testBody"),
+    });
+  };
+
+  return (
+    <Group label={t("settings.ch.title")}>
+      <div className="px-4 py-2.5">
+        <p className="text-xs text-muted-foreground">{t("settings.ch.desc")}</p>
+      </div>
+      {channels.map(c => {
+        const meta = CHANNEL_META[c.key];
+        const Icon = meta.icon;
+        return (
+          <div key={c.key} className="px-4 py-3 space-y-2.5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-none">
+                    {t(`settings.ch.${c.key}`)}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground leading-snug">
+                    {t(`settings.ch.${c.key}Hint`)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                {c.enabled && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => sendTest(c.key)}
+                  >
+                    {t("settings.ch.sendTest")}
+                  </Button>
+                )}
+                <Switch
+                  checked={c.enabled}
+                  onCheckedChange={v => setChannelEnabled(c.key, v)}
+                />
+              </div>
+            </div>
+            {meta.hasDestination && c.enabled && (
+              <Input
+                value={c.destination ?? ""}
+                onChange={e => {
+                  setChannelDestination(c.key, e.target.value);
+                  setChannelConfigured(c.key, e.target.value.trim().length > 0);
+                }}
+                placeholder={meta.destKey ? t(meta.destKey) : ""}
+                className="h-8 text-sm"
+              />
+            )}
+          </div>
+        );
+      })}
+    </Group>
+  );
+}
+
+/**
+ * Telegram bot connection preview (Phase 1, mock). Shows the link-code flow and
+ * a faux connected/disconnected toggle, plus the interactive bot transcript.
+ */
+function TelegramConnectCard() {
+  const { t } = useTranslation();
+  const [connected, setConnected] = useState(false);
+
+  const copyCode = () => {
+    navigator.clipboard?.writeText(mockTelegramLinkCode).catch(() => {});
+    toast.success(t("settings.ch.codeCopied"));
+  };
+
+  return (
+    <Group label={t("settings.ch.botTitle")}>
+      <div className="space-y-3 px-4 py-3.5">
+        {connected ? (
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <p className="text-sm">
+                {t("settings.ch.connectedAs", { handle: mockTelegramHandle })}
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setConnected(false)}
+            >
+              {t("settings.ch.disconnect")}
+            </Button>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground leading-snug">
+              {t("settings.ch.botInstructions")}
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-sm font-mono tracking-wider">
+                {mockTelegramLinkCode}
+              </code>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={copyCode}
+                aria-label={t("settings.ch.copyCode")}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-8 w-full text-xs"
+              onClick={() => {
+                setConnected(true);
+                toast.success(t("settings.ch.connectedToast"));
+              }}
+            >
+              {t("settings.ch.simulateConnect")}
+            </Button>
+          </>
+        )}
+
+        <BotPreview />
+      </div>
+    </Group>
   );
 }
 
