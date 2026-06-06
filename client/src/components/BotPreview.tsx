@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  mockBotCommandReplies,
+  mockBotCommands,
   mockBotReplies,
   mockBotTranscript,
   type BotTurn,
@@ -39,15 +41,20 @@ export function BotPreview() {
   // Whether the scripted confirm step is still awaiting a decision.
   const [pendingConfirm, setPendingConfirm] = useState(true);
 
-  const send = () => {
-    const text = draft.trim();
+  const send = (raw?: string) => {
+    const text = (raw ?? draft).trim();
     if (!text) return;
-    const reply = mockBotReplies[replyIdx % mockBotReplies.length];
-    setReplyIdx(i => i + 1);
+    // Known slash-commands get their canned reply; everything else cycles
+    // through the generic replies.
+    const reply =
+      mockBotCommandReplies[text] ??
+      mockBotReplies[replyIdx % mockBotReplies.length];
+    if (!mockBotCommandReplies[text]) setReplyIdx(i => i + 1);
+    const stamp = Date.now();
     setBubbles(b => [
       ...b,
-      { id: `u-${Date.now()}`, from: "user", text },
-      { id: `b-${Date.now()}`, from: "bot", text: reply },
+      { id: `u-${stamp}`, from: "user", text },
+      { id: `b-${stamp}`, from: "bot", text: reply },
     ]);
     setDraft("");
   };
@@ -121,6 +128,19 @@ export function BotPreview() {
         })}
       </div>
 
+      <div className="flex flex-wrap gap-1.5 border-t bg-muted/20 px-2 py-2">
+        {mockBotCommands.map(cmd => (
+          <button
+            key={cmd}
+            type="button"
+            onClick={() => send(cmd)}
+            className="rounded-full border bg-background px-2 py-0.5 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          >
+            {cmd}
+          </button>
+        ))}
+      </div>
+
       <div className="flex items-center gap-2 border-t px-2 py-2">
         <Input
           value={draft}
@@ -134,7 +154,7 @@ export function BotPreview() {
         <Button
           size="icon"
           className="h-8 w-8 shrink-0"
-          onClick={send}
+          onClick={() => send()}
           aria-label={t("notifs.bot.send")}
         >
           <Send className="h-3.5 w-3.5" />
