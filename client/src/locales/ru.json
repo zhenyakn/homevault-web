@@ -343,9 +343,13 @@
       "webpushCardDesc": "Показывать уведомления в этом браузере.",
       "pushCardDesc": "Мобильные push через встроенный сервис.",
       "enableWebpush": "Включить",
+      "reEnable": "Включить снова",
       "disable": "Отключить",
-      "webpushEnabled": "Push в браузере включён (предпросмотр)",
-      "webpushDisabled": "Push в браузере отключён (предпросмотр)"
+      "webpushEnabled": "Push в браузере включён",
+      "webpushDisabled": "Push в браузере отключён",
+      "webpushUnavailable": "Push в браузере не настроен на сервере.",
+      "generateCode": "Создать код привязки",
+      "testFailed": "Тест в {{channel}} не удался: {{reason}}"
     },
     "syncEvents": "Синхронизация событий",
     "syncEventsHint": "Отправлять события HomeVault в Google Календарь",
