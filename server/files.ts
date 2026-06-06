@@ -11,7 +11,7 @@ import {
   purchaseCosts,
   type FileRecord,
 } from "../drizzle/schema";
-import { getActiveBackend, getBackendByName } from "./storage";
+import { resolveActiveBackend, getBackendByName } from "./storage";
 import type { StorageBackendName } from "./storage/types";
 import { logger } from "./_core/logger";
 
@@ -240,7 +240,7 @@ export async function uploadAndRegister(opts: {
   // the files table records it for filtering / cleanup.
   propertyId: number;
 }): Promise<{ record: FileRecord; url: string }> {
-  const backend = getActiveBackend();
+  const backend = await resolveActiveBackend();
   const { externalId } = await backend.upload(opts.buffer, {
     originalName: opts.originalName,
     mimeType: opts.mimeType,

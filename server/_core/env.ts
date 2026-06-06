@@ -14,6 +14,17 @@ const envSchema = z.object({
   BUILT_IN_FORGE_API_URL: z.string().default(""),
   BUILT_IN_FORGE_API_KEY: z.string().default(""),
   STORAGE_BACKEND: z.string().default(""),
+  // Local-filesystem backend: base directory for stored files. Must be a
+  // persistent, writable path (a Docker volume, or the HA add-on's /data dir).
+  STORAGE_DIR: z.string().default(""),
+  // S3-compatible backend (Cloudflare R2 / Backblaze B2 / AWS S3 / MinIO). The
+  // backend reads these directly from process.env; declared here for validation
+  // and so the env is self-documenting. They may also be set from the UI.
+  STORAGE_ENDPOINT: z.string().default(""),
+  STORAGE_BUCKET: z.string().default(""),
+  STORAGE_REGION: z.string().default(""),
+  STORAGE_ACCESS_KEY_ID: z.string().default(""),
+  STORAGE_SECRET_ACCESS_KEY: z.string().default(""),
   GOOGLE_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
   GOOGLE_OAUTH_REDIRECT_URI: z.string().default(""),
@@ -51,6 +62,7 @@ export const ENV = {
   forgeApiUrl: raw.BUILT_IN_FORGE_API_URL,
   forgeApiKey: raw.BUILT_IN_FORGE_API_KEY,
   storageBackend: raw.STORAGE_BACKEND,
+  storageDir: raw.STORAGE_DIR,
   googleClientId: raw.GOOGLE_CLIENT_ID,
   googleClientSecret: raw.GOOGLE_CLIENT_SECRET,
   googleOAuthRedirectUri: raw.GOOGLE_OAUTH_REDIRECT_URI,

@@ -257,6 +257,50 @@
     "connectedAccount": "חשבון מחובר",
     "notConnected": "לא מחובר",
     "connect": "חבר",
+    "storage": {
+      "groupLabel": "מנגנון אחסון",
+      "title": "היכן הקבצים נשמרים",
+      "desc": "בחר/י היכן HomeVault שומר את הקבצים שאת/ה מצרף/ת. דיסק מקומי אינו דורש הגדרה ומתאים להתקנות עצמאיות ול-Home Assistant; אחסון תואם S3 (Cloudflare R2, Backblaze B2, AWS S3, MinIO) מתאים להתקנות ענן; Google Drive משתמש בחשבון שלך. קבצים קיימים ימשיכו לעבוד גם לאחר החלפה.",
+      "active": "פעיל",
+      "configured": "מוגדר",
+      "notConfigured": "לא הוגדר",
+      "makeActive": "הפוך לפעיל",
+      "madeActive": "מנגנון האחסון הפעיל עודכן",
+      "save": "שמור",
+      "test": "בדיקה",
+      "testOk": "החיבור תקין",
+      "testFailed": "הבדיקה נכשלה: {{error}}",
+      "backend": {
+        "local": "דיסק מקומי",
+        "s3": "תואם S3",
+        "gdrive": "Google Drive"
+      },
+      "local": {
+        "label": "דיסק מקומי",
+        "hint": "הקבצים נשמרים במערכת הקבצים של השרת. השתמש/י בנתיב קבוע וברה-כתיבה — נפח Docker, או תיקיית data/ של תוסף Home Assistant (אחרת הקבצים יאבדו בעדכון).",
+        "dir": "תיקיית אחסון",
+        "dirRequired": "הזן/י תיקיית אחסון",
+        "fromEnv": "מוגדר כעת באמצעות משתנה הסביבה STORAGE_DIR.",
+        "saved": "תיקיית האחסון המקומית נשמרה"
+      },
+      "s3": {
+        "label": "אחסון תואם S3",
+        "hint": "עובד עם Cloudflare R2, Backblaze B2, AWS S3 ו-MinIO. הדבק/י את הכתובת, הדלי ומפתחות הגישה מהספק שלך.",
+        "fromEnv": "מוגדר כעת באמצעות משתני סביבה.",
+        "endpoint": "כתובת קצה",
+        "bucket": "דלי",
+        "region": "אזור",
+        "accessKeyId": "מזהה מפתח גישה",
+        "secret": "מפתח גישה סודי",
+        "secretPlaceholder": "•••••••• (השאר/י ריק כדי לשמור את הקיים)",
+        "fieldsRequired": "כתובת קצה, דלי ומזהה מפתח גישה נדרשים",
+        "secretRequired": "מפתח גישה סודי נדרש בהגדרה הראשונית",
+        "saved": "תצורת S3 נשמרה"
+      },
+      "gdrive": {
+        "hint": "הגדר/י וחבר/י את Google Drive בלוח אחסון הקבצים שלמטה, ואז הפוך/הפכי אותו לפעיל כאן."
+      }
+    },
     "fileStorage": {
       "groupLabel": "אחסון קבצים",
       "title": "Google Drive",
