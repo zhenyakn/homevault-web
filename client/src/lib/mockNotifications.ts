@@ -168,11 +168,16 @@ export const mockTelegramLinkCode = "HV-7K2Q-9XZ";
 export const mockTelegramHandle = "@evgeni";
 
 /**
- * Scripted two-way conversation for the bot preview. Illustrates a read
- * command, a dashboard query, and a write (`/addexpense`) that asks for
+ * Scripted two-way conversation for the bot preview. Illustrates help, read
+ * commands, an upcoming query, and a write (`/addexpense`) that asks for
  * confirmation before committing.
  */
 export const mockBotTranscript: BotTurn[] = [
+  { from: "user", text: "/help" },
+  {
+    from: "bot",
+    text: "I can help with:\n/overdue — items needing attention\n/dashboard — this month at a glance\n/upcoming — next 7 days\n/addexpense <amount> <name>\n/paid <id> — mark an expense paid",
+  },
   { from: "user", text: "/overdue" },
   {
     from: "bot",
@@ -183,6 +188,11 @@ export const mockBotTranscript: BotTurn[] = [
     from: "bot",
     text: "🏠 My Home\nSpent this month: ₪3,180\nOpen repairs: 2\nNext loan payment: ₪6,150 on Jun 10",
   },
+  { from: "user", text: "/upcoming" },
+  {
+    from: "bot",
+    text: "📅 Next 7 days:\n• Jun 9 — Property tax due\n• Jun 10 — Mortgage payment ₪6,150\n• Jun 11 — Boiler inspection 09:00",
+  },
   { from: "user", text: "/addexpense 100 Water" },
   {
     from: "bot",
@@ -191,6 +201,26 @@ export const mockBotTranscript: BotTurn[] = [
   },
   { from: "bot", text: "✅ Added “Water” (₪100). Logged for My Home." },
 ];
+
+/** Quick-command chips shown under the bot preview input. */
+export const mockBotCommands: string[] = [
+  "/overdue",
+  "/dashboard",
+  "/upcoming",
+  "/help",
+];
+
+/** Canned replies keyed by command; falls back to the generic list. */
+export const mockBotCommandReplies: Record<string, string> = {
+  "/overdue":
+    "You have 2 items needing attention:\n• Property tax — ₪4,200 (due in 3 days)\n• Roof leak repair — stale 6 days",
+  "/dashboard":
+    "🏠 My Home\nSpent this month: ₪3,180\nOpen repairs: 2\nNext loan payment: ₪6,150 on Jun 10",
+  "/upcoming":
+    "📅 Next 7 days:\n• Jun 9 — Property tax due\n• Jun 10 — Mortgage payment ₪6,150\n• Jun 11 — Boiler inspection 09:00",
+  "/help":
+    "I can help with:\n/overdue • /dashboard • /upcoming • /addexpense • /paid",
+};
 
 /** Canned replies the preview cycles through for free-text input. */
 export const mockBotReplies: string[] = [

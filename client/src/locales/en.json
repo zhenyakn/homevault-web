@@ -2,7 +2,10 @@
   "notifs": {
     "title": "Notifications",
     "markAllRead": "Mark all read",
+    "clearAll": "Clear all",
     "empty": "You're all caught up",
+    "today": "Today",
+    "earlier": "Earlier",
     "manageSettings": "Notification settings",
     "justNow": "just now",
     "minutesAgo": "{{count}}m ago",

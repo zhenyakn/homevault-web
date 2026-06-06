@@ -72,6 +72,10 @@ export function markAllRead() {
   });
 }
 
+export function clearAll() {
+  setState({ ...state, notifications: [] });
+}
+
 export function pushNotification(
   n: Omit<MockNotification, "id" | "minutesAgo" | "read"> & {
     read?: boolean;

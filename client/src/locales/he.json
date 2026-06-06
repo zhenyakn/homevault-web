@@ -2,7 +2,10 @@
   "notifs": {
     "title": "התראות",
     "markAllRead": "סמן הכל כנקרא",
+    "clearAll": "נקה הכל",
     "empty": "אין התראות חדשות",
+    "today": "היום",
+    "earlier": "מוקדם יותר",
     "manageSettings": "הגדרות התראות",
     "justNow": "הרגע",
     "minutesAgo": "לפני {{count}} דק׳",

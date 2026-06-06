@@ -1122,8 +1122,10 @@ function ChannelsBlock() {
                 <p className="text-sm font-medium leading-none">
                   {t(`settings.ch.${c.key}`)}
                 </p>
-                <p className="mt-0.5 text-xs text-muted-foreground leading-snug">
-                  {t(`settings.ch.${c.key}Hint`)}
+                <p className="mt-0.5 truncate text-xs text-muted-foreground leading-snug">
+                  {c.configured && c.destination
+                    ? c.destination
+                    : t(`settings.ch.${c.key}Hint`)}
                 </p>
               </div>
             </div>
