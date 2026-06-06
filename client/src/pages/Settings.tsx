@@ -2659,6 +2659,9 @@ function AppearanceSection() {
             <ToggleGroupItem value="he" className="h-8 px-3 text-xs" dir="rtl">
               עברית
             </ToggleGroupItem>
+            <ToggleGroupItem value="ru" className="h-8 px-3 text-xs">
+              Русский
+            </ToggleGroupItem>
           </ToggleGroup>
         </Row>
       </Group>
