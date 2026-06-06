@@ -334,9 +334,13 @@
       "webpushCardDesc": "הצגת התראות בדפדפן הזה.",
       "pushCardDesc": "התראות דחיפה לנייד דרך השירות המובנה.",
       "enableWebpush": "הפעלה",
+      "reEnable": "הפעלה מחדש",
       "disable": "כיבוי",
-      "webpushEnabled": "התראות דפדפן הופעלו (תצוגה מקדימה)",
-      "webpushDisabled": "התראות דפדפן כובו (תצוגה מקדימה)"
+      "webpushEnabled": "התראות דפדפן הופעלו",
+      "webpushDisabled": "התראות דפדפן כובו",
+      "webpushUnavailable": "התראות דפדפן אינן מוגדרות בשרת.",
+      "generateCode": "צור קוד קישור",
+      "testFailed": "הבדיקה ל-{{channel}} נכשלה: {{reason}}"
     },
     "syncEvents": "סנכרן אירועים",
     "syncEventsHint": "שלח אירועי HomeVault ל-Google Calendar",

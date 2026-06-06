@@ -24,6 +24,9 @@ export const users = mysqlTable(
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
     role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+    // Notification channel destinations (email already lives above).
+    telegramChatId: varchar("telegramChatId", { length: 64 }),
+    whatsappPhone: varchar("whatsappPhone", { length: 32 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
     lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -622,3 +625,129 @@ export const files = mysqlTable(
 
 export type FileRecord = typeof files.$inferSelect;
 export type InsertFileRecord = typeof files.$inferInsert;
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+/** Per-user, per-channel opt-in. The *what to send* flags live on `properties`
+ *  (remindExpenses/Loans/Repairs/Calendar); this table is *which channels*. */
+export const notificationPrefs = mysqlTable(
+  "notification_prefs",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id),
+    channel: mysqlEnum("channel", [
+      "inapp",
+      "push",
+      "email",
+      "webpush",
+      "telegram",
+      "whatsapp",
+    ]).notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    userChannelIdx: index("notif_prefs_user_channel_idx").on(
+      table.userId,
+      table.channel
+    ),
+  })
+);
+
+export type NotificationPref = typeof notificationPrefs.$inferSelect;
+export type InsertNotificationPref = typeof notificationPrefs.$inferInsert;
+
+/** Delivery history + idempotency + the in-app notification center feed.
+ *  The unique (userId, dedupeKey, channel) index is the idempotency guard: the
+ *  daily sweep can run repeatedly without re-sending the same reminder. */
+export const notificationLog = mysqlTable(
+  "notification_log",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id),
+    channel: mysqlEnum("channel", [
+      "inapp",
+      "push",
+      "email",
+      "webpush",
+      "telegram",
+      "whatsapp",
+    ]).notNull(),
+    category: mysqlEnum("category", [
+      "expense",
+      "loan",
+      "repair",
+      "warranty",
+      "calendar",
+      "system",
+    ]).notNull(),
+    title: varchar("title", { length: 300 }).notNull(),
+    body: text("body").notNull(),
+    url: varchar("url", { length: 500 }),
+    dedupeKey: varchar("dedupeKey", { length: 200 }).notNull(),
+    status: mysqlEnum("status", ["sent", "failed", "skipped"]).notNull(),
+    reason: varchar("reason", { length: 300 }),
+    readAt: timestamp("readAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    userIdx: index("notif_log_user_idx").on(table.userId),
+    // Idempotency: one row per (user, logical event, channel).
+    dedupeIdx: index("notif_log_dedupe_idx").on(
+      table.userId,
+      table.dedupeKey,
+      table.channel
+    ),
+  })
+);
+
+export type NotificationLogRow = typeof notificationLog.$inferSelect;
+export type InsertNotificationLogRow = typeof notificationLog.$inferInsert;
+
+/** Browser Web Push subscriptions (one device/browser per row). */
+export const webPushSubscriptions = mysqlTable(
+  "web_push_subscriptions",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id),
+    endpoint: varchar("endpoint", { length: 512 }).notNull().unique(),
+    p256dh: varchar("p256dh", { length: 255 }).notNull(),
+    auth: varchar("auth", { length: 255 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    userIdx: index("web_push_user_idx").on(table.userId),
+  })
+);
+
+export type WebPushSubscription = typeof webPushSubscriptions.$inferSelect;
+export type InsertWebPushSubscription =
+  typeof webPushSubscriptions.$inferInsert;
+
+/** Short-lived codes used to link a Telegram chat to a HomeVault account. */
+export const botLinkCodes = mysqlTable(
+  "bot_link_codes",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id),
+    code: varchar("code", { length: 32 }).notNull().unique(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    consumedAt: timestamp("consumedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    codeIdx: index("bot_link_code_idx").on(table.code),
+  })
+);
+
+export type BotLinkCode = typeof botLinkCodes.$inferSelect;
+export type InsertBotLinkCode = typeof botLinkCodes.$inferInsert;

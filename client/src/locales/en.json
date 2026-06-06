@@ -343,9 +343,13 @@
       "webpushCardDesc": "Show notifications in this browser.",
       "pushCardDesc": "Mobile push via the built-in service.",
       "enableWebpush": "Enable",
+      "reEnable": "Re-enable",
       "disable": "Disable",
-      "webpushEnabled": "Browser push enabled (preview)",
-      "webpushDisabled": "Browser push disabled (preview)"
+      "webpushEnabled": "Browser push enabled",
+      "webpushDisabled": "Browser push disabled",
+      "webpushUnavailable": "Browser push isn't configured on the server.",
+      "generateCode": "Generate link code",
+      "testFailed": "Test to {{channel}} failed: {{reason}}"
     },
     "syncEvents": "Sync events",
     "syncEventsHint": "Push HomeVault events to Google Calendar",

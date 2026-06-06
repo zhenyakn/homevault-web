@@ -7,7 +7,7 @@
  * a free-text message just appends a canned bot reply. No network, no backend.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Send, Bot, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,14 @@ export function BotPreview() {
   const [replyIdx, setReplyIdx] = useState(0);
   // Whether the scripted confirm step is still awaiting a decision.
   const [pendingConfirm, setPendingConfirm] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Keep the latest message (and the confirm buttons) in view within the
+  // bounded chat, without scrolling the surrounding page.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [bubbles, pendingConfirm]);
 
   const send = (raw?: string) => {
     const text = (raw ?? draft).trim();
@@ -81,7 +89,10 @@ export function BotPreview() {
         </span>
       </div>
 
-      <div className="space-y-2 bg-background px-3 py-3">
+      <div
+        ref={scrollRef}
+        className="max-h-64 space-y-2 overflow-y-auto overscroll-contain bg-background px-3 py-3"
+      >
         {bubbles.map(b => {
           const showConfirm = b.confirm && pendingConfirm;
           return (
@@ -94,7 +105,7 @@ export function BotPreview() {
             >
               <div
                 className={cn(
-                  "max-w-[80%] whitespace-pre-line rounded-2xl px-3 py-1.5 text-xs leading-relaxed",
+                  "max-w-[80%] whitespace-pre-line break-words rounded-2xl px-3 py-1.5 text-xs leading-relaxed",
                   b.from === "user"
                     ? "rounded-br-sm bg-primary text-primary-foreground"
                     : "rounded-bl-sm bg-muted text-foreground"
