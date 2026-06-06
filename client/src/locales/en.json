@@ -266,6 +266,50 @@
     "connectedAccount": "Connected account",
     "notConnected": "Not connected",
     "connect": "Connect",
+    "storage": {
+      "groupLabel": "Storage backend",
+      "title": "Where files are stored",
+      "desc": "Choose where HomeVault keeps the files you attach to expenses, repairs and more. Local disk needs no setup and is ideal for self-hosted and Home Assistant installs; S3-compatible storage (Cloudflare R2, Backblaze B2, AWS S3, MinIO) suits cloud setups; Google Drive uses your own account. Existing files keep working when you switch.",
+      "active": "Active",
+      "configured": "Configured",
+      "notConfigured": "Not set up",
+      "makeActive": "Make active",
+      "madeActive": "Active storage backend updated",
+      "save": "Save",
+      "test": "Test",
+      "testOk": "Connection OK",
+      "testFailed": "Test failed: {{error}}",
+      "backend": {
+        "local": "Local disk",
+        "s3": "S3-compatible",
+        "gdrive": "Google Drive"
+      },
+      "local": {
+        "label": "Local disk",
+        "hint": "Files are stored on this server's filesystem. Use a persistent, writable path — a Docker volume, or the Home Assistant add-on's /data directory (otherwise files are lost on update).",
+        "dir": "Storage directory",
+        "dirRequired": "Enter a storage directory",
+        "fromEnv": "Currently set via the STORAGE_DIR environment variable.",
+        "saved": "Local storage directory saved"
+      },
+      "s3": {
+        "label": "S3-compatible storage",
+        "hint": "Works with Cloudflare R2, Backblaze B2, AWS S3 and MinIO. Paste the endpoint, bucket and access keys from your provider.",
+        "fromEnv": "Currently configured via environment variables.",
+        "endpoint": "Endpoint",
+        "bucket": "Bucket",
+        "region": "Region",
+        "accessKeyId": "Access key ID",
+        "secret": "Secret access key",
+        "secretPlaceholder": "•••••••• (leave blank to keep existing)",
+        "fieldsRequired": "Endpoint, bucket and access key ID are required",
+        "secretRequired": "Secret access key is required for initial setup",
+        "saved": "S3 configuration saved"
+      },
+      "gdrive": {
+        "hint": "Configure and connect Google Drive in the File storage panel below, then make it active here."
+      }
+    },
     "fileStorage": {
       "groupLabel": "File storage",
       "title": "Google Drive",

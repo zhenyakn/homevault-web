@@ -73,6 +73,8 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  HardDrive,
+  Server,
 } from "lucide-react";
 import { csrfHeaders } from "@/lib/csrf";
 
@@ -822,6 +824,7 @@ function IntegrationsSection({ p }: { p: any }) {
         <Pending show={m.isPending} />
       </div>
 
+      <StorageBackendGroup />
       <FileStorageGroup />
       <StoredFilesGroup />
 
@@ -881,6 +884,508 @@ function IntegrationsSection({ p }: { p: any }) {
         )}
       </Group>
     </div>
+  );
+}
+
+// ─── Storage backend selector (Drive / Local disk / S3) ──────────────────────
+
+type BackendName = "gdrive" | "local" | "s3";
+
+type StorageStatus = {
+  activeBackend: BackendName;
+  source: "db" | "env" | "auto";
+  backends: {
+    gdrive: { configured: boolean };
+    s3: {
+      configured: boolean;
+      endpoint: string | null;
+      bucket: string | null;
+      region: string;
+      secretExists: boolean;
+      fromEnv: boolean;
+    };
+    local: {
+      configured: boolean;
+      dir: string;
+      fromEnv: boolean;
+      writable: boolean;
+    };
+  };
+};
+
+/**
+ * Lets an admin pick WHICH storage backend is active and configure the two
+ * self-hostable ones (Local disk, S3-compatible) inline — no .env editing or
+ * restart. Google Drive keeps its dedicated panel below for the OAuth flow.
+ */
+function StorageBackendGroup() {
+  const { t } = useTranslation();
+  const { data: me } = trpc.profiles.current.useQuery();
+  const isAdmin = me?.role === "admin";
+
+  const [status, setStatus] = useState<StorageStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<BackendName>("local");
+  const [busy, setBusy] = useState(false);
+
+  // Local form
+  const [localDir, setLocalDir] = useState("");
+  // S3 form
+  const [s3, setS3] = useState({
+    endpoint: "",
+    bucket: "",
+    region: "auto",
+    accessKeyId: "",
+    secret: "",
+  });
+  const [showS3Secret, setShowS3Secret] = useState(false);
+
+  const loadStatus = useCallback(async () => {
+    setLoading(true);
+    try {
+      const resp = await fetch("api/storage/status");
+      if (!resp.ok) {
+        setStatus(null);
+        return;
+      }
+      const data = (await resp.json()) as StorageStatus;
+      setStatus(data);
+      setTab(data.activeBackend);
+      setLocalDir(data.backends.local.dir ?? "");
+      setS3(s => ({
+        ...s,
+        endpoint: data.backends.s3.endpoint ?? "",
+        bucket: data.backends.s3.bucket ?? "",
+        region: data.backends.s3.region ?? "auto",
+      }));
+    } catch {
+      setStatus(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+    void loadStatus();
+  }, [isAdmin, loadStatus]);
+
+  async function makeActive(backend: BackendName) {
+    setBusy(true);
+    try {
+      const resp = await fetch("api/storage/active", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...csrfHeaders() },
+        credentials: "include",
+        body: JSON.stringify({ backend }),
+      });
+      const data = (await resp.json().catch(() => ({}))) as { error?: string };
+      if (!resp.ok) throw new Error(data.error ?? `Failed (${resp.status})`);
+      toast.success(t("settings.storage.madeActive"));
+      await loadStatus();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveLocal() {
+    if (!localDir.trim()) {
+      toast.error(t("settings.storage.local.dirRequired"));
+      return;
+    }
+    setBusy(true);
+    try {
+      const resp = await fetch("api/storage/local", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...csrfHeaders() },
+        credentials: "include",
+        body: JSON.stringify({ dir: localDir.trim() }),
+      });
+      const data = (await resp.json().catch(() => ({}))) as { error?: string };
+      if (!resp.ok) throw new Error(data.error ?? `Failed (${resp.status})`);
+      toast.success(t("settings.storage.local.saved"));
+      await loadStatus();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveS3() {
+    if (!s3.endpoint.trim() || !s3.bucket.trim() || !s3.accessKeyId.trim()) {
+      toast.error(t("settings.storage.s3.fieldsRequired"));
+      return;
+    }
+    if (!status?.backends.s3.secretExists && !s3.secret.trim()) {
+      toast.error(t("settings.storage.s3.secretRequired"));
+      return;
+    }
+    setBusy(true);
+    try {
+      const resp = await fetch("api/storage/s3", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...csrfHeaders() },
+        credentials: "include",
+        body: JSON.stringify({
+          endpoint: s3.endpoint.trim(),
+          bucket: s3.bucket.trim(),
+          region: s3.region.trim() || "auto",
+          accessKeyId: s3.accessKeyId.trim(),
+          secretAccessKey: s3.secret.trim() || undefined,
+        }),
+      });
+      const data = (await resp.json().catch(() => ({}))) as { error?: string };
+      if (!resp.ok) throw new Error(data.error ?? `Failed (${resp.status})`);
+      toast.success(t("settings.storage.s3.saved"));
+      setS3(s => ({ ...s, secret: "" }));
+      await loadStatus();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function testBackend(backend: BackendName, body?: Record<string, any>) {
+    setBusy(true);
+    try {
+      const resp = await fetch("api/storage/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...csrfHeaders() },
+        credentials: "include",
+        body: JSON.stringify({ backend, ...body }),
+      });
+      const data = (await resp.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+      };
+      if (data.ok) toast.success(t("settings.storage.testOk"));
+      else
+        toast.error(
+          t("settings.storage.testFailed", {
+            error: data.error ?? `HTTP ${resp.status}`,
+          })
+        );
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!isAdmin) return null;
+
+  const active = status?.activeBackend;
+  const configured = (b: BackendName) =>
+    status ? status.backends[b].configured : false;
+
+  const OPTIONS: { id: BackendName; label: string; icon: typeof Cloud }[] = [
+    {
+      id: "local",
+      label: t("settings.storage.backend.local"),
+      icon: HardDrive,
+    },
+    { id: "s3", label: t("settings.storage.backend.s3"), icon: Server },
+    { id: "gdrive", label: t("settings.storage.backend.gdrive"), icon: Cloud },
+  ];
+
+  return (
+    <Group label={t("settings.storage.groupLabel")}>
+      <div className="px-4 py-3.5 space-y-1.5 bg-muted/30">
+        <p className="text-sm font-medium">{t("settings.storage.title")}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          {t("settings.storage.desc")}
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="px-4 py-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" />{" "}
+          {t("settings.fileStorage.loadingStatus")}
+        </div>
+      ) : (
+        <>
+          {/* Backend selector */}
+          <div className="px-4 py-3 space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+              {OPTIONS.map(opt => {
+                const Icon = opt.icon;
+                const isActive = active === opt.id;
+                const sel = tab === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setTab(opt.id)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-md border p-3 text-xs transition-colors",
+                      sel
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted/50"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="font-medium">{opt.label}</span>
+                    {isActive ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="h-3 w-3" />
+                        {t("settings.storage.active")}
+                      </span>
+                    ) : configured(opt.id) ? (
+                      <span className="text-[10px] text-muted-foreground">
+                        {t("settings.storage.configured")}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground/70">
+                        {t("settings.storage.notConfigured")}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Local disk panel */}
+          {tab === "local" && (
+            <FullRow
+              label={t("settings.storage.local.label")}
+              hint={t("settings.storage.local.hint")}
+            >
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t("settings.storage.local.dir")}
+                  </label>
+                  <Input
+                    value={localDir}
+                    onChange={e => setLocalDir(e.target.value)}
+                    placeholder="/data/uploads"
+                    className="h-8 text-xs font-mono"
+                  />
+                  {status?.backends.local.fromEnv && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("settings.storage.local.fromEnv")}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={busy}
+                    onClick={() => void testBackend("local", { dir: localDir })}
+                  >
+                    {t("settings.storage.test")}
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={busy}
+                      onClick={() => void saveLocal()}
+                    >
+                      {busy && (
+                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                      )}
+                      {t("settings.storage.save")}
+                    </Button>
+                    {active !== "local" && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={busy || !configured("local")}
+                        onClick={() => void makeActive("local")}
+                      >
+                        {t("settings.storage.makeActive")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </FullRow>
+          )}
+
+          {/* S3 panel */}
+          {tab === "s3" && (
+            <FullRow
+              label={t("settings.storage.s3.label")}
+              hint={t("settings.storage.s3.hint")}
+            >
+              <div className="space-y-3">
+                {status?.backends.s3.fromEnv && (
+                  <p className="text-xs text-muted-foreground italic">
+                    {t("settings.storage.s3.fromEnv")}
+                  </p>
+                )}
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t("settings.storage.s3.endpoint")}
+                  </label>
+                  <Input
+                    value={s3.endpoint}
+                    onChange={e =>
+                      setS3(s => ({ ...s, endpoint: e.target.value }))
+                    }
+                    placeholder="https://<account>.r2.cloudflarestorage.com"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      {t("settings.storage.s3.bucket")}
+                    </label>
+                    <Input
+                      value={s3.bucket}
+                      onChange={e =>
+                        setS3(s => ({ ...s, bucket: e.target.value }))
+                      }
+                      placeholder="homevault"
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      {t("settings.storage.s3.region")}
+                    </label>
+                    <Input
+                      value={s3.region}
+                      onChange={e =>
+                        setS3(s => ({ ...s, region: e.target.value }))
+                      }
+                      placeholder="auto"
+                      className="h-8 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t("settings.storage.s3.accessKeyId")}
+                  </label>
+                  <Input
+                    value={s3.accessKeyId}
+                    onChange={e =>
+                      setS3(s => ({ ...s, accessKeyId: e.target.value }))
+                    }
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    {t("settings.storage.s3.secret")}
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showS3Secret ? "text" : "password"}
+                      value={s3.secret}
+                      onChange={e =>
+                        setS3(s => ({ ...s, secret: e.target.value }))
+                      }
+                      placeholder={
+                        status?.backends.s3.secretExists
+                          ? t("settings.storage.s3.secretPlaceholder")
+                          : ""
+                      }
+                      className="h-8 text-xs font-mono pr-8"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowS3Secret(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showS3Secret ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={busy}
+                    onClick={() =>
+                      void testBackend("s3", {
+                        endpoint: s3.endpoint,
+                        bucket: s3.bucket,
+                        region: s3.region,
+                        accessKeyId: s3.accessKeyId,
+                        secretAccessKey: s3.secret || undefined,
+                      })
+                    }
+                  >
+                    {t("settings.storage.test")}
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      disabled={busy}
+                      onClick={() => void saveS3()}
+                    >
+                      {busy && (
+                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                      )}
+                      {t("settings.storage.save")}
+                    </Button>
+                    {active !== "s3" && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={busy || !configured("s3")}
+                        onClick={() => void makeActive("s3")}
+                      >
+                        {t("settings.storage.makeActive")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </FullRow>
+          )}
+
+          {/* Google Drive: configured via the dedicated panel below */}
+          {tab === "gdrive" && (
+            <FullRow
+              label={t("settings.storage.backend.gdrive")}
+              hint={t("settings.storage.gdrive.hint")}
+            >
+              <div className="flex items-center gap-3">
+                {active === "gdrive" ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {t("settings.storage.active")}
+                  </span>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={busy || !configured("gdrive")}
+                    onClick={() => void makeActive("gdrive")}
+                  >
+                    {t("settings.storage.makeActive")}
+                  </Button>
+                )}
+              </div>
+            </FullRow>
+          )}
+        </>
+      )}
+    </Group>
   );
 }
 

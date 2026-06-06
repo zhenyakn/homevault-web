@@ -17,6 +17,12 @@ coverage/
 # rewrites its inline-code spans and is non-idempotent on it.
 trace.md
 
+# Release-bot-maintained changelog ("bump addon … + update CHANGELOG [skip ci]").
+# Those commits skip CI, so prettier never reformats them; checking it here only
+# flags drift the bot will reintroduce on the next release. Same rationale as
+# trace.md above.
+homevault-addon/CHANGELOG.md
+
 # Package files
 package-lock.json
 pnpm-lock.yaml

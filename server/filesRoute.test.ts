@@ -59,11 +59,18 @@ const backendStub = {
     delete: vi.fn(),
     upload: vi.fn(),
   },
+  local: {
+    name: "local" as const,
+    download: vi.fn(),
+    delete: vi.fn(),
+    upload: vi.fn(),
+  },
 };
 
 vi.mock("./storage", () => ({
-  getBackendByName: (name: "s3" | "gdrive") => backendStub[name],
+  getBackendByName: (name: "s3" | "gdrive" | "local") => backendStub[name],
   getActiveBackend: () => backendStub.gdrive,
+  resolveActiveBackend: async () => backendStub.gdrive,
   StorageNotConfiguredError: class extends Error {},
   StorageOperationError: class extends Error {},
 }));

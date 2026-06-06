@@ -10,6 +10,7 @@ import { appRouter } from "../routers";
 import { uploadRouter } from "../uploadRoute";
 import { filesRouter } from "../filesRoute";
 import { googleDriveRouter } from "../googleDriveRoute";
+import { storageRouter } from "../storageRoute";
 import { exportRouter } from "../exportRoute";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -78,6 +79,19 @@ const gdriveLimiter = rateLimit({
   legacyHeaders: false,
   skip: skipInTest,
   message: { error: "Too many Drive setup attempts, please try again later." },
+});
+
+// /api/storage/* — admin storage-backend configuration. Same envelope as the
+// Drive setup endpoints: infrequent, admin-only, sensitive.
+const storageLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: {
+    error: "Too many storage setup attempts, please try again later.",
+  },
 });
 
 // /api/export/* — very strict. Each request opens N parallel Drive downloads
@@ -238,12 +252,14 @@ async function startServer() {
   app.use("/api/upload", uploadLimiter);
   app.use("/api/files", filesLimiter);
   app.use("/api/google-drive", gdriveLimiter);
+  app.use("/api/storage", storageLimiter);
   app.use("/api/export", exportLimiter);
 
   registerOAuthRoutes(app);
   app.use(uploadRouter);
   app.use(filesRouter);
   app.use(googleDriveRouter);
+  app.use(storageRouter);
   app.use(exportRouter);
 
   // Dev-only login bypass — keeps existing dev-server behavior unchanged

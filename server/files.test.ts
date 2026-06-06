@@ -9,9 +9,11 @@ vi.mock("./storage", () => {
   const backend = { name: "gdrive" as const, upload, download, delete: del };
   return {
     getActiveBackend: () => backend,
+    resolveActiveBackend: async () => backend,
     getBackendByName: () => backend,
     s3Backend: backend,
     gdriveBackend: backend,
+    localBackend: backend,
     StorageNotConfiguredError: class extends Error {},
     StorageOperationError: class extends Error {},
     __mockBackend: backend,

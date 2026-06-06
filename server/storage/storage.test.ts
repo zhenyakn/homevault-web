@@ -1,12 +1,33 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+
+// In-memory app_settings so DB-aware resolution / S3 config loading don't reach
+// a real database. Mirrors the approach in gdrive.test.ts.
+const fakeSettings = new Map<string, string>();
+vi.mock("../db/appSettings", () => ({
+  getSetting: async (k: string) => fakeSettings.get(k) ?? null,
+  setSetting: async (k: string, v: string) => {
+    fakeSettings.set(k, v);
+  },
+  deleteSetting: async (k: string) => {
+    fakeSettings.delete(k);
+  },
+}));
+
 import {
   getActiveBackend,
   getActiveBackendName,
   getBackendByName,
+  resolveActiveBackendName,
+  setActiveBackend,
   StorageNotConfiguredError,
   s3Backend,
   gdriveBackend,
+  localBackend,
 } from "./index";
+
+beforeEach(() => {
+  fakeSettings.clear();
+});
 
 // ─── Backend dispatcher ──────────────────────────────────────────────────────
 
@@ -95,6 +116,59 @@ describe("getActiveBackend / getBackendByName", () => {
   it("getBackendByName returns the right backend by name", () => {
     expect(getBackendByName("s3")).toBe(s3Backend);
     expect(getBackendByName("gdrive")).toBe(gdriveBackend);
+    expect(getBackendByName("local")).toBe(localBackend);
+  });
+});
+
+// ─── DB-aware active-backend resolution ──────────────────────────────────────
+
+describe("resolveActiveBackendName", () => {
+  const snap = { ...process.env };
+  beforeEach(() => {
+    for (const k of [
+      "STORAGE_BACKEND",
+      "STORAGE_ENDPOINT",
+      "STORAGE_BUCKET",
+      "STORAGE_ACCESS_KEY_ID",
+      "STORAGE_SECRET_ACCESS_KEY",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "GOOGLE_OAUTH_REDIRECT_URI",
+    ]) {
+      delete process.env[k];
+    }
+    fakeSettings.clear();
+  });
+  afterEach(() => {
+    Object.assign(process.env, snap);
+  });
+
+  it("prefers the storage.activeBackend setting over env", async () => {
+    process.env.STORAGE_BACKEND = "gdrive";
+    await setActiveBackend("local");
+    expect(await resolveActiveBackendName()).toBe("local");
+  });
+
+  it("ignores an invalid stored value and falls through to env", async () => {
+    fakeSettings.set("storage.activeBackend", "ftp");
+    process.env.STORAGE_BACKEND = "s3";
+    expect(await resolveActiveBackendName()).toBe("s3");
+  });
+
+  it("falls back to env STORAGE_BACKEND when no setting is stored", async () => {
+    process.env.STORAGE_BACKEND = "s3";
+    expect(await resolveActiveBackendName()).toBe("s3");
+  });
+
+  it("auto-detects gdrive when its env is present", async () => {
+    process.env.GOOGLE_CLIENT_ID = "id";
+    process.env.GOOGLE_CLIENT_SECRET = "secret";
+    process.env.GOOGLE_OAUTH_REDIRECT_URI = "http://x/cb";
+    expect(await resolveActiveBackendName()).toBe("gdrive");
+  });
+
+  it("defaults to local when nothing else is configured", async () => {
+    expect(await resolveActiveBackendName()).toBe("local");
   });
 });
 

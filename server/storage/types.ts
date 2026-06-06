@@ -1,16 +1,20 @@
 /**
  * Backend-agnostic file storage interface.
  *
- * Two production implementations exist:
+ * Three production implementations exist:
+ *   - LocalBackend  (files on the server's own disk / a mounted volume — zero
+ *     external setup; ideal for Docker self-host and the Home Assistant add-on)
  *   - S3Backend  (Cloudflare R2, AWS S3, Backblaze B2, MinIO …)
  *   - GoogleDriveBackend  (one-time OAuth with the app owner's Google account)
  *
- * Both are accessed exclusively through `getActiveBackend()` — never imported
- * directly by routes or routers. The selection is driven by `STORAGE_BACKEND`
- * (or auto-detected: S3 if its env vars are present, otherwise gdrive).
+ * Backends are accessed exclusively through `resolveActiveBackend()` (DB-aware)
+ * or `getBackendByName()` (for a stored per-file backend) — never imported
+ * directly by routes or routers. The active selection is driven by the
+ * `storage.activeBackend` app-setting, then `STORAGE_BACKEND` env, then auto-
+ * detection.
  */
 
-export type StorageBackendName = "s3" | "gdrive";
+export type StorageBackendName = "s3" | "gdrive" | "local";
 
 export interface UploadMeta {
   ownerUserId: number;
