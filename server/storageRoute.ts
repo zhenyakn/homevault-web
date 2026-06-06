@@ -100,13 +100,21 @@ router.get("/api/storage/status", async (req, res) => {
 });
 
 router.post("/api/storage/active", csrfRequireMiddleware, async (req, res) => {
-  const ctx = await requireRealAdmin(req, res);
-  if (!ctx) return;
   const backend = parseBackend((req.body as any)?.backend);
   if (!backend) {
     res.status(400).json({ error: "Invalid or missing backend" });
     return;
   }
+  // Selecting/configuring LOCAL disk only needs the admin role. The extra
+  // setup-token gate (requireRealAdmin) exists to stop a NO_AUTH LAN client
+  // from *rebinding* storage to an attacker-controlled cloud bucket and
+  // harvesting future uploads — a threat that doesn't apply to local disk,
+  // where files never leave this server. Switching to S3/Drive stays gated.
+  const ctx =
+    backend === "local"
+      ? await requireAdmin(req, res)
+      : await requireRealAdmin(req, res);
+  if (!ctx) return;
   try {
     if (!(await isBackendConfigured(backend))) {
       res.status(400).json({
@@ -156,7 +164,8 @@ router.post("/api/storage/s3", csrfRequireMiddleware, async (req, res) => {
 });
 
 router.post("/api/storage/local", csrfRequireMiddleware, async (req, res) => {
-  const ctx = await requireRealAdmin(req, res);
+  // Local-only operation — admin role is sufficient (see /active rationale).
+  const ctx = await requireAdmin(req, res);
   if (!ctx) return;
   const dir = (req.body as any)?.dir;
   if (!dir?.trim()) {
@@ -180,13 +189,18 @@ router.post("/api/storage/local", csrfRequireMiddleware, async (req, res) => {
 });
 
 router.post("/api/storage/test", csrfRequireMiddleware, async (req, res) => {
-  const ctx = await requireRealAdmin(req, res);
-  if (!ctx) return;
   const backend = parseBackend((req.body as any)?.backend);
   if (!backend) {
     res.status(400).json({ error: "Invalid or missing backend" });
     return;
   }
+  // Testing local writability is safe with the admin role; testing external
+  // backends touches their credentials, so keep that behind the setup token.
+  const ctx =
+    backend === "local"
+      ? await requireAdmin(req, res)
+      : await requireRealAdmin(req, res);
+  if (!ctx) return;
   try {
     const result = await testBackend(backend, req.body);
     res.json(result);
