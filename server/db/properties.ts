@@ -20,6 +20,12 @@ export async function getPropertiesByUser(userId: number) {
     .where(eq(properties.userId, userId));
 }
 
+/** All properties across all users — used by the reminder sweep. */
+export async function getAllProperties() {
+  const db = await getDb();
+  return await db.select().from(properties);
+}
+
 export async function checkPropertyOwnership(
   userId: number,
   propertyId: number

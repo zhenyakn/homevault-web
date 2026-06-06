@@ -35,6 +35,22 @@ const envSchema = z.object({
   SEED_MOCK_DATA: z.string().default("false"),
   PORT: z.string().default("3005"),
   HOST: z.string().default("0.0.0.0"),
+  // ── Notifications (all optional; each adapter no-ops when unset) ──────────
+  // Public origin used to register the Telegram webhook and build links.
+  PUBLIC_BASE_URL: z.string().default(""),
+  // Email (SMTP) channel.
+  SMTP_HOST: z.string().default(""),
+  SMTP_PORT: z.string().default(""),
+  SMTP_USER: z.string().default(""),
+  SMTP_PASS: z.string().default(""),
+  SMTP_FROM: z.string().default(""),
+  // Telegram bot (two-way) + outbound channel.
+  TELEGRAM_BOT_TOKEN: z.string().default(""),
+  TELEGRAM_WEBHOOK_SECRET: z.string().default(""),
+  // Browser Web Push (VAPID). Generate with: npx web-push generate-vapid-keys
+  VAPID_PUBLIC_KEY: z.string().default(""),
+  VAPID_PRIVATE_KEY: z.string().default(""),
+  VAPID_SUBJECT: z.string().default("mailto:admin@homevault.local"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -69,4 +85,15 @@ export const ENV = {
   adminSetupToken: raw.ADMIN_SETUP_TOKEN,
   noAuth: raw.NO_AUTH === "true",
   seedMockData: raw.SEED_MOCK_DATA === "true",
+  publicBaseUrl: raw.PUBLIC_BASE_URL,
+  smtpHost: raw.SMTP_HOST,
+  smtpPort: raw.SMTP_PORT,
+  smtpUser: raw.SMTP_USER,
+  smtpPass: raw.SMTP_PASS,
+  smtpFrom: raw.SMTP_FROM,
+  telegramBotToken: raw.TELEGRAM_BOT_TOKEN,
+  telegramWebhookSecret: raw.TELEGRAM_WEBHOOK_SECRET,
+  vapidPublicKey: raw.VAPID_PUBLIC_KEY,
+  vapidPrivateKey: raw.VAPID_PRIVATE_KEY,
+  vapidSubject: raw.VAPID_SUBJECT,
 };
