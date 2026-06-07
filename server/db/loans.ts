@@ -1,11 +1,14 @@
 import { eq, desc, and, inArray } from "drizzle-orm";
+import { nanoid } from "nanoid";
 import {
   loans,
   loanRepayments,
+  expenses,
   type Loan,
   type LoanRepayment,
 } from "../../drizzle/schema";
 import { getDb } from "./client";
+import { getExpenseById } from "./expenses";
 
 export type LoanWithRepayments = Loan & { repayments: LoanRepayment[] };
 
@@ -81,6 +84,12 @@ export async function updateLoan(
 
 export async function deleteLoan(id: string, ownerId: number) {
   const db = await getDb();
+  // Clear dangling links so paid "Loan" expenses don't later try to reconcile
+  // against a loan that no longer exists. Repayments cascade-delete via FK.
+  await db
+    .update(expenses)
+    .set({ loanId: null })
+    .where(eq(expenses.loanId, id));
   await db
     .delete(loans)
     .where(and(eq(loans.id, id), eq(loans.ownerId, ownerId)));
@@ -114,4 +123,98 @@ export async function deleteLoanRepayment(id: string, loanId: string) {
     .delete(loanRepayments)
     .where(and(eq(loanRepayments.id, id), eq(loanRepayments.loanId, loanId)));
   return true;
+}
+
+// ── Balance maintenance ───────────────────────────────────────────────────────
+
+/**
+ * Apply a repayment delta to a loan's outstanding balance.
+ *
+ * `currentBalance` is the single source of truth (see shared/loanProgress.ts):
+ * a repayment of `amount` decreases it (positive `amount`), reversing one
+ * increases it (negative `amount`). The result is clamped to
+ * [0, originalAmount] so it can never go negative or exceed the principal —
+ * and, crucially, a balance seeded below `originalAmount` (a paydown made
+ * before in-app tracking began) is preserved rather than recomputed away.
+ */
+export async function applyRepaymentToBalance(loanId: string, amount: number) {
+  if (!amount) return;
+  const db = await getDb();
+  const [loan] = await db
+    .select()
+    .from(loans)
+    .where(eq(loans.id, loanId))
+    .limit(1);
+  if (!loan) return;
+  const next = Math.min(
+    loan.originalAmount,
+    Math.max(0, loan.currentBalance - amount)
+  );
+  await db.update(loans).set({ currentBalance: next }).where(eq(loans.id, loanId));
+}
+
+async function getRepaymentBySourceExpense(
+  expenseId: string
+): Promise<LoanRepayment | null> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(loanRepayments)
+    .where(eq(loanRepayments.sourceExpenseId, expenseId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Reconcile the auto-generated loan repayment for a single expense.
+ *
+ * Idempotent: derives the *desired* repayment (a paid "Loan"-category expense
+ * with a linked loan should have exactly one repayment for its current amount)
+ * and the *existing* one keyed by `sourceExpenseId`, then applies only the diff
+ * to the loan balance. Safe to call after any expense create/update/markAsPaid/
+ * delete — including after the expense row is gone (desired = none).
+ */
+export async function reconcileExpenseRepayment(expenseId: string) {
+  const expense = await getExpenseById(expenseId);
+  const existing = await getRepaymentBySourceExpense(expenseId);
+
+  const desiredLoanId =
+    expense && expense.category === "Loan" && expense.loanId && expense.isPaid
+      ? expense.loanId
+      : null;
+  const desiredAmount = desiredLoanId ? expense!.amount : 0;
+  const desiredDate = expense?.paidDate ?? expense?.date ?? "";
+  const desiredNotes = expense ? `Expense: ${expense.name}` : null;
+
+  // Existing repayment points at a different loan (loan changed / unlinked /
+  // unpaid / deleted): undo it on the old loan and drop the row.
+  if (existing && existing.loanId !== desiredLoanId) {
+    await applyRepaymentToBalance(existing.loanId, -existing.amount);
+    await deleteLoanRepayment(existing.id, existing.loanId);
+  }
+
+  if (!desiredLoanId) return;
+
+  if (existing && existing.loanId === desiredLoanId) {
+    // Same loan: apply only the amount delta, then sync row fields.
+    const delta = desiredAmount - existing.amount;
+    if (delta !== 0) await applyRepaymentToBalance(desiredLoanId, delta);
+    const db = await getDb();
+    await db
+      .update(loanRepayments)
+      .set({ amount: desiredAmount, date: desiredDate, notes: desiredNotes })
+      .where(eq(loanRepayments.id, existing.id));
+    return;
+  }
+
+  // No matching repayment yet: create one and decrement the balance.
+  await applyRepaymentToBalance(desiredLoanId, desiredAmount);
+  await createLoanRepayment({
+    id: nanoid(),
+    loanId: desiredLoanId,
+    amount: desiredAmount,
+    date: desiredDate,
+    notes: desiredNotes,
+    sourceExpenseId: expenseId,
+  });
 }

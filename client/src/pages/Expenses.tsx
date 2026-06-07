@@ -35,6 +35,7 @@ const CATEGORIES = [
   "Tax",
   "Management",
   "Renovation",
+  "Loan",
   "Other",
 ] as const;
 const FREQUENCIES = ["monthly", "quarterly", "yearly"] as const;
@@ -50,6 +51,7 @@ const CAT_COLOR: Record<string, string> = {
   Management: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
   Renovation:
     "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400",
+  Loan: "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400",
   Other: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
 };
 
@@ -61,11 +63,13 @@ const emptyForm = () => ({
   isRecurring: false,
   recurringInterval: "monthly" as (typeof FREQUENCIES)[number],
   notes: "",
+  loanId: "",
 });
 
 export default function Expenses() {
   const { t } = useTranslation();
   const { data: expenses, isLoading, refetch } = trpc.expenses.list.useQuery();
+  const { data: loans } = trpc.loans.list.useQuery();
   const createMutation = trpc.expenses.create.useMutation();
   const updateMutation = trpc.expenses.update.useMutation();
   const deleteMutation = trpc.expenses.delete.useMutation();
@@ -95,6 +99,7 @@ export default function Expenses() {
       isRecurring: e.isRecurring || false,
       recurringInterval: e.recurringInterval || "monthly",
       notes: e.notes || "",
+      loanId: e.loanId || "",
     });
     setAttachments(
       (e.attachments || []).map((url: string) => ({
@@ -119,6 +124,8 @@ export default function Expenses() {
         ...form,
         amount: Math.round(parseFloat(form.amount) * 100),
         attachments: attachments.map(a => a.url),
+        loanId:
+          form.category === "Loan" && form.loanId ? form.loanId : null,
       };
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, data: payload });
@@ -312,6 +319,34 @@ export default function Expenses() {
                     </SelectContent>
                   </Select>
                 </div>
+                {form.category === "Loan" && (
+                  <div className="space-y-1.5">
+                    <Label>{t("expenses.linkedLoan")}</Label>
+                    <Select
+                      value={form.loanId || "none"}
+                      onValueChange={v =>
+                        setForm({ ...form, loanId: v === "none" ? "" : v })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("expenses.noLoanLink")}
+                        </SelectItem>
+                        {(loans ?? []).map(l => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.lender || l.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {t("expenses.linkedLoanHint")}
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="ex-rec"
@@ -484,6 +519,15 @@ export default function Expenses() {
                         <span className="text-xs text-muted-foreground">
                           {t(`frequency.${expense.recurringInterval}`, {
                             defaultValue: expense.recurringInterval,
+                          })}
+                        </span>
+                      )}
+                      {expense.loanId && (
+                        <span className="text-xs text-muted-foreground">
+                          {t("expenses.repaysLoan", {
+                            loan:
+                              loans?.find(l => l.id === expense.loanId)
+                                ?.lender ?? t("expenses.aLoan"),
                           })}
                         </span>
                       )}

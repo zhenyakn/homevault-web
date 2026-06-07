@@ -121,6 +121,7 @@
     "Utilities": "Utilities",
     "Management": "Management",
     "Renovation": "Renovation",
+    "Loan": "Loan",
     "Insurance": "Insurance",
     "Tax": "Tax",
     "Maintenance": "Maintenance",
@@ -713,7 +714,12 @@
     "failedMarkPaid": "Failed to mark as paid",
     "nothingToExport": "Nothing to export",
     "exported": "Exported",
-    "deleted": "Deleted"
+    "deleted": "Deleted",
+    "linkedLoan": "Linked loan",
+    "noLoanLink": "None",
+    "linkedLoanHint": "When this expense is marked paid, it records a repayment and lowers the loan balance.",
+    "repaysLoan": "→ {{loan}}",
+    "aLoan": "a loan"
   },
   "loans": {
     "title": "Loans",

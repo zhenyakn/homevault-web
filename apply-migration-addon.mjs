@@ -159,18 +159,22 @@ async function main() {
       \`ownerId\` int NOT NULL,
       \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`amount\` int NOT NULL,
-      \`category\` enum('Maintenance','Utilities','Insurance','Tax','Management','Renovation','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`category\` enum('Maintenance','Utilities','Insurance','Tax','Management','Renovation','Loan','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`nextDueDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`isRecurring\` tinyint(1) DEFAULT '0',
       \`recurringInterval\` enum('monthly','quarterly','yearly') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`attachments\` json DEFAULT NULL,
+      \`isPaid\` tinyint(1) NOT NULL DEFAULT 0,
+      \`paidDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`loanId\` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
       KEY \`expense_property_idx\` (\`propertyId\`),
-      KEY \`expense_owner_idx\` (\`ownerId\`)
+      KEY \`expense_owner_idx\` (\`ownerId\`),
+      KEY \`expense_loan_idx\` (\`loanId\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "expenses"
   );
@@ -353,9 +357,11 @@ async function main() {
       \`amount\` int NOT NULL,
       \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`sourceExpenseId\` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
       KEY \`lr_loan_idx\` (\`loanId\`),
+      KEY \`lrep_source_expense_idx\` (\`sourceExpenseId\`),
       CONSTRAINT \`lr_loan_fk\` FOREIGN KEY (\`loanId\`) REFERENCES \`loans\` (\`id\`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "loanRepayments"
@@ -543,6 +549,29 @@ async function main() {
   await run(
     `ALTER TABLE \`expenses\` ADD COLUMN \`paidDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
     "expenses.paidDate"
+  );
+  await run(
+    `ALTER TABLE \`expenses\` ADD COLUMN \`loanId\` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "expenses.loanId"
+  );
+  await run(
+    `CREATE INDEX \`expense_loan_idx\` ON \`expenses\` (\`loanId\`)`,
+    "expense_loan_idx"
+  );
+  // Widen the category enum so existing installs accept the new 'Loan' value.
+  await run(
+    `ALTER TABLE \`expenses\` MODIFY COLUMN \`category\` enum('Maintenance','Utilities','Insurance','Tax','Management','Renovation','Loan','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "expenses.category (+Loan)"
+  );
+
+  // ── loanRepayments ────────────────────────────────────────────────────────────
+  await run(
+    `ALTER TABLE \`loanRepayments\` ADD COLUMN \`sourceExpenseId\` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "loanRepayments.sourceExpenseId"
+  );
+  await run(
+    `CREATE INDEX \`lrep_source_expense_idx\` ON \`loanRepayments\` (\`sourceExpenseId\`)`,
+    "lrep_source_expense_idx"
   );
 
   // ── repairs ───────────────────────────────────────────────────────────────────

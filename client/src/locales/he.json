@@ -115,6 +115,7 @@
     "Utilities": "חשמל ומים",
     "Management": "ניהול",
     "Renovation": "שיפוץ",
+    "Loan": "הלוואה",
     "Agency": "עמלת תיווך",
     "Legal": "עלויות משפטיות",
     "Lawyer": "עורך דין",
@@ -704,7 +705,12 @@
     "failedMarkPaid": "שגיאה בסימון כשולם",
     "nothingToExport": "אין נתונים לייצוא",
     "exported": "יוצא",
-    "deleted": "נמחק"
+    "deleted": "נמחק",
+    "linkedLoan": "הלוואה מקושרת",
+    "noLoanLink": "ללא",
+    "linkedLoanHint": "כאשר ההוצאה מסומנת כשולמה, נרשם החזר והיתרה של ההלוואה יורדת.",
+    "repaysLoan": "→ {{loan}}",
+    "aLoan": "הלוואה"
   },
   "loans": {
     "title": "הלוואות",
