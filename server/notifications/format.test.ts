@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  formatPlainText,
-  formatEmailSubject,
-  formatEmailHtml,
-} from "./format";
+import { formatPlainText, formatEmailSubject, formatEmailHtml } from "./format";
 import type { NotificationPayload } from "./types";
 
 const payload: NotificationPayload = {
@@ -16,7 +12,9 @@ const payload: NotificationPayload = {
 
 describe("formatPlainText", () => {
   it("combines title and body on separate lines", () => {
-    expect(formatPlainText(payload)).toBe("Expense due soon\nWater (100) is due.");
+    expect(formatPlainText(payload)).toBe(
+      "Expense due soon\nWater (100) is due."
+    );
   });
 });
 

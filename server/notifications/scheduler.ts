@@ -94,9 +94,7 @@ export function startReminderScheduler(): void {
   started = true;
   cron.schedule("0 8 * * *", () => {
     runReminderSweep()
-      .then(r =>
-        logger.info(r, "[reminders] daily sweep complete")
-      )
+      .then(r => logger.info(r, "[reminders] daily sweep complete"))
       .catch(err => logger.error({ err }, "[reminders] sweep failed"));
   });
   logger.info("[reminders] daily sweep scheduled for 08:00");

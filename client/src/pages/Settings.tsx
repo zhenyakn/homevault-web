@@ -1073,15 +1073,17 @@ function NotificationsSection({ p }: { p: any }) {
 /** Channel metadata: icon + whether the channel requires setup (a destination
  *  or connection) before it can deliver. Setup lives under the Integrations tab;
  *  the on/off toggles live here under Notifications. */
-const CHANNEL_META: Record<ChannelKey, { icon: LucideIcon; needsSetup: boolean }> =
-  {
-    inapp: { icon: Bell, needsSetup: false },
-    push: { icon: Smartphone, needsSetup: false },
-    email: { icon: Mail, needsSetup: true },
-    webpush: { icon: Globe, needsSetup: true },
-    telegram: { icon: Send, needsSetup: true },
-    whatsapp: { icon: MessageCircle, needsSetup: true },
-  };
+const CHANNEL_META: Record<
+  ChannelKey,
+  { icon: LucideIcon; needsSetup: boolean }
+> = {
+  inapp: { icon: Bell, needsSetup: false },
+  push: { icon: Smartphone, needsSetup: false },
+  email: { icon: Mail, needsSetup: true },
+  webpush: { icon: Globe, needsSetup: true },
+  telegram: { icon: Send, needsSetup: true },
+  whatsapp: { icon: MessageCircle, needsSetup: true },
+};
 
 type ChannelStatus = {
   email: string | null;
@@ -1200,7 +1202,9 @@ function ChannelsBlock() {
                 ))}
               <Switch
                 checked={enabled}
-                onCheckedChange={v => setPref.mutate({ channel: ch, enabled: v })}
+                onCheckedChange={v =>
+                  setPref.mutate({ channel: ch, enabled: v })
+                }
               />
             </div>
           </div>
@@ -1434,7 +1438,8 @@ function NotificationChannelsIntegration() {
   };
 
   const webPushGranted =
-    typeof Notification !== "undefined" && Notification.permission === "granted";
+    typeof Notification !== "undefined" &&
+    Notification.permission === "granted";
 
   return (
     <div className="space-y-2">

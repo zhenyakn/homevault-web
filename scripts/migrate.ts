@@ -9,8 +9,8 @@ import "dotenv/config";
 import { runMigrations } from "../server/_core/migrate";
 
 runMigrations()
-  .then(({ applied, skipped }) => {
-    console.log(`\nMigrations complete — ${applied} applied, ${skipped} skipped.`);
+  .then(() => {
+    console.log("\nMigrations complete.");
     process.exit(0);
   })
   .catch(err => {

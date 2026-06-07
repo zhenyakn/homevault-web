@@ -43,7 +43,8 @@ export async function subscribeToWebPush(
   if (!webPushSupported()) throw new Error("Web Push is not supported here.");
 
   const permission = await Notification.requestPermission();
-  if (permission !== "granted") throw new Error("Notification permission denied.");
+  if (permission !== "granted")
+    throw new Error("Notification permission denied.");
 
   const reg = await navigator.serviceWorker.register("/sw.js");
   await navigator.serviceWorker.ready;

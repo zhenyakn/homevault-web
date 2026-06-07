@@ -30,8 +30,9 @@ COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/dist ./dist
-# Ship the SQL migrations so the server can auto-migrate on boot.
-COPY --from=builder /app/drizzle ./drizzle
+# Ship the idempotent schema-convergence script so the server can auto-migrate
+# on boot (the same script the HA add-on runs).
+COPY --from=builder /app/apply-migration-addon.mjs ./
 
 # Non-root user for security
 RUN addgroup -S homevault && adduser -S homevault -G homevault
