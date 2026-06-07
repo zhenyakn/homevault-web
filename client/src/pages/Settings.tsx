@@ -3201,6 +3201,7 @@ export default function Settings() {
       ? (routeParams.section as SID)
       : "property";
   const [active, setActive] = useState<SID>(initialSection);
+  const [, setLocation] = useLocation();
   const { data: property, isLoading } = trpc.property.get.useQuery();
   const { data: allProperties } = trpc.property.list.useQuery();
   const { activePropertyId, switchProperty } = useProperty();
@@ -3220,7 +3221,11 @@ export default function Settings() {
 
   const go = (id: SID) => {
     setActive(id);
-    window.history.replaceState(null, "", `#${id}`);
+    // Navigate through the hash router so the URL stays a valid route
+    // (`#/settings/<id>`). A raw `replaceState("#<id>")` parked the URL on a
+    // hash that matches no route; it looked fine until any re-render (e.g. a
+    // language change) made wouter re-read the location and render the 404 page.
+    setLocation(`/settings/${id}`, { replace: true });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
