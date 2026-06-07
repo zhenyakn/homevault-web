@@ -13,7 +13,7 @@ export type ParsedCommand =
   | { type: "upcoming" }
   | { type: "addexpense"; amount: number; name: string }
   | { type: "paid"; id: string }
-  | { type: "invalid"; command: string; reason: string }
+  | { type: "invalid"; command: string; reasonKey: string }
   | { type: "unknown"; command: string }
   | { type: "text"; text: string };
 
@@ -52,14 +52,14 @@ export function parseCommand(raw: string): ParsedCommand {
 
     case "link": {
       if (!rest) {
-        return { type: "invalid", command: "link", reason: "Usage: /link <code>" };
+        return { type: "invalid", command: "link", reasonKey: "usage.link" };
       }
       return { type: "link", code: rest.split(/\s+/)[0] };
     }
 
     case "paid": {
       if (!rest) {
-        return { type: "invalid", command: "paid", reason: "Usage: /paid <id>" };
+        return { type: "invalid", command: "paid", reasonKey: "usage.paid" };
       }
       return { type: "paid", id: rest.split(/\s+/)[0] };
     }
@@ -70,7 +70,7 @@ export function parseCommand(raw: string): ParsedCommand {
         return {
           type: "invalid",
           command: "addexpense",
-          reason: "Usage: /addexpense <amount> <name>",
+          reasonKey: "usage.addexpense",
         };
       }
       const amount = Number(parts[0]);
@@ -78,7 +78,7 @@ export function parseCommand(raw: string): ParsedCommand {
         return {
           type: "invalid",
           command: "addexpense",
-          reason: "Amount must be a positive number.",
+          reasonKey: "usage.amountPositive",
         };
       }
       const name = parts.slice(1).join(" ");

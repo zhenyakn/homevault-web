@@ -10,6 +10,7 @@ import { nanoid } from "nanoid";
 import { ENV } from "../_core/env";
 import { logger } from "../_core/logger";
 import { parseCommand } from "./commands";
+import { t, normalizeLanguage } from "./i18n";
 import { todayInTz } from "../notifications/time";
 import {
   consumeTelegramLinkCode,
@@ -26,16 +27,6 @@ import {
 import { getDashboardStats, getOverdueExpenses } from "../db/dashboard";
 import { getCalendarEvents } from "../db/calendar";
 
-const HELP = [
-  "HomeVault bot commands:",
-  "/overdue — items needing attention",
-  "/dashboard — this month at a glance",
-  "/upcoming — events & due dates (next 7 days)",
-  "/addexpense <amount> <name> — log an expense",
-  "/paid <id> — mark an expense paid",
-  "/link <code> — connect your account",
-].join("\n");
-
 async function resolveContext(chatId: string) {
   const user = await getUserByTelegramChatId(chatId);
   if (!user) return null;
@@ -43,6 +34,12 @@ async function resolveContext(chatId: string) {
   const property = props[0];
   if (!property) return null;
   return { user, property };
+}
+
+/** The linked user's preferred language for this chat (defaults to en). */
+async function resolveLang(chatId: string): Promise<string> {
+  const user = await getUserByTelegramChatId(chatId);
+  return normalizeLanguage(user?.language);
 }
 
 let bot: Bot | null = null;
@@ -62,8 +59,9 @@ function registerHandlers(b: Bot) {
     const data = ctx.callbackQuery.data;
     const chatId = String(ctx.chat?.id ?? "");
     if (data === "cancel") {
+      const lang = await resolveLang(chatId);
       await ctx.answerCallbackQuery();
-      await ctx.editMessageText("Cancelled. Nothing was added.");
+      await ctx.editMessageText(t(lang, "cancelled"));
       return;
     }
     if (data.startsWith("ax|")) {
@@ -73,7 +71,9 @@ function registerHandlers(b: Bot) {
       const context = await resolveContext(chatId);
       await ctx.answerCallbackQuery();
       if (!context) {
-        await ctx.editMessageText("Your account isn't linked anymore.");
+        await ctx.editMessageText(
+          t(await resolveLang(chatId), "accountUnlinked")
+        );
         return;
       }
       await createExpense({
@@ -85,45 +85,58 @@ function registerHandlers(b: Bot) {
         category: "Other",
         date: todayInTz(context.property.timezone),
       } as any);
-      await ctx.editMessageText(`✅ Added “${name}” (${Math.round(amount)}).`);
+      await ctx.editMessageText(
+        t(normalizeLanguage(context.user.language), "expenseAdded", {
+          name,
+          amount: Math.round(amount),
+        })
+      );
     }
   });
 
   b.on("message:text", async ctx => {
     const chatId = String(ctx.chat.id);
     const parsed = parseCommand(ctx.message.text);
+    // Resolve the chat's user once so every reply can be localized.
+    const linkedUser = await getUserByTelegramChatId(chatId);
+    const lang = normalizeLanguage(linkedUser?.language);
 
     switch (parsed.type) {
       case "start":
       case "help":
-        await ctx.reply(HELP);
+        await ctx.reply(t(lang, "help"));
         return;
 
       case "link": {
         const userId = await consumeTelegramLinkCode(parsed.code);
         if (!userId) {
-          await ctx.reply("That link code is invalid or expired.");
+          await ctx.reply(t(lang, "linkInvalid"));
           return;
         }
         await setTelegramChatId(userId, chatId);
-        await ctx.reply("✅ Account linked! Try /overdue or /dashboard.");
+        // The linking user may differ from the previously-unlinked chat, so
+        // re-resolve the language from the now-linked account.
+        await ctx.reply(t(await resolveLang(chatId), "linkSuccess"));
         return;
       }
 
       case "invalid":
-        await ctx.reply(parsed.reason);
+        await ctx.reply(t(lang, parsed.reasonKey));
         return;
     }
 
-    // Everything below requires a linked account.
-    const context = await resolveContext(chatId);
-    if (!context) {
-      await ctx.reply(
-        "Your chat isn't linked yet. Open HomeVault → Settings → Integrations, create a Telegram link code, and send: /link <code>"
-      );
+    // Everything below requires a linked account with a property.
+    if (!linkedUser) {
+      await ctx.reply(t(lang, "notLinked"));
       return;
     }
-    const { user, property } = context;
+    const props = await getPropertiesByUser(linkedUser.id);
+    const property = props[0];
+    if (!property) {
+      await ctx.reply(t(lang, "notLinked"));
+      return;
+    }
+    const user = linkedUser;
 
     switch (parsed.type) {
       case "overdue": {
@@ -134,10 +147,20 @@ function registerHandlers(b: Bot) {
         ]);
         const overdue = getOverdueExpenses(expenses, today);
         const lines: string[] = [];
-        for (const o of overdue) lines.push(`• ${o.label} (${o.amount}) — due ${o.date}`);
-        for (const r of stats.staleRepairs) lines.push(`• ${r.label} — repair needs attention`);
+        for (const o of overdue)
+          lines.push(
+            t(lang, "overdueLine", {
+              label: o.label,
+              amount: o.amount,
+              date: o.date,
+            })
+          );
+        for (const r of stats.staleRepairs)
+          lines.push(t(lang, "repairAttentionLine", { label: r.label }));
         await ctx.reply(
-          lines.length ? `Needs attention:\n${lines.join("\n")}` : "Nothing overdue. 🎉"
+          lines.length
+            ? `${t(lang, "needsAttention")}\n${lines.join("\n")}`
+            : t(lang, "nothingOverdue")
         );
         return;
       }
@@ -146,9 +169,9 @@ function registerHandlers(b: Bot) {
         const s = await getDashboardStats(user.id, property.id);
         await ctx.reply(
           [
-            `🏠 ${property.houseNickname || property.houseName || "Home"}`,
-            `Spent this month: ${s.monthSpent}`,
-            `Open repairs: ${s.openRepairsCount}`,
+            `🏠 ${property.houseNickname || property.houseName || t(lang, "home")}`,
+            t(lang, "dashboardSpent", { amount: s.monthSpent }),
+            t(lang, "dashboardOpenRepairs", { count: s.openRepairsCount }),
           ].join("\n")
         );
         return;
@@ -163,8 +186,12 @@ function registerHandlers(b: Bot) {
           .slice(0, 10);
         await ctx.reply(
           soon.length
-            ? `📅 Upcoming:\n${soon.map(e => `• ${e.date} — ${e.title}`).join("\n")}`
-            : "Nothing on the calendar soon."
+            ? `${t(lang, "upcomingHeader")}\n${soon
+                .map(e =>
+                  t(lang, "upcomingLine", { date: e.date, title: e.title })
+                )
+                .join("\n")}`
+            : t(lang, "nothingUpcoming")
         );
         return;
       }
@@ -172,10 +199,10 @@ function registerHandlers(b: Bot) {
       case "addexpense": {
         const name = parsed.name.slice(0, 40);
         const kb = new InlineKeyboard()
-          .text("Confirm", `ax|${parsed.amount}|${name}`)
-          .text("Cancel", "cancel");
+          .text(t(lang, "btnConfirm"), `ax|${parsed.amount}|${name}`)
+          .text(t(lang, "btnCancel"), "cancel");
         await ctx.reply(
-          `Add expense “${name}” for ${parsed.amount} under Other?`,
+          t(lang, "confirmAdd", { name, amount: parsed.amount }),
           { reply_markup: kb }
         );
         return;
@@ -184,23 +211,23 @@ function registerHandlers(b: Bot) {
       case "paid": {
         const expense = await getExpenseById(parsed.id);
         if (!expense || expense.ownerId !== user.id) {
-          await ctx.reply("No expense with that id.");
+          await ctx.reply(t(lang, "noExpenseId"));
           return;
         }
         await updateExpense(parsed.id, user.id, {
           isPaid: true,
           paidDate: todayInTz(property.timezone),
         });
-        await ctx.reply(`✅ Marked “${expense.name}” as paid.`);
+        await ctx.reply(t(lang, "markedPaid", { name: expense.name }));
         return;
       }
 
       case "unknown":
-        await ctx.reply(`Unknown command. ${HELP}`);
+        await ctx.reply(`${t(lang, "unknownCommand")} ${t(lang, "help")}`);
         return;
 
       default:
-        await ctx.reply(HELP);
+        await ctx.reply(t(lang, "help"));
     }
   });
 

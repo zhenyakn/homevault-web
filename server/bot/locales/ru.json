@@ -1,0 +1,31 @@
+{
+  "help": "Команды бота HomeVault:\n/overdue — что требует внимания\n/dashboard — обзор за этот месяц\n/upcoming — события и сроки (ближайшие 7 дней)\n/addexpense <сумма> <название> — записать расход\n/paid <id> — отметить расход оплаченным\n/link <код> — привязать аккаунт",
+  "cancelled": "Отменено. Ничего не добавлено.",
+  "accountUnlinked": "Ваш аккаунт больше не привязан.",
+  "expenseAdded": "✅ Добавлено «{{name}}» ({{amount}}).",
+  "linkInvalid": "Этот код привязки недействителен или истёк.",
+  "linkSuccess": "✅ Аккаунт привязан! Попробуйте /overdue или /dashboard.",
+  "notLinked": "Этот чат ещё не привязан. Откройте HomeVault → Настройки → Интеграции, создайте код привязки Telegram и отправьте: /link <код>",
+  "needsAttention": "Требует внимания:",
+  "overdueLine": "• {{label}} ({{amount}}) — срок {{date}}",
+  "repairAttentionLine": "• {{label}} — ремонт требует внимания",
+  "nothingOverdue": "Нет просроченного. 🎉",
+  "home": "Дом",
+  "dashboardSpent": "Потрачено в этом месяце: {{amount}}",
+  "dashboardOpenRepairs": "Открытые ремонты: {{count}}",
+  "upcomingHeader": "📅 Предстоящее:",
+  "upcomingLine": "• {{date}} — {{title}}",
+  "nothingUpcoming": "В ближайшее время в календаре ничего нет.",
+  "confirmAdd": "Добавить расход «{{name}}» на {{amount}} в категорию «Другое»?",
+  "btnConfirm": "Подтвердить",
+  "btnCancel": "Отмена",
+  "noExpenseId": "Нет расхода с таким id.",
+  "markedPaid": "✅ «{{name}}» отмечено как оплаченное.",
+  "unknownCommand": "Неизвестная команда.",
+  "usage": {
+    "link": "Использование: /link <код>",
+    "paid": "Использование: /paid <id>",
+    "addexpense": "Использование: /addexpense <сумма> <название>",
+    "amountPositive": "Сумма должна быть положительным числом."
+  }
+}

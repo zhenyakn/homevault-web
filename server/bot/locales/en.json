@@ -1,0 +1,31 @@
+{
+  "help": "HomeVault bot commands:\n/overdue — items needing attention\n/dashboard — this month at a glance\n/upcoming — events & due dates (next 7 days)\n/addexpense <amount> <name> — log an expense\n/paid <id> — mark an expense paid\n/link <code> — connect your account",
+  "cancelled": "Cancelled. Nothing was added.",
+  "accountUnlinked": "Your account isn't linked anymore.",
+  "expenseAdded": "✅ Added “{{name}}” ({{amount}}).",
+  "linkInvalid": "That link code is invalid or expired.",
+  "linkSuccess": "✅ Account linked! Try /overdue or /dashboard.",
+  "notLinked": "Your chat isn't linked yet. Open HomeVault → Settings → Integrations, create a Telegram link code, and send: /link <code>",
+  "needsAttention": "Needs attention:",
+  "overdueLine": "• {{label}} ({{amount}}) — due {{date}}",
+  "repairAttentionLine": "• {{label}} — repair needs attention",
+  "nothingOverdue": "Nothing overdue. 🎉",
+  "home": "Home",
+  "dashboardSpent": "Spent this month: {{amount}}",
+  "dashboardOpenRepairs": "Open repairs: {{count}}",
+  "upcomingHeader": "📅 Upcoming:",
+  "upcomingLine": "• {{date}} — {{title}}",
+  "nothingUpcoming": "Nothing on the calendar soon.",
+  "confirmAdd": "Add expense “{{name}}” for {{amount}} under Other?",
+  "btnConfirm": "Confirm",
+  "btnCancel": "Cancel",
+  "noExpenseId": "No expense with that id.",
+  "markedPaid": "✅ Marked “{{name}}” as paid.",
+  "unknownCommand": "Unknown command.",
+  "usage": {
+    "link": "Usage: /link <code>",
+    "paid": "Usage: /paid <id>",
+    "addexpense": "Usage: /addexpense <amount> <name>",
+    "amountPositive": "Amount must be a positive number."
+  }
+}
