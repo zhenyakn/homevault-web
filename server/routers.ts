@@ -68,7 +68,7 @@ const calendarCatMap: Record<string, string> = {
   Expense: "Payment",
   Repair: "Maintenance",
   Upgrade: "Renovation",
-  Loan: "Payment",
+  Loan: "Loan",
   Other: "Other",
 };
 
@@ -350,6 +350,9 @@ export const appRouter = router({
   dashboard: router({
     stats: protectedProcedure.query(async ({ ctx }) => {
       return await db.getDashboardStats(ctx.user.id, ctx.propertyId);
+    }),
+    attention: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getAttentionItems(ctx.user.id, ctx.propertyId);
     }),
     recentActivity: protectedProcedure.query(async ({ ctx }) => {
       return await db.getRecentActivity(ctx.propertyId);

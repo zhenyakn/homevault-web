@@ -5,7 +5,7 @@
  * the badge.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,6 +18,7 @@ import {
   Info,
   Check,
   AlertCircle,
+  X,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -68,6 +69,7 @@ const CATEGORY_COLOR: Record<Category, string> = {
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const ATTENTION_DISMISS_KEY = "hv:attention-dismissed";
 
 function minutesSince(d: Date | string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 60000));
@@ -105,7 +107,7 @@ export function NotificationCenter({ className }: { className?: string }) {
   // can't say "all caught up" while the dashboard shows overdue bills / stale
   // repairs. These are derived (not delivery-log rows): they persist while the
   // condition holds and route to the relevant page on click.
-  const { data: stats } = trpc.dashboard.stats.useQuery(undefined, {
+  const { data: stats } = trpc.dashboard.attention.useQuery(undefined, {
     refetchInterval: 60_000,
   });
   const attention = useMemo(() => {
@@ -137,7 +139,50 @@ export function NotificationCenter({ className }: { className?: string }) {
     return items;
   }, [stats, t]);
 
-  const unread = notifications.filter(n => !n.readAt).length + attention.length;
+  // Locally-dismissed attention items. Persisted so a dismissed item stays
+  // cleared across reloads; pruned to current items so a resolved-then-recurring
+  // condition re-surfaces (and the set can't grow unbounded).
+  const [dismissed, setDismissed] = useState<Set<string>>(() => {
+    try {
+      return new Set(
+        JSON.parse(localStorage.getItem(ATTENTION_DISMISS_KEY) || "[]")
+      );
+    } catch {
+      return new Set();
+    }
+  });
+  const persistDismissed = (next: Set<string>) => {
+    try {
+      localStorage.setItem(
+        ATTENTION_DISMISS_KEY,
+        JSON.stringify(Array.from(next))
+      );
+    } catch {
+      // ignore storage failures (private mode / quota)
+    }
+  };
+  useEffect(() => {
+    const keys = new Set(attention.map(a => a.key));
+    setDismissed(prev => {
+      const next = new Set(Array.from(prev).filter(k => keys.has(k)));
+      if (next.size === prev.size) return prev;
+      persistDismissed(next);
+      return next;
+    });
+  }, [attention]);
+
+  const dismissAttention = (key: string) => {
+    setDismissed(prev => {
+      const next = new Set(prev).add(key);
+      persistDismissed(next);
+      return next;
+    });
+  };
+
+  const visibleAttention = attention.filter(a => !dismissed.has(a.key));
+
+  const unread =
+    notifications.filter(n => !n.readAt).length + visibleAttention.length;
 
   const handleOpen = (item: FeedItem) => {
     if (!item.readAt) markRead.mutate({ id: item.id });
@@ -206,20 +251,23 @@ export function NotificationCenter({ className }: { className?: string }) {
   };
 
   const renderAttention = () =>
-    attention.length === 0 ? null : (
+    visibleAttention.length === 0 ? null : (
       <li>
         <p className="bg-rose-500/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-rose-600 dark:text-rose-400">
           {t("notifs.needsAttention")}
         </p>
         <ul className="divide-y divide-border">
-          {attention.map(a => {
+          {visibleAttention.map(a => {
             const Icon = CATEGORY_ICON[a.category] ?? AlertCircle;
             return (
-              <li key={a.key}>
+              <li
+                key={a.key}
+                className="group flex items-stretch bg-rose-500/[0.03] hover:bg-muted/50 transition-colors"
+              >
                 <button
                   type="button"
                   onClick={() => handleAttentionOpen(a.url)}
-                  className="flex w-full items-start gap-3 px-3 py-3 text-start transition-colors hover:bg-muted/50 bg-rose-500/[0.03]"
+                  className="flex flex-1 items-start gap-3 px-3 py-3 text-start min-w-0"
                 >
                   <div
                     className={cn(
@@ -235,6 +283,15 @@ export function NotificationCenter({ className }: { className?: string }) {
                       {a.body}
                     </p>
                   </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => dismissAttention(a.key)}
+                  aria-label={t("notifs.dismiss")}
+                  title={t("notifs.dismiss")}
+                  className="px-2 text-muted-foreground/50 hover:text-foreground transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </li>
             );
@@ -280,7 +337,15 @@ export function NotificationCenter({ className }: { className?: string }) {
               variant="ghost"
               size="sm"
               className="h-7 px-2 text-xs"
-              onClick={() => markAllRead.mutate()}
+              onClick={() => {
+                markAllRead.mutate();
+                if (visibleAttention.length > 0) {
+                  const next = new Set(dismissed);
+                  for (const a of visibleAttention) next.add(a.key);
+                  setDismissed(next);
+                  persistDismissed(next);
+                }
+              }}
             >
               <Check className="me-1 h-3 w-3" />
               {t("notifs.markAllRead")}
@@ -288,7 +353,7 @@ export function NotificationCenter({ className }: { className?: string }) {
           )}
         </div>
 
-        {notifications.length === 0 && attention.length === 0 ? (
+        {notifications.length === 0 && visibleAttention.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50 text-muted-foreground">
               <Check className="h-5 w-5" />

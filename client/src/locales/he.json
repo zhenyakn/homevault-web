@@ -9,6 +9,7 @@
     "needsAttention": "דורש טיפול",
     "overdueExpense": "חשבון באיחור",
     "staleRepair": "תיקון דורש טיפול",
+    "dismiss": "התעלם",
     "manageSettings": "הגדרות התראות",
     "justNow": "הרגע",
     "minutesAgo": "לפני {{count}} דק׳",
@@ -724,7 +725,8 @@
     "noLoanLink": "ללא",
     "linkedLoanHint": "כאשר ההוצאה מסומנת כשולמה, נרשם החזר והיתרה של ההלוואה יורדת.",
     "repaysLoan": "→ {{loan}}",
-    "aLoan": "הלוואה"
+    "aLoan": "הלוואה",
+    "loanUnlinked": "ההלוואה הוסרה"
   },
   "loans": {
     "title": "הלוואות",

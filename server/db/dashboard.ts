@@ -105,6 +105,48 @@ export async function getRecentActivity(propertyId: number) {
 
 // ── Dashboard stats — targeted SQL queries, no full-table loads ───────────────
 
+/**
+ * Lightweight "needs attention" feed for the notification bell: just overdue
+ * recurring bills + stale high/urgent repairs. This is a tiny subset of
+ * getDashboardStats so the header can poll it cheaply on every route without
+ * dragging the full dashboard aggregate (expenses/loans/upgrades/portfolio).
+ */
+export async function getAttentionItems(userId: number, propertyId: number) {
+  const db = await getDb();
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  const staleCutoffDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+
+  const [overdueExpenses, staleRepairs] = await Promise.all([
+    db
+      .select({ id: expenses.id, label: expenses.name, amount: expenses.amount })
+      .from(expenses)
+      .where(
+        and(
+          eq(expenses.ownerId, userId),
+          eq(expenses.propertyId, propertyId),
+          eq(expenses.isRecurring, true),
+          eq(expenses.isPaid, false),
+          lte(expenses.date, today)
+        )
+      ),
+    db
+      .select({ id: repairs.id, label: repairs.title })
+      .from(repairs)
+      .where(
+        and(
+          eq(repairs.ownerId, userId),
+          eq(repairs.propertyId, propertyId),
+          notInArray(repairs.status, ["completed", "cancelled"]),
+          inArray(repairs.priority, ["urgent", "high"]),
+          lte(repairs.updatedAt, staleCutoffDate)
+        )
+      ),
+  ]);
+
+  return { overdueExpenses, staleRepairs };
+}
+
 export async function getDashboardStats(userId: number, propertyId: number) {
   const db = await getDb();
 
@@ -195,6 +237,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
         label: expenses.name,
         amount: expenses.amount,
         date: expenses.date,
+        recurringInterval: expenses.recurringInterval,
       })
       .from(expenses)
       .where(

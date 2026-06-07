@@ -58,14 +58,28 @@ function relDate(d: string, t: (k: string) => string) {
 }
 
 // Whole days a due date is past, relative to local midnight today (never < 0).
-function daysOverdue(d: string): number {
-  const due = new Date(`${d}T00:00:00`);
+// For a recurring expense the stored date is the original occurrence, which may
+// be years old; advance it by its interval to the most recent occurrence on or
+// before today so the count reflects the *current* cycle, not the first one.
+function daysOverdue(d: string, interval?: string | null): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return Math.max(
-    0,
-    Math.round((today.getTime() - due.getTime()) / 86_400_000)
-  );
+  const due = new Date(`${d}T00:00:00`);
+  if (interval) {
+    const step = (date: Date) => {
+      if (interval === "yearly") date.setFullYear(date.getFullYear() + 1);
+      else if (interval === "quarterly") date.setMonth(date.getMonth() + 3);
+      else date.setMonth(date.getMonth() + 1); // monthly (default)
+    };
+    // Walk forward while the next occurrence is still on/before today.
+    for (;;) {
+      const next = new Date(due);
+      step(next);
+      if (next > today) break;
+      due.setTime(next.getTime());
+    }
+  }
+  return Math.max(0, Math.round((today.getTime() - due.getTime()) / 86_400_000));
 }
 
 // ── Card shell ────────────────────────────────────────────────────────────────
@@ -408,7 +422,7 @@ function AttentionCard({
       ) : (
         <div className="space-y-2">
           {visOverdue.map(e => {
-            const days = daysOverdue(e.date);
+            const days = daysOverdue(e.date, e.recurringInterval);
             const severe = days >= 30;
             return (
             <div

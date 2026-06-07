@@ -421,7 +421,7 @@ async function main() {
       \`description\` text COLLATE utf8mb4_unicode_ci,
       \`date\` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
       \`endDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-      \`category\` enum('Maintenance','Payment','Inspection','Renovation','Legal','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`category\` enum('Maintenance','Payment','Loan','Inspection','Renovation','Legal','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`isRecurring\` tinyint(1) DEFAULT '0',
       \`recurringInterval\` enum('monthly','quarterly','yearly') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`reminderDaysBefore\` int DEFAULT NULL,
@@ -773,8 +773,14 @@ async function main() {
     "calendarEvents.endDate"
   );
   await run(
-    `ALTER TABLE \`calendarEvents\` ADD COLUMN \`category\` enum('Maintenance','Payment','Inspection','Renovation','Legal','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    `ALTER TABLE \`calendarEvents\` ADD COLUMN \`category\` enum('Maintenance','Payment','Loan','Inspection','Renovation','Legal','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
     "calendarEvents.category"
+  );
+  // Widen the enum on existing installs so calendar events can store 'Loan'
+  // distinctly from 'Payment' (keeps eventType edits lossless).
+  await run(
+    `ALTER TABLE \`calendarEvents\` MODIFY COLUMN \`category\` enum('Maintenance','Payment','Loan','Inspection','Renovation','Legal','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "calendarEvents.category (+Loan)"
   );
   await run(
     `ALTER TABLE \`calendarEvents\` ADD COLUMN \`isRecurring\` tinyint(1) DEFAULT 0`,

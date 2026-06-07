@@ -9,6 +9,7 @@
     "needsAttention": "Needs attention",
     "overdueExpense": "Overdue bill",
     "staleRepair": "Repair needs attention",
+    "dismiss": "Dismiss",
     "manageSettings": "Notification settings",
     "justNow": "just now",
     "minutesAgo": "{{count}}m ago",
@@ -733,7 +734,8 @@
     "noLoanLink": "None",
     "linkedLoanHint": "When this expense is marked paid, it records a repayment and lowers the loan balance.",
     "repaysLoan": "→ {{loan}}",
-    "aLoan": "a loan"
+    "aLoan": "a loan",
+    "loanUnlinked": "loan removed"
   },
   "loans": {
     "title": "Loans",

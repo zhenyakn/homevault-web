@@ -44,6 +44,7 @@ interface CalendarEvent {
 
 const EVENT_COLORS: Record<string, string> = {
   Payment: "bg-green-500",
+  Loan: "bg-violet-500",
   Maintenance: "bg-red-500",
   Renovation: "bg-blue-500",
   Other: "bg-gray-500",
@@ -51,6 +52,7 @@ const EVENT_COLORS: Record<string, string> = {
 
 const EVENT_BADGE_COLORS: Record<string, string> = {
   Payment: "bg-green-100 text-green-800 hover:bg-green-200",
+  Loan: "bg-violet-100 text-violet-800 hover:bg-violet-200",
   Maintenance: "bg-red-100 text-red-800 hover:bg-red-200",
   Renovation: "bg-blue-100 text-blue-800 hover:bg-blue-200",
   Other: "bg-gray-100 text-gray-800 hover:bg-gray-200",
@@ -64,11 +66,14 @@ const EVENT_TYPES: EventType[] = [
   "Other",
 ];
 
-// Events persist a `category`, while the form works in `eventType`. The forward
-// map (eventType → category) is lossy — Expense and Loan both become "Payment" —
-// so this reverse map is a best-effort guess for pre-filling the edit form.
+// Events persist a `category`, while the form works in `eventType`. The
+// eventType → category map (calendarCatMap on the server) is 1:1, so this
+// reverse map restores the original eventType exactly when pre-filling the edit
+// form. (Legacy events created before the "Loan" category existed are stored as
+// "Payment" and will reopen as "Expense".)
 const CATEGORY_TO_EVENT_TYPE: Record<string, EventType> = {
   Payment: "Expense",
+  Loan: "Loan",
   Maintenance: "Repair",
   Renovation: "Upgrade",
   Inspection: "Other",

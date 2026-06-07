@@ -613,28 +613,36 @@ const TIMEZONES = [
 
 // ─── Sections ─────────────────────────────────────────────────────────────────
 
-// A pending "undo" callback for the next successful settings save. Set right
-// before mutating a critical field so the success toast can offer to revert it.
-let pendingUndo: (() => void) | null = null;
+// Shared autosave for the property settings sections: invalidates the property
+// cache and fires a transient "Saved" toast (with an optional per-call Undo
+// action) on every successful write. The undo is passed per `save()` call, so
+// it can never attach to the wrong section's toast.
+function usePropertyAutosave() {
+  const u = trpc.useUtils();
+  const { t } = useTranslation();
+  const m = trpc.property.update.useMutation({
+    onSuccess: () => u.property.get.invalidate(),
+    onError: e => toast.error(e.message),
+  });
+  const save = useCallback(
+    (data: any, undo?: () => void) =>
+      m.mutate(data, {
+        onSuccess: () =>
+          toast.success(
+            t("settings.saved"),
+            undo
+              ? { action: { label: t("settings.undo"), onClick: undo } }
+              : undefined
+          ),
+      }),
+    [m, t]
+  );
+  return { save, isPending: m.isPending };
+}
 
 function PropertySection({ p }: { p: any }) {
   const { t } = useTranslation();
-  const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({
-    onSuccess: () => {
-      u.property.get.invalidate();
-      const undo = pendingUndo;
-      pendingUndo = null;
-      toast.success(
-        t("settings.saved"),
-        undo
-          ? { action: { label: t("settings.undo"), onClick: undo } }
-          : undefined
-      );
-    },
-    onError: e => toast.error(e.message),
-  });
-  const save = useCallback((d: any) => m.mutate(d), [m]);
+  const { save, isPending } = usePropertyAutosave();
   const g = (k: string, fb: any = "") => p?.[k] ?? fb;
 
   const specs = [
@@ -661,7 +669,7 @@ function PropertySection({ p }: { p: any }) {
       <SectionHeader
         title={t("settings.property")}
         description={t("settings.propertyDesc")}
-        pending={m.isPending}
+        pending={isPending}
       />
 
       <Group label={t("settings.identity")}>
@@ -780,21 +788,7 @@ function PropertySection({ p }: { p: any }) {
 
 function PurchaseSection({ p }: { p: any }) {
   const { t } = useTranslation();
-  const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({
-    onSuccess: () => {
-      u.property.get.invalidate();
-      const undo = pendingUndo;
-      pendingUndo = null;
-      toast.success(
-        t("settings.saved"),
-        undo
-          ? { action: { label: t("settings.undo"), onClick: undo } }
-          : undefined
-      );
-    },
-    onError: e => toast.error(e.message),
-  });
+  const { save, isPending } = usePropertyAutosave();
   const { data: costs } = trpc.purchaseCosts.list.useQuery();
   const [, nav] = useLocation();
   const price = p?.purchasePrice ?? 0;
@@ -807,7 +801,7 @@ function PurchaseSection({ p }: { p: any }) {
       <SectionHeader
         title={t("settings.purchase")}
         description={t("settings.purchaseDesc")}
-        pending={m.isPending}
+        pending={isPending}
       />
 
       <Group>
@@ -820,7 +814,7 @@ function PurchaseSection({ p }: { p: any }) {
             value={price ? String(price / 100) : ""}
             placeholder="0.00"
             onSave={v =>
-              m.mutate({
+              save({
                 purchasePrice: v ? Math.round(parseFloat(v) * 100) : undefined,
               })
             }
@@ -831,7 +825,7 @@ function PurchaseSection({ p }: { p: any }) {
             id="pu-date"
             type="date"
             value={p?.purchaseDate ?? ""}
-            onSave={v => m.mutate({ purchaseDate: v || undefined })}
+            onSave={v => save({ purchaseDate: v || undefined })}
           />
         </Row>
         <Row
@@ -947,21 +941,7 @@ function HouseholdSection() {
 
 function RegionalSection({ p }: { p: any }) {
   const { t } = useTranslation();
-  const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({
-    onSuccess: () => {
-      u.property.get.invalidate();
-      const undo = pendingUndo;
-      pendingUndo = null;
-      toast.success(
-        t("settings.saved"),
-        undo
-          ? { action: { label: t("settings.undo"), onClick: undo } }
-          : undefined
-      );
-    },
-    onError: e => toast.error(e.message),
-  });
+  const { save, isPending } = usePropertyAutosave();
   const g = (k: string, f: any = "") => p?.[k] ?? f;
 
   return (
@@ -969,7 +949,7 @@ function RegionalSection({ p }: { p: any }) {
       <SectionHeader
         title={t("settings.regional")}
         description={t("settings.regionalDesc")}
-        pending={m.isPending}
+        pending={isPending}
       />
 
       <Group label={t("settings.currency")}>
@@ -980,15 +960,16 @@ function RegionalSection({ p }: { p: any }) {
             search={t("settings.searchCurrencies")}
             onSelect={v => {
               const prev = g("currencyCode", "ILS");
-              pendingUndo =
+              save(
+                { currencyCode: v, currency: SYMBOLS[v] ?? v },
                 prev !== v
                   ? () =>
-                      m.mutate({
+                      save({
                         currencyCode: prev,
                         currency: SYMBOLS[prev] ?? prev,
                       })
-                  : null;
-              m.mutate({ currencyCode: v, currency: SYMBOLS[v] ?? v });
+                  : undefined
+              );
             }}
           />
         </Row>
@@ -1002,7 +983,7 @@ function RegionalSection({ p }: { p: any }) {
             value={g("currency", "₪")}
             placeholder="₪"
             width={NUM_W}
-            onSave={v => m.mutate({ currency: v })}
+            onSave={v => save({ currency: v })}
           />
         </Row>
       </Group>
@@ -1013,7 +994,7 @@ function RegionalSection({ p }: { p: any }) {
             value={g("timezone", "Asia/Jerusalem")}
             options={TIMEZONES}
             search={t("settings.searchTimezones")}
-            onSelect={v => m.mutate({ timezone: v })}
+            onSelect={v => save({ timezone: v })}
           />
         </Row>
         <Row label={t("settings.startOfWeek")}>
@@ -1021,7 +1002,7 @@ function RegionalSection({ p }: { p: any }) {
             type="single"
             value={g("startOfWeek", "Sunday")}
             className="h-8"
-            onValueChange={v => v && m.mutate({ startOfWeek: v })}
+            onValueChange={v => v && save({ startOfWeek: v })}
           >
             <ToggleGroupItem value="Sunday" className="text-xs h-8 px-4">
               {t("settings.sun")}
@@ -1038,21 +1019,7 @@ function RegionalSection({ p }: { p: any }) {
 
 function NotificationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
-  const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({
-    onSuccess: () => {
-      u.property.get.invalidate();
-      const undo = pendingUndo;
-      pendingUndo = null;
-      toast.success(
-        t("settings.saved"),
-        undo
-          ? { action: { label: t("settings.undo"), onClick: undo } }
-          : undefined
-      );
-    },
-    onError: e => toast.error(e.message),
-  });
+  const { save, isPending } = usePropertyAutosave();
   const days = p?.reminderDaysBefore ?? 3;
 
   const toggles = [
@@ -1083,7 +1050,7 @@ function NotificationsSection({ p }: { p: any }) {
       <SectionHeader
         title={t("settings.notifications")}
         description={t("settings.notificationsDesc")}
-        pending={m.isPending}
+        pending={isPending}
       />
 
       <Group label={t("settings.leadTime")}>
@@ -1099,7 +1066,7 @@ function NotificationsSection({ p }: { p: any }) {
             max={30}
             step={1}
             value={[days]}
-            onValueCommit={([v]) => m.mutate({ reminderDaysBefore: v })}
+            onValueCommit={([v]) => save({ reminderDaysBefore: v })}
           />
           <p className="text-xs text-muted-foreground">
             {t("settings.appliesAll")}
@@ -1113,7 +1080,7 @@ function NotificationsSection({ p }: { p: any }) {
             <Switch
               id={`n-${k}`}
               checked={p?.[k] ?? true}
-              onCheckedChange={v => m.mutate({ [k]: v })}
+              onCheckedChange={v => save({ [k]: v })}
             />
           </Row>
         ))}
@@ -1585,21 +1552,7 @@ function NotificationChannelsIntegration() {
 
 function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
-  const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({
-    onSuccess: () => {
-      u.property.get.invalidate();
-      const undo = pendingUndo;
-      pendingUndo = null;
-      toast.success(
-        t("settings.saved"),
-        undo
-          ? { action: { label: t("settings.undo"), onClick: undo } }
-          : undefined
-      );
-    },
-    onError: e => toast.error(e.message),
-  });
+  const { save, isPending } = usePropertyAutosave();
   const hasKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
   const mapsProvider = p?.mapsProvider ?? "google";
   // Selected storage backend is owned here so the Google Drive panel only
@@ -1613,7 +1566,7 @@ function IntegrationsSection({ p }: { p: any }) {
       <SectionHeader
         title={t("settings.integrations")}
         description={t("settings.integrationsDesc")}
-        pending={m.isPending}
+        pending={isPending}
       />
 
       <StorageBackendGroup onSelectedChange={setSelectedBackend} />
@@ -1646,7 +1599,7 @@ function IntegrationsSection({ p }: { p: any }) {
                 type="single"
                 value={mapsProvider}
                 className="h-8"
-                onValueChange={v => v && m.mutate({ mapsProvider: v as any })}
+                onValueChange={v => v && save({ mapsProvider: v as any })}
               >
                 <ToggleGroupItem value="google" className="text-xs h-8 px-4">
                   Google

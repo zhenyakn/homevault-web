@@ -572,6 +572,11 @@ export default function Expenses() {
                           })}
                         </span>
                       )}
+                      {expense.category === "Loan" && !expense.loanId && (
+                        <span className="text-xs italic text-muted-foreground/70">
+                          {t("expenses.loanUnlinked")}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {formatDate(expense.date)}

@@ -506,6 +506,7 @@ export const calendarEvents = mysqlTable(
     category: mysqlEnum("category", [
       "Maintenance",
       "Payment",
+      "Loan",
       "Inspection",
       "Renovation",
       "Legal",

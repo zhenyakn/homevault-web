@@ -9,6 +9,7 @@
     "needsAttention": "Требует внимания",
     "overdueExpense": "Просроченный счёт",
     "staleRepair": "Ремонт требует внимания",
+    "dismiss": "Скрыть",
     "manageSettings": "Настройки уведомлений",
     "justNow": "только что",
     "minutesAgo": "{{count}} мин назад",
@@ -731,7 +732,8 @@
     "noLoanLink": "Нет",
     "linkedLoanHint": "Когда расход отмечается оплаченным, создаётся платёж и остаток по кредиту уменьшается.",
     "repaysLoan": "→ {{loan}}",
-    "aLoan": "кредит"
+    "aLoan": "кредит",
+    "loanUnlinked": "кредит удалён"
   },
   "loans": {
     "title": "Кредиты",
