@@ -173,10 +173,8 @@ async function startServer() {
   // rather than serve against a half-migrated schema.
   if (process.env.NODE_ENV !== "test" && ENV.autoMigrate) {
     try {
-      const { applied, skipped } = await runMigrations({
-        log: msg => logger.info(msg),
-      });
-      logger.info({ applied, skipped }, "[migrate] boot migration complete");
+      await runMigrations({ log: msg => logger.info(msg) });
+      logger.info("[migrate] boot migration complete");
     } catch (err) {
       logger.error(
         { err },

@@ -1,32 +1,31 @@
 /**
- * Migration runner — applies every drizzle/*.sql file once, in order, tracked in
- * a `_migrations` table. Idempotent: "already exists" style errors are ignored.
+ * Migration runner — converges the database to the current schema by running the
+ * unified, idempotent `apply-migration-addon.mjs` script. That script is the
+ * proven mechanism the Home Assistant add-on already uses on every boot, and a
+ * static test (server/addon.test.ts) keeps it in sync with drizzle/schema.ts.
+ *
+ * We deliberately do NOT replay the historical drizzle/*.sql chain here: those
+ * are a legacy upgrade path that isn't valid against a fresh MySQL (e.g. 0008
+ * builds a case-insensitive-duplicate ENUM). The convergence script works for
+ * both fresh and existing databases.
  *
  * Used two ways:
  *   - CLI:  `pnpm db:migrate` (scripts/migrate.ts delegates here)
- *   - Boot: called from server startup so deployments auto-migrate (see index.ts)
- *
- * The statement parser mirrors the one asserted by server/migrate.test.ts.
+ *   - Boot: called from server startup so deployments auto-migrate (index.ts)
  */
 
+import { execFile } from "child_process";
+import { promisify } from "util";
 import fs from "fs";
 import path from "path";
-import mysql from "mysql2/promise";
 
-// MySQL error codes meaning "already exists" — safe to ignore for idempotency.
-const IGNORABLE = new Set([
-  "ER_DUP_FIELDNAME", // column already exists
-  "ER_TABLE_EXISTS_ERROR", // table already exists
-  "ER_DUP_KEYNAME", // index already exists
-  "ER_FK_DUP_NAME", // FK constraint name already exists
-  "ER_CANT_DROP_FIELD_OR_KEY", // dropping index/column that doesn't exist
-]);
+const execFileAsync = promisify(execFile);
 
-/** Locate the drizzle/ SQL directory across dev / bundled / Docker layouts. */
-export function resolveMigrationsDir(): string {
+/** Locate apply-migration-addon.mjs across dev / bundled / Docker layouts. */
+export function resolveAddonScript(): string {
   const candidates = [
-    path.resolve(process.cwd(), "drizzle"),
-    path.resolve(import.meta.dirname ?? ".", "../../drizzle"),
+    path.resolve(process.cwd(), "apply-migration-addon.mjs"),
+    path.resolve(import.meta.dirname ?? ".", "../../apply-migration-addon.mjs"),
   ];
   for (const c of candidates) {
     if (fs.existsSync(c)) return c;
@@ -34,83 +33,27 @@ export function resolveMigrationsDir(): string {
   return candidates[0];
 }
 
-/** Parse a .sql migration into individual statements (mirrors migrate.test.ts). */
-export function parseStatements(sql: string): string[] {
-  return sql
-    .split(/-->\s*statement-breakpoint/)
-    .flatMap(chunk => chunk.split(/;(?=\s*(\n|$))/))
-    .map(s => {
-      const lines = s.trim().split("\n");
-      const firstSql = lines.findIndex(l => !l.trimStart().startsWith("--"));
-      return firstSql === -1 ? "" : lines.slice(firstSql).join("\n").trim();
-    })
-    .filter(s => s.length > 0);
-}
-
 type Log = (msg: string) => void;
 
 /**
- * Apply all pending migrations. Throws on a non-ignorable failure so callers
- * (boot, CLI) can fail fast rather than run against a half-migrated schema.
+ * Apply the schema. Throws (script exits non-zero) so callers fail fast rather
+ * than run against a half-migrated schema.
  */
-export async function runMigrations(
-  opts: { log?: Log } = {}
-): Promise<{ applied: number; skipped: number }> {
+export async function runMigrations(opts: { log?: Log } = {}): Promise<void> {
   const log = opts.log ?? (m => console.log(m));
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) throw new Error("DATABASE_URL is not set");
+  if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
 
-  const dir = resolveMigrationsDir();
-  const conn = await mysql.createConnection(dbUrl);
-  let applied = 0;
-  let skipped = 0;
-
-  try {
-    await conn.execute(`
-      CREATE TABLE IF NOT EXISTS _migrations (
-        id         INT AUTO_INCREMENT PRIMARY KEY,
-        filename   VARCHAR(255) NOT NULL UNIQUE,
-        appliedAt  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    const [rows] = await conn.execute<mysql.RowDataPacket[]>(
-      "SELECT filename FROM _migrations"
-    );
-    const done = new Set(rows.map(r => r.filename as string));
-
-    const files = fs
-      .readdirSync(dir)
-      .filter(f => f.endsWith(".sql"))
-      .sort();
-
-    for (const file of files) {
-      if (done.has(file)) {
-        skipped++;
-        continue;
-      }
-      const sql = fs.readFileSync(path.join(dir, file), "utf8");
-      const statements = parseStatements(sql);
-      log(`[migrate] applying ${file} (${statements.length} statements)`);
-
-      for (const stmt of statements) {
-        try {
-          await conn.execute(stmt);
-        } catch (err: any) {
-          if (IGNORABLE.has(err.code)) continue;
-          throw new Error(
-            `Migration ${file} failed (${err.code}): ${err.message}`
-          );
-        }
-      }
-      await conn.execute("INSERT INTO _migrations (filename) VALUES (?)", [
-        file,
-      ]);
-      applied++;
-    }
-  } finally {
-    await conn.end();
+  const script = resolveAddonScript();
+  if (!fs.existsSync(script)) {
+    throw new Error(`[migrate] migration script not found at ${script}`);
   }
 
-  return { applied, skipped };
+  log(`[migrate] converging schema via ${path.basename(script)}`);
+  const { stdout, stderr } = await execFileAsync("node", [script], {
+    env: process.env,
+    cwd: path.dirname(script),
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  const out = `${stdout ?? ""}${stderr ?? ""}`.trim();
+  if (out) log(out);
 }
