@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getOverdueExpenses, calcMonthlyStats, buildLoanSummary } from "./db";
+import { getOverdueExpenses, calcMonthlyStats } from "./db";
 import {
   upgrades,
   repairQuotes,
@@ -26,30 +26,6 @@ function makeExpense(overrides: Record<string, any> = {}) {
     nextDueDate: null,
     notes: null,
     attachments: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...overrides,
-  };
-}
-
-function makeLoan(overrides: Record<string, any> = {}) {
-  return {
-    id: "loan-1",
-    propertyId: 1,
-    ownerId: 1,
-    name: "Test loan",
-    lender: "Bank",
-    originalAmount: 100000,
-    currentBalance: 100000,
-    interestRate: "3.5",
-    monthlyPayment: 5000,
-    startDate: "2020-01-01",
-    endDate: "2040-01-01",
-    nextPaymentDate: null,
-    loanType: "mortgage" as const,
-    notes: null,
-    attachments: null,
-    repayments: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -237,71 +213,6 @@ describe("calcMonthlyStats", () => {
       "2026-04-30"
     );
     expect(monthSpent).toBe(0);
-  });
-});
-
-// ── buildLoanSummary ───────────────────────────────────────────────────────────
-
-describe("buildLoanSummary", () => {
-  it("returns remaining = originalAmount when no repayments", () => {
-    const loans = [makeLoan({ originalAmount: 100000, repayments: [] })];
-    const [result] = buildLoanSummary(loans as any);
-    expect(result.remaining).toBe(100000);
-    expect(result.repaid).toBe(0);
-    expect(result.pct).toBe(0);
-  });
-
-  it("calculates repaid and remaining correctly", () => {
-    const loans = [
-      makeLoan({
-        originalAmount: 100000,
-        repayments: [{ amount: 25000 }, { amount: 25000 }],
-      }),
-    ];
-    const [result] = buildLoanSummary(loans as any);
-    expect(result.repaid).toBe(50000);
-    expect(result.remaining).toBe(50000);
-    expect(result.pct).toBe(50);
-  });
-
-  it("clamps remaining to 0 when over-repaid", () => {
-    const loans = [
-      makeLoan({
-        originalAmount: 10000,
-        repayments: [{ amount: 15000 }],
-      }),
-    ];
-    const [result] = buildLoanSummary(loans as any);
-    expect(result.remaining).toBe(0);
-    expect(result.paidOff).toBe(true);
-  });
-
-  it("marks paidOff true when repaid >= originalAmount", () => {
-    const loans = [
-      makeLoan({
-        originalAmount: 10000,
-        repayments: [{ amount: 10000 }],
-      }),
-    ];
-    const [result] = buildLoanSummary(loans as any);
-    expect(result.paidOff).toBe(true);
-  });
-
-  it("handles repayment entries with missing amount gracefully", () => {
-    const loans = [
-      makeLoan({
-        originalAmount: 10000,
-        repayments: [{ amount: 5000 }, { amount: null }, { amount: undefined }],
-      }),
-    ];
-    const [result] = buildLoanSummary(loans as any);
-    expect(result.repaid).toBe(5000);
-  });
-
-  it("returns pct = 0 when originalAmount is 0 (no division by zero)", () => {
-    const loans = [makeLoan({ originalAmount: 0, repayments: [] })];
-    const [result] = buildLoanSummary(loans as any);
-    expect(result.pct).toBe(0);
   });
 });
 

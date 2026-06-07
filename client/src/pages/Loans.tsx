@@ -5,6 +5,7 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 type Loan = RouterOutputs["loans"]["list"][number];
 type Repayment = { date: string; amount: number };
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { computeLoanProgress } from "@shared/loanProgress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -195,14 +196,16 @@ export default function Loans() {
       "Notes",
     ];
     const rows = loans.map(l => {
-      const repayments = (l.repayments as Repayment[]) || [];
-      const repaid = repayments.reduce((s, r) => s + r.amount, 0);
+      const { repaid, remaining } = computeLoanProgress(
+        l.originalAmount,
+        l.currentBalance
+      );
       return [
         l.lender ?? "",
         l.loanType ?? "",
         ((l.originalAmount ?? 0) / 100).toFixed(2),
         (repaid / 100).toFixed(2),
-        (((l.originalAmount ?? 0) - repaid) / 100).toFixed(2),
+        (remaining / 100).toFixed(2),
         l.interestRate || "",
         l.startDate ?? "",
         l.endDate || "",
@@ -233,11 +236,19 @@ export default function Loans() {
   const totalBorrowed =
     loans?.reduce((sum, loan) => sum + loan.originalAmount, 0) || 0;
   const totalRepaid =
-    loans?.reduce((sum, loan) => {
-      const repayments = (loan.repayments as Repayment[]) || [];
-      return sum + repayments.reduce((rSum, r) => rSum + r.amount, 0);
-    }, 0) || 0;
-  const outstandingBalance = totalBorrowed - totalRepaid;
+    loans?.reduce(
+      (sum, loan) =>
+        sum +
+        computeLoanProgress(loan.originalAmount, loan.currentBalance).repaid,
+      0
+    ) || 0;
+  const outstandingBalance =
+    loans?.reduce(
+      (sum, loan) =>
+        sum +
+        computeLoanProgress(loan.originalAmount, loan.currentBalance).remaining,
+      0
+    ) || 0;
 
   const loanForm = (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -431,15 +442,11 @@ export default function Loans() {
         <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
           {loans?.map(loan => {
             const repayments = (loan.repayments as Repayment[]) || [];
-            const repaidAmount = repayments.reduce(
-              (sum, r) => sum + r.amount,
-              0
-            );
-            const progress =
-              loan.originalAmount > 0
-                ? Math.min(100, (repaidAmount / loan.originalAmount) * 100)
-                : 0;
-            const isFullyPaid = repaidAmount >= loan.originalAmount;
+            const {
+              repaid: repaidAmount,
+              pct: progress,
+              paidOff: isFullyPaid,
+            } = computeLoanProgress(loan.originalAmount, loan.currentBalance);
 
             return (
               <div
@@ -505,7 +512,7 @@ export default function Loans() {
                       {t("loans.repaid")}: {formatCurrency(repaidAmount)}{" "}
                       {t("loans.of")} {formatCurrency(loan.originalAmount)}
                     </span>
-                    <span className="tabular-nums">{progress.toFixed(1)}%</span>
+                    <span className="tabular-nums">{progress}%</span>
                   </div>
                   <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
                     <div
