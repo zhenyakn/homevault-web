@@ -99,8 +99,8 @@ describe.skipIf(!TEST_DB)("notifications DB integration (real MySQL)", () => {
     const payload = {
       dedupeKey: `e2e:${Date.now()}`,
       category: "system" as const,
-      title: "E2E",
-      body: "Body",
+      titleKey: "test.title",
+      bodyKey: "test.body",
     };
 
     const first = await notifyMod.notify(userId, payload);
