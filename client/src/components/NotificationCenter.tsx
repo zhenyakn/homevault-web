@@ -5,7 +5,7 @@
  * the badge.
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,8 +17,9 @@ import {
   CalendarDays,
   Info,
   Check,
+  AlertCircle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import {
   Popover,
@@ -100,7 +101,43 @@ export function NotificationCenter({ className }: { className?: string }) {
     onSuccess: () => utils.notification.listInApp.invalidate(),
   });
 
-  const unread = notifications.filter(n => !n.readAt).length;
+  // Live "needs attention" items from the dashboard, surfaced here so the bell
+  // can't say "all caught up" while the dashboard shows overdue bills / stale
+  // repairs. These are derived (not delivery-log rows): they persist while the
+  // condition holds and route to the relevant page on click.
+  const { data: stats } = trpc.dashboard.stats.useQuery(undefined, {
+    refetchInterval: 60_000,
+  });
+  const attention = useMemo(() => {
+    const items: {
+      key: string;
+      category: Category;
+      title: string;
+      body: string;
+      url: string;
+    }[] = [];
+    for (const e of stats?.overdueExpenses ?? []) {
+      items.push({
+        key: `att-exp-${e.id}`,
+        category: "expense",
+        title: t("notifs.overdueExpense"),
+        body: `${e.label} · ${formatCurrency(e.amount)}`,
+        url: "/expenses",
+      });
+    }
+    for (const r of stats?.staleRepairs ?? []) {
+      items.push({
+        key: `att-rep-${r.id}`,
+        category: "repair",
+        title: t("notifs.staleRepair"),
+        body: r.label,
+        url: "/repairs",
+      });
+    }
+    return items;
+  }, [stats, t]);
+
+  const unread = notifications.filter(n => !n.readAt).length + attention.length;
 
   const handleOpen = (item: FeedItem) => {
     if (!item.readAt) markRead.mutate({ id: item.id });
@@ -163,6 +200,49 @@ export function NotificationCenter({ className }: { className?: string }) {
     );
   };
 
+  const handleAttentionOpen = (url: string) => {
+    setOpen(false);
+    setLocation(url);
+  };
+
+  const renderAttention = () =>
+    attention.length === 0 ? null : (
+      <li>
+        <p className="bg-rose-500/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-rose-600 dark:text-rose-400">
+          {t("notifs.needsAttention")}
+        </p>
+        <ul className="divide-y divide-border">
+          {attention.map(a => {
+            const Icon = CATEGORY_ICON[a.category] ?? AlertCircle;
+            return (
+              <li key={a.key}>
+                <button
+                  type="button"
+                  onClick={() => handleAttentionOpen(a.url)}
+                  className="flex w-full items-start gap-3 px-3 py-3 text-start transition-colors hover:bg-muted/50 bg-rose-500/[0.03]"
+                >
+                  <div
+                    className={cn(
+                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border",
+                      "text-rose-600 bg-rose-500/10 border-rose-500/20"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <p className="truncate text-sm font-semibold">{a.title}</p>
+                    <p className="line-clamp-2 text-xs text-muted-foreground leading-snug">
+                      {a.body}
+                    </p>
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </li>
+    );
+
   const renderGroup = (label: string, items: FeedItem[]) =>
     items.length === 0 ? null : (
       <li>
@@ -208,7 +288,7 @@ export function NotificationCenter({ className }: { className?: string }) {
           )}
         </div>
 
-        {notifications.length === 0 ? (
+        {notifications.length === 0 && attention.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50 text-muted-foreground">
               <Check className="h-5 w-5" />
@@ -218,6 +298,7 @@ export function NotificationCenter({ className }: { className?: string }) {
         ) : (
           <div className="max-h-96 overflow-y-auto overscroll-contain">
             <ul>
+              {renderAttention()}
               {renderGroup(t("notifs.today"), today)}
               {renderGroup(t("notifs.earlier"), earlier)}
             </ul>

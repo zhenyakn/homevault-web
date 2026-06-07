@@ -26,6 +26,7 @@ import { Loader2, Plus, Trash2, Check, Pencil, Download } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
+import SpendingTrendChart from "@/components/SpendingTrendChart";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES = [
@@ -454,6 +455,9 @@ export default function Expenses() {
           </div>
         ))}
       </div>
+
+      {/* Spending trend */}
+      <SpendingTrendChart expenses={expenses ?? []} />
 
       {/* Filter */}
       <div className="flex items-center gap-3 flex-wrap">

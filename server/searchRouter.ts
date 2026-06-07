@@ -72,6 +72,7 @@ export const searchRouter = router({
             id: upgrades.id,
             label: upgrades.title,
             status: upgrades.status,
+            estimatedCost: upgrades.estimatedCost,
           })
           .from(upgrades)
           .where(and(scopeFilter(upgrades), like(upgrades.title, pattern)))
