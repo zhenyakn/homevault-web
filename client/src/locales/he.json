@@ -112,7 +112,10 @@
     "failedDelete": "שגיאה במחיקה",
     "validAmount": "אנא הכנס סכום תקין",
     "clearFilter": "נקה",
-    "progress": "התקדמות"
+    "progress": "התקדמות",
+    "show": "הצג",
+    "hide": "הסתר",
+    "loading": "טוען…"
   },
   "categories": {
     "Mortgage": "משכנתא",
@@ -238,6 +241,17 @@
     "mapsHint": "הספק לתצוגה ולמיקום גאוגרפי של כתובות.",
     "mapsKeyPrefix": "הוסיפו",
     "mapsKeySuffix": "לקובץ ה-.env כדי לאפשר מיקום גאוגרפי.",
+    "mapsKeyNotice": "חיפוש כתובות ומיקום גאוגרפי אינם זמינים עד שמוגדר מפתח API של Google Maps. פנו למנהל המערכת, או עברו ל-OpenStreetMap.",
+    "mapsKeyAdminHint": "הגדירו את הפרמטר הבא בשרת כדי לאפשר את Google Maps:",
+    "cat": {
+      "channels": "ערוצי התראות",
+      "channelsDesc": "חברו את היעדים שמספקים את ההתראות שלכם. בחרו מה כל אחד שולח תחת התראות.",
+      "services": "שירותים מחוברים",
+      "servicesDesc": "אפליקציות וספקים של צד שלישי ש-HomeVault עובד איתם.",
+      "storage": "אחסון וקבצים",
+      "storageDesc": "היכן הקבצים המצורפים נשמרים, והקבצים שכבר הועלו.",
+      "comingSoon": "בקרוב"
+    },
     "navGroup": {
       "property": "נכס",
       "preferences": "העדפות",
@@ -353,7 +367,8 @@
       "webpushNeedsSecure": "התראות דפדפן דורשות חיבור מאובטח (HTTPS) ודפדפן נתמך. בכתובת LAN/HTTP זה אינו זמין; ב-iOS יש להוסיף את HomeVault למסך הבית תחילה.",
       "webpushNeedsKeys": "התראות דפדפן דורשות מפתחות VAPID בשרת. הריצו `npx web-push generate-vapid-keys` והגדירו VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY.",
       "generateCode": "צור קוד קישור",
-      "testFailed": "הבדיקה ל-{{channel}} נכשלה: {{reason}}"
+      "testFailed": "הבדיקה ל-{{channel}} נכשלה: {{reason}}",
+      "loading": "טוען ערוצים…"
     },
     "syncEvents": "סנכרן אירועים",
     "syncEventsHint": "שלח אירועי HomeVault ל-Google Calendar",

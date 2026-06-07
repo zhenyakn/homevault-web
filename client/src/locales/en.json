@@ -112,7 +112,10 @@
     "failedDelete": "Failed to delete",
     "validAmount": "Please enter a valid amount",
     "clearFilter": "Clear",
-    "progress": "Progress"
+    "progress": "Progress",
+    "show": "Show",
+    "hide": "Hide",
+    "loading": "Loading…"
   },
   "propertyType": {
     "Apartment": "Apartment",
@@ -247,6 +250,17 @@
     "mapsHint": "Provider used to display and geocode addresses.",
     "mapsKeyPrefix": "Add",
     "mapsKeySuffix": "to your .env to enable geocoding.",
+    "mapsKeyNotice": "Address search and geocoding are unavailable until a Google Maps API key is configured. Ask your administrator, or switch to OpenStreetMap.",
+    "mapsKeyAdminHint": "Set the following on the server to enable Google Maps:",
+    "cat": {
+      "channels": "Notification channels",
+      "channelsDesc": "Connect the destinations that deliver your alerts. Choose what each one sends under Notifications.",
+      "services": "Connected services",
+      "servicesDesc": "Third-party apps and providers HomeVault works with.",
+      "storage": "Storage & files",
+      "storageDesc": "Where attachments are kept, and the files already uploaded.",
+      "comingSoon": "Coming soon"
+    },
     "navGroup": {
       "property": "Property",
       "preferences": "Preferences",
@@ -362,7 +376,8 @@
       "webpushNeedsSecure": "Browser push needs a secure (HTTPS) connection and a supported browser. On a LAN/HTTP address it's unavailable; on iOS, add HomeVault to your Home Screen first.",
       "webpushNeedsKeys": "Browser push needs VAPID keys on the server. Run `npx web-push generate-vapid-keys` and set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY.",
       "generateCode": "Generate link code",
-      "testFailed": "Test to {{channel}} failed: {{reason}}"
+      "testFailed": "Test to {{channel}} failed: {{reason}}",
+      "loading": "Loading channels…"
     },
     "syncEvents": "Sync events",
     "syncEventsHint": "Push HomeVault events to Google Calendar",
