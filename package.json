@@ -139,7 +139,7 @@
       "rollup": "^4.60.3",
       "picomatch": "^4.0.4",
       "fast-xml-parser": "^5.7.0",
-      "qs": "^6.14.2",
+      "qs": "^6.15.2",
       "path-to-regexp": "^0.1.13",
       "@smithy/config-resolver": "^4.5.1",
       "esbuild@<0.25.0": "^0.25.0"
