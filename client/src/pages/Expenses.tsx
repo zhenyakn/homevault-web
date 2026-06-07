@@ -56,6 +56,14 @@ const CAT_COLOR: Record<string, string> = {
   Other: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
 };
 
+// Local YYYY-MM (not UTC) so it lines up with the locally-entered expense date
+// strings ("YYYY-MM-DD"); toISOString() would shift across the month boundary in
+// non-UTC zones and default to a month with no data.
+const currentMonthKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
 const emptyForm = () => ({
   name: "",
   amount: "",
@@ -79,9 +87,7 @@ export default function Expenses() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [monthFilter, setMonthFilter] = useState(() =>
-    new Date().toISOString().slice(0, 7)
-  );
+  const [monthFilter, setMonthFilter] = useState(currentMonthKey);
   const [form, setForm] = useState(emptyForm());
   const [attachments, setAttachments] = useState<
     { url: string; filename: string; mimeType: string; size: number }[]
@@ -173,7 +179,7 @@ export default function Expenses() {
   // Distinct YYYY-MM present in the data, newest first, plus the current month
   // so the default selection is always offered even before any expense exists.
   const monthOptions = useMemo(() => {
-    const months = new Set<string>([new Date().toISOString().slice(0, 7)]);
+    const months = new Set<string>([currentMonthKey()]);
     for (const e of expenses ?? []) months.add(e.date.slice(0, 7));
     return Array.from(months).sort().reverse();
   }, [expenses]);

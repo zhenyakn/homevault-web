@@ -1,4 +1,4 @@
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
   loans,
@@ -132,25 +132,26 @@ export async function deleteLoanRepayment(id: string, loanId: string) {
  *
  * `currentBalance` is the single source of truth (see shared/loanProgress.ts):
  * a repayment of `amount` decreases it (positive `amount`), reversing one
- * increases it (negative `amount`). The result is clamped to
- * [0, originalAmount] so it can never go negative or exceed the principal —
- * and, crucially, a balance seeded below `originalAmount` (a paydown made
- * before in-app tracking began) is preserved rather than recomputed away.
+ * increases it (negative `amount`). A balance seeded below `originalAmount` (a
+ * paydown made before in-app tracking began) is preserved rather than recomputed
+ * away.
+ *
+ * The update is a single atomic, *relative* SQL decrement for two reasons:
+ *  1. Concurrency — two repayments (or a double-click / client retry) can't read
+ *     the same balance and clobber each other's write.
+ *  2. Reversibility — the value is NOT clamped at write time. Clamping here would
+ *     discard the overshoot of an over-large repayment, so a later reversal (edit
+ *     down / unlink / delete) would restore the wrong balance. The stored value
+ *     may therefore dip below 0 or exceed originalAmount; `computeLoanProgress`
+ *     clamps to [0, originalAmount] on every read, so all displays stay correct.
  */
 export async function applyRepaymentToBalance(loanId: string, amount: number) {
   if (!amount) return;
   const db = await getDb();
-  const [loan] = await db
-    .select()
-    .from(loans)
-    .where(eq(loans.id, loanId))
-    .limit(1);
-  if (!loan) return;
-  const next = Math.min(
-    loan.originalAmount,
-    Math.max(0, loan.currentBalance - amount)
-  );
-  await db.update(loans).set({ currentBalance: next }).where(eq(loans.id, loanId));
+  await db
+    .update(loans)
+    .set({ currentBalance: sql`${loans.currentBalance} - ${amount}` })
+    .where(eq(loans.id, loanId));
 }
 
 async function getRepaymentBySourceExpense(
