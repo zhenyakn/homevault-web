@@ -973,24 +973,17 @@ export default function UpgradeDetail() {
   const [editItem, setEditItem] = useState<UpgradeItem | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
 
-  if (loadingUpgrade)
+  // Once the list has loaded and this id isn't in it (e.g. after switching
+  // property), recover to the list instead of dead-ending on a 404.
+  const missing = !loadingUpgrade && !upgrade;
+  useEffect(() => {
+    if (missing) navigate("/upgrades", { replace: true });
+  }, [missing, navigate]);
+
+  if (loadingUpgrade || !upgrade)
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-      </div>
-    );
-
-  if (!upgrade)
-    return (
-      <div className="flex flex-col items-center justify-center h-[50vh] gap-3">
-        <p className="text-muted-foreground">{t("upgradeDetail.notFound")}</p>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate("/upgrades")}
-        >
-          {t("common.back")}
-        </Button>
       </div>
     );
 

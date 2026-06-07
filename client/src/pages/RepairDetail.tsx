@@ -647,20 +647,17 @@ export default function RepairDetail() {
     }
   };
 
-  if (isLoading)
+  // Once the list has loaded and this id isn't in it (e.g. after switching
+  // property), recover to the list instead of dead-ending on a 404.
+  const missing = !isLoading && !repair;
+  useEffect(() => {
+    if (missing) nav("/repairs", { replace: true });
+  }, [missing, nav]);
+
+  if (isLoading || !repair)
     return (
       <div className="flex items-center justify-center h-[50vh]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-
-  if (!repair)
-    return (
-      <div className="flex flex-col items-center justify-center h-[50vh] gap-3">
-        <p className="text-muted-foreground">{t("repairDetail.notFound")}</p>
-        <Button variant="outline" size="sm" onClick={() => nav("/repairs")}>
-          {t("common.back")}
-        </Button>
       </div>
     );
 
