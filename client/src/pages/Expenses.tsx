@@ -78,6 +78,9 @@ export default function Expenses() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState(() =>
+    new Date().toISOString().slice(0, 7)
+  );
   const [form, setForm] = useState(emptyForm());
   const [attachments, setAttachments] = useState<
     { url: string; filename: string; mimeType: string; size: number }[]
@@ -166,12 +169,27 @@ export default function Expenses() {
     }
   };
 
+  // Distinct YYYY-MM present in the data, newest first, plus the current month
+  // so the default selection is always offered even before any expense exists.
+  const monthOptions = useMemo(() => {
+    const months = new Set<string>([new Date().toISOString().slice(0, 7)]);
+    for (const e of expenses ?? []) months.add(e.date.slice(0, 7));
+    return Array.from(months).sort().reverse();
+  }, [expenses]);
+
+  const monthLabel = (m: string) =>
+    new Date(`${m}-01T00:00:00`).toLocaleDateString(undefined, {
+      month: "short",
+      year: "numeric",
+    });
+
   const filtered = useMemo(() => {
     if (!expenses) return [];
-    const base =
-      categoryFilter === "all"
-        ? expenses
-        : expenses.filter(e => e.category === categoryFilter);
+    const base = expenses.filter(
+      e =>
+        (categoryFilter === "all" || e.category === categoryFilter) &&
+        (monthFilter === "all" || e.date.slice(0, 7) === monthFilter)
+    );
     return [...base].sort((a, b) => {
       const aPaid = !!a.isPaid;
       const bPaid = !!b.isPaid;
@@ -179,7 +197,7 @@ export default function Expenses() {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       return aPaid ? 1 : -1;
     });
-  }, [expenses, categoryFilter]);
+  }, [expenses, categoryFilter, monthFilter]);
 
   const handleExportCSV = () => {
     if (!filtered.length) {
@@ -438,7 +456,20 @@ export default function Expenses() {
       </div>
 
       {/* Filter */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={monthFilter} onValueChange={setMonthFilter}>
+          <SelectTrigger className="h-8 w-44 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("expenses.allTime")}</SelectItem>
+            {monthOptions.map(m => (
+              <SelectItem key={m} value={m}>
+                {monthLabel(m)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="h-8 w-44 text-sm">
             <SelectValue placeholder={t("expenses.allCategories")} />
@@ -466,8 +497,8 @@ export default function Expenses() {
       {filtered.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            {categoryFilter !== "all"
-              ? t("expenses.noCategoryExpenses")
+            {categoryFilter !== "all" || monthFilter !== "all"
+              ? t("expenses.noMatchingExpenses")
               : t("expenses.noExpenses")}
           </p>
         </div>

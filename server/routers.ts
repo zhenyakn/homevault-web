@@ -1051,6 +1051,24 @@ export const appRouter = router({
           propertyId: ctx.propertyId,
         });
       }),
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.string(),
+          title: z.string().min(1),
+          date: z.string(),
+          time: z.string().optional(),
+          eventType: z.enum(["Expense", "Repair", "Upgrade", "Loan", "Other"]),
+          notes: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { id, eventType, time, ...rest } = input as any;
+        return await db.updateCalendarEvent(id, ctx.user.id, {
+          ...rest,
+          category: calendarCatMap[eventType] ?? "Other",
+        });
+      }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {

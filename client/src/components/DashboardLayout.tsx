@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import NotificationCenter from "@/components/NotificationCenter";
+import MobileTabBar from "@/components/MobileTabBar";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -693,7 +694,10 @@ function DashboardLayoutContent({
           </div>
         )}
 
-        <main className="flex-1 p-4 md:p-5">{children}</main>
+        <main id="main-content" className="flex-1 p-4 pb-24 md:p-5 md:pb-5">
+          {children}
+        </main>
+        {isMobile && <MobileTabBar />}
       </SidebarInset>
     </>
   );

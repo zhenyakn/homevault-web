@@ -202,7 +202,11 @@ function SpendCard({
       <div className="text-3xl font-bold tracking-tight tabular-nums">
         {fmt(spent)}
       </div>
-      {baseline > 0 ? (
+      {spent === 0 ? (
+        <p className="text-xs text-muted-foreground mt-1 mb-4">
+          {t("dashboard.noExpensesThisMonth", { month: format(now, "MMMM") })}
+        </p>
+      ) : baseline > 0 ? (
         <>
           <p className="text-xs text-muted-foreground mt-1 mb-4">
             {t("expenses.of")} {fmt(baseline)}{" "}
