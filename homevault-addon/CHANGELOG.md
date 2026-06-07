@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.4.8
+## 0.5.0
+- Make the CI integration job blocking
+- Localize Telegram bot replies
+- Fix boot migration: converge schema via the addon script (not legacy chain)
+- Localize server notification dispatch
+- Add notification integration tests + fix formatting
+- Translate new notification channel keys to Russian
+- Automate DB migrations on server boot
+- Add full Russian translation
+- Phase 2: wire notification frontend to real tRPC + web push
+- Phase 2: notification backend (channels, scheduler, Telegram bot, tRPC)
+- Fix Integrations page scroll trap on mobile (bot preview)
 - Polish notification mock: bell grouping, bot commands, channel details
 - Reorganize notification settings: channels under Integrations
 - Fix notification bell popover scrolling
@@ -251,6 +262,19 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.4.8
+- Make the CI integration job blocking
+- Localize Telegram bot replies
+- Fix boot migration: converge schema via the addon script (not legacy chain)
+- Localize server notification dispatch
+- Add notification integration tests + fix formatting
+- Translate new notification channel keys to Russian
+- Automate DB migrations on server boot
+- Add full Russian translation
+- Phase 2: wire notification frontend to real tRPC + web push
+- Phase 2: notification backend (channels, scheduler, Telegram bot, tRPC)
+- Fix Integrations page scroll trap on mobile (bot preview)
 
 ## 0.4.7
 - Polish notification mock: bell grouping, bot commands, channel details
