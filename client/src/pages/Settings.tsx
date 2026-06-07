@@ -1441,6 +1441,17 @@ function NotificationChannelsIntegration() {
     typeof Notification !== "undefined" &&
     Notification.permission === "granted";
 
+  // Web Push needs a supported browser in a secure (HTTPS/localhost) context
+  // AND server-side VAPID keys. Surface whichever is missing instead of a
+  // silently-greyed button.
+  const browserSupportsWebPush = webPushSupported();
+  const serverWebPushReady = Boolean(status?.webPushAvailable);
+  const webPushReason = !browserSupportsWebPush
+    ? t("settings.ch.webpushNeedsSecure")
+    : !serverWebPushReady
+      ? t("settings.ch.webpushNeedsKeys")
+      : t("settings.ch.webpushCardDesc");
+
   return (
     <div className="space-y-2">
       <p className="px-1 text-xs font-medium text-muted-foreground">
@@ -1482,14 +1493,18 @@ function NotificationChannelsIntegration() {
         <IntegrationCard
           icon={<Globe className="h-4 w-4" />}
           name={t("settings.ch.webpush")}
-          description={t("settings.ch.webpushCardDesc")}
+          description={webPushReason}
           badge={<ChannelStatusBadge configured={webPushGranted} />}
           action={
             <Button
               variant="outline"
               size="sm"
               className="h-8 text-xs"
-              disabled={subscribe.isPending || !webPushSupported()}
+              disabled={
+                subscribe.isPending ||
+                !browserSupportsWebPush ||
+                !serverWebPushReady
+              }
               onClick={enableWebPush}
             >
               {webPushGranted

@@ -348,6 +348,8 @@
       "webpushEnabled": "Browser push enabled",
       "webpushDisabled": "Browser push disabled",
       "webpushUnavailable": "Browser push isn't configured on the server.",
+      "webpushNeedsSecure": "Browser push needs a secure (HTTPS) connection and a supported browser. On a LAN/HTTP address it's unavailable; on iOS, add HomeVault to your Home Screen first.",
+      "webpushNeedsKeys": "Browser push needs VAPID keys on the server. Run `npx web-push generate-vapid-keys` and set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY.",
       "generateCode": "Generate link code",
       "testFailed": "Test to {{channel}} failed: {{reason}}"
     },

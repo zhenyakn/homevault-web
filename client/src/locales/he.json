@@ -339,6 +339,8 @@
       "webpushEnabled": "התראות דפדפן הופעלו",
       "webpushDisabled": "התראות דפדפן כובו",
       "webpushUnavailable": "התראות דפדפן אינן מוגדרות בשרת.",
+      "webpushNeedsSecure": "התראות דפדפן דורשות חיבור מאובטח (HTTPS) ודפדפן נתמך. בכתובת LAN/HTTP זה אינו זמין; ב-iOS יש להוסיף את HomeVault למסך הבית תחילה.",
+      "webpushNeedsKeys": "התראות דפדפן דורשות מפתחות VAPID בשרת. הריצו `npx web-push generate-vapid-keys` והגדירו VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY.",
       "generateCode": "צור קוד קישור",
       "testFailed": "הבדיקה ל-{{channel}} נכשלה: {{reason}}"
     },
