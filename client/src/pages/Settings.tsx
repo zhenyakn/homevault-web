@@ -278,6 +278,37 @@ function SectionHeader({
   );
 }
 
+/** Category band that groups several integration cards/sections under one
+ *  labelled heading (e.g. "Notification channels", "Connected services",
+ *  "Storage & files"). One shared treatment so every category reads alike. */
+function CategoryHeader({
+  icon,
+  title,
+  description,
+}: {
+  icon?: ReactNode;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className="flex items-start gap-2.5 px-1">
+      {icon && (
+        <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground">
+          {icon}
+        </span>
+      )}
+      <div className="min-w-0 space-y-0.5">
+        <h3 className="text-sm font-semibold leading-none">{title}</h3>
+        {description && (
+          <p className="text-xs text-muted-foreground leading-snug">
+            {description}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Inline notice. Wraps the shared Alert with semantic intent colors so we
  *  stop hand-rolling amber/destructive blocks throughout the page. */
 function Callout({
@@ -1255,16 +1286,41 @@ function IntegrationCard({
   );
 }
 
-/** Status pill shown on a notification-channel integration card. */
+/** Single status pill shared by every integration and storage backend, so
+ *  "connected / active / built-in / coming soon / not connected" all read in
+ *  one visual language instead of three. */
+function StatusBadge({
+  tone,
+  label,
+}: {
+  tone: "active" | "on" | "off" | "muted";
+  label: string;
+}) {
+  return (
+    <Badge
+      variant={tone === "off" || tone === "muted" ? "outline" : "secondary"}
+      className={cn(
+        "text-xs font-normal",
+        tone === "active" &&
+          "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300",
+        tone === "muted" && "text-muted-foreground"
+      )}
+    >
+      {label}
+    </Badge>
+  );
+}
+
+/** Connected / not-connected pill for a notification-channel integration card. */
 function ChannelStatusBadge({ configured }: { configured: boolean }) {
   const { t } = useTranslation();
   return (
-    <Badge
-      variant={configured ? "secondary" : "outline"}
-      className="text-[10px] font-normal"
-    >
-      {configured ? t("settings.ch.connected") : t("settings.ch.notConnected")}
-    </Badge>
+    <StatusBadge
+      tone={configured ? "on" : "off"}
+      label={
+        configured ? t("settings.ch.connected") : t("settings.ch.notConnected")
+      }
+    />
   );
 }
 
@@ -1295,76 +1351,66 @@ function TelegramConnectCard() {
   };
 
   return (
-    <div className="rounded-lg border border-border p-4 space-y-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
-            <Send className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 space-y-0.5">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">{t("settings.ch.botTitle")}</p>
-              <ChannelStatusBadge configured={connected} />
-            </div>
-            <p className="text-xs text-muted-foreground leading-snug">
-              {t("settings.ch.telegramHint")}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {connected ? (
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <p className="text-sm">{t("settings.ch.connected")}</p>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 px-2 text-xs"
-            disabled={unlink.isPending}
-            onClick={() => unlink.mutate()}
-          >
-            {t("settings.ch.disconnect")}
-          </Button>
-        </div>
-      ) : (
-        <>
-          <p className="text-xs text-muted-foreground leading-snug">
-            {t("settings.ch.botInstructions")}
-          </p>
-          {code ? (
-            <div className="flex items-center gap-2">
-              <code className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-sm font-mono tracking-wider">
-                {code}
-              </code>
+    <IntegrationCard
+      icon={<Send className="h-4 w-4" />}
+      name={t("settings.ch.botTitle")}
+      description={t("settings.ch.telegramHint")}
+      badge={<ChannelStatusBadge configured={connected} />}
+      footer={
+        <div className="space-y-3">
+          {connected ? (
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <p className="text-sm">{t("settings.ch.connected")}</p>
+              </div>
               <Button
                 variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={copyCode}
-                aria-label={t("settings.ch.copyCode")}
+                size="sm"
+                className="h-8 text-xs"
+                disabled={unlink.isPending}
+                onClick={() => unlink.mutate()}
               >
-                <Copy className="h-4 w-4" />
+                {t("settings.ch.disconnect")}
               </Button>
             </div>
           ) : (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-8 w-full text-xs"
-              disabled={createCode.isPending}
-              onClick={() => createCode.mutate()}
-            >
-              {t("settings.ch.generateCode")}
-            </Button>
+            <>
+              <p className="text-xs text-muted-foreground leading-snug">
+                {t("settings.ch.botInstructions")}
+              </p>
+              {code ? (
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-sm font-mono tracking-wider">
+                    {code}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-9 w-9 shrink-0"
+                    onClick={copyCode}
+                    aria-label={t("settings.ch.copyCode")}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 w-full text-xs"
+                  disabled={createCode.isPending}
+                  onClick={() => createCode.mutate()}
+                >
+                  {t("settings.ch.generateCode")}
+                </Button>
+              )}
+            </>
           )}
-        </>
-      )}
-
-      <BotPreview />
-    </div>
+          <BotPreview />
+        </div>
+      }
+    />
   );
 }
 
@@ -1406,7 +1452,7 @@ function DestinationInput({
 function NotificationChannelsIntegration() {
   const { t } = useTranslation();
   const u = trpc.useUtils();
-  const { data: status } = trpc.notification.getStatus.useQuery();
+  const { data: status, isLoading } = trpc.notification.getStatus.useQuery();
   const { data: vapid } = trpc.notification.getVapidPublicKey.useQuery();
 
   const subscribe = trpc.notification.subscribeWebPush.useMutation({
@@ -1453,78 +1499,83 @@ function NotificationChannelsIntegration() {
       : t("settings.ch.webpushCardDesc");
 
   return (
-    <div className="space-y-2">
-      <p className="px-1 text-xs font-medium text-muted-foreground">
-        {t("settings.ch.integrationsTitle")}
-      </p>
-      <div className="space-y-2">
-        <TelegramConnectCard />
+    <div className="space-y-3">
+      <CategoryHeader
+        icon={<Bell className="h-4 w-4" />}
+        title={t("settings.ch.integrationsTitle")}
+        description={t("settings.cat.channelsDesc")}
+      />
+      {isLoading ? (
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-6 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          {t("settings.ch.loading")}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <TelegramConnectCard />
 
-        <IntegrationCard
-          icon={<Mail className="h-4 w-4" />}
-          name={t("settings.ch.email")}
-          description={t("settings.ch.emailCardDesc")}
-          badge={<ChannelStatusBadge configured={Boolean(status?.email)} />}
-          footer={
-            <DestinationInput
-              field="email"
-              value={status?.email ?? ""}
-              placeholder={t("settings.ch.emailDest")}
-            />
-          }
-        />
+          <IntegrationCard
+            icon={<Mail className="h-4 w-4" />}
+            name={t("settings.ch.email")}
+            description={t("settings.ch.emailCardDesc")}
+            badge={<ChannelStatusBadge configured={Boolean(status?.email)} />}
+            footer={
+              <DestinationInput
+                field="email"
+                value={status?.email ?? ""}
+                placeholder={t("settings.ch.emailDest")}
+              />
+            }
+          />
 
-        <IntegrationCard
-          icon={<MessageCircle className="h-4 w-4" />}
-          name={t("settings.ch.whatsapp")}
-          description={t("settings.ch.whatsappCardDesc")}
-          badge={
-            <ChannelStatusBadge configured={Boolean(status?.whatsappPhone)} />
-          }
-          footer={
-            <DestinationInput
-              field="whatsappPhone"
-              value={status?.whatsappPhone ?? ""}
-              placeholder={t("settings.ch.whatsappDest")}
-            />
-          }
-        />
+          <IntegrationCard
+            icon={<MessageCircle className="h-4 w-4" />}
+            name={t("settings.ch.whatsapp")}
+            description={t("settings.ch.whatsappCardDesc")}
+            badge={
+              <ChannelStatusBadge configured={Boolean(status?.whatsappPhone)} />
+            }
+            footer={
+              <DestinationInput
+                field="whatsappPhone"
+                value={status?.whatsappPhone ?? ""}
+                placeholder={t("settings.ch.whatsappDest")}
+              />
+            }
+          />
 
-        <IntegrationCard
-          icon={<Globe className="h-4 w-4" />}
-          name={t("settings.ch.webpush")}
-          description={webPushReason}
-          badge={<ChannelStatusBadge configured={webPushGranted} />}
-          action={
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              disabled={
-                subscribe.isPending ||
-                !browserSupportsWebPush ||
-                !serverWebPushReady
-              }
-              onClick={enableWebPush}
-            >
-              {webPushGranted
-                ? t("settings.ch.reEnable")
-                : t("settings.ch.enableWebpush")}
-            </Button>
-          }
-        />
+          <IntegrationCard
+            icon={<Globe className="h-4 w-4" />}
+            name={t("settings.ch.webpush")}
+            description={webPushReason}
+            badge={<ChannelStatusBadge configured={webPushGranted} />}
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                disabled={
+                  subscribe.isPending ||
+                  !browserSupportsWebPush ||
+                  !serverWebPushReady
+                }
+                onClick={enableWebPush}
+              >
+                {webPushGranted
+                  ? t("settings.ch.reEnable")
+                  : t("settings.ch.enableWebpush")}
+              </Button>
+            }
+          />
 
-        <IntegrationCard
-          icon={<Smartphone className="h-4 w-4" />}
-          name={t("settings.ch.push")}
-          description={t("settings.ch.pushCardDesc")}
-          badge={
-            <Badge variant="secondary" className="text-[10px] font-normal">
-              {t("settings.ch.builtIn")}
-            </Badge>
-          }
-        />
-      </div>
+          <IntegrationCard
+            icon={<Smartphone className="h-4 w-4" />}
+            name={t("settings.ch.push")}
+            description={t("settings.ch.pushCardDesc")}
+            badge={<StatusBadge tone="on" label={t("settings.ch.builtIn")} />}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -1536,6 +1587,8 @@ function IntegrationsSection({ p }: { p: any }) {
     onSuccess: () => u.property.get.invalidate(),
     onError: e => toast.error(e.message),
   });
+  const { data: me } = trpc.profiles.current.useQuery();
+  const isAdmin = me?.role === "admin";
   const hasKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
   const mapsProvider = p?.mapsProvider ?? "google";
   // Selected storage backend is owned here so the Google Drive panel only
@@ -1545,34 +1598,24 @@ function IntegrationsSection({ p }: { p: any }) {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       <SectionHeader
         title={t("settings.integrations")}
         description={t("settings.integrationsDesc")}
         pending={m.isPending}
       />
 
-      <StorageBackendGroup onSelectedChange={setSelectedBackend} />
-      {selectedBackend === "gdrive" && <FileStorageGroup />}
-      <StoredFilesGroup />
-
+      {/* Notification channels — relevant to every user, so it leads. */}
       <NotificationChannelsIntegration />
 
-      <div className="space-y-2">
-        <p className="px-1 text-xs font-medium text-muted-foreground">
-          {t("settings.moreIntegrations")}
-        </p>
+      {/* Connected services — live integrations first, roadmap clearly apart. */}
+      <div className="space-y-3">
+        <CategoryHeader
+          icon={<Blocks className="h-4 w-4" />}
+          title={t("settings.cat.services")}
+          description={t("settings.cat.servicesDesc")}
+        />
         <div className="space-y-2">
-          <IntegrationCard
-            icon={<CalendarIcon className="h-4 w-4" />}
-            name={t("settings.calendar")}
-            description={t("settings.syncEventsHint")}
-            badge={
-              <Badge variant="secondary" className="text-[10px] font-normal">
-                {t("settings.comingSoon")}
-              </Badge>
-            }
-          />
           <IntegrationCard
             icon={<MapIcon className="h-4 w-4" />}
             name={t("settings.maps")}
@@ -1595,15 +1638,50 @@ function IntegrationsSection({ p }: { p: any }) {
             footer={
               !hasKey && mapsProvider === "google" ? (
                 <Callout variant="warning">
-                  <span>
-                    {t("settings.mapsKeyPrefix")}{" "}
-                    <code className="font-mono">VITE_GOOGLE_MAPS_API_KEY</code>{" "}
-                    {t("settings.mapsKeySuffix")}
-                  </span>
+                  <div className="space-y-1">
+                    <p>{t("settings.mapsKeyNotice")}</p>
+                    {isAdmin && (
+                      <p className="text-xs opacity-80">
+                        {t("settings.mapsKeyAdminHint")}{" "}
+                        <code className="font-mono">
+                          VITE_GOOGLE_MAPS_API_KEY
+                        </code>
+                      </p>
+                    )}
+                  </div>
                 </Callout>
               ) : undefined
             }
           />
+
+          <p className="px-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+            {t("settings.cat.comingSoon")}
+          </p>
+          <div className="opacity-60">
+            <IntegrationCard
+              icon={<CalendarIcon className="h-4 w-4" />}
+              name={t("settings.calendar")}
+              description={t("settings.syncEventsHint")}
+              badge={
+                <StatusBadge tone="muted" label={t("settings.comingSoon")} />
+              }
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Storage & files — admin config self-gates; the file browser shows for
+          everyone, so this category always has content and never an empty top. */}
+      <div className="space-y-3">
+        <CategoryHeader
+          icon={<HardDrive className="h-4 w-4" />}
+          title={t("settings.cat.storage")}
+          description={t("settings.cat.storageDesc")}
+        />
+        <div className="space-y-2">
+          <StorageBackendGroup onSelectedChange={setSelectedBackend} />
+          {selectedBackend === "gdrive" && <FileStorageGroup />}
+          <StoredFilesGroup />
         </div>
       </div>
     </div>
@@ -1866,18 +1944,20 @@ function StorageBackendGroup({
                     <Icon className="h-5 w-5" />
                     <span className="font-medium">{opt.label}</span>
                     {isActive ? (
-                      <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                        <CheckCircle2 className="h-3 w-3" />
-                        {t("settings.storage.active")}
-                      </span>
+                      <StatusBadge
+                        tone="active"
+                        label={t("settings.storage.active")}
+                      />
                     ) : configured(opt.id) ? (
-                      <span className="text-xs text-muted-foreground">
-                        {t("settings.storage.configured")}
-                      </span>
+                      <StatusBadge
+                        tone="on"
+                        label={t("settings.storage.configured")}
+                      />
                     ) : (
-                      <span className="text-xs text-muted-foreground/70">
-                        {t("settings.storage.notConfigured")}
-                      </span>
+                      <StatusBadge
+                        tone="off"
+                        label={t("settings.storage.notConfigured")}
+                      />
                     )}
                   </button>
                 );
@@ -1929,7 +2009,12 @@ function StorageBackendGroup({
                       )}
                       {t("settings.storage.save")}
                     </Button>
-                    {active !== "local" && (
+                    {active === "local" ? (
+                      <StatusBadge
+                        tone="active"
+                        label={t("settings.storage.active")}
+                      />
+                    ) : (
                       <Button
                         variant="secondary"
                         size="sm"
@@ -2017,6 +2102,9 @@ function StorageBackendGroup({
                     <button
                       type="button"
                       onClick={() => setShowS3Secret(v => !v)}
+                      aria-label={t(
+                        showS3Secret ? "common.hide" : "common.show"
+                      )}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showS3Secret ? (
@@ -2057,7 +2145,12 @@ function StorageBackendGroup({
                       )}
                       {t("settings.storage.save")}
                     </Button>
-                    {active !== "s3" && (
+                    {active === "s3" ? (
+                      <StatusBadge
+                        tone="active"
+                        label={t("settings.storage.active")}
+                      />
+                    ) : (
                       <Button
                         variant="secondary"
                         size="sm"
@@ -2082,10 +2175,10 @@ function StorageBackendGroup({
             >
               <div className="flex items-center gap-3">
                 {active === "gdrive" ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    {t("settings.storage.active")}
-                  </span>
+                  <StatusBadge
+                    tone="active"
+                    label={t("settings.storage.active")}
+                  />
                 ) : (
                   <Button
                     variant="secondary"
