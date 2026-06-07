@@ -14,6 +14,7 @@
     "bot": {
       "previewTitle": "Бот HomeVault",
       "previewBadge": "Предпросмотр",
+      "previewDisclaimer": "Демо-превью — не реальный диалог",
       "confirm": "Подтвердить",
       "cancel": "Отмена",
       "cancelled": "Отменено. Ничего не добавлено.",
@@ -36,6 +37,7 @@
     "portfolio": "Портфель",
     "more": "Ещё",
     "primary": "Основная навигация",
+    "skipToContent": "Перейти к содержимому",
     "group": {
       "overview": "Обзор",
       "finances": "Финансы",
@@ -702,6 +704,7 @@
     "totalThisYear": "Всего за этот год",
     "unpaid": "Не оплачено",
     "markPaid": "Отметить оплаченным",
+    "markPaidNamed": "Отметить «{{name}}» оплаченным",
     "paid": "Оплачено",
     "deleteConfirm": "Удалить этот расход?",
     "recurringExpense": "Повторяющийся расход",
@@ -762,6 +765,11 @@
   "wishlist": {
     "title": "Список желаний",
     "addItem": "Добавить позицию",
+    "purchased": "Куплено",
+    "markPurchased": "Отметить купленным",
+    "moveToUpgrades": "Перенести в улучшения",
+    "markedPurchased": "Отмечено как купленное",
+    "movedToUpgrades": "Перенесено в улучшения",
     "editItem": "Изменить позицию",
     "totalValue": "Общая стоимость",
     "deleteConfirm": "Удалить эту позицию?",
@@ -850,6 +858,7 @@
     "allComplete": "Всё завершено",
     "invested": "Вложено",
     "markPaid": "Отметить оплаченным",
+    "markPaidNamed": "Отметить «{{name}}» оплаченным",
     "goodMorning": "Доброе утро",
     "goodAfternoon": "Добрый день",
     "goodEvening": "Добрый вечер",

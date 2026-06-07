@@ -442,6 +442,7 @@ function AttentionCard({
                 </span>
                 <button
                   className="text-[11px] font-semibold px-2 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
+                  aria-label={t("dashboard.markPaidNamed", { name: e.label })}
                   onClick={() => {
                     onMarkPaid(e.id);
                     dismiss(`exp-${e.id}`);

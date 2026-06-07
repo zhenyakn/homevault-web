@@ -14,6 +14,7 @@
     "bot": {
       "previewTitle": "בוט HomeVault",
       "previewBadge": "תצוגה מקדימה",
+      "previewDisclaimer": "תצוגה לדוגמה — לא שיחה אמיתית",
       "confirm": "אישור",
       "cancel": "ביטול",
       "cancelled": "בוטל. לא נוסף דבר.",
@@ -36,6 +37,7 @@
     "portfolio": "תיק נכסים",
     "more": "עוד",
     "primary": "ניווט ראשי",
+    "skipToContent": "דלג לתוכן",
     "group": {
       "overview": "סקירה",
       "finances": "פיננסים",
@@ -695,6 +697,7 @@
     "totalThisYear": "סה\"כ השנה",
     "unpaid": "לא שולם",
     "markPaid": "סמן כשולם",
+    "markPaidNamed": "סמן את {{name}} כשולם",
     "paid": "שולם",
     "deleteConfirm": "למחוק את ההוצאה?",
     "recurringExpense": "הוצאה חוזרת",
@@ -755,6 +758,11 @@
   "wishlist": {
     "title": "רשימת משאלות",
     "addItem": "הוסף פריט",
+    "purchased": "נרכש",
+    "markPurchased": "סמן כנרכש",
+    "moveToUpgrades": "העבר לשדרוגים",
+    "markedPurchased": "סומן כנרכש",
+    "movedToUpgrades": "הועבר לשדרוגים",
     "editItem": "ערוך פריט",
     "totalValue": "שווי כולל",
     "deleteConfirm": "למחוק את הפריט?",
@@ -843,6 +851,7 @@
     "allComplete": "הכל הושלם",
     "invested": "הושקע",
     "markPaid": "סמן כשולם",
+    "markPaidNamed": "סמן את {{name}} כשולם",
     "goodMorning": "בוקר טוב",
     "goodAfternoon": "צהריים טובים",
     "goodEvening": "ערב טוב",

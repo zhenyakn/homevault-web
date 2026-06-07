@@ -171,6 +171,10 @@ export function BotPreview() {
           <Send className="h-3.5 w-3.5" />
         </Button>
       </div>
+
+      <p className="border-t bg-muted/20 px-3 py-1.5 text-center text-[10px] text-muted-foreground">
+        {t("notifs.bot.previewDisclaimer")}
+      </p>
     </div>
   );
 }

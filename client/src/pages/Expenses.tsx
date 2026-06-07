@@ -591,6 +591,9 @@ export default function Expenses() {
                         variant="outline"
                         className="h-7 w-7 p-0"
                         title={t("expenses.markPaid")}
+                        aria-label={t("expenses.markPaidNamed", {
+                          name: expense.name,
+                        })}
                         onClick={() => handleMarkPaid(expense.id)}
                       >
                         <Check className="h-3.5 w-3.5" />

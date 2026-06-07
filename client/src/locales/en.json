@@ -14,6 +14,7 @@
     "bot": {
       "previewTitle": "HomeVault Bot",
       "previewBadge": "Preview",
+      "previewDisclaimer": "Demo preview — not a live conversation",
       "confirm": "Confirm",
       "cancel": "Cancel",
       "cancelled": "Cancelled. Nothing was added.",
@@ -36,6 +37,7 @@
     "portfolio": "Portfolio",
     "more": "More",
     "primary": "Primary navigation",
+    "skipToContent": "Skip to content",
     "group": {
       "overview": "Overview",
       "finances": "Finances",
@@ -704,6 +706,7 @@
     "totalThisYear": "Total this year",
     "unpaid": "Unpaid",
     "markPaid": "Mark paid",
+    "markPaidNamed": "Mark {{name}} as paid",
     "paid": "Paid",
     "deleteConfirm": "Delete this expense?",
     "recurringExpense": "Recurring expense",
@@ -764,6 +767,11 @@
   "wishlist": {
     "title": "Wishlist",
     "addItem": "Add item",
+    "purchased": "Purchased",
+    "markPurchased": "Mark as purchased",
+    "moveToUpgrades": "Move to upgrades",
+    "markedPurchased": "Marked as purchased",
+    "movedToUpgrades": "Moved to upgrades",
     "editItem": "Edit item",
     "totalValue": "Total value",
     "deleteConfirm": "Delete this item?",
@@ -852,6 +860,7 @@
     "allComplete": "All complete",
     "invested": "Invested",
     "markPaid": "Mark paid",
+    "markPaidNamed": "Mark {{name}} as paid",
     "goodMorning": "Good morning",
     "goodAfternoon": "Good afternoon",
     "goodEvening": "Good evening",
