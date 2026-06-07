@@ -16,6 +16,12 @@ export OAUTH_SERVER_URL=$(jq -r '.OAUTH_SERVER_URL // ""' "$OPTIONS")
 export PORT=$(jq -r '.PORT // 3005' "$OPTIONS")
 export HOST="0.0.0.0"
 export NODE_ENV="production"
+# Silence the DEP0040 punycode deprecation warning. It originates from a deep
+# transitive dependency (grammy -> node-fetch@2 -> whatwg-url/tr46) that still
+# require()s Node's built-in `punycode`. There is no clean upgrade path
+# (node-fetch@3 is ESM-only and breaks grammy), so we suppress only this one
+# deprecation code rather than all warnings. Applies to every `node` call below.
+export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--disable-warning=DEP0040"
 # The add-on migrates below via apply-migration-addon.mjs, so disable the
 # server's boot-time auto-migration to avoid running both mechanisms.
 export AUTO_MIGRATE="false"
