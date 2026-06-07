@@ -41,6 +41,7 @@ type Category =
   | "Valuable"
   | "Other";
 type Condition = "New" | "Good" | "Fair" | "Poor";
+type AssetType = "fixture" | "personal";
 
 interface InventoryItem {
   id: string;
@@ -57,6 +58,7 @@ interface InventoryItem {
   store?: string | null;
   warrantyExpiry?: string | null;
   condition?: Condition | null;
+  assetType?: AssetType | null;
   notes?: string | null;
   serialNumber?: string | null;
 }
@@ -93,6 +95,7 @@ const defaultForm = {
   store: "",
   warrantyExpiry: "",
   condition: "Good" as Condition,
+  assetType: "fixture" as AssetType,
   notes: "",
   serialNumber: "",
 };
@@ -101,6 +104,7 @@ export default function Inventory() {
   const { t } = useTranslation();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [valueScope, setValueScope] = useState<"fixtures" | "all">("fixtures");
   const [filterCategory, setFilterCategory] = useState<string>("all");
   const [filterRoom, setFilterRoom] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -152,6 +156,7 @@ export default function Inventory() {
       name: formData.name.trim(),
       category: formData.category,
       condition: formData.condition,
+      assetType: formData.assetType,
       quantity: qty,
       minQuantity: parseInt(formData.minQuantity) || 0,
     };
@@ -193,6 +198,7 @@ export default function Inventory() {
       store: item.store || "",
       warrantyExpiry: item.warrantyExpiry || "",
       condition: item.condition || "Good",
+      assetType: item.assetType || "fixture",
       notes: item.notes || "",
       serialNumber: item.serialNumber || "",
     });
@@ -232,10 +238,13 @@ export default function Inventory() {
   });
 
   const totalItems = items.length;
-  const totalValue = items.reduce(
-    (sum, i) => sum + (i.purchasePrice ?? 0) * i.quantity,
-    0
-  );
+  // Property valuation counts fixtures (items that convey with the home) by
+  // default; toggle to include personal belongings for a full inventory value.
+  const totalValue = items.reduce((sum, i) => {
+    if (valueScope === "fixtures" && (i.assetType ?? "fixture") !== "fixture")
+      return sum;
+    return sum + (i.purchasePrice ?? 0) * i.quantity;
+  }, 0);
   const lowStockCount = items.filter(
     i =>
       i.minQuantity != null && i.minQuantity > 0 && i.quantity <= i.minQuantity
@@ -253,6 +262,7 @@ export default function Inventory() {
       "Quantity",
       "Unit",
       "Condition",
+      "Ownership",
       "Brand",
       "SKU",
       "Purchase Price",
@@ -268,6 +278,7 @@ export default function Inventory() {
       i.quantity,
       i.unit || "",
       i.condition || "",
+      i.assetType || "fixture",
       i.brand || "",
       i.sku || "",
       i.purchasePrice ? (i.purchasePrice / 100).toFixed(2) : "",
@@ -377,6 +388,27 @@ export default function Inventory() {
                             {c}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="assetType">Ownership</Label>
+                    <Select
+                      value={formData.assetType}
+                      onValueChange={(v: AssetType) =>
+                        setFormData({ ...formData, assetType: v })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixture">
+                          Fixture (stays with home)
+                        </SelectItem>
+                        <SelectItem value="personal">
+                          Personal belonging
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -566,7 +598,25 @@ export default function Inventory() {
           </p>
         </div>
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">Total Value</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">Total Value</p>
+            <div className="flex rounded-md border border-border overflow-hidden text-[10px] font-medium">
+              <button
+                type="button"
+                onClick={() => setValueScope("fixtures")}
+                className={`px-1.5 py-0.5 transition-colors ${valueScope === "fixtures" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"}`}
+              >
+                Fixtures
+              </button>
+              <button
+                type="button"
+                onClick={() => setValueScope("all")}
+                className={`px-1.5 py-0.5 transition-colors ${valueScope === "all" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"}`}
+              >
+                All
+              </button>
+            </div>
+          </div>
           <p className="text-xl font-semibold tabular-nums mt-1">
             {formatCurrency(totalValue)}
           </p>

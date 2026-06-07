@@ -566,6 +566,11 @@ export const inventoryItems = mysqlTable(
     condition: mysqlEnum("condition", ["New", "Good", "Fair", "Poor"]).default(
       "Good"
     ),
+    // Whether the item conveys with the property (fixture) or belongs to the
+    // owner personally — used to scope the property valuation.
+    assetType: mysqlEnum("assetType", ["fixture", "personal"]).default(
+      "fixture"
+    ),
     notes: text("notes"),
     tags: json("tags").$type<string[]>(),
     photoUrl: text("photoUrl"),

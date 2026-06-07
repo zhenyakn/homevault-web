@@ -216,6 +216,8 @@
   },
   "settings": {
     "title": "Settings",
+    "saved": "Saved",
+    "undo": "Undo",
     "property": "Property",
     "purchase": "Purchase",
     "household": "Household",
@@ -545,6 +547,7 @@
     "emptyTitle": "Track repairs end-to-end",
     "emptyDesc": "Log an issue, collect contractor quotes, track payments and photos — all linked to your property.",
     "deleteConfirm": "Delete this repair and all its data?",
+    "deleteTitle": "Delete repair?",
     "description": "Description",
     "details": "Details",
     "priority": "Priority",
@@ -799,6 +802,7 @@
   "calendar": {
     "title": "Calendar",
     "addEvent": "Add event",
+    "addEventForDay": "Add event for this day",
     "addNewEvent": "Add new event",
     "eventTitle": "Title",
     "timeOptional": "Time (optional)",
@@ -852,6 +856,7 @@
     "goodAfternoon": "Good afternoon",
     "goodEvening": "Good evening",
     "overdue": "Overdue",
+    "daysOverdue": "{{count}}d overdue",
     "stale5d": "Stuck 5 days+",
     "decisionNeeded": "Decision needed",
     "unpaidSuffix": "unpaid",

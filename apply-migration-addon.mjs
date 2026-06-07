@@ -455,6 +455,7 @@ async function main() {
       \`store\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`warrantyExpiry\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`condition\` enum('New','Good','Fair','Poor') COLLATE utf8mb4_unicode_ci DEFAULT 'Good',
+      \`assetType\` enum('fixture','personal') COLLATE utf8mb4_unicode_ci DEFAULT 'fixture',
       \`notes\` text COLLATE utf8mb4_unicode_ci,
       \`tags\` json DEFAULT NULL,
       \`photoUrl\` text COLLATE utf8mb4_unicode_ci,
@@ -790,6 +791,12 @@ async function main() {
   await run(
     `ALTER TABLE \`calendarEvents\` ADD COLUMN \`externalCalendarId\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
     "calendarEvents.externalCalendarId"
+  );
+
+  // ── inventoryItems ────────────────────────────────────────────────────────────
+  await run(
+    `ALTER TABLE \`inventoryItems\` ADD COLUMN \`assetType\` enum('fixture','personal') COLLATE utf8mb4_unicode_ci DEFAULT 'fixture'`,
+    "inventoryItems.assetType"
   );
 
   // ── Phase 4: payment tables — migrate JSON → relational, drop legacy columns ──

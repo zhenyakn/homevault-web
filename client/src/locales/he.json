@@ -207,6 +207,8 @@
   },
   "settings": {
     "title": "הגדרות",
+    "saved": "נשמר",
+    "undo": "בטל",
     "property": "נכס",
     "purchase": "רכישה",
     "household": "בית",
@@ -536,6 +538,7 @@
     "emptyTitle": "עקוב אחר תיקונים מקצה לקצה",
     "emptyDesc": "תעד בעיה, אסוף הצעות מחיר מקבלנים, עקוב אחר תשלומים ותמונות — הכל מקושר לנכס שלך.",
     "deleteConfirm": "למחוק את התיקון וכל הנתונים שלו?",
+    "deleteTitle": "למחוק תיקון?",
     "description": "תיאור",
     "details": "פרטים",
     "priority": "עדיפות",
@@ -790,6 +793,7 @@
   "calendar": {
     "title": "יומן",
     "addEvent": "הוסף אירוע",
+    "addEventForDay": "הוסף אירוע ליום זה",
     "addNewEvent": "הוסף אירוע חדש",
     "eventTitle": "כותרת",
     "timeOptional": "שעה (אופציונלי)",
@@ -843,6 +847,7 @@
     "goodAfternoon": "צהריים טובים",
     "goodEvening": "ערב טוב",
     "overdue": "באיחור",
+    "daysOverdue": "באיחור {{count}} ימים",
     "stale5d": "תקוע 5 ימים+",
     "decisionNeeded": "נדרשת החלטה",
     "unpaidSuffix": "לא שולם",

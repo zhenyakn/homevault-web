@@ -23,6 +23,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Plus,
   Check,
   Pencil,
@@ -1071,26 +1077,31 @@ export default function UpgradeDetail() {
         progressRight={`${formatCurrency(spentAmt)} ${t("dashboard.paid")}`}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
-        {/* Options */}
-        <section>
-          <DetailSectionHeader
-            label={t("upgradeDetail.vendors")}
-            count={options.length}
-            action={
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setEditOption(null);
-                  setOptionDialogOpen(true);
-                }}
-              >
-                <Plus className="h-3.5 w-3.5 me-1.5" />
-                {t("repairDetail.addQuote")}
-              </Button>
-            }
-          />
+      <div className="flex flex-col gap-5">
+        {/* Options / vendors — secondary; tucked into an accordion so the item
+            checklist below stays the primary focus. */}
+        <Accordion type="single" collapsible className="order-2">
+          <AccordionItem
+            value="vendors"
+            className="border border-border rounded-lg px-4"
+          >
+            <AccordionTrigger className="py-3 text-sm font-medium">
+              {t("upgradeDetail.vendors")} · {options.length}
+            </AccordionTrigger>
+            <AccordionContent className="pb-3">
+              <div className="flex justify-end mb-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditOption(null);
+                    setOptionDialogOpen(true);
+                  }}
+                >
+                  <Plus className="h-3.5 w-3.5 me-1.5" />
+                  {t("repairDetail.addQuote")}
+                </Button>
+              </div>
 
           {loadingOptions ? (
             <div className="h-12 rounded-lg bg-muted animate-pulse" />
@@ -1122,10 +1133,12 @@ export default function UpgradeDetail() {
                 ))}
             </div>
           )}
-        </section>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
-        {/* Items */}
-        <section>
+        {/* Items — primary focus */}
+        <section className="order-1">
           <DetailSectionHeader
             label={t("upgradeDetail.items")}
             count={items.length}

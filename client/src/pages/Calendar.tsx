@@ -154,6 +154,13 @@ export default function Calendar() {
     }
   };
 
+  const handleAddForDay = () => {
+    resetForm();
+    if (selectedDate) setDate(selectedDate);
+    setIsDayDialogOpen(false);
+    setIsDialogOpen(true);
+  };
+
   const handleEditEvent = (event: CalendarEvent) => {
     setEditingId(event.id);
     setTitle(event.title);
@@ -516,6 +523,14 @@ export default function Calendar() {
                 </div>
               ))
             )}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleAddForDay}
+            >
+              <Plus className="me-2 h-4 w-4" />
+              {t("calendar.addEventForDay")}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

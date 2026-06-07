@@ -613,11 +613,25 @@ const TIMEZONES = [
 
 // ─── Sections ─────────────────────────────────────────────────────────────────
 
+// A pending "undo" callback for the next successful settings save. Set right
+// before mutating a critical field so the success toast can offer to revert it.
+let pendingUndo: (() => void) | null = null;
+
 function PropertySection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({
-    onSuccess: () => u.property.get.invalidate(),
+    onSuccess: () => {
+      u.property.get.invalidate();
+      const undo = pendingUndo;
+      pendingUndo = null;
+      toast.success(
+        t("settings.saved"),
+        undo
+          ? { action: { label: t("settings.undo"), onClick: undo } }
+          : undefined
+      );
+    },
     onError: e => toast.error(e.message),
   });
   const save = useCallback((d: any) => m.mutate(d), [m]);
@@ -768,7 +782,17 @@ function PurchaseSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({
-    onSuccess: () => u.property.get.invalidate(),
+    onSuccess: () => {
+      u.property.get.invalidate();
+      const undo = pendingUndo;
+      pendingUndo = null;
+      toast.success(
+        t("settings.saved"),
+        undo
+          ? { action: { label: t("settings.undo"), onClick: undo } }
+          : undefined
+      );
+    },
     onError: e => toast.error(e.message),
   });
   const { data: costs } = trpc.purchaseCosts.list.useQuery();
@@ -844,6 +868,7 @@ function HouseholdSection() {
     onSuccess: () => {
       u.profiles.current.invalidate();
       u.profiles.list.invalidate();
+      toast.success(t("settings.saved"));
     },
     onError: e => toast.error(e.message),
   });
@@ -924,7 +949,17 @@ function RegionalSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({
-    onSuccess: () => u.property.get.invalidate(),
+    onSuccess: () => {
+      u.property.get.invalidate();
+      const undo = pendingUndo;
+      pendingUndo = null;
+      toast.success(
+        t("settings.saved"),
+        undo
+          ? { action: { label: t("settings.undo"), onClick: undo } }
+          : undefined
+      );
+    },
     onError: e => toast.error(e.message),
   });
   const g = (k: string, f: any = "") => p?.[k] ?? f;
@@ -943,9 +978,18 @@ function RegionalSection({ p }: { p: any }) {
             value={g("currencyCode", "ILS")}
             options={CURRENCIES}
             search={t("settings.searchCurrencies")}
-            onSelect={v =>
-              m.mutate({ currencyCode: v, currency: SYMBOLS[v] ?? v })
-            }
+            onSelect={v => {
+              const prev = g("currencyCode", "ILS");
+              pendingUndo =
+                prev !== v
+                  ? () =>
+                      m.mutate({
+                        currencyCode: prev,
+                        currency: SYMBOLS[prev] ?? prev,
+                      })
+                  : null;
+              m.mutate({ currencyCode: v, currency: SYMBOLS[v] ?? v });
+            }}
           />
         </Row>
         <Row
@@ -996,7 +1040,17 @@ function NotificationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({
-    onSuccess: () => u.property.get.invalidate(),
+    onSuccess: () => {
+      u.property.get.invalidate();
+      const undo = pendingUndo;
+      pendingUndo = null;
+      toast.success(
+        t("settings.saved"),
+        undo
+          ? { action: { label: t("settings.undo"), onClick: undo } }
+          : undefined
+      );
+    },
     onError: e => toast.error(e.message),
   });
   const days = p?.reminderDaysBefore ?? 3;
@@ -1533,7 +1587,17 @@ function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const m = trpc.property.update.useMutation({
-    onSuccess: () => u.property.get.invalidate(),
+    onSuccess: () => {
+      u.property.get.invalidate();
+      const undo = pendingUndo;
+      pendingUndo = null;
+      toast.success(
+        t("settings.saved"),
+        undo
+          ? { action: { label: t("settings.undo"), onClick: undo } }
+          : undefined
+      );
+    },
     onError: e => toast.error(e.message),
   });
   const hasKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
