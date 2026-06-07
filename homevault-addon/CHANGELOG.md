@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.5.3
+## 0.5.4
+- Restructure Integrations settings into clear categories with unified cards
+- build: rebuild client bundle with 404 hash-routing fixes
+- fix: Settings tab nav parked URL on invalid hash, causing 404 on re-render
 - Explain why browser push is unavailable instead of a greyed button
 - fix(tsconfig): remove deprecated baseUrl to unblock tsc check
 - fix: prevent 404 when switching property on detail pages
@@ -269,6 +272,11 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.5.3
+- Restructure Integrations settings into clear categories with unified cards
+- build: rebuild client bundle with 404 hash-routing fixes
+- fix: Settings tab nav parked URL on invalid hash, causing 404 on re-render
 
 ## 0.5.2
 - Explain why browser push is unavailable instead of a greyed button
