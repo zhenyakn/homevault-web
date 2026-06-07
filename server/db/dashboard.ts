@@ -7,11 +7,11 @@ import {
   loans,
   type Expense,
   type Repair,
-  type Loan,
   users,
 } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { getProperty, getPropertiesByUser } from "./properties";
+import { computeLoanProgress } from "../../shared/loanProgress";
 
 // ── Pure helpers (exported for unit tests) ────────────────────────────────────
 
@@ -39,31 +39,6 @@ export function getOverdueExpenses(allExpenses: Expense[], today: string) {
   return allExpenses
     .filter(e => e.isRecurring && !e.isPaid && e.date <= today)
     .map(e => ({ id: e.id, label: e.name, amount: e.amount, date: e.date }));
-}
-
-export function buildLoanSummary(allLoans: (Loan & { repayments: any[] })[]) {
-  return allLoans.map(l => {
-    const repaid = l.repayments.reduce(
-      (s: number, r: any) => s + (r.amount ?? 0),
-      0
-    );
-    const remaining = Math.max(0, l.originalAmount - repaid);
-    return {
-      id: l.id,
-      lender: l.lender,
-      loanType: l.loanType,
-      totalAmount: l.originalAmount,
-      repaid,
-      remaining,
-      pct:
-        l.originalAmount > 0
-          ? Math.round((repaid / l.originalAmount) * 100)
-          : 0,
-      paidOff: repaid >= l.originalAmount,
-      interestRate: l.interestRate,
-      endDate: l.endDate,
-    };
-  });
 }
 
 // ── Recent activity feed ──────────────────────────────────────────────────────
@@ -129,6 +104,48 @@ export async function getRecentActivity(propertyId: number) {
 }
 
 // ── Dashboard stats — targeted SQL queries, no full-table loads ───────────────
+
+/**
+ * Lightweight "needs attention" feed for the notification bell: just overdue
+ * recurring bills + stale high/urgent repairs. This is a tiny subset of
+ * getDashboardStats so the header can poll it cheaply on every route without
+ * dragging the full dashboard aggregate (expenses/loans/upgrades/portfolio).
+ */
+export async function getAttentionItems(userId: number, propertyId: number) {
+  const db = await getDb();
+  const now = new Date();
+  const today = now.toISOString().split("T")[0];
+  const staleCutoffDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+
+  const [overdueExpenses, staleRepairs] = await Promise.all([
+    db
+      .select({ id: expenses.id, label: expenses.name, amount: expenses.amount })
+      .from(expenses)
+      .where(
+        and(
+          eq(expenses.ownerId, userId),
+          eq(expenses.propertyId, propertyId),
+          eq(expenses.isRecurring, true),
+          eq(expenses.isPaid, false),
+          lte(expenses.date, today)
+        )
+      ),
+    db
+      .select({ id: repairs.id, label: repairs.title })
+      .from(repairs)
+      .where(
+        and(
+          eq(repairs.ownerId, userId),
+          eq(repairs.propertyId, propertyId),
+          notInArray(repairs.status, ["completed", "cancelled"]),
+          inArray(repairs.priority, ["urgent", "high"]),
+          lte(repairs.updatedAt, staleCutoffDate)
+        )
+      ),
+  ]);
+
+  return { overdueExpenses, staleRepairs };
+}
 
 export async function getDashboardStats(userId: number, propertyId: number) {
   const db = await getDb();
@@ -220,6 +237,7 @@ export async function getDashboardStats(userId: number, propertyId: number) {
         label: expenses.name,
         amount: expenses.amount,
         date: expenses.date,
+        recurringInterval: expenses.recurringInterval,
       })
       .from(expenses)
       .where(
@@ -314,26 +332,18 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   }
   const openRepairsCount = Number(openRepairsCountRows[0]?.cnt ?? 0);
 
-  // Loan summary — use currentBalance (kept in sync by addRepayment)
-  const loanSummary = loanRows.map(l => {
-    const remaining = Math.max(0, l.currentBalance ?? l.originalAmount);
-    const repaid = Math.max(0, l.originalAmount - remaining);
-    return {
-      id: l.id,
-      lender: l.lender,
-      loanType: l.loanType,
-      totalAmount: l.originalAmount,
-      repaid,
-      remaining,
-      pct:
-        l.originalAmount > 0
-          ? Math.round((repaid / l.originalAmount) * 100)
-          : 0,
-      paidOff: remaining === 0,
-      interestRate: l.interestRate,
-      endDate: l.endDate,
-    };
-  });
+  // Loan summary — derive progress from the shared helper so the Dashboard and
+  // the Loans page can never disagree (currentBalance is kept in sync by
+  // addRepayment).
+  const loanSummary = loanRows.map(l => ({
+    id: l.id,
+    lender: l.lender,
+    loanType: l.loanType,
+    totalAmount: l.originalAmount,
+    ...computeLoanProgress(l.originalAmount, l.currentBalance),
+    interestRate: l.interestRate,
+    endDate: l.endDate,
+  }));
 
   // Upgrades needing a decision: in_progress + has options + no selected option
   // We already have the activeUpgrade IDs from the parallel query above — just
@@ -456,7 +466,8 @@ export async function getPortfolioSummary(userId: number) {
       const monthSpent = Number(monthSpentRows[0]?.total ?? 0);
       const openRepairsCount = Number(openRepairsCountRows[0]?.cnt ?? 0);
       const outstandingLoanBalance = loanRows.reduce(
-        (sum, l) => sum + Math.max(0, l.currentBalance ?? l.originalAmount),
+        (sum, l) =>
+          sum + computeLoanProgress(l.originalAmount, l.currentBalance).remaining,
         0
       );
 

@@ -25,6 +25,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Loader2,
   Plus,
   Trash2,
@@ -333,6 +343,7 @@ export default function Repairs() {
   });
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleExportCSV = () => {
     if (!repairs.length) {
@@ -503,10 +514,7 @@ export default function Repairs() {
               repair={r}
               quoteCounts={countMap[r.id]}
               isDone={false}
-              onDelete={() => {
-                if (confirm(t("repairs.deleteConfirm")))
-                  deleteMutation.mutate({ id: r.id });
-              }}
+              onDelete={() => setDeletingId(r.id)}
               onClick={() => navigate(`/repairs/${r.id}`)}
             />
           ))}
@@ -547,10 +555,7 @@ export default function Repairs() {
               repair={r}
               quoteCounts={countMap[r.id]}
               isDone={true}
-              onDelete={() => {
-                if (confirm(t("repairs.deleteConfirm")))
-                  deleteMutation.mutate({ id: r.id });
-              }}
+              onDelete={() => setDeletingId(r.id)}
               onClick={() => navigate(`/repairs/${r.id}`)}
             />
           ))}
@@ -558,6 +563,32 @@ export default function Repairs() {
       )}
 
       <AddRepairDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+
+      <AlertDialog
+        open={deletingId !== null}
+        onOpenChange={open => !open && setDeletingId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("repairs.deleteTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("repairs.deleteConfirm")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deletingId) deleteMutation.mutate({ id: deletingId });
+                setDeletingId(null);
+              }}
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

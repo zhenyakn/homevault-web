@@ -44,6 +44,7 @@ interface CalendarEvent {
 
 const EVENT_COLORS: Record<string, string> = {
   Payment: "bg-green-500",
+  Loan: "bg-violet-500",
   Maintenance: "bg-red-500",
   Renovation: "bg-blue-500",
   Other: "bg-gray-500",
@@ -51,6 +52,7 @@ const EVENT_COLORS: Record<string, string> = {
 
 const EVENT_BADGE_COLORS: Record<string, string> = {
   Payment: "bg-green-100 text-green-800 hover:bg-green-200",
+  Loan: "bg-violet-100 text-violet-800 hover:bg-violet-200",
   Maintenance: "bg-red-100 text-red-800 hover:bg-red-200",
   Renovation: "bg-blue-100 text-blue-800 hover:bg-blue-200",
   Other: "bg-gray-100 text-gray-800 hover:bg-gray-200",
@@ -64,6 +66,21 @@ const EVENT_TYPES: EventType[] = [
   "Other",
 ];
 
+// Events persist a `category`, while the form works in `eventType`. The
+// eventType → category map (calendarCatMap on the server) is 1:1, so this
+// reverse map restores the original eventType exactly when pre-filling the edit
+// form. (Legacy events created before the "Loan" category existed are stored as
+// "Payment" and will reopen as "Expense".)
+const CATEGORY_TO_EVENT_TYPE: Record<string, EventType> = {
+  Payment: "Expense",
+  Loan: "Loan",
+  Maintenance: "Repair",
+  Renovation: "Upgrade",
+  Inspection: "Other",
+  Legal: "Other",
+  Other: "Other",
+};
+
 export default function Calendar() {
   const { t, i18n } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -71,6 +88,7 @@ export default function Calendar() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDayDialogOpen, setIsDayDialogOpen] = useState(false);
 
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -101,6 +119,18 @@ export default function Calendar() {
     },
   });
 
+  const updateMutation = trpc.calendar.update.useMutation({
+    onSuccess: () => {
+      toast.success(t("calendar.eventUpdated"));
+      setIsDialogOpen(false);
+      resetForm();
+      refetch();
+    },
+    onError: error => {
+      toast.error(`${error.message}`);
+    },
+  });
+
   const deleteMutation = trpc.calendar.delete.useMutation({
     onSuccess: () => {
       toast.success(t("calendar.eventDeleted"));
@@ -112,6 +142,7 @@ export default function Calendar() {
   });
 
   const resetForm = () => {
+    setEditingId(null);
     setTitle("");
     setDate("");
     setTime("");
@@ -119,9 +150,31 @@ export default function Calendar() {
     setNotes("");
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({ title, date, time, eventType, notes });
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, title, date, time, eventType, notes });
+    } else {
+      createMutation.mutate({ title, date, time, eventType, notes });
+    }
+  };
+
+  const handleAddForDay = () => {
+    resetForm();
+    if (selectedDate) setDate(selectedDate);
+    setIsDayDialogOpen(false);
+    setIsDialogOpen(true);
+  };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingId(event.id);
+    setTitle(event.title);
+    setDate(event.date);
+    setTime("");
+    setEventType(CATEGORY_TO_EVENT_TYPE[event.category ?? "Other"] ?? "Other");
+    setNotes(event.notes ?? "");
+    setIsDayDialogOpen(false);
+    setIsDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
@@ -188,9 +241,13 @@ export default function Calendar() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>{t("calendar.addNewEvent")}</DialogTitle>
+              <DialogTitle>
+                {editingId
+                  ? t("calendar.editEvent")
+                  : t("calendar.addNewEvent")}
+              </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="title">{t("calendar.eventTitle")}</Label>
                 <Input
@@ -254,12 +311,12 @@ export default function Calendar() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={createMutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending && (
+                {(createMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 )}
-                {t("calendar.saveEvent")}
+                {editingId ? t("common.update") : t("calendar.saveEvent")}
               </Button>
             </form>
           </DialogContent>
@@ -452,7 +509,14 @@ export default function Calendar() {
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-end mt-2">
+                  <div className="flex justify-end gap-2 mt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditEvent(event)}
+                    >
+                      {t("common.edit")}
+                    </Button>
                     <Button
                       variant="destructive"
                       size="sm"
@@ -464,6 +528,14 @@ export default function Calendar() {
                 </div>
               ))
             )}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleAddForDay}
+            >
+              <Plus className="me-2 h-4 w-4" />
+              {t("calendar.addEventForDay")}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

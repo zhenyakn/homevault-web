@@ -26,6 +26,7 @@ import { Loader2, Plus, Trash2, Check, Pencil, Download } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
+import SpendingTrendChart from "@/components/SpendingTrendChart";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES = [
@@ -35,6 +36,7 @@ const CATEGORIES = [
   "Tax",
   "Management",
   "Renovation",
+  "Loan",
   "Other",
 ] as const;
 const FREQUENCIES = ["monthly", "quarterly", "yearly"] as const;
@@ -50,7 +52,16 @@ const CAT_COLOR: Record<string, string> = {
   Management: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
   Renovation:
     "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400",
+  Loan: "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400",
   Other: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
+};
+
+// Local YYYY-MM (not UTC) so it lines up with the locally-entered expense date
+// strings ("YYYY-MM-DD"); toISOString() would shift across the month boundary in
+// non-UTC zones and default to a month with no data.
+const currentMonthKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
 const emptyForm = () => ({
@@ -61,11 +72,13 @@ const emptyForm = () => ({
   isRecurring: false,
   recurringInterval: "monthly" as (typeof FREQUENCIES)[number],
   notes: "",
+  loanId: "",
 });
 
 export default function Expenses() {
   const { t } = useTranslation();
   const { data: expenses, isLoading, refetch } = trpc.expenses.list.useQuery();
+  const { data: loans } = trpc.loans.list.useQuery();
   const createMutation = trpc.expenses.create.useMutation();
   const updateMutation = trpc.expenses.update.useMutation();
   const deleteMutation = trpc.expenses.delete.useMutation();
@@ -74,6 +87,7 @@ export default function Expenses() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState(currentMonthKey);
   const [form, setForm] = useState(emptyForm());
   const [attachments, setAttachments] = useState<
     { url: string; filename: string; mimeType: string; size: number }[]
@@ -95,6 +109,7 @@ export default function Expenses() {
       isRecurring: e.isRecurring || false,
       recurringInterval: e.recurringInterval || "monthly",
       notes: e.notes || "",
+      loanId: e.loanId || "",
     });
     setAttachments(
       (e.attachments || []).map((url: string) => ({
@@ -119,6 +134,8 @@ export default function Expenses() {
         ...form,
         amount: Math.round(parseFloat(form.amount) * 100),
         attachments: attachments.map(a => a.url),
+        loanId:
+          form.category === "Loan" && form.loanId ? form.loanId : null,
       };
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, data: payload });
@@ -159,12 +176,27 @@ export default function Expenses() {
     }
   };
 
+  // Distinct YYYY-MM present in the data, newest first, plus the current month
+  // so the default selection is always offered even before any expense exists.
+  const monthOptions = useMemo(() => {
+    const months = new Set<string>([currentMonthKey()]);
+    for (const e of expenses ?? []) months.add(e.date.slice(0, 7));
+    return Array.from(months).sort().reverse();
+  }, [expenses]);
+
+  const monthLabel = (m: string) =>
+    new Date(`${m}-01T00:00:00`).toLocaleDateString(undefined, {
+      month: "short",
+      year: "numeric",
+    });
+
   const filtered = useMemo(() => {
     if (!expenses) return [];
-    const base =
-      categoryFilter === "all"
-        ? expenses
-        : expenses.filter(e => e.category === categoryFilter);
+    const base = expenses.filter(
+      e =>
+        (categoryFilter === "all" || e.category === categoryFilter) &&
+        (monthFilter === "all" || e.date.slice(0, 7) === monthFilter)
+    );
     return [...base].sort((a, b) => {
       const aPaid = !!a.isPaid;
       const bPaid = !!b.isPaid;
@@ -172,7 +204,7 @@ export default function Expenses() {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       return aPaid ? 1 : -1;
     });
-  }, [expenses, categoryFilter]);
+  }, [expenses, categoryFilter, monthFilter]);
 
   const handleExportCSV = () => {
     if (!filtered.length) {
@@ -312,6 +344,34 @@ export default function Expenses() {
                     </SelectContent>
                   </Select>
                 </div>
+                {form.category === "Loan" && (
+                  <div className="space-y-1.5">
+                    <Label>{t("expenses.linkedLoan")}</Label>
+                    <Select
+                      value={form.loanId || "none"}
+                      onValueChange={v =>
+                        setForm({ ...form, loanId: v === "none" ? "" : v })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("expenses.noLoanLink")}
+                        </SelectItem>
+                        {(loans ?? []).map(l => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.lender || l.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {t("expenses.linkedLoanHint")}
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="ex-rec"
@@ -402,8 +462,24 @@ export default function Expenses() {
         ))}
       </div>
 
+      {/* Spending trend */}
+      <SpendingTrendChart expenses={expenses ?? []} />
+
       {/* Filter */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <Select value={monthFilter} onValueChange={setMonthFilter}>
+          <SelectTrigger className="h-8 w-44 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("expenses.allTime")}</SelectItem>
+            {monthOptions.map(m => (
+              <SelectItem key={m} value={m}>
+                {monthLabel(m)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="h-8 w-44 text-sm">
             <SelectValue placeholder={t("expenses.allCategories")} />
@@ -431,8 +507,8 @@ export default function Expenses() {
       {filtered.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            {categoryFilter !== "all"
-              ? t("expenses.noCategoryExpenses")
+            {categoryFilter !== "all" || monthFilter !== "all"
+              ? t("expenses.noMatchingExpenses")
               : t("expenses.noExpenses")}
           </p>
         </div>
@@ -487,6 +563,20 @@ export default function Expenses() {
                           })}
                         </span>
                       )}
+                      {expense.loanId && (
+                        <span className="text-xs text-muted-foreground">
+                          {t("expenses.repaysLoan", {
+                            loan:
+                              loans?.find(l => l.id === expense.loanId)
+                                ?.lender ?? t("expenses.aLoan"),
+                          })}
+                        </span>
+                      )}
+                      {expense.category === "Loan" && !expense.loanId && (
+                        <span className="text-xs italic text-muted-foreground/70">
+                          {t("expenses.loanUnlinked")}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {formatDate(expense.date)}
@@ -516,6 +606,9 @@ export default function Expenses() {
                         variant="outline"
                         className="h-7 w-7 p-0"
                         title={t("expenses.markPaid")}
+                        aria-label={t("expenses.markPaidNamed", {
+                          name: expense.name,
+                        })}
                         onClick={() => handleMarkPaid(expense.id)}
                       >
                         <Check className="h-3.5 w-3.5" />

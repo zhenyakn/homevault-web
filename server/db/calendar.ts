@@ -31,10 +31,14 @@ export async function createCalendarEvent(
 
 export async function updateCalendarEvent(
   id: string,
+  ownerId: number,
   data: Partial<CalendarEvent>
 ) {
   const db = await getDb();
-  await db.update(calendarEvents).set(data).where(eq(calendarEvents.id, id));
+  await db
+    .update(calendarEvents)
+    .set(data)
+    .where(and(eq(calendarEvents.id, id), eq(calendarEvents.ownerId, ownerId)));
   return data;
 }
 

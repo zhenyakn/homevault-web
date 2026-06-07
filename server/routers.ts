@@ -44,11 +44,31 @@ const SERVER_FIELDS = {
 
 const attachmentSchema = z.array(z.string()).optional();
 
+// Guard a loan link on an expense: a non-null loanId must reference a loan the
+// caller owns within the active property.
+async function assertLoanLinkOwned(
+  loanId: string | null | undefined,
+  ctx: { user: { id: number }; propertyId: number }
+) {
+  if (!loanId) return;
+  const loan = await db.getLoanById(loanId);
+  if (
+    !loan ||
+    loan.ownerId !== ctx.user.id ||
+    loan.propertyId !== ctx.propertyId
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Cannot link expense to this loan",
+    });
+  }
+}
+
 const calendarCatMap: Record<string, string> = {
   Expense: "Payment",
   Repair: "Maintenance",
   Upgrade: "Renovation",
-  Loan: "Payment",
+  Loan: "Loan",
   Other: "Other",
 };
 
@@ -331,6 +351,9 @@ export const appRouter = router({
     stats: protectedProcedure.query(async ({ ctx }) => {
       return await db.getDashboardStats(ctx.user.id, ctx.propertyId);
     }),
+    attention: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getAttentionItems(ctx.user.id, ctx.propertyId);
+    }),
     recentActivity: protectedProcedure.query(async ({ ctx }) => {
       return await db.getRecentActivity(ctx.propertyId);
     }),
@@ -360,22 +383,29 @@ export const appRouter = router({
     create: protectedProcedure
       .input(expenseSchema)
       .mutation(async ({ ctx, input }) => {
-        return await db.createExpense({
+        await assertLoanLinkOwned(input.loanId, ctx);
+        const created = await db.createExpense({
           id: nanoid(),
           ...input,
           ownerId: ctx.user.id,
           propertyId: ctx.propertyId,
         });
+        await db.reconcileExpenseRepayment(created.id);
+        return created;
       }),
     update: protectedProcedure
       .input(z.object({ id: z.string(), data: expenseSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
+        if ("loanId" in input.data)
+          await assertLoanLinkOwned(input.data.loanId, ctx);
         await diffAttachmentsOnUpdate(
           () => db.getExpenseById(input.id),
           input.data,
           ctx.user.id
         );
-        return await db.updateExpense(input.id, ctx.user.id, input.data);
+        const result = await db.updateExpense(input.id, ctx.user.id, input.data);
+        await db.reconcileExpenseRepayment(input.id);
+        return result;
       }),
     delete: protectedProcedure
       .input(z.object({ id: z.string() }))
@@ -384,15 +414,21 @@ export const appRouter = router({
           () => db.getExpenseById(input.id),
           ctx.user.id
         );
-        return await db.deleteExpense(input.id, ctx.user.id);
+        const result = await db.deleteExpense(input.id, ctx.user.id);
+        // After the row is gone, reconcile removes any linked repayment and
+        // restores the loan balance.
+        await db.reconcileExpenseRepayment(input.id);
+        return result;
       }),
     markAsPaid: protectedProcedure
       .input(z.object({ id: z.string(), paidDate: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        return await db.updateExpense(input.id, ctx.user.id, {
+        const result = await db.updateExpense(input.id, ctx.user.id, {
           isPaid: true,
           paidDate: input.paidDate,
         } as any);
+        await db.reconcileExpenseRepayment(input.id);
+        return result;
       }),
   }),
 
@@ -878,15 +914,9 @@ export const appRouter = router({
           amount: input.amount,
           date: input.date,
         });
-        // Refetch from DB so concurrent inserts are reflected in the new balance.
-        const allRepayments = await db.getLoanRepayments(input.loanId);
-        const totalRepaid = allRepayments.reduce(
-          (s, r) => s + (r.amount ?? 0),
-          0
-        );
-        await db.updateLoan(input.loanId, ctx.user.id, {
-          currentBalance: Math.max(0, targetLoan.originalAmount - totalRepaid),
-        });
+        // Decrement the authoritative balance (preserves any paydown seeded
+        // before in-app tracking; clamped to [0, originalAmount]).
+        await db.applyRepaymentToBalance(input.loanId, input.amount);
         return repayment;
       }),
   }),
@@ -1022,6 +1052,24 @@ export const appRouter = router({
           category: calendarCatMap[eventType] ?? "Other",
           ownerId: ctx.user.id,
           propertyId: ctx.propertyId,
+        });
+      }),
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.string(),
+          title: z.string().min(1),
+          date: z.string(),
+          time: z.string().optional(),
+          eventType: z.enum(["Expense", "Repair", "Upgrade", "Loan", "Other"]),
+          notes: z.string().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { id, eventType, time, ...rest } = input as any;
+        return await db.updateCalendarEvent(id, ctx.user.id, {
+          ...rest,
+          category: calendarCatMap[eventType] ?? "Other",
         });
       }),
     delete: protectedProcedure

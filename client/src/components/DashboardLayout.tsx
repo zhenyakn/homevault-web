@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
 import NotificationCenter from "@/components/NotificationCenter";
+import MobileTabBar from "@/components/MobileTabBar";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -454,6 +455,18 @@ function DashboardLayoutContent({
 
   return (
     <>
+      <a
+        href="#main-content"
+        onClick={e => {
+          e.preventDefault();
+          const el = document.getElementById("main-content");
+          el?.scrollIntoView();
+          el?.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:ring-2 focus:ring-primary"
+      >
+        {t("nav.skipToContent")}
+      </a>
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           collapsible="icon"
@@ -689,11 +702,17 @@ function DashboardLayoutContent({
               </kbd>
             </button>
             <NotificationCenter />
-            <ThemeToggle compact />
           </div>
         )}
 
-        <main className="flex-1 p-4 md:p-5">{children}</main>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 p-4 pb-24 md:p-5 md:pb-5 outline-none"
+        >
+          {children}
+        </main>
+        {isMobile && <MobileTabBar />}
       </SidebarInset>
     </>
   );

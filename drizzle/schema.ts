@@ -95,6 +95,7 @@ export const expenses = mysqlTable(
       "Tax",
       "Management",
       "Renovation",
+      "Loan",
       "Other",
     ]),
     date: varchar("date", { length: 20 }).notNull(),
@@ -109,12 +110,16 @@ export const expenses = mysqlTable(
     attachments: json("attachments").$type<string[]>(),
     isPaid: boolean("isPaid").default(false),
     paidDate: varchar("paidDate", { length: 20 }),
+    // Optional link to a loan: when a "Loan" category expense is paid, it feeds
+    // a matching loanRepayment and decrements the loan's currentBalance.
+    loanId: varchar("loanId", { length: 36 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     propertyIdx: index("expense_property_idx").on(table.propertyId),
     ownerIdx: index("expense_owner_idx").on(table.ownerId),
+    loanIdx: index("expense_loan_idx").on(table.loanId),
   })
 );
 
@@ -393,10 +398,14 @@ export const loanRepayments = mysqlTable(
     amount: int("amount").notNull(),
     date: varchar("date", { length: 20 }).notNull(),
     notes: text("notes"),
+    // When set, this repayment was auto-generated from a paid "Loan" expense and
+    // is kept in sync with it (reconcileExpenseRepayment). Null = manual entry.
+    sourceExpenseId: varchar("sourceExpenseId", { length: 36 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
     loanIdx: index("lrep_loan_idx").on(table.loanId),
+    sourceExpenseIdx: index("lrep_source_expense_idx").on(table.sourceExpenseId),
   })
 );
 
@@ -497,6 +506,7 @@ export const calendarEvents = mysqlTable(
     category: mysqlEnum("category", [
       "Maintenance",
       "Payment",
+      "Loan",
       "Inspection",
       "Renovation",
       "Legal",
@@ -556,6 +566,11 @@ export const inventoryItems = mysqlTable(
     warrantyExpiry: varchar("warrantyExpiry", { length: 20 }),
     condition: mysqlEnum("condition", ["New", "Good", "Fair", "Poor"]).default(
       "Good"
+    ),
+    // Whether the item conveys with the property (fixture) or belongs to the
+    // owner personally — used to scope the property valuation.
+    assetType: mysqlEnum("assetType", ["fixture", "personal"]).default(
+      "fixture"
     ),
     notes: text("notes"),
     tags: json("tags").$type<string[]>(),

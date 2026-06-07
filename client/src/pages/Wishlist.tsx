@@ -21,7 +21,15 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, Pencil, Trash2, Download } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Pencil,
+  Trash2,
+  Download,
+  Check,
+  TrendingUp,
+} from "lucide-react";
 import { toast } from "sonner";
 
 type Priority = "low" | "medium" | "high";
@@ -80,6 +88,37 @@ export default function Wishlist() {
       toast.error(`${t("wishlist.failedDeleteMsg")}: ${error.message}`);
     },
   });
+
+  // Status changes (e.g. mark purchased) — invalidate only; the caller fires a
+  // contextual toast so "purchased" and "moved to upgrades" read distinctly.
+  const statusMutation = trpc.wishlist.update.useMutation({
+    onSuccess: () => utils.wishlist.list.invalidate(),
+    onError: error =>
+      toast.error(`${t("wishlist.failedUpdate")}: ${error.message}`),
+  });
+
+  const moveToUpgradeMutation = trpc.upgrades.create.useMutation({
+    onError: error => toast.error(error.message),
+  });
+
+  const handleMarkPurchased = (item: WishlistItem) => {
+    statusMutation.mutate({ id: item.id, data: { status: "purchased" } });
+    toast.success(t("wishlist.markedPurchased"));
+  };
+
+  const handleMoveToUpgrades = async (item: WishlistItem) => {
+    try {
+      await moveToUpgradeMutation.mutateAsync({
+        title: item.name,
+        estimatedCost: item.estimatedPrice ?? undefined,
+        notes: item.notes ?? undefined,
+      });
+      statusMutation.mutate({ id: item.id, data: { status: "purchased" } });
+      toast.success(t("wishlist.movedToUpgrades"));
+    } catch {
+      // error toast handled by the mutation
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -363,12 +402,22 @@ export default function Wishlist() {
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{item.name}</p>
-                  <Badge
-                    className={`text-xs h-5 border-0 ${getPriorityColor(item.priority)}`}
+                  <p
+                    className={`text-sm font-medium ${item.status === "purchased" ? "line-through text-muted-foreground" : ""}`}
                   >
-                    {t(`priority.${item.priority}`)}
-                  </Badge>
+                    {item.name}
+                  </p>
+                  {item.status === "purchased" ? (
+                    <Badge className="text-xs h-5 border-0 bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400">
+                      {t("wishlist.purchased")}
+                    </Badge>
+                  ) : (
+                    <Badge
+                      className={`text-xs h-5 border-0 ${getPriorityColor(item.priority)}`}
+                    >
+                      {t(`priority.${item.priority}`)}
+                    </Badge>
+                  )}
                 </div>
                 {item.notes && (
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
@@ -380,6 +429,30 @@ export default function Wishlist() {
                 {formatCurrency(item.estimatedPrice ?? 0)}
               </p>
               <div className="flex gap-1 shrink-0">
+                {item.status !== "purchased" && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 p-0"
+                      title={t("wishlist.markPurchased")}
+                      aria-label={t("wishlist.markPurchased")}
+                      onClick={() => handleMarkPurchased(item)}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 w-7 p-0"
+                      title={t("wishlist.moveToUpgrades")}
+                      aria-label={t("wishlist.moveToUpgrades")}
+                      onClick={() => handleMoveToUpgrades(item)}
+                    >
+                      <TrendingUp className="h-3.5 w-3.5" />
+                    </Button>
+                  </>
+                )}
                 <Button
                   size="sm"
                   variant="outline"

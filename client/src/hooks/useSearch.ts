@@ -3,6 +3,11 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { trpc, type RouterOutputs } from "../lib/trpc";
 import { useDebounce } from "./useDebounce";
 import { useProperty } from "../contexts/PropertyContext";
+import { formatCurrency, formatDate } from "../lib/utils";
+
+// Join the non-empty parts of a result's secondary line with a dot separator.
+const subtitleOf = (...parts: (string | null | undefined | false)[]) =>
+  parts.filter(Boolean).join(" · ");
 
 export type SearchResultItem = {
   id: string;
@@ -23,7 +28,11 @@ function toResultItems(data: SearchData): SearchResultItem[] {
       id: String(r.id),
       type: "expense",
       label: r.label,
-      subtitle: r.category ?? "",
+      subtitle: subtitleOf(
+        r.category,
+        r.amount != null && formatCurrency(r.amount),
+        r.date && formatDate(r.date)
+      ),
       route: "/expenses",
     });
   }
@@ -32,7 +41,7 @@ function toResultItems(data: SearchData): SearchResultItem[] {
       id: String(r.id),
       type: "repair",
       label: r.label,
-      subtitle: r.status ?? "",
+      subtitle: subtitleOf(r.status, r.priority),
       route: "/repairs",
     });
   }
@@ -41,7 +50,10 @@ function toResultItems(data: SearchData): SearchResultItem[] {
       id: String(r.id),
       type: "upgrade",
       label: r.label,
-      subtitle: r.status ?? "",
+      subtitle: subtitleOf(
+        r.status,
+        r.estimatedCost != null && formatCurrency(r.estimatedCost)
+      ),
       route: "/upgrades",
     });
   }
@@ -50,7 +62,10 @@ function toResultItems(data: SearchData): SearchResultItem[] {
       id: String(r.id),
       type: "loan",
       label: r.label ?? "",
-      subtitle: r.loanType ?? "",
+      subtitle: subtitleOf(
+        r.loanType,
+        r.totalAmount != null && formatCurrency(r.totalAmount)
+      ),
       route: "/loans",
     });
   }
@@ -59,7 +74,10 @@ function toResultItems(data: SearchData): SearchResultItem[] {
       id: String(r.id),
       type: "wishlist",
       label: r.label,
-      subtitle: r.priority ?? "",
+      subtitle: subtitleOf(
+        r.priority,
+        r.estimatedCost != null && formatCurrency(r.estimatedCost)
+      ),
       route: "/wishlist",
     });
   }
@@ -68,7 +86,10 @@ function toResultItems(data: SearchData): SearchResultItem[] {
       id: String(r.id),
       type: "purchaseCost",
       label: r.label,
-      subtitle: r.date ?? "",
+      subtitle: subtitleOf(
+        r.amount != null && formatCurrency(r.amount),
+        r.date && formatDate(r.date)
+      ),
       route: "/purchase-costs",
     });
   }
