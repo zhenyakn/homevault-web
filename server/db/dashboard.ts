@@ -119,7 +119,11 @@ export async function getAttentionItems(userId: number, propertyId: number) {
 
   const [overdueExpenses, staleRepairs] = await Promise.all([
     db
-      .select({ id: expenses.id, label: expenses.name, amount: expenses.amount })
+      .select({
+        id: expenses.id,
+        label: expenses.name,
+        amount: expenses.amount,
+      })
       .from(expenses)
       .where(
         and(
@@ -467,7 +471,8 @@ export async function getPortfolioSummary(userId: number) {
       const openRepairsCount = Number(openRepairsCountRows[0]?.cnt ?? 0);
       const outstandingLoanBalance = loanRows.reduce(
         (sum, l) =>
-          sum + computeLoanProgress(l.originalAmount, l.currentBalance).remaining,
+          sum +
+          computeLoanProgress(l.originalAmount, l.currentBalance).remaining,
         0
       );
 

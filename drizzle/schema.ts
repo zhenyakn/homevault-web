@@ -405,7 +405,9 @@ export const loanRepayments = mysqlTable(
   },
   table => ({
     loanIdx: index("lrep_loan_idx").on(table.loanId),
-    sourceExpenseIdx: index("lrep_source_expense_idx").on(table.sourceExpenseId),
+    sourceExpenseIdx: index("lrep_source_expense_idx").on(
+      table.sourceExpenseId
+    ),
   })
 );
 

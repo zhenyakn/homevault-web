@@ -134,8 +134,7 @@ export default function Expenses() {
         ...form,
         amount: Math.round(parseFloat(form.amount) * 100),
         attachments: attachments.map(a => a.url),
-        loanId:
-          form.category === "Loan" && form.loanId ? form.loanId : null,
+        loanId: form.category === "Loan" && form.loanId ? form.loanId : null,
       };
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, data: payload });

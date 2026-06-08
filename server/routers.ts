@@ -403,7 +403,11 @@ export const appRouter = router({
           input.data,
           ctx.user.id
         );
-        const result = await db.updateExpense(input.id, ctx.user.id, input.data);
+        const result = await db.updateExpense(
+          input.id,
+          ctx.user.id,
+          input.data
+        );
         await db.reconcileExpenseRepayment(input.id);
         return result;
       }),

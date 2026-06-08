@@ -1103,36 +1103,36 @@ export default function UpgradeDetail() {
                 </Button>
               </div>
 
-          {loadingOptions ? (
-            <div className="h-12 rounded-lg bg-muted animate-pulse" />
-          ) : options.length === 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setEditOption(null);
-                setOptionDialogOpen(true);
-              }}
-              className="w-full border border-dashed border-border rounded-lg p-4 text-sm text-muted-foreground hover:bg-muted/30 transition-colors"
-            >
-              + {t("upgradeDetail.addFirstOption")}
-            </button>
-          ) : (
-            <div className="space-y-3">
-              {[...options]
-                .sort((a, b) => (b.selected ? 1 : 0) - (a.selected ? 1 : 0))
-                .map(opt => (
-                  <OptionCard
-                    key={opt.id}
-                    option={opt}
-                    upgradeId={upgradeId}
-                    onEdit={() => {
-                      setEditOption(opt);
-                      setOptionDialogOpen(true);
-                    }}
-                  />
-                ))}
-            </div>
-          )}
+              {loadingOptions ? (
+                <div className="h-12 rounded-lg bg-muted animate-pulse" />
+              ) : options.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditOption(null);
+                    setOptionDialogOpen(true);
+                  }}
+                  className="w-full border border-dashed border-border rounded-lg p-4 text-sm text-muted-foreground hover:bg-muted/30 transition-colors"
+                >
+                  + {t("upgradeDetail.addFirstOption")}
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  {[...options]
+                    .sort((a, b) => (b.selected ? 1 : 0) - (a.selected ? 1 : 0))
+                    .map(opt => (
+                      <OptionCard
+                        key={opt.id}
+                        option={opt}
+                        upgradeId={upgradeId}
+                        onEdit={() => {
+                          setEditOption(opt);
+                          setOptionDialogOpen(true);
+                        }}
+                      />
+                    ))}
+                </div>
+              )}
             </AccordionContent>
           </AccordionItem>
         </Accordion>

@@ -30,7 +30,8 @@ export function computeLoanProgress(
 ): LoanProgress {
   const original = Math.max(0, originalAmount ?? 0);
   // A null/undefined balance means "untouched" → full balance outstanding.
-  const balance = currentBalance == null ? original : Math.max(0, currentBalance);
+  const balance =
+    currentBalance == null ? original : Math.max(0, currentBalance);
   const remaining = Math.min(original, balance);
   const repaid = Math.max(0, original - remaining);
   const pct = original > 0 ? Math.round((repaid / original) * 100) : 0;

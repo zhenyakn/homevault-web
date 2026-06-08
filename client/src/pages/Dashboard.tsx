@@ -79,7 +79,10 @@ function daysOverdue(d: string, interval?: string | null): number {
       due.setTime(next.getTime());
     }
   }
-  return Math.max(0, Math.round((today.getTime() - due.getTime()) / 86_400_000));
+  return Math.max(
+    0,
+    Math.round((today.getTime() - due.getTime()) / 86_400_000)
+  );
 }
 
 // ── Card shell ────────────────────────────────────────────────────────────────
@@ -425,47 +428,47 @@ function AttentionCard({
             const days = daysOverdue(e.date, e.recurringInterval);
             const severe = days >= 30;
             return (
-            <div
-              key={e.id}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/50"
-            >
-              <div className="w-7 h-7 rounded-md bg-rose-500 flex items-center justify-center shrink-0">
-                <AlertCircle className="h-3.5 w-3.5 text-white" />
+              <div
+                key={e.id}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/50"
+              >
+                <div className="w-7 h-7 rounded-md bg-rose-500 flex items-center justify-center shrink-0">
+                  <AlertCircle className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] font-semibold text-foreground truncate">
+                    {e.label} {t("dashboard.unpaidSuffix")}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {formatCurrency(e.amount, cur)} · {t("dashboard.due")}{" "}
+                    {relDate(e.date, t)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={cn(
+                      "text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full border",
+                      severe
+                        ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border-red-200 dark:border-red-900"
+                        : "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 border-orange-200 dark:border-orange-900"
+                    )}
+                  >
+                    {days === 0
+                      ? t("dashboard.overdue")
+                      : t("dashboard.daysOverdue", { count: days })}
+                  </span>
+                  <button
+                    className="text-[11px] font-semibold px-2 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
+                    aria-label={t("dashboard.markPaidNamed", { name: e.label })}
+                    onClick={() => {
+                      onMarkPaid(e.id);
+                      dismiss(`exp-${e.id}`);
+                    }}
+                  >
+                    {t("dashboard.markPaid")}
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-semibold text-foreground truncate">
-                  {e.label} {t("dashboard.unpaidSuffix")}
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {formatCurrency(e.amount, cur)} · {t("dashboard.due")}{" "}
-                  {relDate(e.date, t)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span
-                  className={cn(
-                    "text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full border",
-                    severe
-                      ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border-red-200 dark:border-red-900"
-                      : "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 border-orange-200 dark:border-orange-900"
-                  )}
-                >
-                  {days === 0
-                    ? t("dashboard.overdue")
-                    : t("dashboard.daysOverdue", { count: days })}
-                </span>
-                <button
-                  className="text-[11px] font-semibold px-2 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
-                  aria-label={t("dashboard.markPaidNamed", { name: e.label })}
-                  onClick={() => {
-                    onMarkPaid(e.id);
-                    dismiss(`exp-${e.id}`);
-                  }}
-                >
-                  {t("dashboard.markPaid")}
-                </button>
-              </div>
-            </div>
             );
           })}
 

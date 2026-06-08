@@ -153,7 +153,14 @@ export default function Calendar() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId) {
-      updateMutation.mutate({ id: editingId, title, date, time, eventType, notes });
+      updateMutation.mutate({
+        id: editingId,
+        title,
+        date,
+        time,
+        eventType,
+        notes,
+      });
     } else {
       createMutation.mutate({ title, date, time, eventType, notes });
     }

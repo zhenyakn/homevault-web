@@ -47,7 +47,9 @@ export default function SpendingTrendChart({ expenses }: { expenses: Row[] }) {
             <div className="w-full h-24 flex items-end">
               <div
                 className="w-full rounded-t bg-primary/70 transition-all"
-                style={{ height: `${Math.max((m.total / max) * 100, m.total > 0 ? 4 : 0)}%` }}
+                style={{
+                  height: `${Math.max((m.total / max) * 100, m.total > 0 ? 4 : 0)}%`,
+                }}
                 title={formatCurrency(m.total)}
               />
             </div>

@@ -1603,11 +1603,7 @@ function NotificationChannelsIntegration() {
 
 function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
-  const u = trpc.useUtils();
-  const m = trpc.property.update.useMutation({
-    onSuccess: () => u.property.get.invalidate(),
-    onError: e => toast.error(e.message),
-  });
+  const { save, isPending } = usePropertyAutosave();
   const { data: me } = trpc.profiles.current.useQuery();
   const isAdmin = me?.role === "admin";
   const hasKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
