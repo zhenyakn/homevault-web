@@ -31,7 +31,7 @@ import {
   Download,
   Search,
 } from "lucide-react";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { asArray, formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
 import SpendingTrendChart from "@/components/SpendingTrendChart";
@@ -121,7 +121,7 @@ export default function Expenses() {
       loanId: e.loanId || "",
     });
     setAttachments(
-      (e.attachments || []).map((url: string) => ({
+      asArray<string>(e.attachments).map((url: string) => ({
         url,
         filename: url.split("/").pop() || "file",
         mimeType: "application/octet-stream",
