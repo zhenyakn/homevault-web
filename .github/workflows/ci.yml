@@ -10,6 +10,9 @@ on:
   push:
     branches: [dev, main]
   workflow_dispatch:
+  # Allows the release pipeline (build.yml) to reuse this exact suite as a
+  # required gate before publishing, so CI and releases share one definition.
+  workflow_call:
 
 concurrency:
   group: ci-${{ github.ref }}

@@ -1,25 +1,39 @@
 name: Build & Publish Home Assistant Add-on
 
+# Triggered only by the version tag. Creating a GitHub Release also pushes the
+# tag, so a single `push: tags` trigger covers both the UI and CLI release flows
+# with exactly one run. (Listening to `release: published` as well would start a
+# second, concurrent run that races this one on the changelog commit to `main`.)
 on:
   push:
     tags:
       - "v[0-9]*.[0-9]*.[0-9]*"
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       version:
         description: "Version to build (e.g. 1.2.3) — leave empty to use config.yaml version"
         required: false
 
+# Serialize release runs so the CHANGELOG/version commit back to `main` never races.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   ADDON_PATH: homevault-addon
 
 jobs:
+  # Required gate: run the full CI suite (type-check, prettier, unit tests, build,
+  # and real-MySQL integration tests) before anything is published. Reuses ci.yml
+  # so CI and releases share one source of truth.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   changelog:
     runs-on: ubuntu-latest
+    needs: [ci]
     # Only run on tag pushes; skip for manual dispatch (no git history context)
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
 
@@ -30,13 +44,9 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve version from tag/release
+      - name: Resolve version from tag
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          if [[ -n "${{ github.event.release.tag_name }}" ]]; then
-            VERSION="${{ github.event.release.tag_name }}"
-            VERSION="${VERSION#v}"
-          fi
           echo "ADDON_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Generate CHANGELOG.md
@@ -93,55 +103,74 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          # Force the checkout: the previous "Generate CHANGELOG.md" and
-          # "Update config.yaml version" steps modified these files in the
-          # working tree, and if another run (or merge) advanced origin/main
-          # in the meantime, plain `checkout -B` aborts with "Your local
-          # changes would be overwritten". The step regenerates both files
-          # below from scratch on the freshly-fetched main, so discarding
-          # the in-progress edits is correct.
-          git checkout -f -B main origin/main
-          # Re-apply version bump on the clean main checkout
-          sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
-          # Re-generate changelog on the clean main checkout (same logic)
-          VERSION="${{ env.ADDON_VERSION }}"
-          CHANGELOG_FILE="${{ env.ADDON_PATH }}/CHANGELOG.md"
-          TAGS=$(git tag --list 'v*' --sort=-version:refname)
-          CHANGELOG="# Changelog\n"
-          PREV_TAG=""
-          for TAG in $TAGS; do
-            V="${TAG#v}"
-            if [ -z "$PREV_TAG" ]; then
-              RANGE="$TAG"
-            else
-              RANGE="${TAG}..${PREV_TAG}"
+
+          # Build the version bump + changelog commit on top of the *current*
+          # origin/main and push it. Wrapped in a retry: if origin/main advanced
+          # between fetch and push (e.g. a concurrent run), the push is rejected
+          # non-fast-forward; we re-sync to the new tip and rebuild from scratch.
+          # Both files are regenerated deterministically from tags, so resetting
+          # away the in-progress working-tree edits each attempt is correct.
+          commit_and_push() {
+            git fetch origin main
+            git checkout -f -B main origin/main
+
+            # Re-apply version bump on the clean main checkout
+            sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
+
+            # Re-generate changelog on the clean main checkout (same logic)
+            CHANGELOG_FILE="${{ env.ADDON_PATH }}/CHANGELOG.md"
+            TAGS=$(git tag --list 'v*' --sort=-version:refname)
+            CHANGELOG="# Changelog\n"
+            PREV_TAG=""
+            for TAG in $TAGS; do
+              V="${TAG#v}"
+              if [ -z "$PREV_TAG" ]; then
+                RANGE="$TAG"
+              else
+                RANGE="${TAG}..${PREV_TAG}"
+              fi
+              COMMITS=$(git log "$RANGE" \
+                --pretty=format:"%s" \
+                --no-merges \
+                | grep -v '\[skip ci\]' \
+                | grep -v '^chore: bump addon version' \
+                | grep -v '^Merge ' \
+                || true)
+              if [ -z "$COMMITS" ]; then
+                COMMITS="- Internal improvements and dependency updates"
+              else
+                COMMITS=$(echo "$COMMITS" | sed 's/^/- /')
+              fi
+              CHANGELOG+="\n## ${V}\n${COMMITS}\n"
+              PREV_TAG="$TAG"
+            done
+            printf "%b" "$CHANGELOG" > "$CHANGELOG_FILE"
+
+            git add ${{ env.ADDON_PATH }}/CHANGELOG.md ${{ env.ADDON_PATH }}/config.yaml
+            if git diff --staged --quiet; then
+              echo "No CHANGELOG/version change to commit."
+              return 0
             fi
-            COMMITS=$(git log "$RANGE" \
-              --pretty=format:"%s" \
-              --no-merges \
-              | grep -v '\[skip ci\]' \
-              | grep -v '^chore: bump addon version' \
-              | grep -v '^Merge ' \
-              || true)
-            if [ -z "$COMMITS" ]; then
-              COMMITS="- Internal improvements and dependency updates"
-            else
-              COMMITS=$(echo "$COMMITS" | sed 's/^/- /')
+            git commit -m "chore: bump addon to ${{ env.ADDON_VERSION }} + update CHANGELOG [skip ci]"
+            git push origin main
+          }
+
+          for attempt in 1 2 3 4 5; do
+            if commit_and_push; then
+              exit 0
             fi
-            CHANGELOG+="\n## ${V}\n${COMMITS}\n"
-            PREV_TAG="$TAG"
+            echo "Push attempt ${attempt} failed (origin/main likely advanced); re-syncing and retrying..."
+            sleep $((attempt * 2))
           done
-          printf "%b" "$CHANGELOG" > "$CHANGELOG_FILE"
-          git add ${{ env.ADDON_PATH }}/CHANGELOG.md ${{ env.ADDON_PATH }}/config.yaml
-          git diff --staged --quiet || git commit -m "chore: bump addon to ${{ env.ADDON_VERSION }} + update CHANGELOG [skip ci]"
-          git push origin main
+          echo "::error::Failed to push CHANGELOG/version bump to main after 5 attempts."
+          exit 1
 
   build:
     runs-on: ubuntu-latest
-    needs: [changelog]
-    # Run build whether changelog job ran or was skipped (manual dispatch)
-    if: always()
+    needs: [ci, changelog]
+    # CI must pass before publishing. changelog runs on tag pushes and is skipped
+    # on manual dispatch — allow skipped, but never a failed changelog.
+    if: always() && needs.ci.result == 'success' && (needs.changelog.result == 'success' || needs.changelog.result == 'skipped')
     strategy:
       matrix:
         arch: [amd64, aarch64]
