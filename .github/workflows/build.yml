@@ -52,46 +52,34 @@ jobs:
       - name: Generate CHANGELOG.md
         run: |
           VERSION="${{ env.ADDON_VERSION }}"
+          CURRENT_TAG="v${VERSION}"
           CHANGELOG_FILE="${{ env.ADDON_PATH }}/CHANGELOG.md"
 
-          # ── Collect all version tags sorted newest-first ─────────────────────
-          TAGS=$(git tag --list 'v*' --sort=-version:refname)
-          CURRENT_TAG="v${VERSION}"
+          # Home Assistant renders this whole file in the add-on update dialog, so
+          # it holds ONLY the current release's changes (the full per-version
+          # history lives in the GitHub Releases). Range = previous tag..this tag;
+          # the very first release has no predecessor and lists all commits.
+          PREV_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${CURRENT_TAG}^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${CURRENT_TAG}"
+          else
+            RANGE="${CURRENT_TAG}"
+          fi
 
-          # ── Build changelog entries ──────────────────────────────────────────
-          CHANGELOG="# Changelog\n"
+          COMMITS=$(git log "$RANGE" \
+            --pretty=format:"%s" \
+            --no-merges \
+            | grep -v '\[skip ci\]' \
+            | grep -v '^chore: bump addon' \
+            | grep -v '^Merge ' \
+            || true)
+          if [ -z "$COMMITS" ]; then
+            COMMITS="- Internal improvements and dependency updates"
+          else
+            COMMITS=$(echo "$COMMITS" | sed 's/^/- /')
+          fi
 
-          PREV_TAG=""
-          for TAG in $TAGS; do
-            V="${TAG#v}"
-
-            # Range: commits since previous tag (or all commits if first tag)
-            if [ -z "$PREV_TAG" ]; then
-              RANGE="$TAG"
-            else
-              RANGE="${TAG}..${PREV_TAG}"
-            fi
-
-            # Gather commits in this range, skip automated chore/bot commits
-            COMMITS=$(git log "$RANGE" \
-              --pretty=format:"%s" \
-              --no-merges \
-              | grep -v '\[skip ci\]' \
-              | grep -v '^chore: bump addon version' \
-              | grep -v '^Merge ' \
-              || true)
-
-            if [ -z "$COMMITS" ]; then
-              COMMITS="- Internal improvements and dependency updates"
-            else
-              COMMITS=$(echo "$COMMITS" | sed 's/^/- /')
-            fi
-
-            CHANGELOG+="\n## ${V}\n${COMMITS}\n"
-            PREV_TAG="$TAG"
-          done
-
-          printf "%b" "$CHANGELOG" > "$CHANGELOG_FILE"
+          printf "%b" "# Changelog\n\n## ${VERSION}\n${COMMITS}\n" > "$CHANGELOG_FILE"
           echo "Generated $CHANGELOG_FILE:"
           cat "$CHANGELOG_FILE"
 
@@ -117,34 +105,29 @@ jobs:
             # Re-apply version bump on the clean main checkout
             sed -i "s/^version: .*/version: \"${{ env.ADDON_VERSION }}\"/" ${{ env.ADDON_PATH }}/config.yaml
 
-            # Re-generate changelog on the clean main checkout (same logic)
+            # Re-generate changelog on the clean main checkout (latest version
+            # only — same logic as the Generate CHANGELOG.md step).
+            CURRENT_TAG="v${{ env.ADDON_VERSION }}"
             CHANGELOG_FILE="${{ env.ADDON_PATH }}/CHANGELOG.md"
-            TAGS=$(git tag --list 'v*' --sort=-version:refname)
-            CHANGELOG="# Changelog\n"
-            PREV_TAG=""
-            for TAG in $TAGS; do
-              V="${TAG#v}"
-              if [ -z "$PREV_TAG" ]; then
-                RANGE="$TAG"
-              else
-                RANGE="${TAG}..${PREV_TAG}"
-              fi
-              COMMITS=$(git log "$RANGE" \
-                --pretty=format:"%s" \
-                --no-merges \
-                | grep -v '\[skip ci\]' \
-                | grep -v '^chore: bump addon version' \
-                | grep -v '^Merge ' \
-                || true)
-              if [ -z "$COMMITS" ]; then
-                COMMITS="- Internal improvements and dependency updates"
-              else
-                COMMITS=$(echo "$COMMITS" | sed 's/^/- /')
-              fi
-              CHANGELOG+="\n## ${V}\n${COMMITS}\n"
-              PREV_TAG="$TAG"
-            done
-            printf "%b" "$CHANGELOG" > "$CHANGELOG_FILE"
+            PREV_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${CURRENT_TAG}^" 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              RANGE="${PREV_TAG}..${CURRENT_TAG}"
+            else
+              RANGE="${CURRENT_TAG}"
+            fi
+            COMMITS=$(git log "$RANGE" \
+              --pretty=format:"%s" \
+              --no-merges \
+              | grep -v '\[skip ci\]' \
+              | grep -v '^chore: bump addon' \
+              | grep -v '^Merge ' \
+              || true)
+            if [ -z "$COMMITS" ]; then
+              COMMITS="- Internal improvements and dependency updates"
+            else
+              COMMITS=$(echo "$COMMITS" | sed 's/^/- /')
+            fi
+            printf "%b" "# Changelog\n\n## ${{ env.ADDON_VERSION }}\n${COMMITS}\n" > "$CHANGELOG_FILE"
 
             git add ${{ env.ADDON_PATH }}/CHANGELOG.md ${{ env.ADDON_PATH }}/config.yaml
             if git diff --staged --quiet; then
