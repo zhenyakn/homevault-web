@@ -995,11 +995,11 @@ export default function UpgradeDetail() {
 
   const selectedOption = options.find(o => o.selected);
   const committed = selectedOption?.estimatedCost || 0;
-  const selectedPayments = asArray(selectedOption?.payments) as {
-    amount: number;
-  }[];
-  const paid = selectedPayments.reduce((s, p) => s + p.amount, 0);
   const budget = upgrade.estimatedCost ?? 0;
+  // "Paid so far" mirrors the upgrade's actualCost, which the API keeps in sync
+  // with the selected option's payments (see upgrades.logPayment). Reading it
+  // here keeps the detail view consistent with the list view, which also uses
+  // actualCost — avoiding the two-source drift the audit flagged (UX-104).
   const spentAmt = upgrade.actualCost ?? 0;
   const progress = budget > 0 ? Math.min(100, (spentAmt / budget) * 100) : 0;
   const remaining = Math.max(0, budget - spentAmt);
@@ -1060,7 +1060,7 @@ export default function UpgradeDetail() {
             sub: selectedOption?.title,
           },
           {
-            value: formatCurrency(paid),
+            value: formatCurrency(spentAmt),
             label: t("upgrades.paidSoFar"),
           },
           {

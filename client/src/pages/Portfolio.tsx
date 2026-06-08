@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useProperty } from "@/contexts/PropertyContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import AddPropertyDialog from "@/components/AddPropertyDialog";
 import {
   Building2,
   MapPin,
@@ -10,23 +12,28 @@ import {
   Landmark,
   TrendingUp,
   ArrowRight,
+  Plus,
 } from "lucide-react";
 
+// Amounts are stored in agorot (integer minor units), so divide by 100 to
+// display the major currency unit — mirrors formatCurrency in lib/utils.ts.
 function fmt(amount: number, currencyCode: string) {
+  const major = amount / 100;
   try {
     return new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: currencyCode,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(major);
   } catch {
-    return `${currencyCode} ${amount.toLocaleString()}`;
+    return `${currencyCode} ${major.toLocaleString()}`;
   }
 }
 
 export default function Portfolio() {
   const { data: properties, isLoading } = trpc.dashboard.portfolio.useQuery();
   const { activePropertyId, switchProperty } = useProperty();
+  const [addOpen, setAddOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -44,8 +51,13 @@ export default function Portfolio() {
         <Building2 className="w-12 h-12 text-muted-foreground" />
         <h2 className="text-xl font-semibold">No properties yet</h2>
         <p className="text-muted-foreground text-sm">
-          Add a property from the sidebar to get started.
+          Add your first property to get started.
         </p>
+        <Button className="mt-2" onClick={() => setAddOpen(true)}>
+          <Plus className="w-4 h-4 mr-1.5" />
+          Add property
+        </Button>
+        <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} />
       </div>
     );
   }
@@ -144,7 +156,18 @@ export default function Portfolio() {
             </Card>
           );
         })}
+
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-6 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground min-h-[160px]"
+        >
+          <Plus className="w-6 h-6" />
+          <span className="text-sm font-medium">Add new property</span>
+        </button>
       </div>
+
+      <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }

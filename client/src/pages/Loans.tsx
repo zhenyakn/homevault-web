@@ -473,6 +473,9 @@ export default function Loans() {
                       {loan.endDate ? ` → ${formatDate(loan.endDate)}` : ""}
                       {loan.interestRate &&
                         ` · ${loan.interestRate}% ${t("loans.interest")}`}
+                      {loan.monthlyPayment
+                        ? ` · ${formatCurrency(loan.monthlyPayment)} ${t("loans.perMonth")}`
+                        : ""}
                     </p>
                   </div>
                   <div className="flex gap-1 shrink-0">
@@ -577,6 +580,12 @@ export default function Loans() {
                             </span>
                           </div>
                         ))}
+                    </div>
+                  ) : repaidAmount > 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      {t("loans.historicalRepayments", {
+                        amount: formatCurrency(repaidAmount),
+                      })}
                     </div>
                   ) : (
                     <div className="text-sm text-muted-foreground text-center py-2">

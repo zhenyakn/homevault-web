@@ -507,7 +507,7 @@ export default function Repairs() {
 
       {/* Open */}
       {openRepairs.length > 0 && (
-        <ListSection title={t("repairs.open")} count={openRepairs.length}>
+        <ListSection title={t("repairs.active")} count={openRepairs.length}>
           {openRepairs.map(r => (
             <RepairRow
               key={r.id}

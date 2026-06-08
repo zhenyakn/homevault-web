@@ -3350,7 +3350,7 @@ export default function Settings() {
   return (
     <div className="flex gap-12 min-h-full">
       {/* Desktop side nav — grouped, order flips in RTL via flex direction */}
-      <nav className="hidden md:block w-44 shrink-0 sticky top-4 self-start space-y-5">
+      <nav className="hidden md:block w-52 shrink-0 sticky top-4 self-start space-y-5">
         <div>
           <p className="px-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             {t("settings.title")}

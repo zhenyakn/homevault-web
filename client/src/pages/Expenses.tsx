@@ -250,9 +250,17 @@ export default function Expenses() {
     );
 
   const total = filtered.reduce((s, e) => s + e.amount, 0);
+  // Monthly recurring cost: amortize each recurring expense to a per-month
+  // figure (quarterly ÷ 3, yearly ÷ 12) rather than summing raw amounts, which
+  // would inflate the "recurring/month" stat (UX-201).
   const monthly = filtered
     .filter(e => e.isRecurring)
-    .reduce((s, e) => s + e.amount, 0);
+    .reduce((s, e) => {
+      const interval = e.recurringInterval || "monthly";
+      if (interval === "yearly") return s + e.amount / 12;
+      if (interval === "quarterly") return s + e.amount / 3;
+      return s + e.amount;
+    }, 0);
   const paidCount = filtered.filter(e => e.isPaid).length;
 
   return (
