@@ -116,7 +116,7 @@ export default function PropertyDashboard() {
             label={t("property.purchasePrice", "Purchase Price")}
             value={
               property.purchasePrice
-                ? formatter.format(property.purchasePrice)
+                ? formatter.format(property.purchasePrice / 100)
                 : null
             }
           />
