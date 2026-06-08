@@ -940,6 +940,7 @@ export const mockWishlist: Seed<InsertWishlistItem>[] = [
     category: "Appliance" as const,
     priority: "medium" as const,
     status: "wanted" as const,
+    url: "https://www.roborock.com/products/roborock-s8-pro-ultra",
   },
   {
     name: "Mamad (safe room) shelving",
@@ -958,6 +959,7 @@ export const mockWishlist: Seed<InsertWishlistItem>[] = [
     category: "Other" as const,
     priority: "medium" as const,
     status: "wanted" as const,
+    url: "https://www.mi.com/global/product/mi-electric-scooter-pro-2/",
   },
 ];
 

@@ -56,6 +56,7 @@
     "cancel": "ביטול",
     "save": "שמור",
     "saving": "שומר",
+    "saved": "נשמר",
     "update": "עדכן",
     "create": "צור",
     "saveChanges": "שמור שינויים",
@@ -551,7 +552,7 @@
     "statOpen": "פעילים",
     "statInProgress": "בביצוע",
     "statResolved": "נפתרו",
-    "noQuotes": "אין הצעות מחיר",
+    "noQuotes": "אין הצעות מחיר — הוסף אחת",
     "quotesSelected": "· נבחרה",
     "quotesNone": "· לא נבחרה",
     "totalCost": "עלות כוללת",
@@ -636,6 +637,7 @@
   },
   "upgradeDetail": {
     "vendors": "ספקים ואפשרויות",
+    "quotedCost": "עלות מוצעת",
     "addOption": "הוסף אפשרות / הצעה",
     "editOption": "ערוך אפשרות",
     "vendorName": "שם ספק / אפשרות *",
@@ -723,6 +725,7 @@
     "recurringExpense": "הוצאה חוזרת",
     "recurringPerMonth": "חוזר/חודש",
     "allCategories": "כל הקטגוריות",
+    "searchPlaceholder": "חיפוש הוצאות…",
     "noExpenses": "אין הוצאות עדיין",
     "total": "סה\"כ",
     "of": "מתוך",
@@ -777,7 +780,8 @@
     "failedAddRepayment": "שגיאה בהוספת החזר",
     "nothingToExport": "אין הלוואות לייצוא",
     "exported": "יוצא",
-    "moreRepayments": "+{{count}} עוד"
+    "moreRepayments": "+{{count}} עוד",
+    "showLess": "הצג פחות"
   },
   "wishlist": {
     "title": "רשימת משאלות",
@@ -785,6 +789,8 @@
     "purchased": "נרכש",
     "markPurchased": "סמן כנרכש",
     "moveToUpgrades": "העבר לשדרוגים",
+    "openLink": "פתח קישור למוצר",
+    "linkLabel": "קישור למוצר",
     "markedPurchased": "סומן כנרכש",
     "movedToUpgrades": "הועבר לשדרוגים",
     "editItem": "ערוך פריט",

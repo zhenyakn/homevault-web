@@ -22,6 +22,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Loader2,
   Plus,
   Pencil,
@@ -29,6 +34,7 @@ import {
   Download,
   Package,
   AlertTriangle,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -599,11 +605,33 @@ export default function Inventory() {
         </div>
         <div className="px-4 py-3.5">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">Total Value</p>
+            <div className="flex items-center gap-1">
+              <p className="text-xs text-muted-foreground">Total Value</p>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="What counts as a fixture?"
+                    className="text-muted-foreground/60 hover:text-foreground transition-colors"
+                  >
+                    <Info className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[220px]">
+                  <p>
+                    <span className="font-medium">Fixtures</span> are items that
+                    convey with the home (appliances, built-ins).{" "}
+                    <span className="font-medium">All</span> also includes
+                    personal belongings.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <div className="flex rounded-md border border-border overflow-hidden text-[10px] font-medium">
               <button
                 type="button"
                 onClick={() => setValueScope("fixtures")}
+                title="Items that convey with the home"
                 className={`px-1.5 py-0.5 transition-colors ${valueScope === "fixtures" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"}`}
               >
                 Fixtures
@@ -611,6 +639,7 @@ export default function Inventory() {
               <button
                 type="button"
                 onClick={() => setValueScope("all")}
+                title="Fixtures plus personal belongings"
                 className={`px-1.5 py-0.5 transition-colors ${valueScope === "all" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"}`}
               >
                 All
@@ -688,8 +717,8 @@ export default function Inventory() {
           </Button>
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="border border-border rounded-lg overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">

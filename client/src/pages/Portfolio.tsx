@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProperty } from "@/contexts/PropertyContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,7 @@ function fmt(amount: number, currencyCode: string) {
 export default function Portfolio() {
   const { data: properties, isLoading } = trpc.dashboard.portfolio.useQuery();
   const { activePropertyId, switchProperty } = useProperty();
+  const [, navigate] = useLocation();
   const [addOpen, setAddOpen] = useState(false);
 
   if (isLoading) {
@@ -76,6 +78,15 @@ export default function Portfolio() {
         {properties.map(prop => {
           const isActive = prop.id === activePropertyId;
           const currency = prop.currencyCode;
+          // A freshly-created default property ("My Home") with no details and
+          // no activity — prompt the user to set it up instead of showing a
+          // wall of zeros (UX-407).
+          const isUnconfigured =
+            !prop.address &&
+            !prop.purchasePrice &&
+            prop.monthSpent === 0 &&
+            prop.openRepairsCount === 0 &&
+            prop.outstandingLoanBalance === 0;
 
           return (
             <Card
@@ -111,35 +122,54 @@ export default function Portfolio() {
               </CardHeader>
 
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <TrendingUp className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xs font-semibold">
-                      {fmt(prop.monthSpent, currency)}
+                {isUnconfigured ? (
+                  <div className="rounded-lg border border-dashed border-border p-3 text-center space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      This property isn't set up yet.
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      This month
-                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        switchProperty(prop.id);
+                        navigate("/settings");
+                      }}
+                    >
+                      Set up details
+                      <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    </Button>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <Wrench className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xs font-semibold">
-                      {prop.openRepairsCount}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Open repairs
-                    </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-muted/50 p-2">
+                      <TrendingUp className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs font-semibold">
+                        {fmt(prop.monthSpent, currency)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        This month
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-muted/50 p-2">
+                      <Wrench className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs font-semibold">
+                        {prop.openRepairsCount}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Open repairs
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-muted/50 p-2">
+                      <Landmark className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs font-semibold">
+                        {fmt(prop.outstandingLoanBalance, currency)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Loan balance
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <Landmark className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xs font-semibold">
-                      {fmt(prop.outstandingLoanBalance, currency)}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Loan balance
-                    </p>
-                  </div>
-                </div>
+                )}
 
                 {!isActive && (
                   <Button

@@ -1056,7 +1056,7 @@ export default function UpgradeDetail() {
         stats={[
           {
             value: formatCurrency(committed),
-            label: t("upgradeDetail.vendors").split(" ")[0],
+            label: t("upgradeDetail.quotedCost"),
             sub: selectedOption?.title,
           },
           {

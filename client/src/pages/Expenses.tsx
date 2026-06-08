@@ -22,7 +22,15 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, Trash2, Check, Pencil, Download } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  Check,
+  Pencil,
+  Download,
+  Search,
+} from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
@@ -88,6 +96,7 @@ export default function Expenses() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [monthFilter, setMonthFilter] = useState(currentMonthKey);
+  const [search, setSearch] = useState("");
   const [form, setForm] = useState(emptyForm());
   const [attachments, setAttachments] = useState<
     { url: string; filename: string; mimeType: string; size: number }[]
@@ -191,10 +200,15 @@ export default function Expenses() {
 
   const filtered = useMemo(() => {
     if (!expenses) return [];
+    const q = search.trim().toLowerCase();
     const base = expenses.filter(
       e =>
         (categoryFilter === "all" || e.category === categoryFilter) &&
-        (monthFilter === "all" || e.date.slice(0, 7) === monthFilter)
+        (monthFilter === "all" || e.date.slice(0, 7) === monthFilter) &&
+        (q === "" ||
+          e.name.toLowerCase().includes(q) ||
+          (e.notes ?? "").toLowerCase().includes(q) ||
+          (e.category ?? "").toLowerCase().includes(q))
     );
     return [...base].sort((a, b) => {
       const aPaid = !!a.isPaid;
@@ -203,7 +217,7 @@ export default function Expenses() {
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       return aPaid ? 1 : -1;
     });
-  }, [expenses, categoryFilter, monthFilter]);
+  }, [expenses, categoryFilter, monthFilter, search]);
 
   const handleExportCSV = () => {
     if (!filtered.length) {
@@ -474,6 +488,15 @@ export default function Expenses() {
 
       {/* Filter */}
       <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t("expenses.searchPlaceholder")}
+            className="h-8 ps-8 text-sm"
+          />
+        </div>
         <Select value={monthFilter} onValueChange={setMonthFilter}>
           <SelectTrigger className="h-8 w-44 text-sm">
             <SelectValue />
@@ -514,7 +537,9 @@ export default function Expenses() {
       {filtered.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            {categoryFilter !== "all" || monthFilter !== "all"
+            {categoryFilter !== "all" ||
+            monthFilter !== "all" ||
+            search.trim() !== ""
               ? t("expenses.noMatchingExpenses")
               : t("expenses.noExpenses")}
           </p>
@@ -539,8 +564,10 @@ export default function Expenses() {
                 )}
                 <div
                   className={cn(
-                    "flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors",
-                    isPaid && "opacity-60"
+                    "flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors border-s-2",
+                    isPaid
+                      ? "opacity-60 border-s-transparent"
+                      : "border-s-amber-500 bg-amber-50/40 dark:bg-amber-950/10"
                   )}
                 >
                   <div className="flex-1 min-w-0">

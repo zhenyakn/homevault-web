@@ -56,6 +56,7 @@
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving",
+    "saved": "Saved",
     "update": "Update",
     "create": "Create",
     "saveChanges": "Save changes",
@@ -560,7 +561,7 @@
     "statOpen": "Active",
     "statInProgress": "In progress",
     "statResolved": "Resolved",
-    "noQuotes": "No quotes yet",
+    "noQuotes": "No quotes yet — add one",
     "quotesSelected": "· selected",
     "quotesNone": "· none selected",
     "totalCost": "total cost",
@@ -645,6 +646,7 @@
   },
   "upgradeDetail": {
     "vendors": "Vendors & Options",
+    "quotedCost": "Quoted cost",
     "addOption": "Add option / quote",
     "editOption": "Edit option",
     "vendorName": "Vendor / option name *",
@@ -732,6 +734,7 @@
     "recurringExpense": "Recurring expense",
     "recurringPerMonth": "recurring/month",
     "allCategories": "All categories",
+    "searchPlaceholder": "Search expenses…",
     "noExpenses": "No expenses yet",
     "total": "Total",
     "of": "of",
@@ -786,7 +789,8 @@
     "failedAddRepayment": "Failed to add repayment",
     "nothingToExport": "Nothing to export",
     "exported": "Exported",
-    "moreRepayments": "+{{count}} more"
+    "moreRepayments": "+{{count}} more",
+    "showLess": "Show less"
   },
   "wishlist": {
     "title": "Wishlist",
@@ -794,6 +798,8 @@
     "purchased": "Purchased",
     "markPurchased": "Mark as purchased",
     "moveToUpgrades": "Move to upgrades",
+    "openLink": "Open product link",
+    "linkLabel": "Product link",
     "markedPurchased": "Marked as purchased",
     "movedToUpgrades": "Moved to upgrades",
     "editItem": "Edit item",

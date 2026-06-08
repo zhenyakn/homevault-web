@@ -19,11 +19,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Pencil, Trash2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
+import { ListSection } from "@/components/ListSection";
 
 const CATEGORIES = [
   "Lawyer",
@@ -185,6 +185,20 @@ export default function PurchaseCosts() {
     costs?.reduce((max, cost) => (cost.amount > max ? cost.amount : max), 0) ||
     0;
 
+  // Group costs by category (largest spend first) so the flat list is easier to
+  // scan and each category shows a running subtotal (UX-402).
+  const list = costs ?? [];
+  const grouped = Object.entries(
+    list.reduce<Record<string, typeof list>>((acc, c) => {
+      const key = c.category || "Other";
+      (acc[key] ||= []).push(c);
+      return acc;
+    }, {})
+  ).sort(
+    ([, a], [, b]) =>
+      b.reduce((s, c) => s + c.amount, 0) - a.reduce((s, c) => s + c.amount, 0)
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -339,58 +353,65 @@ export default function PurchaseCosts() {
         </div>
       </div>
 
-      {costs?.length === 0 ? (
+      {list.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">
           <p className="text-sm text-muted-foreground">
             {t("purchaseCosts.noCosts")}
           </p>
         </div>
       ) : (
-        <div className="border border-border rounded-lg divide-y divide-border overflow-hidden">
-          {costs?.map(cost => (
-            <div
-              key={cost.id}
-              className="flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-medium">{cost.name}</p>
-                  {cost.category && (
-                    <Badge variant="secondary" className="text-xs h-5">
-                      {t(`categories.${cost.category}`, {
-                        defaultValue: cost.category,
-                      })}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {cost.date ? formatDate(cost.date) : ""}
-                  {cost.notes && ` · ${cost.notes}`}
-                </p>
-              </div>
-              <p className="text-sm font-semibold tabular-nums shrink-0 me-2">
-                {formatCurrency(cost.amount)}
-              </p>
-              <div className="flex gap-1 shrink-0">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 w-7 p-0"
-                  onClick={() => handleEdit(cost)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(cost.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))}
+        <div className="space-y-5">
+          {grouped.map(([category, group]) => {
+            const subtotal = group.reduce((s, c) => s + c.amount, 0);
+            return (
+              <ListSection
+                key={category}
+                title={t(`categories.${category}`, { defaultValue: category })}
+                count={group.length}
+                extra={
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {formatCurrency(subtotal)}
+                  </p>
+                }
+              >
+                {group.map(cost => (
+                  <div
+                    key={cost.id}
+                    className="flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{cost.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {cost.date ? formatDate(cost.date) : ""}
+                        {cost.notes && ` · ${cost.notes}`}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold tabular-nums shrink-0 me-2">
+                      {formatCurrency(cost.amount)}
+                    </p>
+                    <div className="flex gap-1 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0"
+                        onClick={() => handleEdit(cost)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(cost.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </ListSection>
+            );
+          })}
         </div>
       )}
     </div>

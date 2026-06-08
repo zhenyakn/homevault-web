@@ -287,7 +287,8 @@ function RepairRow({
                 : ` ${t("repairs.quotesNone")}`}
             </span>
           ) : (
-            <span className="text-xs text-muted-foreground/60">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Plus className="h-3 w-3" />
               {t("repairs.noQuotes")}
             </span>
           )}

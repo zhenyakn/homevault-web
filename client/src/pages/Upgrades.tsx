@@ -253,7 +253,7 @@ function UpgradeRow({
                 )}
               </span>
               <span className="tabular-nums">
-                {formatCurrency(budget)} {t("dashboard.envelope")}
+                {formatCurrency(budget)} {t("common.budget")}
               </span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">

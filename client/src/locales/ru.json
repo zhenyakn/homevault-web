@@ -56,6 +56,7 @@
     "cancel": "Отмена",
     "save": "Сохранить",
     "saving": "Сохранение",
+    "saved": "Сохранено",
     "update": "Обновить",
     "create": "Создать",
     "saveChanges": "Сохранить изменения",
@@ -558,7 +559,7 @@
     "statOpen": "Активные",
     "statInProgress": "В процессе",
     "statResolved": "Решено",
-    "noQuotes": "Пока нет смет",
+    "noQuotes": "Смет пока нет — добавьте",
     "quotesSelected": "· выбрано",
     "quotesNone": "· ничего не выбрано",
     "totalCost": "общая стоимость",
@@ -643,6 +644,7 @@
   },
   "upgradeDetail": {
     "vendors": "Поставщики и варианты",
+    "quotedCost": "Цена по смете",
     "addOption": "Добавить вариант / смету",
     "editOption": "Изменить вариант",
     "vendorName": "Имя поставщика / название варианта *",
@@ -730,6 +732,7 @@
     "recurringExpense": "Повторяющийся расход",
     "recurringPerMonth": "повторяющийся/месяц",
     "allCategories": "Все категории",
+    "searchPlaceholder": "Поиск расходов…",
     "noExpenses": "Пока нет расходов",
     "total": "Итого",
     "of": "из",
@@ -784,7 +787,8 @@
     "failedAddRepayment": "Не удалось добавить погашение",
     "nothingToExport": "Нечего экспортировать",
     "exported": "Экспортировано",
-    "moreRepayments": "+ ещё {{count}}"
+    "moreRepayments": "+ ещё {{count}}",
+    "showLess": "Свернуть"
   },
   "wishlist": {
     "title": "Список желаний",
@@ -792,6 +796,8 @@
     "purchased": "Куплено",
     "markPurchased": "Отметить купленным",
     "moveToUpgrades": "Перенести в улучшения",
+    "openLink": "Открыть ссылку на товар",
+    "linkLabel": "Ссылка на товар",
     "markedPurchased": "Отмечено как купленное",
     "movedToUpgrades": "Перенесено в улучшения",
     "editItem": "Изменить позицию",
