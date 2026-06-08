@@ -112,6 +112,5 @@ temp/
 # Platform-injected files
 client/public/__manus__/
 
-# Claude Code local settings and agent worktrees (machine-specific)
-.claude/settings.local.json
-.claude/worktrees/
+# Claude Code directory (settings, skills, worktrees — machine-specific)
+.claude/
