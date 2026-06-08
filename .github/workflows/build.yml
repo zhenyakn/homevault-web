@@ -182,8 +182,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          # Pull the latest main so we get the CHANGELOG commit if it just ran
-          ref: main
+          # Build the exact tagged commit so the published image matches the
+          # release (no commits that landed on main after the tag). Default ref
+          # is the trigger ref: the tag on a tag push, the branch on dispatch.
+          # fetch-depth: 0 brings full history + tags for the release-notes range.
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
@@ -238,11 +241,47 @@ jobs:
           echo "Inspecting $IMAGE"
           docker buildx imagetools inspect "$IMAGE"
 
+      - name: Generate release notes for this version
+        if: startsWith(github.ref, 'refs/tags/') && matrix.arch == 'amd64'
+        run: |
+          CURRENT_TAG="${GITHUB_REF_NAME}"
+          # Nearest previous version tag (restricted to v* so stray tags are ignored).
+          PREV_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${CURRENT_TAG}^" 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${CURRENT_TAG}"
+          else
+            RANGE="${CURRENT_TAG}"
+          fi
+          # Only the commits introduced in this release; same filters as CHANGELOG.
+          NOTES=$(git log "$RANGE" \
+            --pretty=format:"%s" \
+            --no-merges \
+            | grep -v '\[skip ci\]' \
+            | grep -v '^chore: bump addon' \
+            | grep -v '^Merge ' \
+            || true)
+          if [ -z "$NOTES" ]; then
+            NOTES="- Internal improvements and dependency updates"
+          else
+            NOTES=$(echo "$NOTES" | sed 's/^/- /')
+          fi
+          {
+            echo "## What's changed in ${CURRENT_TAG#v}"
+            echo ""
+            if [ -n "$PREV_TAG" ]; then
+              echo "Changes since ${PREV_TAG}:"
+              echo ""
+            fi
+            printf "%s\n" "$NOTES"
+          } > RELEASE_NOTES.md
+          echo "Generated RELEASE_NOTES.md:"
+          cat RELEASE_NOTES.md
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/') && matrix.arch == 'amd64'
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: "HomeVault ${{ env.ADDON_VERSION }}"
-          body_path: ${{ env.ADDON_PATH }}/CHANGELOG.md
+          body_path: RELEASE_NOTES.md
           generate_release_notes: false
