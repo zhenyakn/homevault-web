@@ -309,6 +309,45 @@ function CategoryHeader({
   );
 }
 
+/** A CategoryHeader that collapses its content. Used to break the long
+ *  Integrations tab into scannable, foldable sections (UX-306). */
+function CollapsibleCategory({
+  icon,
+  title,
+  description,
+  defaultOpen = true,
+  children,
+}: {
+  icon?: ReactNode;
+  title: string;
+  description?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 rounded -mx-1 px-1 py-0.5 hover:bg-muted/40 transition-colors"
+      >
+        <div className="flex-1 min-w-0">
+          <CategoryHeader icon={icon} title={title} description={description} />
+        </div>
+        <ChevronRight
+          className={cn(
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            open && "rotate-90"
+          )}
+        />
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
 /** Inline notice. Wraps the shared Alert with semantic intent colors so we
  *  stop hand-rolling amber/destructive blocks throughout the page. */
 function Callout({
@@ -585,15 +624,47 @@ function Combobox({
 
 function Pending({ show }: { show: boolean }) {
   const { t } = useTranslation();
+  // Surface a brief "Saved ✓" confirmation when a save finishes (show: true →
+  // false) so users know their change persisted, then fade it out after 2s.
+  const [justSaved, setJustSaved] = useState(false);
+  const wasPending = useRef(false);
+
+  useEffect(() => {
+    if (show) {
+      wasPending.current = true;
+      setJustSaved(false);
+      return;
+    }
+    if (wasPending.current) {
+      wasPending.current = false;
+      setJustSaved(true);
+      const id = setTimeout(() => setJustSaved(false), 2000);
+      return () => clearTimeout(id);
+    }
+  }, [show]);
+
+  const visible = show || justSaved;
+
   return (
     <span
+      aria-live="polite"
       className={cn(
-        "inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-opacity duration-300",
-        show ? "opacity-100" : "opacity-0 pointer-events-none"
+        "inline-flex items-center gap-1.5 text-xs transition-opacity duration-300",
+        show ? "text-muted-foreground" : "text-green-600 dark:text-green-400",
+        visible ? "opacity-100" : "opacity-0 pointer-events-none"
       )}
     >
-      <Loader2 className="h-3 w-3 animate-spin" />
-      {t("common.saving")}
+      {show ? (
+        <>
+          <Loader2 className="h-3 w-3 animate-spin" />
+          {t("common.saving")}
+        </>
+      ) : justSaved ? (
+        <>
+          <Check className="h-3 w-3" />
+          {t("common.saved")}
+        </>
+      ) : null}
     </span>
   );
 }
@@ -1520,12 +1591,11 @@ function NotificationChannelsIntegration() {
       : t("settings.ch.webpushCardDesc");
 
   return (
-    <div className="space-y-3">
-      <CategoryHeader
-        icon={<Bell className="h-4 w-4" />}
-        title={t("settings.ch.integrationsTitle")}
-        description={t("settings.cat.channelsDesc")}
-      />
+    <CollapsibleCategory
+      icon={<Bell className="h-4 w-4" />}
+      title={t("settings.ch.integrationsTitle")}
+      description={t("settings.cat.channelsDesc")}
+    >
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-6 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1597,7 +1667,7 @@ function NotificationChannelsIntegration() {
           />
         </div>
       )}
-    </div>
+    </CollapsibleCategory>
   );
 }
 
@@ -1626,12 +1696,11 @@ function IntegrationsSection({ p }: { p: any }) {
       <NotificationChannelsIntegration />
 
       {/* Connected services — live integrations first, roadmap clearly apart. */}
-      <div className="space-y-3">
-        <CategoryHeader
-          icon={<Blocks className="h-4 w-4" />}
-          title={t("settings.cat.services")}
-          description={t("settings.cat.servicesDesc")}
-        />
+      <CollapsibleCategory
+        icon={<Blocks className="h-4 w-4" />}
+        title={t("settings.cat.services")}
+        description={t("settings.cat.servicesDesc")}
+      >
         <div className="space-y-2">
           <IntegrationCard
             icon={<MapIcon className="h-4 w-4" />}
@@ -1685,22 +1754,21 @@ function IntegrationsSection({ p }: { p: any }) {
             />
           </div>
         </div>
-      </div>
+      </CollapsibleCategory>
 
       {/* Storage & files — admin config self-gates; the file browser shows for
           everyone, so this category always has content and never an empty top. */}
-      <div className="space-y-3">
-        <CategoryHeader
-          icon={<HardDrive className="h-4 w-4" />}
-          title={t("settings.cat.storage")}
-          description={t("settings.cat.storageDesc")}
-        />
+      <CollapsibleCategory
+        icon={<HardDrive className="h-4 w-4" />}
+        title={t("settings.cat.storage")}
+        description={t("settings.cat.storageDesc")}
+      >
         <div className="space-y-2">
           <StorageBackendGroup onSelectedChange={setSelectedBackend} />
           {selectedBackend === "gdrive" && <FileStorageGroup />}
           <StoredFilesGroup />
         </div>
-      </div>
+      </CollapsibleCategory>
     </div>
   );
 }
@@ -3350,7 +3418,7 @@ export default function Settings() {
   return (
     <div className="flex gap-12 min-h-full">
       {/* Desktop side nav — grouped, order flips in RTL via flex direction */}
-      <nav className="hidden md:block w-44 shrink-0 sticky top-4 self-start space-y-5">
+      <nav className="hidden md:block w-52 shrink-0 sticky top-4 self-start space-y-5">
         <div>
           <p className="px-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
             {t("settings.title")}

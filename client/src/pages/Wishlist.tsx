@@ -29,6 +29,7 @@ import {
   Download,
   Check,
   TrendingUp,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,6 +53,7 @@ export default function Wishlist() {
     notes: "",
     estimatedPrice: "",
     priority: "medium" as Priority,
+    url: "",
   });
 
   const utils = trpc.useUtils();
@@ -141,6 +143,7 @@ export default function Wishlist() {
       notes: formData.notes || undefined,
       estimatedPrice: estimatedPriceCents,
       priority: formData.priority,
+      url: formData.url.trim() || undefined,
     };
 
     if (editingId) {
@@ -156,6 +159,7 @@ export default function Wishlist() {
       notes: item.notes || "",
       estimatedPrice: ((item.estimatedPrice ?? 0) / 100).toString(),
       priority: (item.priority as Priority) || "medium",
+      url: item.url || "",
     });
     setEditingId(item.id);
     setIsDialogOpen(true);
@@ -175,6 +179,7 @@ export default function Wishlist() {
       notes: "",
       estimatedPrice: "",
       priority: "medium",
+      url: "",
     });
   };
 
@@ -338,6 +343,19 @@ export default function Wishlist() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="url">{t("wishlist.linkLabel")}</Label>
+                  <Input
+                    id="url"
+                    type="url"
+                    inputMode="url"
+                    placeholder="https://"
+                    value={formData.url}
+                    onChange={e =>
+                      setFormData({ ...formData, url: e.target.value })
+                    }
+                  />
+                </div>
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button type="button" variant="outline" onClick={closeDialog}>
                     {t("common.cancel")}
@@ -429,6 +447,25 @@ export default function Wishlist() {
                 {formatCurrency(item.estimatedPrice ?? 0)}
               </p>
               <div className="flex gap-1 shrink-0">
+                {item.url && (
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="outline"
+                    className="h-7 w-7 p-0"
+                    title={t("wishlist.openLink")}
+                  >
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={t("wishlist.openLink")}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </Button>
+                )}
                 {item.status !== "purchased" && (
                   <>
                     <Button

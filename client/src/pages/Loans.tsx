@@ -28,6 +28,38 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Plus, Trash2, Edit, Download } from "lucide-react";
 import { toast } from "sonner";
 
+// Preview chips for a loan's repayments. Shows the first few and lets the user
+// expand the rest inline instead of dead-ending on a "+N more" label (UX-401).
+function RepaymentChips({ repayments }: { repayments: Repayment[] }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  if (repayments.length === 0) return null;
+  const shown = expanded ? repayments : repayments.slice(0, 3);
+  return (
+    <div className="mt-3 flex gap-2 flex-wrap">
+      {shown.map((rep, idx) => (
+        <span
+          key={idx}
+          className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded"
+        >
+          {formatDate(rep.date)} · {formatCurrency(rep.amount)}
+        </span>
+      ))}
+      {repayments.length > 3 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(e => !e)}
+          className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        >
+          {expanded
+            ? t("loans.showLess")
+            : t("loans.moreRepayments", { count: repayments.length - 3 })}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function Loans() {
   const { t } = useTranslation();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -473,6 +505,9 @@ export default function Loans() {
                       {loan.endDate ? ` → ${formatDate(loan.endDate)}` : ""}
                       {loan.interestRate &&
                         ` · ${loan.interestRate}% ${t("loans.interest")}`}
+                      {loan.monthlyPayment
+                        ? ` · ${formatCurrency(loan.monthlyPayment)} ${t("loans.perMonth")}`
+                        : ""}
                     </p>
                   </div>
                   <div className="flex gap-1 shrink-0">
@@ -521,25 +556,7 @@ export default function Loans() {
                     />
                   </div>
                 </div>
-                {repayments.length > 0 && (
-                  <div className="mt-3 flex gap-2 flex-wrap">
-                    {repayments.slice(0, 3).map((rep, idx) => (
-                      <span
-                        key={idx}
-                        className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded"
-                      >
-                        {formatDate(rep.date)} · {formatCurrency(rep.amount)}
-                      </span>
-                    ))}
-                    {repayments.length > 3 && (
-                      <span className="text-xs text-muted-foreground">
-                        {t("loans.moreRepayments", {
-                          count: repayments.length - 3,
-                        })}
-                      </span>
-                    )}
-                  </div>
-                )}
+                <RepaymentChips repayments={repayments} />
                 <div className="mt-auto pt-4 border-t mt-4">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-medium text-sm">
@@ -577,6 +594,12 @@ export default function Loans() {
                             </span>
                           </div>
                         ))}
+                    </div>
+                  ) : repaidAmount > 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      {t("loans.historicalRepayments", {
+                        amount: formatCurrency(repaidAmount),
+                      })}
                     </div>
                   ) : (
                     <div className="text-sm text-muted-foreground text-center py-2">

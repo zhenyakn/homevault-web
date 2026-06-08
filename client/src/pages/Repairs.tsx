@@ -287,7 +287,8 @@ function RepairRow({
                 : ` ${t("repairs.quotesNone")}`}
             </span>
           ) : (
-            <span className="text-xs text-muted-foreground/60">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Plus className="h-3 w-3" />
               {t("repairs.noQuotes")}
             </span>
           )}
@@ -507,7 +508,7 @@ export default function Repairs() {
 
       {/* Open */}
       {openRepairs.length > 0 && (
-        <ListSection title={t("repairs.open")} count={openRepairs.length}>
+        <ListSection title={t("repairs.active")} count={openRepairs.length}>
           {openRepairs.map(r => (
             <RepairRow
               key={r.id}

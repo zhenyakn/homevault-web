@@ -2,12 +2,6 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -30,6 +24,7 @@ import {
 import { getLoginUrl } from "@/const";
 import NotificationCenter from "@/components/NotificationCenter";
 import MobileTabBar from "@/components/MobileTabBar";
+import AddPropertyDialog from "@/components/AddPropertyDialog";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -155,26 +150,11 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
   const { t } = useTranslation();
   const { activePropertyId, switchProperty } = useProperty();
   const { data: properties } = trpc.property.list.useQuery();
-  const utils = trpc.useUtils();
-  const createMutation = trpc.property.create.useMutation({
-    onSuccess: (data: any) => {
-      utils.property.list.invalidate();
-      if (data?.insertId) switchProperty(data.insertId);
-    },
-  });
 
   const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName] = useState("");
 
   const activeProperty =
     properties?.find(p => p.id === activePropertyId) ?? properties?.[0];
-
-  const handleAdd = async () => {
-    if (!newName.trim()) return;
-    await createMutation.mutateAsync({ houseName: newName.trim() });
-    setNewName("");
-    setShowAdd(false);
-  };
 
   if (isCollapsed) {
     return (
@@ -229,41 +209,7 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("common.addProperty")}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <input
-              autoFocus
-              className="w-full border border-border rounded-md px-3 py-2 text-sm bg-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder={t("common.propertyName")}
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleAdd()}
-            />
-            <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAdd(false)}
-              >
-                {t("common.cancel")}
-              </Button>
-              <Button
-                size="sm"
-                onClick={handleAdd}
-                disabled={!newName.trim() || createMutation.isPending}
-              >
-                {createMutation.isPending
-                  ? t("common.adding")
-                  : t("common.add")}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AddPropertyDialog open={showAdd} onOpenChange={setShowAdd} />
     </>
   );
 }

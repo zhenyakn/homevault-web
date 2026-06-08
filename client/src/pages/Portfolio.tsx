@@ -1,8 +1,11 @@
+import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProperty } from "@/contexts/PropertyContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import AddPropertyDialog from "@/components/AddPropertyDialog";
 import {
   Building2,
   MapPin,
@@ -10,23 +13,29 @@ import {
   Landmark,
   TrendingUp,
   ArrowRight,
+  Plus,
 } from "lucide-react";
 
+// Amounts are stored in agorot (integer minor units), so divide by 100 to
+// display the major currency unit — mirrors formatCurrency in lib/utils.ts.
 function fmt(amount: number, currencyCode: string) {
+  const major = amount / 100;
   try {
     return new Intl.NumberFormat(undefined, {
       style: "currency",
       currency: currencyCode,
       maximumFractionDigits: 0,
-    }).format(amount);
+    }).format(major);
   } catch {
-    return `${currencyCode} ${amount.toLocaleString()}`;
+    return `${currencyCode} ${major.toLocaleString()}`;
   }
 }
 
 export default function Portfolio() {
   const { data: properties, isLoading } = trpc.dashboard.portfolio.useQuery();
   const { activePropertyId, switchProperty } = useProperty();
+  const [, navigate] = useLocation();
+  const [addOpen, setAddOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -44,8 +53,13 @@ export default function Portfolio() {
         <Building2 className="w-12 h-12 text-muted-foreground" />
         <h2 className="text-xl font-semibold">No properties yet</h2>
         <p className="text-muted-foreground text-sm">
-          Add a property from the sidebar to get started.
+          Add your first property to get started.
         </p>
+        <Button className="mt-2" onClick={() => setAddOpen(true)}>
+          <Plus className="w-4 h-4 mr-1.5" />
+          Add property
+        </Button>
+        <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} />
       </div>
     );
   }
@@ -64,6 +78,15 @@ export default function Portfolio() {
         {properties.map(prop => {
           const isActive = prop.id === activePropertyId;
           const currency = prop.currencyCode;
+          // A freshly-created default property ("My Home") with no details and
+          // no activity — prompt the user to set it up instead of showing a
+          // wall of zeros (UX-407).
+          const isUnconfigured =
+            !prop.address &&
+            !prop.purchasePrice &&
+            prop.monthSpent === 0 &&
+            prop.openRepairsCount === 0 &&
+            prop.outstandingLoanBalance === 0;
 
           return (
             <Card
@@ -99,35 +122,54 @@ export default function Portfolio() {
               </CardHeader>
 
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <TrendingUp className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xs font-semibold">
-                      {fmt(prop.monthSpent, currency)}
+                {isUnconfigured ? (
+                  <div className="rounded-lg border border-dashed border-border p-3 text-center space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      This property isn't set up yet.
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      This month
-                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        switchProperty(prop.id);
+                        navigate("/settings");
+                      }}
+                    >
+                      Set up details
+                      <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    </Button>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <Wrench className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xs font-semibold">
-                      {prop.openRepairsCount}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Open repairs
-                    </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-muted/50 p-2">
+                      <TrendingUp className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs font-semibold">
+                        {fmt(prop.monthSpent, currency)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        This month
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-muted/50 p-2">
+                      <Wrench className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs font-semibold">
+                        {prop.openRepairsCount}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Open repairs
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-muted/50 p-2">
+                      <Landmark className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
+                      <p className="text-xs font-semibold">
+                        {fmt(prop.outstandingLoanBalance, currency)}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Loan balance
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-lg bg-muted/50 p-2">
-                    <Landmark className="w-3.5 h-3.5 mx-auto mb-1 text-muted-foreground" />
-                    <p className="text-xs font-semibold">
-                      {fmt(prop.outstandingLoanBalance, currency)}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Loan balance
-                    </p>
-                  </div>
-                </div>
+                )}
 
                 {!isActive && (
                   <Button
@@ -144,7 +186,18 @@ export default function Portfolio() {
             </Card>
           );
         })}
+
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border p-6 text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground min-h-[160px]"
+        >
+          <Plus className="w-6 h-6" />
+          <span className="text-sm font-medium">Add new property</span>
+        </button>
       </div>
+
+      <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
