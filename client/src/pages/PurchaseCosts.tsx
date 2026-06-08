@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { asArray, formatCurrency, formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,12 +25,15 @@ import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
 import { ListSection } from "@/components/ListSection";
 
+// Must match the `category` enum on the purchaseCosts table (drizzle/schema.ts).
+// Sending any value outside this set fails server-side Zod validation.
 const CATEGORIES = [
-  "Lawyer",
   "Tax",
-  "Moving",
+  "Legal",
   "Inspection",
-  "Registration",
+  "Agency",
+  "Renovation",
+  "Moving",
   "Other",
 ];
 
@@ -106,7 +109,7 @@ export default function PurchaseCosts() {
     });
     setEditingId(cost.id);
     setAttachments(
-      (cost.attachments || []).map((url: string) => ({
+      asArray<string>(cost.attachments).map((url: string) => ({
         url,
         filename: url.split("/").pop() || "file",
         mimeType: "application/octet-stream",
