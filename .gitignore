@@ -112,5 +112,7 @@ temp/
 # Platform-injected files
 client/public/__manus__/
 
-# Claude Code directory (settings, skills, worktrees — machine-specific)
-.claude/
+# Claude Code directory (settings, worktrees — machine-specific), except
+# shared project skills which are committed.
+.claude/*
+!.claude/skills/
