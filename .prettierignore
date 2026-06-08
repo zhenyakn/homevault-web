@@ -42,6 +42,9 @@ pnpm-lock.yaml
 .vscode/
 .idea/
 
+# Claude Code skills (hand-maintained docs; not subject to repo code style)
+.claude/
+
 # OS files
 .DS_Store
 Thumbs.db
