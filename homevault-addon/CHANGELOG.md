@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.5.7
+## 0.5.8
+- Fix overlapping fields in inventory edit dialog
+- ci: build release from tagged commit and scope release notes to the version
+- Fix 100x currency error on PropertyDashboard purchase price
 - Address medium/low UI/UX audit items (Phase 3)
 - Fix UI/UX audit V2 issues across finances and property pages
 - ci: dedupe release builds, fix changelog race, gate release on CI
@@ -284,6 +287,11 @@
 - Checkpoint: HomeVault Foundation Complete: Full database schema with 9 tables, all tRPC procedures for expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar, profiles, and properties. Dashboard displays KPI metrics (purchase total, monthly recurring, YTD expenses, upgrades spent, pending repairs, wishlist total). Authentication working with Manus OAuth. App is production-ready for feature development.
 - Checkpoint: Phase 1 & 2 Complete: Implemented comprehensive database schema with 9 tables (users, properties, expenses, repairs, upgrades, loans, wishlist, purchase costs, calendar events), created all backend tRPC procedures for CRUD operations on all modules, implemented dashboard stats calculation, and created the main dashboard UI with KPI display. App is running and ready for feature development.
 - Initial project bootstrap
+
+## 0.5.7
+- Fix overlapping fields in inventory edit dialog
+- ci: build release from tagged commit and scope release notes to the version
+- Fix 100x currency error on PropertyDashboard purchase price
 
 ## 0.5.6
 - Address medium/low UI/UX audit items (Phase 3)
