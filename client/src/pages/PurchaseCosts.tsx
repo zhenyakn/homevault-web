@@ -25,12 +25,15 @@ import { toast } from "sonner";
 import { FileUpload } from "@/components/FileUpload";
 import { ListSection } from "@/components/ListSection";
 
+// Must match the `category` enum on the purchaseCosts table (drizzle/schema.ts).
+// Sending any value outside this set fails server-side Zod validation.
 const CATEGORIES = [
-  "Lawyer",
   "Tax",
-  "Moving",
+  "Legal",
   "Inspection",
-  "Registration",
+  "Agency",
+  "Renovation",
+  "Moving",
   "Other",
 ];
 
