@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.5.4
+## 0.5.5
+- Fix main CI: IntegrationsSection hook + prettier formatting
+- Address remaining review findings (#3–#8)
+- Fix loan balance reversibility/concurrency and expenses month TZ
+- Priority-3 UX: spending chart, richer search, notification sync
+- A11y + lifecycle UX: skip link, ARIA, theme toggle, bot label, wishlist
+- Priority-2 UX fixes: confirmations, severity, autosave feedback, layout
+- Priority-1 UX fixes: zoom, mobile nav, filters, empty state, calendar edit
+- Link "Loan" expenses to loan repayments (UX-106)
+- Unify loan progress on shared computeLoanProgress helper
 - Restructure Integrations settings into clear categories with unified cards
 - build: rebuild client bundle with 404 hash-routing fixes
 - fix: Settings tab nav parked URL on invalid hash, causing 404 on re-render
@@ -274,6 +283,15 @@
 - Initial project bootstrap
 
 ## 0.5.3
+- Fix main CI: IntegrationsSection hook + prettier formatting
+- Address remaining review findings (#3–#8)
+- Fix loan balance reversibility/concurrency and expenses month TZ
+- Priority-3 UX: spending chart, richer search, notification sync
+- A11y + lifecycle UX: skip link, ARIA, theme toggle, bot label, wishlist
+- Priority-2 UX fixes: confirmations, severity, autosave feedback, layout
+- Priority-1 UX fixes: zoom, mobile nav, filters, empty state, calendar edit
+- Link "Loan" expenses to loan repayments (UX-106)
+- Unify loan progress on shared computeLoanProgress helper
 - Restructure Integrations settings into clear categories with unified cards
 - build: rebuild client bundle with 404 hash-routing fixes
 - fix: Settings tab nav parked URL on invalid hash, causing 404 on re-render
