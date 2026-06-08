@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, gt, or } from "drizzle-orm";
+import { and, desc, eq, isNull, isNotNull, gt, lt, or } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import {
   users,
@@ -186,6 +186,25 @@ export async function markAllRead(userId: number): Promise<void> {
         isNull(notificationLog.readAt)
       )
     );
+}
+
+/**
+ * Retention: delete notifications that have been READ for longer than
+ * `olderThanDays`. Unread items are never pruned — the cutoff is measured from
+ * `readAt`, so a notification's clock only starts once the user has seen it.
+ * Returns the number of rows removed. Called from the daily sweep.
+ */
+export async function pruneReadNotifications(
+  olderThanDays = 30
+): Promise<number> {
+  const db = await getDb();
+  const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
+  const [res] = await db
+    .delete(notificationLog)
+    .where(
+      and(isNotNull(notificationLog.readAt), lt(notificationLog.readAt, cutoff))
+    );
+  return (res as { affectedRows?: number }).affectedRows ?? 0;
 }
 
 // ── Web Push subscriptions ────────────────────────────────────────────────────

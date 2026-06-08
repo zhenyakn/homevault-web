@@ -16,8 +16,16 @@ import { getLoans } from "../db/loans";
 import { getCalendarEvents } from "../db/calendar";
 import { getInventoryItems } from "../db/inventory";
 import { getDashboardStats } from "../db/dashboard";
+import { pruneReadNotifications } from "../db/notifications";
 
-export type SweepResult = { properties: number; reminders: number };
+/** Delete notifications that have been read for longer than this. */
+export const READ_RETENTION_DAYS = 30;
+
+export type SweepResult = {
+  properties: number;
+  reminders: number;
+  pruned: number;
+};
 
 /**
  * Run the reminder sweep across every property. `notifyFn` is injectable for
@@ -82,7 +90,16 @@ export async function runReminderSweep(
     }
   }
 
-  return { properties: properties.length, reminders };
+  // Retention: drop notifications the user has already read and left for a
+  // month. Best-effort — a prune failure must not fail the reminder run.
+  let pruned = 0;
+  try {
+    pruned = await pruneReadNotifications(READ_RETENTION_DAYS);
+  } catch (err) {
+    logger.warn({ err }, "[reminders] failed to prune read notifications");
+  }
+
+  return { properties: properties.length, reminders, pruned };
 }
 
 let started = false;

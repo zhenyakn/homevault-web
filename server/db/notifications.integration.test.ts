@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "vitest";
+import { eq } from "drizzle-orm";
 
 const TEST_DB = process.env.TEST_DATABASE_URL;
 
@@ -123,6 +124,47 @@ describe.skipIf(!TEST_DB)("notifications DB integration (real MySQL)", () => {
     const all = await dbn.listInApp(userId);
     const allKeys = new Set(all.map(r => r.dedupeKey));
     expect(allKeys.has(`p200:${stamp}`)).toBe(true);
+  });
+
+  it("prune removes read notifications past the cutoff but keeps unread", async () => {
+    const { getDb } = await import("./client");
+    const schema = await import("../../drizzle/schema");
+    const db = await getDb();
+    const stamp = Date.now();
+    const old = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
+
+    // Read 40 days ago → pruned.
+    await dbn.recordDelivery({
+      userId,
+      channel: "inapp",
+      category: "system",
+      title: "old-read",
+      body: "B",
+      dedupeKey: `prune-old:${stamp}`,
+      status: "sent",
+    });
+    // Unread but ancient → kept (clock starts at readAt, which is NULL).
+    await dbn.recordDelivery({
+      userId,
+      channel: "inapp",
+      category: "system",
+      title: "old-unread",
+      body: "B",
+      dedupeKey: `prune-unread:${stamp}`,
+      status: "sent",
+    });
+    // Backdate the first row's readAt so it falls outside the window.
+    await db
+      .update(schema.notificationLog)
+      .set({ readAt: old })
+      .where(eq(schema.notificationLog.dedupeKey, `prune-old:${stamp}`));
+
+    await dbn.pruneReadNotifications(30);
+
+    const feed = await dbn.listInApp(userId);
+    const keys = new Set(feed.map(r => r.dedupeKey));
+    expect(keys.has(`prune-old:${stamp}`)).toBe(false); // read + old → gone
+    expect(keys.has(`prune-unread:${stamp}`)).toBe(true); // unread → kept
   });
 
   it("telegram link code is single-use", async () => {
