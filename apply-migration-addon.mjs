@@ -937,6 +937,7 @@ async function main() {
     `CREATE TABLE IF NOT EXISTS \`notification_log\` (
       \`id\` int AUTO_INCREMENT PRIMARY KEY,
       \`userId\` int NOT NULL,
+      \`propertyId\` int DEFAULT NULL,
       \`channel\` enum('inapp','push','email','webpush','telegram','whatsapp') NOT NULL,
       \`category\` enum('expense','loan','repair','warranty','calendar','system') NOT NULL,
       \`title\` varchar(300) NOT NULL,
@@ -953,6 +954,16 @@ async function main() {
   await run(
     `CREATE INDEX \`notif_log_user_idx\` ON \`notification_log\` (\`userId\`)`,
     "index notif_log_user_idx"
+  );
+  // Convergence: add propertyId to notification_log tables created before the
+  // feed was property-scoped (ER_DUP_FIELDNAME is treated as a no-op by run()).
+  await run(
+    `ALTER TABLE \`notification_log\` ADD COLUMN \`propertyId\` int DEFAULT NULL`,
+    "notification_log.propertyId"
+  );
+  await run(
+    `CREATE INDEX \`notif_log_property_idx\` ON \`notification_log\` (\`propertyId\`)`,
+    "index notif_log_property_idx"
   );
   await run(
     `CREATE INDEX \`notif_log_dedupe_idx\` ON \`notification_log\` (\`userId\`, \`dedupeKey\`, \`channel\`)`,

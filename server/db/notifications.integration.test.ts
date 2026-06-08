@@ -78,6 +78,53 @@ describe.skipIf(!TEST_DB)("notifications DB integration (real MySQL)", () => {
     expect(unread.some(r => r.id === row!.id)).toBe(false);
   });
 
+  it("feed is scoped to the active property (NULL rows stay global)", async () => {
+    const stamp = Date.now();
+    // Two property-scoped rows + one global (NULL) row.
+    await dbn.recordDelivery({
+      userId,
+      propertyId: 100,
+      channel: "inapp",
+      category: "expense",
+      title: "P100",
+      body: "B",
+      dedupeKey: `p100:${stamp}`,
+      status: "sent",
+    });
+    await dbn.recordDelivery({
+      userId,
+      propertyId: 200,
+      channel: "inapp",
+      category: "expense",
+      title: "P200",
+      body: "B",
+      dedupeKey: `p200:${stamp}`,
+      status: "sent",
+    });
+    await dbn.recordDelivery({
+      userId,
+      propertyId: null,
+      channel: "inapp",
+      category: "system",
+      title: "Global",
+      body: "B",
+      dedupeKey: `glob:${stamp}`,
+      status: "sent",
+    });
+
+    const onP100 = await dbn.listInApp(userId, { propertyId: 100 });
+    const keys = new Set(onP100.map(r => r.dedupeKey));
+    // Sees its own property + the global row, but not the other property's.
+    expect(keys.has(`p100:${stamp}`)).toBe(true);
+    expect(keys.has(`glob:${stamp}`)).toBe(true);
+    expect(keys.has(`p200:${stamp}`)).toBe(false);
+
+    // Without a propertyId the feed is unscoped (all properties).
+    const all = await dbn.listInApp(userId);
+    const allKeys = new Set(all.map(r => r.dedupeKey));
+    expect(allKeys.has(`p200:${stamp}`)).toBe(true);
+  });
+
   it("telegram link code is single-use", async () => {
     const code = await dbn.createTelegramLinkCode(userId);
     expect(await dbn.consumeTelegramLinkCode(code)).toBe(userId);

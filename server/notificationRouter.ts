@@ -90,7 +90,10 @@ export const notificationRouter = router({
   listInApp: protectedProcedure
     .input(z.object({ unreadOnly: z.boolean().optional() }).optional())
     .query(({ ctx, input }) =>
-      notif.listInApp(ctx.user.id, { unreadOnly: input?.unreadOnly })
+      notif.listInApp(ctx.user.id, {
+        unreadOnly: input?.unreadOnly,
+        propertyId: ctx.propertyId,
+      })
     ),
 
   markRead: protectedProcedure

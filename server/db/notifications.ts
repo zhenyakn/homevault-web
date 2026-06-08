@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, gt } from "drizzle-orm";
+import { and, desc, eq, isNull, gt, or } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import {
   users,
@@ -138,7 +138,7 @@ export async function recordDelivery(
 
 export async function listInApp(
   userId: number,
-  opts: { unreadOnly?: boolean; limit?: number } = {}
+  opts: { unreadOnly?: boolean; limit?: number; propertyId?: number } = {}
 ) {
   const db = await getDb();
   const conds = [
@@ -146,6 +146,17 @@ export async function listInApp(
     eq(notificationLog.channel, "inapp"),
     eq(notificationLog.status, "sent"),
   ];
+  // Scope to the active property when one is given. NULL-property rows are
+  // "global" (system/test sends, legacy rows) and surface under every property,
+  // so the demo/mock property's reminders never leak into a real property's feed.
+  if (opts.propertyId != null) {
+    conds.push(
+      or(
+        eq(notificationLog.propertyId, opts.propertyId),
+        isNull(notificationLog.propertyId)
+      )!
+    );
+  }
   if (opts.unreadOnly) conds.push(isNull(notificationLog.readAt));
   return db
     .select()

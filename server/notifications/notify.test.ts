@@ -79,6 +79,28 @@ describe("notify()", () => {
     );
   });
 
+  it("records the originating propertyId so the feed can be scoped", async () => {
+    vi.mocked(getEnabledChannels).mockResolvedValue(new Set(["email"]));
+    const ch = fake("email");
+
+    await notify(1, message, { channels: [ch], propertyId: 42 });
+
+    expect(recordDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ propertyId: 42, dedupeKey: "k1" })
+    );
+  });
+
+  it("defaults propertyId to null (global) when none is given", async () => {
+    vi.mocked(getEnabledChannels).mockResolvedValue(new Set(["email"]));
+    const ch = fake("email");
+
+    await notify(1, message, { channels: [ch] });
+
+    expect(recordDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({ propertyId: null })
+    );
+  });
+
   it("does not persist skipped outcomes (avoids daily noise)", async () => {
     vi.mocked(getEnabledChannels).mockResolvedValue(new Set(["email"]));
     const ch = fake("email", { configured: false });

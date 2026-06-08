@@ -689,6 +689,11 @@ export const notificationLog = mysqlTable(
     userId: int("userId")
       .notNull()
       .references(() => users.id),
+    // Property this notification belongs to. Nullable: NULL means "global"
+    // (system/test sends, or legacy rows logged before scoping) and shows under
+    // every property; a set value scopes the row to one property so the demo /
+    // mock property's reminders don't leak into a real property's feed.
+    propertyId: int("propertyId").references(() => properties.id),
     channel: mysqlEnum("channel", [
       "inapp",
       "push",
@@ -716,6 +721,8 @@ export const notificationLog = mysqlTable(
   },
   table => ({
     userIdx: index("notif_log_user_idx").on(table.userId),
+    // Scopes the in-app feed to the active property (NULL rows included as global).
+    propertyIdx: index("notif_log_property_idx").on(table.propertyId),
     // Idempotency: one row per (user, logical event, channel).
     dedupeIdx: index("notif_log_dedupe_idx").on(
       table.userId,

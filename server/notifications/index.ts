@@ -45,7 +45,7 @@ export const channels: NotificationChannel[] = [
 export async function notify(
   userId: number,
   message: ReminderMessage,
-  opts: { channels?: NotificationChannel[] } = {}
+  opts: { channels?: NotificationChannel[]; propertyId?: number | null } = {}
 ): Promise<ChannelResult[]> {
   const recipient = await getNotificationRecipient(userId);
   if (!recipient) return [];
@@ -61,6 +61,7 @@ export async function notify(
       if (result.status === "skipped") return;
       await recordDelivery({
         userId,
+        propertyId: opts.propertyId ?? null,
         channel: result.channel,
         category: payload.category,
         title: payload.title,
