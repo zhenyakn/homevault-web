@@ -365,7 +365,7 @@ export default function Inventory() {
                         setFormData({ ...formData, category: v })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -385,7 +385,7 @@ export default function Inventory() {
                         setFormData({ ...formData, condition: v })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -405,7 +405,7 @@ export default function Inventory() {
                         setFormData({ ...formData, assetType: v })
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
