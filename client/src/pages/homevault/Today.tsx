@@ -464,11 +464,11 @@ export default function Today() {
   return (
     <div className="mx-auto max-w-[1180px]">
       {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-[22px] font-bold tracking-tight text-hv-ink">
+      <div className="mb-7">
+        <h1 className="text-[32px] font-bold leading-tight tracking-[-0.03em] text-hv-ink">
           {greeting()}
         </h1>
-        <p className="mt-0.5 text-[13.5px] text-hv-muted">
+        <p className="mt-2 text-[14px] text-hv-muted">
           {s.propertyName && (
             <>
               <span className="text-hv-ink/70">{s.propertyName}</span>
@@ -480,12 +480,11 @@ export default function Today() {
       </div>
 
       {/* KPI row */}
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <MetricCard
           label={t("homevault.monthlySpend")}
           value={fmt(s.monthSpent)}
           tone="neutral"
-          icon={<Receipt className="h-4 w-4" />}
           helper={
             s.monthRemaining > 0
               ? t("homevault.leftVsBaseline", { amount: fmt(s.monthRemaining) })
@@ -497,7 +496,6 @@ export default function Today() {
           label={t("homevault.upcoming")}
           value={upcoming.length}
           tone="blue"
-          icon={<CalendarDays className="h-4 w-4" />}
           helper={t("homevault.paymentsThisWeek")}
           onClick={() => nav("/calendar")}
         />
@@ -505,7 +503,6 @@ export default function Today() {
           label={t("homevault.openRepairs")}
           value={openRepairs.length}
           tone={highPriority > 0 ? "orange" : "neutral"}
-          icon={<Wrench className="h-4 w-4" />}
           helper={
             highPriority > 0
               ? t("homevault.highPriorityCount", { count: highPriority })
@@ -517,14 +514,13 @@ export default function Today() {
           label={t("homevault.documents")}
           value={`${homeFilePct}%`}
           tone="green"
-          icon={<FileText className="h-4 w-4" />}
           helper={t("homevault.homeFileShort")}
           onClick={() => nav("/documents")}
         />
       </div>
 
       {/* Things to handle + Upcoming */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-3">
         <div className="lg:col-span-2">
           <ThingsToHandle
             overdue={s.overdueExpenses ?? []}
@@ -545,7 +541,7 @@ export default function Today() {
       </div>
 
       {/* Monthly cost + projects */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-3">
         <div className="lg:col-span-1">
           <SpendCard
             spent={s.monthSpent}

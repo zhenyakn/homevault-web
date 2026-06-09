@@ -268,10 +268,10 @@ export default function HVRepairs() {
       {/* Header */}
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-hv-ink">
+          <h1 className="text-[30px] font-bold tracking-[-0.03em] text-hv-ink">
             {t("homevault.repairsTitle")}
           </h1>
-          <p className="mt-0.5 text-[13.5px] text-hv-muted">
+          <p className="mt-1.5 text-[14px] text-hv-muted">
             {t("homevault.repairsSubtitle")}
           </p>
         </div>
@@ -306,20 +306,23 @@ export default function HVRepairs() {
           </div>
         </HVCard>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
           {columns.map(col => (
-            <div key={col.key}>
-              <div className="mb-2.5 flex items-center gap-2 px-1">
-                <h2 className="text-[12px] font-semibold uppercase tracking-widest text-hv-muted-soft">
+            <div
+              key={col.key}
+              className="rounded-[18px] border border-hv-border bg-hv-surface-muted p-3.5"
+            >
+              <div className="mb-3 flex items-center gap-2 px-0.5">
+                <h2 className="text-[15px] font-bold tracking-tight text-hv-ink">
                   {col.label}
                 </h2>
-                <span className="rounded-full bg-hv-surface-muted px-1.5 text-[11px] font-semibold text-hv-muted">
+                <span className="text-[13px] font-medium text-hv-muted-soft">
                   {col.items.length}
                 </span>
               </div>
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {col.items.length === 0 ? (
-                  <div className="rounded-[var(--hv-radius-md)] border border-dashed border-hv-border px-3 py-6 text-center text-[12px] text-hv-muted-soft">
+                  <div className="rounded-[16px] border border-dashed border-hv-border px-3 py-6 text-center text-[12px] text-hv-muted-soft">
                     {t("homevault.repairBoard.empty")}
                   </div>
                 ) : (

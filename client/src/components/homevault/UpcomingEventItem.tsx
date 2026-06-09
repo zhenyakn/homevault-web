@@ -1,5 +1,4 @@
 import { format } from "date-fns";
-import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type UpcomingEventItemProps = {
@@ -11,8 +10,9 @@ export type UpcomingEventItemProps = {
 };
 
 /**
- * A calm row for the "Upcoming" list — a calendar tile on the leading edge,
- * the commitment in the middle, and an optional amount/chevron trailing.
+ * A calm "Upcoming" row from the concept: a square day tile on the leading edge
+ * and the commitment beside it. Any amount/time lives in the subtitle, keeping
+ * the row uncluttered.
  */
 export function UpcomingEventItem({
   date,
@@ -27,30 +27,21 @@ export function UpcomingEventItem({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-3 rounded-[var(--hv-radius-md)] px-2 py-2 text-start transition-colors",
+        "grid w-full grid-cols-[50px_1fr] items-center gap-3 rounded-[14px] py-1.5 text-start transition-colors",
         onClick && "hover:bg-hv-surface-muted"
       )}
     >
-      <div className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-xl bg-hv-primary-soft">
-        <span className="text-[15px] font-extrabold leading-none text-hv-primary">
-          {format(d, "d")}
-        </span>
-        <span className="text-[8.5px] font-bold uppercase tracking-wide text-hv-primary/70">
-          {format(d, "MMM")}
-        </span>
+      <div className="flex h-[50px] w-[50px] items-center justify-center rounded-[14px] border border-hv-border bg-hv-surface-muted text-[18px] font-extrabold tracking-[-0.02em] text-hv-primary">
+        {format(d, "d")}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-hv-ink">{title}</p>
-        {subtitle && (
-          <p className="truncate text-[11.5px] text-hv-muted">{subtitle}</p>
+      <div className="min-w-0">
+        <p className="truncate text-[14px] font-semibold text-hv-ink">{title}</p>
+        {(subtitle || amount) && (
+          <p className="truncate text-[13px] text-hv-muted">
+            {[subtitle, amount].filter(Boolean).join(" · ")}
+          </p>
         )}
       </div>
-      {amount && (
-        <span className="shrink-0 text-[13px] font-semibold tabular-nums text-hv-ink">
-          {amount}
-        </span>
-      )}
-      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-hv-muted-soft" />
     </button>
   );
 }

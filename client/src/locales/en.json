@@ -874,6 +874,7 @@
   "homevault": {
     "homeFile": "Home file",
     "homeFileComplete": "Home file {{pct}}% complete",
+    "homeFilePercent": "{{pct}}% complete",
     "missing": "Missing",
     "thingsToHandle": "Things to handle",
     "thingsToHandleSub": "{{count}} items need attention",

@@ -234,10 +234,10 @@ export default function HVCalendar() {
       {/* Header */}
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-hv-ink">
+          <h1 className="text-[30px] font-bold tracking-[-0.03em] text-hv-ink">
             {t("calendar.title")}
           </h1>
-          <p className="mt-0.5 text-[13.5px] text-hv-muted">
+          <p className="mt-1.5 text-[14px] text-hv-muted">
             {t("homevault.calendarSubtitle")}
           </p>
         </div>
@@ -336,13 +336,11 @@ export default function HVCalendar() {
         <MetricCard
           label={t("calendar.thisMonth")}
           value={events.length}
-          icon={<CalendarDays className="h-4 w-4" />}
         />
         <MetricCard
           label={t("calendar.upcoming30")}
           value={upcomingEvents.length}
           tone="blue"
-          icon={<CalendarClock className="h-4 w-4" />}
         />
       </div>
 

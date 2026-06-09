@@ -865,6 +865,7 @@
   "homevault": {
     "homeFile": "תיק הבית",
     "homeFileComplete": "תיק הבית {{pct}}% הושלם",
+    "homeFilePercent": "{{pct}}% הושלמו",
     "missing": "חסר",
     "thingsToHandle": "דברים לטפל בהם",
     "thingsToHandleSub": "{{count}} פריטים דורשים תשומת לב",

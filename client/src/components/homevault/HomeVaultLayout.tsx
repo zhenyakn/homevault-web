@@ -219,7 +219,56 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
   );
 }
 
-// ── Theme Toggle ──────────────────────────────────────────────────────────────
+// ── Topbar property selector (warm pill) ───────────────────────────────────────
+
+function TopbarProperty() {
+  const { t } = useTranslation();
+  const { activePropertyId, switchProperty } = useProperty();
+  const { data: properties } = trpc.property.list.useQuery();
+  const [showAdd, setShowAdd] = useState(false);
+  const active =
+    properties?.find(p => p.id === activePropertyId) ?? properties?.[0];
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="flex h-11 max-w-[220px] items-center gap-2 rounded-full border border-hv-border bg-hv-surface px-4 text-[13px] font-medium text-hv-ink transition-colors hover:bg-hv-surface-muted focus:outline-none">
+            <Home className="h-4 w-4 shrink-0 text-hv-primary" />
+            <span className="truncate">{active?.houseName ?? "My Home"}</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-hv-muted-soft" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          {properties?.map(p => (
+            <DropdownMenuItem
+              key={p.id}
+              onClick={() => p.id !== activePropertyId && switchProperty(p.id)}
+              className="cursor-pointer"
+            >
+              <div className="me-2 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10">
+                <Home className="h-3 w-3 text-primary" />
+              </div>
+              <span className="flex-1 truncate">{p.houseName}</span>
+              {p.id === activePropertyId && (
+                <Check className="ms-2 h-3.5 w-3.5 shrink-0" />
+              )}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => setShowAdd(true)}
+            className="cursor-pointer"
+          >
+            <Plus className="me-2 h-4 w-4" />
+            {t("common.addProperty")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <AddPropertyDialog open={showAdd} onOpenChange={setShowAdd} />
+    </>
+  );
+}
 
 function ThemeToggle({ compact }: { compact?: boolean }) {
   const { theme, setTheme } = useTheme();
@@ -425,28 +474,24 @@ function DashboardLayoutContent({
           className={isRTL ? "border-l" : "border-r"}
           disableTransition={isResizing}
         >
-          {/* ── Header: logo + property ───────────────────────────────── */}
-          <SidebarHeader className="h-14 justify-center">
-            <div className="flex items-center gap-2 px-2 w-full">
-              {isCollapsed ? (
-                <button
-                  onClick={toggleSidebar}
-                  className="flex items-center justify-center w-full focus:outline-none"
-                  aria-label="Expand sidebar"
-                >
-                  <PropertySwitcher isCollapsed={true} />
-                </button>
-              ) : (
+          {/* ── Header: brand ─────────────────────────────────────────── */}
+          <SidebarHeader className="h-[60px] justify-center px-3">
+            <div className="flex w-full items-center gap-2.5">
+              <div
+                className="h-[34px] w-[34px] shrink-0 rounded-[12px]"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--hv-accent), #7fb093)",
+                }}
+              />
+              {!isCollapsed && (
                 <>
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary shrink-0">
-                    <Home className="h-4 w-4 text-primary-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <PropertySwitcher isCollapsed={false} />
-                  </div>
+                  <span className="flex-1 truncate text-[18px] font-extrabold tracking-[-0.02em] text-white">
+                    HomeVault
+                  </span>
                   <button
                     onClick={toggleSidebar}
-                    className="h-7 w-7 flex items-center justify-center hover:bg-sidebar-accent rounded-md transition-colors focus:outline-none shrink-0"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-white/10 focus:outline-none"
                     aria-label="Collapse sidebar"
                   >
                     {isRTL ? (
@@ -460,25 +505,23 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          {/* ── Nav groups ───────────────────────────────────────────── */}
-          <SidebarContent className="gap-0">
-            {navGroups.map(group => (
-              <div key={group.labelKey} className="mb-1">
-                {!isCollapsed && (
-                  <p className="px-4 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/35">
-                    {t(group.labelKey)}
-                  </p>
+          {/* ── Nav (flat) ───────────────────────────────────────────── */}
+          <SidebarContent className="gap-0 px-3 pt-3">
+            {navGroups.map((group, gi) => (
+              <div key={group.labelKey}>
+                {gi > 0 && !isCollapsed && (
+                  <div className="mx-1 my-2.5 border-t border-white/8" />
                 )}
-                <SidebarMenu className="px-2.5">
+                <SidebarMenu className="gap-1.5">
                   {group.items.map(item => (
                     <SidebarMenuItem key={item.path}>
                       <SidebarMenuButton
                         isActive={isActive(item.path)}
                         onClick={() => setLocation(item.path)}
                         tooltip={t(item.key)}
-                        className="h-9 rounded-2xl text-[13px] text-white/70 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#fffcf7] data-[active=true]:font-bold data-[active=true]:text-[#214e3d] data-[active=true]:shadow-sm data-[active=true]:hover:bg-[#fffcf7] data-[active=true]:hover:text-[#214e3d]"
+                        className="h-11 rounded-[16px] px-3.5 text-[14px] font-medium text-[#d6ddd6] hover:bg-white/8 hover:text-white data-[active=true]:bg-[#fffdf8] data-[active=true]:font-[750] data-[active=true]:text-[#214e3d] data-[active=true]:hover:bg-[#fffdf8] data-[active=true]:hover:text-[#214e3d]"
                       >
-                        <item.icon className="h-4 w-4" />
+                        <item.icon className="h-[18px] w-[18px]" />
                         <span>{t(item.key)}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -642,41 +685,31 @@ function DashboardLayoutContent({
           </div>
         )}
 
-        {/* Desktop topbar: breadcrumb + search */}
+        {/* Desktop topbar: integrated warm bar with rounded pills */}
         {!isMobile && (
-          <div className="flex h-[54px] items-center border-b bg-background px-5 gap-4 flex-shrink-0">
-            <div className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground select-none">
-              {pageMeta && (
-                <>
-                  <span>{t(pageMeta.sectionKey)}</span>
-                  <ChevronRight className="h-3 w-3 opacity-50" />
-                  <span className="text-foreground font-medium">
-                    {t(pageMeta.pageKey)}
-                  </span>
-                </>
-              )}
-            </div>
+          <div className="flex h-[76px] flex-shrink-0 items-center gap-3 px-9">
             <div className="flex-1" />
             <button
               type="button"
               onClick={handleSearchOpen}
-              className="flex h-8 items-center gap-2 rounded-full border bg-muted/40 px-3 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors min-w-[180px]"
+              className="flex h-11 min-w-[200px] items-center gap-2 rounded-full border border-hv-border bg-hv-surface px-4 text-hv-muted transition-colors hover:bg-hv-surface-muted"
               aria-label={t("search.dialogTitle")}
             >
-              <Search className="h-3.5 w-3.5 shrink-0" />
-              <span className="flex-1 text-xs text-start">
+              <Search className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-start text-[13px]">
                 {t("search.placeholder")}
               </span>
-              <kbd className="hidden sm:inline-flex items-center rounded border bg-background px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+              <kbd className="hidden items-center rounded border border-hv-border bg-hv-surface-muted px-1.5 py-0.5 font-mono text-[10px] text-hv-muted-soft sm:inline-flex">
                 ⌘K
               </kbd>
             </button>
+            <TopbarProperty />
             <QuickAddMenu>
               <button
                 type="button"
-                className="flex h-8 items-center gap-1.5 rounded-full bg-hv-primary px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-hv-primary-dark"
+                className="flex h-11 items-center gap-1.5 rounded-full bg-hv-primary px-[18px] text-[13px] font-bold text-white transition-colors hover:bg-hv-primary-dark"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">
                   {t("homevault.quickAdd")}
                 </span>
@@ -689,7 +722,7 @@ function DashboardLayoutContent({
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 p-4 pb-24 md:p-5 md:pb-5 outline-none"
+          className="flex-1 p-5 pb-24 md:p-8 md:pb-8 lg:p-9 outline-none"
         >
           {children}
         </main>

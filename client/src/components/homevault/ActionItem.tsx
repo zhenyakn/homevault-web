@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { StatusPill, type StatusTone } from "./StatusPill";
 
 export type ActionTone = "success" | "warning" | "danger" | "info" | "neutral";
 
@@ -14,26 +13,20 @@ export type ActionItemProps = {
   icon?: React.ReactNode;
 };
 
-const ACCENT: Record<ActionTone, string> = {
-  danger: "bg-hv-red",
-  warning: "bg-hv-orange",
-  info: "bg-hv-blue",
-  success: "bg-hv-primary",
-  neutral: "bg-hv-muted-soft",
-};
-
-const PILL_TONE: Record<ActionTone, StatusTone> = {
-  danger: "danger",
-  warning: "warning",
-  info: "info",
-  success: "success",
-  neutral: "neutral",
+// The action reads as a soft pill whose colour carries the urgency — matching
+// the concept (Pay = red, Upload/Review = amber, View = green).
+const PILL_CLASS: Record<ActionTone, string> = {
+  danger: "bg-hv-danger-bg text-hv-red",
+  warning: "bg-hv-warning-bg text-hv-orange",
+  info: "bg-[#eaf1f8] text-hv-blue",
+  success: "bg-hv-primary-soft text-hv-primary",
+  neutral: "bg-hv-primary-soft text-hv-primary",
 };
 
 /**
- * A single row inside "Things to handle" — the most important surface in the
- * app. A coloured rail signals urgency, the body explains the item, and a
- * single clear action sits on the trailing edge.
+ * A single row inside "Things to handle". Mirrors the reference exactly: a calm
+ * white card with the item on the left, an amount, and a coloured action pill —
+ * no left rail or icon chip, so the surface stays premium and uncluttered.
  */
 export function ActionItem({
   title,
@@ -43,39 +36,34 @@ export function ActionItem({
   tone = "neutral",
   actionLabel,
   onAction,
-  icon,
 }: ActionItemProps) {
   return (
-    <div className="flex items-center gap-3 rounded-[var(--hv-radius-md)] border border-hv-border bg-hv-surface p-3 transition-colors hover:bg-hv-surface-muted">
-      <span
-        className={cn("h-9 w-1 shrink-0 rounded-full", ACCENT[tone])}
-        aria-hidden
-      />
-      {icon && (
-        <span className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-hv-surface-muted text-hv-muted sm:flex">
-          {icon}
-        </span>
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13.5px] font-semibold text-hv-ink">
+    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-[16px] border border-hv-border bg-white px-3.5 py-3">
+      <div className="min-w-0">
+        <p className="truncate text-[14px] font-semibold text-hv-ink">
           {title}
         </p>
-        <div className="mt-0.5 flex items-center gap-2">
-          {status && <StatusPill tone={PILL_TONE[tone]}>{status}</StatusPill>}
-          {description && (
-            <p className="truncate text-[12px] text-hv-muted">{description}</p>
-          )}
-        </div>
+        {(description || status) && (
+          <p className="mt-1 truncate text-[12.5px] text-hv-muted">
+            {description}
+            {status && (
+              <span className="ms-1 font-medium text-hv-muted-soft">
+                · {status}
+              </span>
+            )}
+          </p>
+        )}
       </div>
-      {amount && (
-        <span className="shrink-0 text-[14px] font-bold tabular-nums text-hv-ink">
-          {amount}
-        </span>
-      )}
+      <span className="whitespace-nowrap text-[14px] font-bold tabular-nums text-hv-ink">
+        {amount}
+      </span>
       <button
         type="button"
         onClick={onAction}
-        className="shrink-0 rounded-lg border border-hv-border bg-hv-surface px-3 py-1.5 text-[12px] font-semibold text-hv-primary-dark transition-colors hover:bg-hv-primary-soft"
+        className={cn(
+          "whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-bold transition-opacity hover:opacity-80",
+          PILL_CLASS[tone]
+        )}
       >
         {actionLabel}
       </button>

@@ -288,11 +288,11 @@ function Section({
   if (count === 0) return null;
   return (
     <div className="mb-5">
-      <div className="mb-2.5 flex items-center gap-2 px-1">
-        <h2 className="text-[12px] font-semibold uppercase tracking-widest text-hv-muted-soft">
+      <div className="mb-3 flex items-center gap-2 px-1">
+        <h2 className="text-[15px] font-bold tracking-tight text-hv-ink">
           {title}
         </h2>
-        <span className="rounded-full bg-hv-surface-muted px-1.5 text-[11px] font-semibold text-hv-muted">
+        <span className="text-[13px] font-medium text-hv-muted-soft">
           {count}
         </span>
       </div>
@@ -383,10 +383,10 @@ export default function HVProjects() {
       {/* Header */}
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-hv-ink">
+          <h1 className="text-[30px] font-bold tracking-[-0.03em] text-hv-ink">
             {t("nav.projects")}
           </h1>
-          <p className="mt-0.5 text-[13.5px] text-hv-muted">
+          <p className="mt-1.5 text-[14px] text-hv-muted">
             {t("homevault.projectsSubtitle")}
           </p>
         </div>
@@ -427,13 +427,11 @@ export default function HVProjects() {
             <MetricCard
               label={t("upgrades.activeBudget")}
               value={formatCurrency(activeBudget)}
-              icon={<Wallet className="h-4 w-4" />}
             />
             <MetricCard
               label={t("upgrades.activeProjects")}
               value={inProgress.length}
               tone="blue"
-              icon={<FolderOpen className="h-4 w-4" />}
               helper={
                 planned.length > 0
                   ? `${planned.length} ${t("upgrades.planned")}`
@@ -444,7 +442,6 @@ export default function HVProjects() {
               label={t("upgrades.invested")}
               value={formatCurrency(investedTotal)}
               tone="green"
-              icon={<TrendingUp className="h-4 w-4" />}
               helper={
                 done.length > 0
                   ? `${done.length} ${t("upgrades.done")}`

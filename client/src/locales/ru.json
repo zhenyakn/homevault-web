@@ -872,6 +872,7 @@
   "homevault": {
     "homeFile": "Дело о доме",
     "homeFileComplete": "Дело о доме заполнено на {{pct}}%",
+    "homeFilePercent": "{{pct}}% заполнено",
     "missing": "Отсутствует",
     "thingsToHandle": "Требуют внимания",
     "thingsToHandleSub": "{{count}} пунктов требуют внимания",

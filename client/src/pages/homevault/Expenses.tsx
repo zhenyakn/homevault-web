@@ -294,10 +294,10 @@ export default function HVExpenses() {
       {/* Header */}
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-hv-ink">
+          <h1 className="text-[30px] font-bold tracking-[-0.03em] text-hv-ink">
             {t("nav.expenses")}
           </h1>
-          <p className="mt-0.5 text-[13.5px] text-hv-muted">
+          <p className="mt-1.5 text-[14px] text-hv-muted">
             {t("homevault.expensesSubtitle")}
           </p>
         </div>
@@ -486,25 +486,21 @@ export default function HVExpenses() {
         <MetricCard
           label={t("homevault.thisMonth")}
           value={formatCurrency(kpis.thisMonth)}
-          icon={<Receipt className="h-4 w-4" />}
         />
         <MetricCard
           label={t("expenses.monthlyRecurring")}
           value={formatCurrency(kpis.recurring)}
           tone="blue"
-          icon={<Repeat className="h-4 w-4" />}
         />
         <MetricCard
           label={t("expenses.unpaid")}
           value={formatCurrency(kpis.unpaid)}
           tone={kpis.unpaid > 0 ? "orange" : "neutral"}
-          icon={<AlertCircle className="h-4 w-4" />}
         />
         <MetricCard
           label={t("homevault.receiptsMissing")}
           value={kpis.receiptsMissing}
           tone={kpis.receiptsMissing > 0 ? "red" : "green"}
-          icon={<CalendarDays className="h-4 w-4" />}
         />
       </div>
 

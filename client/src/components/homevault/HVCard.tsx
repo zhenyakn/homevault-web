@@ -28,7 +28,7 @@ export function HVCard({
     <div
       className={cn(
         "h-full rounded-[var(--hv-radius-xl)] border border-hv-border bg-hv-surface shadow-[var(--hv-shadow-card)]",
-        flush ? "" : "p-5 md:p-6",
+        flush ? "" : "p-5",
         className
       )}
     >
@@ -36,18 +36,18 @@ export function HVCard({
         <div
           className={cn(
             "flex items-start justify-between gap-3",
-            flush ? "px-5 pt-5 md:px-6 md:pt-6" : "",
+            flush ? "px-5 pt-5" : "",
             children ? "mb-4" : ""
           )}
         >
           <div className="min-w-0">
             {eyebrow && (
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-hv-muted-soft">
+              <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-hv-muted">
                 {eyebrow}
               </p>
             )}
             {title && (
-              <h2 className="mt-0.5 truncate text-[15px] font-bold tracking-tight text-hv-ink">
+              <h2 className="mt-1 truncate text-[14px] font-semibold tracking-tight text-hv-ink">
                 {title}
               </h2>
             )}
