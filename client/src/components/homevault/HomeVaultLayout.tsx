@@ -134,9 +134,25 @@ const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
 };
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
-const DEFAULT_WIDTH = 240;
+const DEFAULT_WIDTH = 260;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 480;
+
+// Flat navigation for the HomeVault sidebar — the concept uses a single calm
+// list (no admin-style section groups). Primary items lead, Settings trails.
+type HVNavItem = { key: string; path: string };
+const HV_NAV: HVNavItem[] = [
+  { key: "nav.today", path: "/" },
+  { key: "nav.expenses", path: "/expenses" },
+  { key: "nav.repairs", path: "/repairs" },
+  { key: "nav.projects", path: "/upgrades" },
+  { key: "nav.documents", path: "/documents" },
+  { key: "nav.calendar", path: "/calendar" },
+  { key: "nav.loans", path: "/loans" },
+  { key: "nav.purchaseCosts", path: "/purchase-costs" },
+  { key: "nav.inventory", path: "/inventory" },
+  { key: "nav.wishlist", path: "/wishlist" },
+];
 
 const AVATAR_COLORS = [
   "bg-blue-500",
@@ -347,34 +363,28 @@ function DashboardLayoutContent({
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const { isRTL } = useLanguage();
+  const { theme, setTheme } = useTheme();
   const [location, setLocation] = useLocation();
-  const { state, toggleSidebar } = useSidebar();
-  const isCollapsed = state === "collapsed";
-  const [isResizing, setIsResizing] = useState(false);
-  const sidebarRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
   const { data: profiles } = trpc.profiles.list.useQuery();
   const { data: properties } = trpc.property.list.useQuery();
   const hasMultipleProperties = (properties?.length ?? 0) > 1;
 
+  // Flat nav with Portfolio surfaced only when there's more than one property.
+  const navItems: HVNavItem[] = hasMultipleProperties
+    ? [
+        ...HV_NAV,
+        { key: "nav.portfolio", path: "/portfolio" },
+        { key: "nav.settings", path: "/settings" },
+      ]
+    : [...HV_NAV, { key: "nav.settings", path: "/settings" }];
+
   const handleSearchOpen = () => {
     onSearchOpen?.();
   };
 
-  // Build nav groups, inserting Portfolio into Overview when needed
-  const navGroups: NavGroup[] = NAV_GROUPS.map(g => {
-    if (g.labelKey !== "nav.group.overview") return g;
-    const items = hasMultipleProperties
-      ? [
-          ...g.items,
-          { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
-        ]
-      : g.items;
-    return { ...g, items };
-  });
-
-  // Breadcrumb lookup
+  // Active-page lookup (used by the mobile topbar label).
   const pathKey =
     Object.keys(PAGE_META).find(p =>
       p === "/"
@@ -387,34 +397,6 @@ function DashboardLayoutContent({
     path === "/"
       ? location === "/"
       : location === path || location.startsWith(path + "/");
-
-  useEffect(() => {
-    if (isCollapsed) setIsResizing(false);
-  }, [isCollapsed]);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
-      const rect = sidebarRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const newWidth = isRTL ? rect.right - e.clientX : e.clientX - rect.left;
-      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH)
-        setSidebarWidth(newWidth);
-    };
-    const handleMouseUp = () => setIsResizing(false);
-    if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    }
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, [isResizing, setSidebarWidth, isRTL]);
 
   return (
     <>
@@ -430,146 +412,99 @@ function DashboardLayoutContent({
       >
         {t("nav.skipToContent")}
       </a>
-      <div className="relative" ref={sidebarRef}>
+      <div className="relative">
         <Sidebar
-          collapsible="icon"
+          collapsible="offcanvas"
           side={isRTL ? "right" : "left"}
-          className={isRTL ? "border-l" : "border-r"}
-          disableTransition={isResizing}
+          className="border-0"
         >
-          {/* ── Header: brand ─────────────────────────────────────────── */}
-          <SidebarHeader className="h-[60px] justify-center px-3">
-            <div className="flex w-full items-center gap-2.5">
+          {/* ── Brand ─────────────────────────────────────────────────── */}
+          <SidebarHeader className="px-[22px] pb-0 pt-7">
+            <div className="mb-9 flex items-center gap-3">
               <div
-                className="h-[34px] w-[34px] shrink-0 rounded-[12px]"
+                className="h-[38px] w-[38px] shrink-0 rounded-[13px]"
                 style={{
                   background:
                     "linear-gradient(135deg, var(--hv-accent), #7fb093)",
                 }}
               />
-              {!isCollapsed && (
-                <>
-                  <span className="flex-1 truncate text-[18px] font-extrabold tracking-[-0.02em] text-white">
-                    HomeVault
-                  </span>
-                  <button
-                    onClick={toggleSidebar}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-white/10 focus:outline-none"
-                    aria-label="Collapse sidebar"
-                  >
-                    {isRTL ? (
-                      <PanelRight className="h-3.5 w-3.5 text-white/50" />
-                    ) : (
-                      <PanelLeft className="h-3.5 w-3.5 text-white/50" />
-                    )}
-                  </button>
-                </>
-              )}
+              <span className="text-[22px] font-extrabold tracking-[-0.02em] text-white">
+                HomeVault
+              </span>
             </div>
           </SidebarHeader>
 
-          {/* ── Nav (flat) ───────────────────────────────────────────── */}
-          <SidebarContent className="gap-0 px-3 pt-3">
-            {navGroups.map((group, gi) => (
-              <div key={group.labelKey}>
-                {gi > 0 && !isCollapsed && (
-                  <div className="mx-1 my-2.5 border-t border-white/8" />
-                )}
-                <SidebarMenu className="gap-1.5">
-                  {group.items.map(item => (
-                    <SidebarMenuItem key={item.path}>
-                      <SidebarMenuButton
-                        isActive={isActive(item.path)}
-                        onClick={() => setLocation(item.path)}
-                        tooltip={t(item.key)}
-                        className="h-11 rounded-[16px] px-3.5 text-[14px] font-medium text-[#d6ddd6] hover:bg-white/8 hover:text-white data-[active=true]:bg-[#fffdf8] data-[active=true]:font-[750] data-[active=true]:text-[#214e3d] data-[active=true]:hover:bg-[#fffdf8] data-[active=true]:hover:text-[#214e3d]"
-                      >
-                        <item.icon className="h-[18px] w-[18px]" />
-                        <span>{t(item.key)}</span>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </div>
-            ))}
-
-            {/* Household members (multi-user) */}
-            {!isCollapsed && profiles && profiles.length > 1 && (
-              <div className="px-4 pt-4 pb-2">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35 mb-2">
-                  {t("common.household")}
-                </p>
-                <div className="space-y-1">
-                  {profiles.map((profile: any, index: number) => (
-                    <div
-                      key={profile.id}
-                      className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
-                        profile.id === user?.id
-                          ? "bg-white/10 text-white"
-                          : "text-white/60"
-                      }`}
-                    >
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback
-                          className={`text-[10px] text-white ${getAvatarColor(index)}`}
-                        >
-                          {getInitials(profile.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="truncate">
-                        {profile.name || "Unknown"}
-                      </span>
-                      {profile.id === user?.id && (
-                        <Check className="h-3 w-3 ml-auto shrink-0" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* ── Nav (flat, calm — matches the concept) ────────────────── */}
+          <SidebarContent className="overflow-y-auto px-[22px] py-0">
+            <SidebarMenu className="gap-2">
+              {navItems.map(item => (
+                <SidebarMenuItem key={item.path}>
+                  <SidebarMenuButton
+                    isActive={isActive(item.path)}
+                    onClick={() => setLocation(item.path)}
+                    className="h-auto rounded-[16px] px-[14px] py-[11px] text-[14px] font-normal text-[#d6ddd6] transition-colors hover:bg-white/[0.08] hover:text-white data-[active=true]:bg-[#FFFCF7] data-[active=true]:font-bold data-[active=true]:text-[#214E3D] data-[active=true]:shadow-none data-[active=true]:hover:bg-[#FFFCF7] data-[active=true]:hover:text-[#214E3D]"
+                  >
+                    <span>{t(item.key)}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
           </SidebarContent>
 
-          {/* ── Footer: home file + theme + user ──────────────────────── */}
-          <SidebarFooter className="p-3">
+          {/* ── Footer: home-file widget + compact account ────────────── */}
+          <SidebarFooter className="px-[22px] pb-7 pt-4">
             {/* TODO: replace placeholder completeness with real document-coverage
                 data once the documents backend lands. */}
-            {!isCollapsed && (
-              <HomeFileCompleteness
-                compact
-                percentage={72}
-                onClick={() => setLocation("/documents")}
-                className="mb-1"
-              />
-            )}
-            <ThemeToggle />
+            <HomeFileCompleteness
+              compact
+              percentage={72}
+              onClick={() => setLocation("/documents")}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button
-                  className={`flex items-center gap-3 rounded-xl px-1 py-1 hover:bg-white/5 transition-colors w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isCollapsed ? "justify-center" : "text-start"}`}
-                >
-                  <Avatar className="h-9 w-9 border border-white/10 shrink-0">
-                    <AvatarFallback className="bg-white/10 text-xs font-medium text-white">
+                <button className="mt-3 flex w-full items-center gap-2.5 rounded-[14px] px-1.5 py-1.5 text-start transition-colors hover:bg-white/[0.06] focus:outline-none">
+                  <Avatar className="h-8 w-8 shrink-0 border border-white/10">
+                    <AvatarFallback className="bg-white/10 text-[11px] font-medium text-white">
                       {getInitials(user?.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none text-white">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold leading-none text-white">
                       {user?.name || "-"}
                     </p>
-                    <p className="text-xs text-white/45 truncate mt-1.5">
+                    <p className="mt-1 truncate text-[11px] leading-none text-white/45">
                       {user?.email || "-"}
                     </p>
                   </div>
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-white/40" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" side="top" className="w-56">
+                <div className="flex gap-1 p-1">
+                  {(
+                    [
+                      { v: "light", Icon: Sun },
+                      { v: "dark", Icon: Moon },
+                      { v: "system", Icon: Monitor },
+                    ] as const
+                  ).map(({ v, Icon }) => (
+                    <button
+                      key={v}
+                      onClick={() => setTheme(v)}
+                      title={v}
+                      className={`flex flex-1 items-center justify-center rounded-md py-1.5 transition-colors ${
+                        theme === v
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-accent/50"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </button>
+                  ))}
+                </div>
+                <DropdownMenuSeparator />
                 {profiles && profiles.length > 1 && (
                   <>
-                    <div className="px-2 py-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        {t("common.household")}
-                      </p>
-                    </div>
                     {profiles.map((profile: any, index: number) => (
                       <DropdownMenuItem
                         key={profile.id}
@@ -604,15 +539,6 @@ function DashboardLayoutContent({
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
-
-        {/* Resize handle */}
-        <div
-          className={`absolute top-0 ${isRTL ? "left-0" : "right-0"} w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
-          onMouseDown={() => {
-            if (!isCollapsed) setIsResizing(true);
-          }}
-          style={{ zIndex: 50 }}
-        />
       </div>
 
       <SidebarInset>
