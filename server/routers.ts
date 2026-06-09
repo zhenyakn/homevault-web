@@ -96,14 +96,23 @@ const loanSchema = createInsertSchema(loans, {
   name: z.string().optional(),
   currentBalance: z.number().int().optional(),
   originalAmount: z.number().int().positive(),
-  startDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
-    .optional(),
-  endDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  // Both dates are optional. The client sends "" when a date input is left
+  // blank, so coerce empty strings to undefined before the regex runs —
+  // otherwise an omitted (optional) Due date fails the YYYY-MM-DD check.
+  startDate: z.preprocess(
+    v => (v === "" ? undefined : v),
+    z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
+      .optional()
+  ),
+  endDate: z.preprocess(
+    v => (v === "" ? undefined : v),
+    z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
+      .optional()
+  ),
   attachments: attachmentSchema,
 }).omit({ ...SERVER_FIELDS });
 
