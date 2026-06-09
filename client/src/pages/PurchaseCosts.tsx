@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { asArray, formatCurrency, formatDate } from "@/lib/utils";
+import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
+import { MetricCard } from "@/components/homevault";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +41,7 @@ const CATEGORIES = [
 
 export default function PurchaseCosts() {
   const { t } = useTranslation();
+  const { enabled: hv } = useHomeVaultUI();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -333,28 +336,47 @@ export default function PurchaseCosts() {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("purchaseCosts.totalCosts")}
-          </p>
-          <p className="text-xl font-semibold tabular-nums mt-1">
-            {formatCurrency(totalCosts)}
-          </p>
+      {hv ? (
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+          <MetricCard
+            label={t("purchaseCosts.totalCosts")}
+            value={formatCurrency(totalCosts)}
+          />
+          <MetricCard label={t("common.entries")} value={numItems} tone="blue" />
+          <MetricCard
+            label={t("purchaseCosts.largestItem")}
+            value={formatCurrency(largestCost)}
+            tone="gold"
+          />
         </div>
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">{t("common.entries")}</p>
-          <p className="text-xl font-semibold tabular-nums mt-1">{numItems}</p>
+      ) : (
+        <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("purchaseCosts.totalCosts")}
+            </p>
+            <p className="text-xl font-semibold tabular-nums mt-1">
+              {formatCurrency(totalCosts)}
+            </p>
+          </div>
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("common.entries")}
+            </p>
+            <p className="text-xl font-semibold tabular-nums mt-1">
+              {numItems}
+            </p>
+          </div>
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("purchaseCosts.largestItem")}
+            </p>
+            <p className="text-xl font-semibold tabular-nums mt-1">
+              {formatCurrency(largestCost)}
+            </p>
+          </div>
         </div>
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("purchaseCosts.largestItem")}
-          </p>
-          <p className="text-xl font-semibold tabular-nums mt-1">
-            {formatCurrency(largestCost)}
-          </p>
-        </div>
-      </div>
+      )}
 
       {list.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
+import { HVPageHeader } from "@/components/homevault";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +36,7 @@ function fmt(amount: number, currencyCode: string) {
 export default function Portfolio() {
   const { data: properties, isLoading } = trpc.dashboard.portfolio.useQuery();
   const { activePropertyId, switchProperty } = useProperty();
+  const { enabled: hv } = useHomeVaultUI();
   const [, navigate] = useLocation();
   const [addOpen, setAddOpen] = useState(false);
 
@@ -66,13 +69,22 @@ export default function Portfolio() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Portfolio</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {properties.length}{" "}
-          {properties.length === 1 ? "property" : "properties"}
-        </p>
-      </div>
+      {hv ? (
+        <HVPageHeader
+          title="Portfolio"
+          subtitle={`${properties.length} ${
+            properties.length === 1 ? "property" : "properties"
+          }`}
+        />
+      ) : (
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Portfolio</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            {properties.length}{" "}
+            {properties.length === 1 ? "property" : "properties"}
+          </p>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {properties.map(prop => {

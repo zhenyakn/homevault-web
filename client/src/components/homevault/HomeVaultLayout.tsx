@@ -57,7 +57,20 @@ import {
   Wrench,
 } from "lucide-react";
 import { QuickAddMenu } from "@/components/homevault/QuickAddMenu";
-import { HVChromeProvider } from "@/components/homevault/HVChrome";
+import { HVChromeProvider, HVTopActions } from "@/components/homevault/HVChrome";
+
+// Routes whose page renders its own HVPageHeader (which already includes the
+// global action cluster). Every other route gets the cluster from the layout.
+const HV_HEADER_ROUTES = [
+  "/",
+  "/expenses",
+  "/repairs",
+  "/upgrades",
+  "/calendar",
+  "/documents",
+  "/loans",
+  "/portfolio",
+];
 import { HomeFileCompleteness } from "@/components/homevault/HomeFileCompleteness";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -635,14 +648,21 @@ function DashboardLayoutContent({
           </div>
         )}
 
-        {/* Desktop: search / property / add live in each page header (HVPageHeader),
-            on the same row as the title — matching the concept's `.top`. */}
+        {/* Desktop: pages that use HVPageHeader render the search / property /
+            add cluster inline with their title (concept `.top`). Pages that
+            don't (detail/settings/etc.) get the same cluster from here so the
+            chrome stays consistent. */}
         <main
           id="main-content"
           tabIndex={-1}
           className="flex-1 p-5 pb-24 md:px-9 md:pb-9 md:pt-7 outline-none"
         >
           <HVChromeProvider openSearch={handleSearchOpen}>
+            {!isMobile && !HV_HEADER_ROUTES.includes(location) && (
+              <div className="mb-6 flex justify-end">
+                <HVTopActions />
+              </div>
+            )}
             {children}
           </HVChromeProvider>
         </main>
