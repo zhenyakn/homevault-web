@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
+import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
+import { MetricCard, HVPageHeader } from "@/components/homevault";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +48,7 @@ interface WishlistItem {
 
 export default function Wishlist() {
   const { t } = useTranslation();
+  const { enabled: hv } = useHomeVaultUI();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -247,27 +250,54 @@ export default function Wishlist() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{t("wishlist.title")}</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-3.5 w-3.5 me-1.5" />
-            {t("common.exportCsv")}
-          </Button>
-          <Dialog
-            open={isDialogOpen}
-            onOpenChange={open => {
-              if (!open) closeDialog();
-              else setIsDialogOpen(true);
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-3.5 w-3.5 me-1.5" />
+      {hv ? (
+        <HVPageHeader
+          title={t("wishlist.title")}
+          hideQuickAdd
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={handleExportCSV}
+                className="h-11 rounded-full px-[18px]"
+              >
+                <Download className="h-3.5 w-3.5 me-1.5" />
+                {t("common.exportCsv")}
+              </Button>
+              <Button
+                onClick={() => setIsDialogOpen(true)}
+                className="h-11 rounded-full px-[18px]"
+              >
+                <Plus className="me-1.5 h-4 w-4" />
                 {t("wishlist.addItem")}
               </Button>
-            </DialogTrigger>
-            <DialogContent>
+            </>
+          }
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">{t("wishlist.title")}</h1>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+              <Download className="h-3.5 w-3.5 me-1.5" />
+              {t("common.exportCsv")}
+            </Button>
+            <Button size="sm" onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-3.5 w-3.5 me-1.5" />
+              {t("wishlist.addItem")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={open => {
+          if (!open) closeDialog();
+          else setIsDialogOpen(true);
+        }}
+      >
+        <DialogContent>
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? t("wishlist.editItem") : t("wishlist.addItem")}
@@ -374,36 +404,50 @@ export default function Wishlist() {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+      </Dialog>
 
-      <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("wishlist.totalItems")}
-          </p>
-          <p className="text-xl font-semibold tabular-nums mt-1">
-            {totalItems}
-          </p>
+      {hv ? (
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+          <MetricCard label={t("wishlist.totalItems")} value={totalItems} />
+          <MetricCard
+            label={t("wishlist.estimatedTotal")}
+            value={formatCurrency(totalEstimatedCost)}
+            tone="blue"
+          />
+          <MetricCard
+            label={t("wishlist.highPriority")}
+            value={highPriorityCount}
+            tone={highPriorityCount > 0 ? "orange" : "neutral"}
+          />
         </div>
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("wishlist.estimatedTotal")}
-          </p>
-          <p className="text-xl font-semibold tabular-nums mt-1">
-            {formatCurrency(totalEstimatedCost)}
-          </p>
+      ) : (
+        <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("wishlist.totalItems")}
+            </p>
+            <p className="text-xl font-semibold tabular-nums mt-1">
+              {totalItems}
+            </p>
+          </div>
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("wishlist.estimatedTotal")}
+            </p>
+            <p className="text-xl font-semibold tabular-nums mt-1">
+              {formatCurrency(totalEstimatedCost)}
+            </p>
+          </div>
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("wishlist.highPriority")}
+            </p>
+            <p className="text-xl font-semibold tabular-nums mt-1">
+              {highPriorityCount}
+            </p>
+          </div>
         </div>
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("wishlist.highPriority")}
-          </p>
-          <p className="text-xl font-semibold tabular-nums mt-1">
-            {highPriorityCount}
-          </p>
-        </div>
-      </div>
+      )}
 
       {sortedItems.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">

@@ -6,13 +6,24 @@ import { useHashLocation } from "wouter/use-hash-location";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import {
+  HomeVaultUIProvider,
+  useHomeVaultUI,
+} from "./contexts/HomeVaultUIContext";
 import { useAuth } from "./_core/hooks/useAuth";
 import { trpc } from "./lib/trpc";
 import { getLoginUrl } from "./const";
 import DashboardLayout from "./components/DashboardLayout";
+import HomeVaultLayout from "./components/homevault/HomeVaultLayout";
 import Dashboard from "./pages/Dashboard";
+import Today from "./pages/homevault/Today";
 import Expenses from "./pages/Expenses";
+import HVExpenses from "./pages/homevault/Expenses";
 import Repairs from "./pages/Repairs";
+import HVRepairs from "./pages/homevault/Repairs";
+import HVProjects from "./pages/homevault/Projects";
+import HVCalendar from "./pages/homevault/Calendar";
+import Documents from "./pages/Documents";
 import Upgrades from "./pages/Upgrades";
 import Loans from "./pages/Loans";
 import Wishlist from "./pages/Wishlist";
@@ -140,6 +151,7 @@ function Spinner() {
 
 function AppRouter() {
   const { isAuthenticated, loading } = useAuth();
+  const { enabled: hvUi } = useHomeVaultUI();
   const search = useSearch();
 
   const { data: noAuthData } = trpc.system.noAuth.useQuery(undefined, {
@@ -153,6 +165,14 @@ function AppRouter() {
   }
 
   if (isAuthenticated) {
+    // Opt-in HomeVault personal-premium UI. Defaults to the original design.
+    const Layout = hvUi ? HomeVaultLayout : DashboardLayout;
+    const HomePage = hvUi ? Today : Dashboard;
+    const ExpensesPage = hvUi ? HVExpenses : Expenses;
+    const RepairsPage = hvUi ? HVRepairs : Repairs;
+    const ProjectsPage = hvUi ? HVProjects : Upgrades;
+    const CalendarPage = hvUi ? HVCalendar : Calendar;
+
     return (
       <>
         <SearchModal
@@ -163,20 +183,21 @@ function AppRouter() {
           results={search.results}
           isFetching={search.isFetching}
         />
-        <DashboardLayout onSearchOpen={() => search.setOpen(true)}>
+        <Layout onSearchOpen={() => search.setOpen(true)}>
           <Switch>
-            <Route path="/" component={Dashboard} />
+            <Route path="/" component={HomePage} />
             <Route path="/property" component={PropertyDashboard} />
-            <Route path="/expenses" component={Expenses} />
-            <Route path="/repairs" component={Repairs} />
+            <Route path="/expenses" component={ExpensesPage} />
+            <Route path="/repairs" component={RepairsPage} />
             <Route path="/repairs/:id" component={RepairDetail} />
-            <Route path="/upgrades" component={Upgrades} />
+            <Route path="/documents" component={Documents} />
+            <Route path="/upgrades" component={ProjectsPage} />
             <Route path="/upgrades/:id" component={UpgradeDetail} />
             <Route path="/loans" component={Loans} />
             <Route path="/wishlist" component={Wishlist} />
             <Route path="/purchase-costs" component={PurchaseCosts} />
             <Route path="/inventory" component={Inventory} />
-            <Route path="/calendar" component={Calendar} />
+            <Route path="/calendar" component={CalendarPage} />
             <Route path="/portfolio" component={Portfolio} />
             <Route path="/settings" component={Settings} />
             <Route path="/settings/:section" component={Settings} />
@@ -184,7 +205,7 @@ function AppRouter() {
             <Route path="/404" component={NotFound} />
             <Route component={NotFound} />
           </Switch>
-        </DashboardLayout>
+        </Layout>
       </>
     );
   }
@@ -203,12 +224,14 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="system">
         <LanguageProvider>
-          <TooltipProvider>
-            <Toaster />
-            <WouterRouter hook={useHashLocation}>
-              <AppRouter />
-            </WouterRouter>
-          </TooltipProvider>
+          <HomeVaultUIProvider>
+            <TooltipProvider>
+              <Toaster />
+              <WouterRouter hook={useHashLocation}>
+                <AppRouter />
+              </WouterRouter>
+            </TooltipProvider>
+          </HomeVaultUIProvider>
         </LanguageProvider>
       </ThemeProvider>
     </ErrorBoundary>

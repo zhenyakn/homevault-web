@@ -6,6 +6,8 @@ type Loan = RouterOutputs["loans"]["list"][number];
 type Repayment = { date: string; amount: number };
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { computeLoanProgress } from "@shared/loanProgress";
+import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
+import { HVPageHeader, MetricCard } from "@/components/homevault";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +64,7 @@ function RepaymentChips({ repayments }: { repayments: Repayment[] }) {
 
 export default function Loans() {
   const { t } = useTranslation();
+  const { enabled: hv } = useHomeVaultUI();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isRepaymentDialogOpen, setIsRepaymentDialogOpen] = useState(false);
@@ -389,73 +392,118 @@ export default function Loans() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{t("loans.title")}</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-3.5 w-3.5 me-1.5" />
-            {t("common.exportCsv")}
-          </Button>
-          <Dialog
-            open={isAddDialogOpen}
-            onOpenChange={open => {
-              setIsAddDialogOpen(open);
-              if (!open) resetForm();
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="me-2 h-4 w-4" />
+      {hv ? (
+        <HVPageHeader
+          title={t("loans.title")}
+          hideQuickAdd
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={handleExportCSV}
+                className="h-11 rounded-full px-[18px]"
+              >
+                <Download className="h-3.5 w-3.5 me-1.5" />
+                {t("common.exportCsv")}
+              </Button>
+              <Button
+                onClick={() => setIsAddDialogOpen(true)}
+                className="h-11 rounded-full px-[18px]"
+              >
+                <Plus className="me-1.5 h-4 w-4" />
                 {t("loans.addLoan")}
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>{t("loans.addNewLoan")}</DialogTitle>
-              </DialogHeader>
-              {loanForm}
-              <Button
-                type="button"
-                className="w-full mt-2"
-                disabled={createMutation.isPending}
-                onClick={submitLoanForm}
-              >
-                {createMutation.isPending && (
-                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                )}
-                {t("loans.saveLoan")}
-              </Button>
-            </DialogContent>
-          </Dialog>
+            </>
+          }
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">{t("loans.title")}</h1>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+              <Download className="h-3.5 w-3.5 me-1.5" />
+              {t("common.exportCsv")}
+            </Button>
+            <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="me-2 h-4 w-4" />
+              {t("loans.addLoan")}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("loans.totalBorrowed")}
-          </p>
-          <p className="text-xl font-semibold tabular-nums mt-1">
-            {formatCurrency(totalBorrowed)}
-          </p>
+      {/* Add-loan dialog (controlled; opened from either header variant) */}
+      <Dialog
+        open={isAddDialogOpen}
+        onOpenChange={open => {
+          setIsAddDialogOpen(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{t("loans.addNewLoan")}</DialogTitle>
+          </DialogHeader>
+          {loanForm}
+          <Button
+            type="button"
+            className="w-full mt-2"
+            disabled={createMutation.isPending}
+            onClick={submitLoanForm}
+          >
+            {createMutation.isPending && (
+              <Loader2 className="me-2 h-4 w-4 animate-spin" />
+            )}
+            {t("loans.saveLoan")}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {hv ? (
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+          <MetricCard
+            label={t("loans.totalBorrowed")}
+            value={formatCurrency(totalBorrowed)}
+          />
+          <MetricCard
+            label={t("loans.totalRepaid")}
+            value={formatCurrency(totalRepaid)}
+            tone="green"
+          />
+          <MetricCard
+            label={t("loans.outstanding")}
+            value={formatCurrency(outstandingBalance)}
+            tone="orange"
+          />
         </div>
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("loans.totalRepaid")}
-          </p>
-          <p className="text-xl font-semibold tabular-nums mt-1">
-            {formatCurrency(totalRepaid)}
-          </p>
+      ) : (
+        <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("loans.totalBorrowed")}
+            </p>
+            <p className="text-xl font-semibold tabular-nums mt-1">
+              {formatCurrency(totalBorrowed)}
+            </p>
+          </div>
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("loans.totalRepaid")}
+            </p>
+            <p className="text-xl font-semibold tabular-nums mt-1">
+              {formatCurrency(totalRepaid)}
+            </p>
+          </div>
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("loans.outstanding")}
+            </p>
+            <p className="text-xl font-semibold tabular-nums mt-1">
+              {formatCurrency(outstandingBalance)}
+            </p>
+          </div>
         </div>
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("loans.outstanding")}
-          </p>
-          <p className="text-xl font-semibold tabular-nums mt-1">
-            {formatCurrency(outstandingBalance)}
-          </p>
-        </div>
-      </div>
+      )}
 
       {loans?.length === 0 ? (
         <div className="border border-border rounded-lg px-4 py-12 text-center">

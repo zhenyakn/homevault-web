@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -41,6 +40,69 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* HomeVault personal-premium palette — exposed as Tailwind utilities
+     (bg-hv-surface, text-hv-ink, border-hv-border, …). Available app-wide, but
+     only used by the opt-in HomeVault UI components. */
+  --color-hv-bg: var(--hv-bg);
+  --color-hv-bg-soft: var(--hv-bg-soft);
+  --color-hv-surface: var(--hv-surface);
+  --color-hv-surface-muted: var(--hv-surface-muted);
+  --color-hv-ink: var(--hv-ink);
+  --color-hv-muted: var(--hv-muted);
+  --color-hv-muted-soft: var(--hv-muted-soft);
+  --color-hv-border: var(--hv-border);
+  --color-hv-sidebar: var(--hv-sidebar);
+  --color-hv-sidebar-soft: var(--hv-sidebar-soft);
+  --color-hv-sidebar-border: var(--hv-sidebar-border);
+  --color-hv-primary: var(--hv-primary);
+  --color-hv-primary-dark: var(--hv-primary-dark);
+  --color-hv-primary-soft: var(--hv-primary-soft);
+  --color-hv-accent: var(--hv-accent);
+  --color-hv-blue: var(--hv-blue);
+  --color-hv-green: var(--hv-green);
+  --color-hv-orange: var(--hv-orange);
+  --color-hv-red: var(--hv-red);
+  --color-hv-warning-bg: var(--hv-warning-bg);
+  --color-hv-danger-bg: var(--hv-danger-bg);
+  --color-hv-item: var(--hv-item);
+}
+
+:root {
+  /* ── HomeVault personal-premium tokens (raw values) ─────────────────────
+     The semantic shadcn tokens stay at their original values by default; the
+     opt-in `.hv-ui` class below remaps them to this palette. */
+  --hv-bg: #f4f1ea;
+  --hv-bg-soft: #ece7de;
+  --hv-surface: #fffdf8;
+  --hv-surface-muted: #f8f5ee;
+  --hv-ink: #1f2933;
+  --hv-muted: #6b7280;
+  --hv-muted-soft: #8b8e91;
+  --hv-border: #e3ded4;
+  --hv-sidebar: #17211b;
+  --hv-sidebar-soft: #223126;
+  --hv-sidebar-border: #34483b;
+  --hv-primary: #2f6f55;
+  --hv-primary-dark: #214e3d;
+  --hv-primary-soft: #eef5ef;
+  --hv-accent: #d6a85d;
+  --hv-blue: #3b6ea8;
+  --hv-green: #2f7a5a;
+  --hv-orange: #c47b38;
+  --hv-red: #b84e4e;
+  --hv-warning-bg: #f7eee2;
+  --hv-danger-bg: #f8e9e7;
+  /* Inner row/ticket surface — pure white in light, a distinct dark surface in
+     dark so item text stays legible on cards and board columns. */
+  --hv-item: #ffffff;
+  --hv-radius-sm: 10px;
+  --hv-radius-md: 14px;
+  --hv-radius-lg: 18px;
+  --hv-radius-xl: 22px;
+  --hv-radius-2xl: 28px;
+  --hv-shadow-card: 0 8px 22px rgba(31, 41, 51, 0.035);
+  --hv-shadow-panel: 0 18px 60px rgba(38, 30, 18, 0.1);
 }
 
 :root {
@@ -114,6 +176,103 @@
   --sidebar-accent-foreground: oklch(0.75 0.1 155);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.58 0.115 155);
+
+  /* HomeVault tokens, dark variants — keep the hv-* utilities coherent when the
+     opt-in HomeVault UI is used in dark mode. */
+  --hv-bg: #14191a;
+  --hv-bg-soft: #1a2120;
+  --hv-surface: #1b2321;
+  --hv-surface-muted: #232b29;
+  --hv-ink: #e7ece9;
+  --hv-muted: #9aa3a0;
+  --hv-muted-soft: #7c847f;
+  --hv-border: #2c3531;
+  --hv-primary: #4f9f7e;
+  --hv-primary-dark: #3c8064;
+  --hv-primary-soft: #1f2c26;
+  --hv-warning-bg: #2a2419;
+  --hv-danger-bg: #2c1f1d;
+  --hv-item: #2a332f;
+}
+
+/* ── Opt-in HomeVault personal-premium theme ────────────────────────────────
+   Applied by adding `hv-ui` to <html> (see HomeVaultUIContext). Remaps the
+   semantic tokens to the warm/green palette so shared shadcn primitives inherit
+   the identity. The deep-green sidebar is shared across light and dark. */
+.hv-ui {
+  --background: var(--hv-bg);
+  --foreground: var(--hv-ink);
+  --card: var(--hv-surface);
+  --card-foreground: var(--hv-ink);
+  --popover: var(--hv-surface);
+  --popover-foreground: var(--hv-ink);
+  --primary: var(--hv-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--hv-surface-muted);
+  --secondary-foreground: var(--hv-primary-dark);
+  --muted: var(--hv-surface-muted);
+  --muted-foreground: var(--hv-muted);
+  --accent: var(--hv-primary-soft);
+  --accent-foreground: var(--hv-primary-dark);
+  --border: var(--hv-border);
+  --input: var(--hv-border);
+  --ring: var(--hv-primary);
+  --sidebar: var(--hv-sidebar);
+  --sidebar-foreground: #c7d2c9;
+  --sidebar-primary: var(--hv-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--hv-sidebar-soft);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: var(--hv-sidebar-border);
+  --sidebar-ring: var(--hv-primary);
+}
+
+.hv-ui.dark {
+  --background: var(--hv-bg);
+  --foreground: var(--hv-ink);
+  --card: var(--hv-surface);
+  --card-foreground: var(--hv-ink);
+  --popover: var(--hv-surface);
+  --popover-foreground: var(--hv-ink);
+  --primary: var(--hv-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--hv-surface-muted);
+  --secondary-foreground: #c7d2c9;
+  --muted: var(--hv-surface-muted);
+  --muted-foreground: var(--hv-muted);
+  --accent: var(--hv-primary-soft);
+  --accent-foreground: #d7e3da;
+  --border: var(--hv-border);
+  --input: var(--hv-border);
+  --ring: var(--hv-primary);
+  --sidebar: var(--hv-sidebar);
+  --sidebar-foreground: #c7d2c9;
+  --sidebar-primary: var(--hv-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--hv-sidebar-soft);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: var(--hv-sidebar-border);
+  --sidebar-ring: var(--hv-primary);
+}
+
+/* Inter is the HomeVault UI typeface; Hebrew keeps its Heebo stack.
+   Both are self-hosted via @fontsource (imported in main.tsx). */
+.hv-ui {
+  font-family:
+    "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+:root[lang="he"].hv-ui {
+  font-family: "Heebo", "Inter Variable", Inter, system-ui, sans-serif;
+}
+
+/* Warm, faintly-lit page background from the concept (light mode only). */
+.hv-ui:not(.dark) body {
+  background:
+    radial-gradient(circle at 8% 3%, #e7ddc7, transparent 26%),
+    radial-gradient(circle at 96% 6%, #e7efe8, transparent 24%),
+    var(--hv-bg);
+  background-attachment: fixed;
 }
 
 @layer base {

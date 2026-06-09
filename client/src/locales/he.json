@@ -28,9 +28,12 @@
   },
   "nav": {
     "dashboard": "לוח בקרה",
+    "today": "היום",
     "property": "נכס",
     "expenses": "הוצאות",
     "repairs": "תיקונים",
+    "documents": "מסמכים",
+    "projects": "פרויקטים",
     "upgrades": "שיפוצים",
     "loans": "הלוואות",
     "purchaseCosts": "עלויות רכישה",
@@ -857,6 +860,91 @@
       "Payment": "תשלום",
       "Maintenance": "תחזוקה",
       "Renovation": "שיפוץ"
+    }
+  },
+  "homevault": {
+    "homeFile": "תיק הבית",
+    "homeFileComplete": "תיק הבית {{pct}}% הושלם",
+    "homeFilePercent": "{{pct}}% הושלמו",
+    "missing": "חסר",
+    "thingsToHandle": "דברים לטפל בהם",
+    "thingsToHandleSub": "{{count}} פריטים דורשים תשומת לב",
+    "allGood": "הכול נראה תקין",
+    "allGoodSub": "אין חשבונות, תיקונים או מסמכים שדורשים טיפול כרגע.",
+    "quickAdd": "הוסף פריט",
+    "quickAddTitle": "הוספה מהירה",
+    "search": "חיפוש בית, מסמכים, הוצאות…",
+    "viewAll": "הצג הכול",
+    "monthlySpend": "הוצאות החודש",
+    "upcoming": "קרוב",
+    "openRepairs": "תיקונים פתוחים",
+    "documents": "מסמכים",
+    "homeFileShort": "תיק הבית הושלם",
+    "paymentsThisWeek": "תשלומים / אירועים השבוע",
+    "highPriorityCount": "{{count}} בעדיפות גבוהה",
+    "leftVsBaseline": "{{amount}} נותרו מול הבסיס",
+    "receiptUploaded": "קבלה",
+    "receiptMissing": "אין קבלה",
+    "upload": "העלאה",
+    "review": "בדיקה",
+    "pay": "תשלום",
+    "view": "צפייה",
+    "thisMonth": "החודש",
+    "receiptsMissing": "קבלות חסרות",
+    "expensesSubtitle": "כמה הבית עולה לך.",
+    "repairsTitle": "תיקונים ותחזוקה",
+    "repairsSubtitle": "מעקב אחר תקלות ותיקונים מפתיחה ועד סיום.",
+    "projectsSubtitle": "תכנון ומעקב אחר שיפוצים ושדרוגים בבית.",
+    "calendarSubtitle": "תשלומים, ביקורים וחידושים עבור הבית.",
+    "filters": {
+      "all": "הכול",
+      "unpaid": "לא שולם",
+      "recurring": "קבוע",
+      "receiptsMissing": "קבלות חסרות",
+      "thisMonth": "החודש"
+    },
+    "expenseStatus": {
+      "paid": "שולם",
+      "unpaid": "לא שולם",
+      "overdue": "באיחור",
+      "upcoming": "קרוב"
+    },
+    "priority": {
+      "low": "נמוכה",
+      "medium": "בינונית",
+      "high": "גבוהה",
+      "urgent": "דחופה"
+    },
+    "repairBoard": {
+      "open": "פתוח",
+      "waiting": "ממתין",
+      "done": "הושלם",
+      "empty": "אין כאן פריטים"
+    },
+    "settings": {
+      "title": "עיצוב HomeVault חדש",
+      "hint": "נסה את העיצוב האישי-פרימיום (היום, מסמכים, מראה חמים יותר). אפשר לחזור בכל עת.",
+      "label": "השתמש בעיצוב החדש",
+      "preview": "תצוגה מקדימה"
+    },
+    "documentsPage": {
+      "title": "מסמכי הבית",
+      "subtitle": "כל מה שחשוב על הבית שלך, מאורגן במקום אחד.",
+      "placeholderNote": "מעקב מסמכים יגיע בקרוב — בינתיים מוצג כאן מצב תיק הבית.",
+      "upload": "העלאה",
+      "categories": {
+        "mortgage": "משכנתא",
+        "insurance": "ביטוח",
+        "taxes": "מסים",
+        "utilities": "חשבונות",
+        "warranties": "אחריות",
+        "receipts": "קבלות",
+        "contractors": "קבלנים",
+        "ownership": "בעלות / חוזה",
+        "renovations": "שיפוצים"
+      },
+      "fileCount": "{{count}} קבצים",
+      "noFiles": "אין קבצים עדיין"
     }
   },
   "dashboard": {
