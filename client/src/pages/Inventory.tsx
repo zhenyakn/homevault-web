@@ -368,259 +368,255 @@ export default function Inventory() {
         }}
       >
         <DialogContent className="max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? "Edit Item" : "Add Inventory Item"}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="name">Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={e =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                      placeholder="e.g. Bosch Washing Machine"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(v: Category) =>
-                        setFormData({ ...formData, category: v })
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIES.map(c => (
-                          <SelectItem key={c} value={c}>
-                            {c}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="condition">Condition</Label>
-                    <Select
-                      value={formData.condition}
-                      onValueChange={(v: Condition) =>
-                        setFormData({ ...formData, condition: v })
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CONDITIONS.map(c => (
-                          <SelectItem key={c} value={c}>
-                            {c}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="assetType">Ownership</Label>
-                    <Select
-                      value={formData.assetType}
-                      onValueChange={(v: AssetType) =>
-                        setFormData({ ...formData, assetType: v })
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="fixture">
-                          Fixture (stays with home)
-                        </SelectItem>
-                        <SelectItem value="personal">
-                          Personal belonging
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="room">Room</Label>
-                    <Input
-                      id="room"
-                      value={formData.room}
-                      onChange={e =>
-                        setFormData({ ...formData, room: e.target.value })
-                      }
-                      placeholder="e.g. Kitchen"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="brand">Brand</Label>
-                    <Input
-                      id="brand"
-                      value={formData.brand}
-                      onChange={e =>
-                        setFormData({ ...formData, brand: e.target.value })
-                      }
-                      placeholder="e.g. Samsung"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="quantity">Quantity</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="0"
-                      value={formData.quantity}
-                      onChange={e =>
-                        setFormData({ ...formData, quantity: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="minQuantity">
-                      Min Quantity (alert threshold)
-                    </Label>
-                    <Input
-                      id="minQuantity"
-                      type="number"
-                      min="0"
-                      value={formData.minQuantity}
-                      onChange={e =>
-                        setFormData({
-                          ...formData,
-                          minQuantity: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unit">Unit</Label>
-                    <Input
-                      id="unit"
-                      value={formData.unit}
-                      onChange={e =>
-                        setFormData({ ...formData, unit: e.target.value })
-                      }
-                      placeholder="e.g. pcs, liters"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="purchasePrice">Purchase Price</Label>
-                    <Input
-                      id="purchasePrice"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.purchasePrice}
-                      onChange={e =>
-                        setFormData({
-                          ...formData,
-                          purchasePrice: e.target.value,
-                        })
-                      }
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="purchaseDate">Purchase Date</Label>
-                    <Input
-                      id="purchaseDate"
-                      type="date"
-                      value={formData.purchaseDate}
-                      onChange={e =>
-                        setFormData({
-                          ...formData,
-                          purchaseDate: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="warrantyExpiry">Warranty Expiry</Label>
-                    <Input
-                      id="warrantyExpiry"
-                      type="date"
-                      value={formData.warrantyExpiry}
-                      onChange={e =>
-                        setFormData({
-                          ...formData,
-                          warrantyExpiry: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sku">SKU / Model #</Label>
-                    <Input
-                      id="sku"
-                      value={formData.sku}
-                      onChange={e =>
-                        setFormData({ ...formData, sku: e.target.value })
-                      }
-                      placeholder="WF45R6100AW"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="serialNumber">Serial Number</Label>
-                    <Input
-                      id="serialNumber"
-                      value={formData.serialNumber}
-                      onChange={e =>
-                        setFormData({
-                          ...formData,
-                          serialNumber: e.target.value,
-                        })
-                      }
-                      placeholder="SN-XXXXXXXX"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="store">Store / Supplier</Label>
-                    <Input
-                      id="store"
-                      value={formData.store}
-                      onChange={e =>
-                        setFormData({ ...formData, store: e.target.value })
-                      }
-                      placeholder="e.g. Home Depot"
-                    />
-                  </div>
-                  <div className="col-span-2 space-y-2">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      value={formData.notes}
-                      onChange={e =>
-                        setFormData({ ...formData, notes: e.target.value })
-                      }
-                      placeholder="Any additional notes..."
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" onClick={closeDialog}>
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={
-                      createMutation.isPending || updateMutation.isPending
-                    }
-                  >
-                    {(createMutation.isPending || updateMutation.isPending) && (
-                      <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                    )}
-                    {editingId ? "Update" : "Add Item"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingId ? "Edit Item" : "Add Inventory Item"}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="name">Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={e =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="e.g. Bosch Washing Machine"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(v: Category) =>
+                    setFormData({ ...formData, category: v })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map(c => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="condition">Condition</Label>
+                <Select
+                  value={formData.condition}
+                  onValueChange={(v: Condition) =>
+                    setFormData({ ...formData, condition: v })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CONDITIONS.map(c => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="assetType">Ownership</Label>
+                <Select
+                  value={formData.assetType}
+                  onValueChange={(v: AssetType) =>
+                    setFormData({ ...formData, assetType: v })
+                  }
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixture">
+                      Fixture (stays with home)
+                    </SelectItem>
+                    <SelectItem value="personal">Personal belonging</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="room">Room</Label>
+                <Input
+                  id="room"
+                  value={formData.room}
+                  onChange={e =>
+                    setFormData({ ...formData, room: e.target.value })
+                  }
+                  placeholder="e.g. Kitchen"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="brand">Brand</Label>
+                <Input
+                  id="brand"
+                  value={formData.brand}
+                  onChange={e =>
+                    setFormData({ ...formData, brand: e.target.value })
+                  }
+                  placeholder="e.g. Samsung"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="quantity">Quantity</Label>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="0"
+                  value={formData.quantity}
+                  onChange={e =>
+                    setFormData({ ...formData, quantity: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="minQuantity">
+                  Min Quantity (alert threshold)
+                </Label>
+                <Input
+                  id="minQuantity"
+                  type="number"
+                  min="0"
+                  value={formData.minQuantity}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      minQuantity: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="unit">Unit</Label>
+                <Input
+                  id="unit"
+                  value={formData.unit}
+                  onChange={e =>
+                    setFormData({ ...formData, unit: e.target.value })
+                  }
+                  placeholder="e.g. pcs, liters"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="purchasePrice">Purchase Price</Label>
+                <Input
+                  id="purchasePrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.purchasePrice}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      purchasePrice: e.target.value,
+                    })
+                  }
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="purchaseDate">Purchase Date</Label>
+                <Input
+                  id="purchaseDate"
+                  type="date"
+                  value={formData.purchaseDate}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      purchaseDate: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="warrantyExpiry">Warranty Expiry</Label>
+                <Input
+                  id="warrantyExpiry"
+                  type="date"
+                  value={formData.warrantyExpiry}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      warrantyExpiry: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sku">SKU / Model #</Label>
+                <Input
+                  id="sku"
+                  value={formData.sku}
+                  onChange={e =>
+                    setFormData({ ...formData, sku: e.target.value })
+                  }
+                  placeholder="WF45R6100AW"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="serialNumber">Serial Number</Label>
+                <Input
+                  id="serialNumber"
+                  value={formData.serialNumber}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      serialNumber: e.target.value,
+                    })
+                  }
+                  placeholder="SN-XXXXXXXX"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="store">Store / Supplier</Label>
+                <Input
+                  id="store"
+                  value={formData.store}
+                  onChange={e =>
+                    setFormData({ ...formData, store: e.target.value })
+                  }
+                  placeholder="e.g. Home Depot"
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={e =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  placeholder="Any additional notes..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={closeDialog}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {(createMutation.isPending || updateMutation.isPending) && (
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                )}
+                {editingId ? "Update" : "Add Item"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
       </Dialog>
 
       {/* Stats */}

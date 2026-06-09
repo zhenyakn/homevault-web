@@ -298,112 +298,108 @@ export default function Wishlist() {
         }}
       >
         <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId ? t("wishlist.editItem") : t("wishlist.addItem")}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">{t("common.label")}</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={e =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    placeholder={t("wishlist.placeholderLabel")}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">
-                    {t("common.description")} ({t("common.optional")})
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={e =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    placeholder={t("wishlist.placeholderDesc")}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="estimatedPrice">
-                    {t("wishlist.estimatedCost")}
-                  </Label>
-                  <Input
-                    id="estimatedPrice"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.estimatedPrice}
-                    onChange={e =>
-                      setFormData({
-                        ...formData,
-                        estimatedPrice: e.target.value,
-                      })
-                    }
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="priority">{t("common.priority")}</Label>
-                  <Select
-                    value={formData.priority}
-                    onValueChange={(value: Priority) =>
-                      setFormData({ ...formData, priority: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          t("common.select") + " " + t("common.priority")
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">{t("priority.low")}</SelectItem>
-                      <SelectItem value="medium">
-                        {t("priority.medium")}
-                      </SelectItem>
-                      <SelectItem value="high">{t("priority.high")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="url">{t("wishlist.linkLabel")}</Label>
-                  <Input
-                    id="url"
-                    type="url"
-                    inputMode="url"
-                    placeholder="https://"
-                    value={formData.url}
-                    onChange={e =>
-                      setFormData({ ...formData, url: e.target.value })
+          <DialogHeader>
+            <DialogTitle>
+              {editingId ? t("wishlist.editItem") : t("wishlist.addItem")}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">{t("common.label")}</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={e =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder={t("wishlist.placeholderLabel")}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">
+                {t("common.description")} ({t("common.optional")})
+              </Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={e =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
+                placeholder={t("wishlist.placeholderDesc")}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="estimatedPrice">
+                {t("wishlist.estimatedCost")}
+              </Label>
+              <Input
+                id="estimatedPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.estimatedPrice}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    estimatedPrice: e.target.value,
+                  })
+                }
+                placeholder="0.00"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="priority">{t("common.priority")}</Label>
+              <Select
+                value={formData.priority}
+                onValueChange={(value: Priority) =>
+                  setFormData({ ...formData, priority: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      t("common.select") + " " + t("common.priority")
                     }
                   />
-                </div>
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={closeDialog}>
-                    {t("common.cancel")}
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={
-                      createMutation.isPending || updateMutation.isPending
-                    }
-                  >
-                    {(createMutation.isPending || updateMutation.isPending) && (
-                      <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                    )}
-                    {editingId ? t("common.update") : t("common.create")}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">{t("priority.low")}</SelectItem>
+                  <SelectItem value="medium">{t("priority.medium")}</SelectItem>
+                  <SelectItem value="high">{t("priority.high")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="url">{t("wishlist.linkLabel")}</Label>
+              <Input
+                id="url"
+                type="url"
+                inputMode="url"
+                placeholder="https://"
+                value={formData.url}
+                onChange={e =>
+                  setFormData({ ...formData, url: e.target.value })
+                }
+              />
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={closeDialog}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {(createMutation.isPending || updateMutation.isPending) && (
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                )}
+                {editingId ? t("common.update") : t("common.create")}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
       </Dialog>
 
       {hv ? (

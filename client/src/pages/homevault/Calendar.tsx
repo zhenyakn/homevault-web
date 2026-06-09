@@ -247,97 +247,96 @@ export default function HVCalendar() {
                 <Plus className="me-1.5 h-4 w-4" /> {t("calendar.addEvent")}
               </Button>
             </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingId
-                  ? t("calendar.editEvent")
-                  : t("calendar.addNewEvent")}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">{t("calendar.eventTitle")}</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingId
+                    ? t("calendar.editEvent")
+                    : t("calendar.addNewEvent")}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date">{t("common.date")}</Label>
+                  <Label htmlFor="title">{t("calendar.eventTitle")}</Label>
                   <Input
-                    id="date"
-                    type="date"
-                    value={date}
-                    onChange={e => setDate(e.target.value)}
+                    id="title"
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
                     required
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">{t("common.date")}</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={date}
+                      onChange={e => setDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="time">{t("calendar.timeOptional")}</Label>
+                    <Input
+                      id="time"
+                      type="time"
+                      value={time}
+                      onChange={e => setTime(e.target.value)}
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
-                  <Label htmlFor="time">{t("calendar.timeOptional")}</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={time}
-                    onChange={e => setTime(e.target.value)}
+                  <Label htmlFor="eventType">{t("calendar.eventType")}</Label>
+                  <Select
+                    value={eventType}
+                    onValueChange={val => setEventType(val as EventType)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          t("common.select") + " " + t("calendar.eventType")
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EVENT_TYPES.map(et => (
+                        <SelectItem key={et} value={et}>
+                          {t(`calendar.eventTypes.${et}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">{t("common.notes")}</Label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="eventType">{t("calendar.eventType")}</Label>
-                <Select
-                  value={eventType}
-                  onValueChange={val => setEventType(val as EventType)}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
                 >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        t("common.select") + " " + t("calendar.eventType")
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EVENT_TYPES.map(et => (
-                      <SelectItem key={et} value={et}>
-                        {t(`calendar.eventTypes.${et}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">{t("common.notes")}</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                />
-              </div>
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={createMutation.isPending || updateMutation.isPending}
-              >
-                {(createMutation.isPending || updateMutation.isPending) && (
-                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                )}
-                {editingId ? t("common.update") : t("calendar.saveEvent")}
-              </Button>
-            </form>
-          </DialogContent>
+                  {(createMutation.isPending || updateMutation.isPending) && (
+                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                  )}
+                  {editingId ? t("common.update") : t("calendar.saveEvent")}
+                </Button>
+              </form>
+            </DialogContent>
           </Dialog>
         }
       />
 
       {/* KPIs */}
       <div className="mb-4 grid grid-cols-2 gap-3">
-        <MetricCard
-          label={t("calendar.thisMonth")}
-          value={events.length}
-        />
+        <MetricCard label={t("calendar.thisMonth")} value={events.length} />
         <MetricCard
           label={t("calendar.upcoming30")}
           value={upcomingEvents.length}

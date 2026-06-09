@@ -57,7 +57,10 @@ import {
   Wrench,
 } from "lucide-react";
 import { QuickAddMenu } from "@/components/homevault/QuickAddMenu";
-import { HVChromeProvider, HVTopActions } from "@/components/homevault/HVChrome";
+import {
+  HVChromeProvider,
+  HVTopActions,
+} from "@/components/homevault/HVChrome";
 
 // Routes whose page renders its own HVPageHeader (which already includes the
 // global action cluster). Every other route gets the cluster from the layout.

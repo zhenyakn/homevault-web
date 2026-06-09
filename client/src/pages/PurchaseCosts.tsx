@@ -255,110 +255,108 @@ export default function PurchaseCosts() {
         }}
       >
         <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId
-                    ? t("purchaseCosts.editCost")
-                    : t("purchaseCosts.addCost")}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">{t("common.label")}</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={e =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amount">{t("common.amount")}</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.amount}
-                    onChange={e =>
-                      setFormData({ ...formData, amount: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">{t("common.date")}</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={e =>
-                      setFormData({ ...formData, date: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">{t("common.category")}</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={value =>
-                      setFormData({ ...formData, category: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          t("common.select") + " " + t("common.category")
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map(cat => (
-                        <SelectItem key={cat} value={cat}>
-                          {t(`categories.${cat}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes">{t("common.notes")}</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={e =>
-                      setFormData({ ...formData, notes: e.target.value })
+          <DialogHeader>
+            <DialogTitle>
+              {editingId
+                ? t("purchaseCosts.editCost")
+                : t("purchaseCosts.addCost")}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">{t("common.label")}</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={e =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="amount">{t("common.amount")}</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.amount}
+                onChange={e =>
+                  setFormData({ ...formData, amount: e.target.value })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="date">{t("common.date")}</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={e =>
+                  setFormData({ ...formData, date: e.target.value })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="category">{t("common.category")}</Label>
+              <Select
+                value={formData.category}
+                onValueChange={value =>
+                  setFormData({ ...formData, category: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={
+                      t("common.select") + " " + t("common.category")
                     }
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("common.attachments")}</Label>
-                  <FileUpload
-                    onUpload={file => setAttachments([...attachments, file])}
-                    existingFiles={attachments}
-                    onRemove={i =>
-                      setAttachments(attachments.filter((_, idx) => idx !== i))
-                    }
-                    accept="image/*,.pdf"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
-                >
-                  {(createMutation.isPending || updateMutation.isPending) && (
-                    <Loader2 className="me-2 h-4 w-4 animate-spin" />
-                  )}
-                  {editingId ? t("common.update") : t("common.save")}
-                </Button>
-              </form>
-            </DialogContent>
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {t(`categories.${cat}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">{t("common.notes")}</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={e =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t("common.attachments")}</Label>
+              <FileUpload
+                onUpload={file => setAttachments([...attachments, file])}
+                existingFiles={attachments}
+                onRemove={i =>
+                  setAttachments(attachments.filter((_, idx) => idx !== i))
+                }
+                accept="image/*,.pdf"
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={createMutation.isPending || updateMutation.isPending}
+            >
+              {(createMutation.isPending || updateMutation.isPending) && (
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
+              )}
+              {editingId ? t("common.update") : t("common.save")}
+            </Button>
+          </form>
+        </DialogContent>
       </Dialog>
 
       {hv ? (
@@ -367,7 +365,11 @@ export default function PurchaseCosts() {
             label={t("purchaseCosts.totalCosts")}
             value={formatCurrency(totalCosts)}
           />
-          <MetricCard label={t("common.entries")} value={numItems} tone="blue" />
+          <MetricCard
+            label={t("common.entries")}
+            value={numItems}
+            tone="blue"
+          />
           <MetricCard
             label={t("purchaseCosts.largestItem")}
             value={formatCurrency(largestCost)}
