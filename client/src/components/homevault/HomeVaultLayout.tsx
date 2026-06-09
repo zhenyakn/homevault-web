@@ -70,6 +70,9 @@ const HV_HEADER_ROUTES = [
   "/documents",
   "/loans",
   "/portfolio",
+  "/purchase-costs",
+  "/inventory",
+  "/wishlist",
 ];
 import { HomeFileCompleteness } from "@/components/homevault/HomeFileCompleteness";
 import { CSSProperties, useEffect, useRef, useState } from "react";

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
+import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
+import { HVPageHeader } from "@/components/homevault";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -108,6 +110,7 @@ const defaultForm = {
 
 export default function Inventory() {
   const { t } = useTranslation();
+  const { enabled: hv } = useHomeVaultUI();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [valueScope, setValueScope] = useState<"fixtures" | "all">("fixtures");
@@ -317,27 +320,54 @@ export default function Inventory() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Inventory</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-3.5 w-3.5 me-1.5" />
-            Export CSV
-          </Button>
-          <Dialog
-            open={isDialogOpen}
-            onOpenChange={open => {
-              if (!open) closeDialog();
-              else setIsDialogOpen(true);
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-3.5 w-3.5 me-1.5" />
+      {hv ? (
+        <HVPageHeader
+          title={t("nav.inventory")}
+          hideQuickAdd
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={handleExportCSV}
+                className="h-11 rounded-full px-[18px]"
+              >
+                <Download className="h-3.5 w-3.5 me-1.5" />
+                Export CSV
+              </Button>
+              <Button
+                onClick={() => setIsDialogOpen(true)}
+                className="h-11 rounded-full px-[18px]"
+              >
+                <Plus className="me-1.5 h-4 w-4" />
                 Add Item
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto">
+            </>
+          }
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Inventory</h1>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+              <Download className="h-3.5 w-3.5 me-1.5" />
+              Export CSV
+            </Button>
+            <Button size="sm" onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-3.5 w-3.5 me-1.5" />
+              Add Item
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={open => {
+          if (!open) closeDialog();
+          else setIsDialogOpen(true);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Edit Item" : "Add Inventory Item"}
@@ -591,9 +621,7 @@ export default function Inventory() {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+      </Dialog>
 
       {/* Stats */}
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">

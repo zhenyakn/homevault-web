@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { asArray, formatCurrency, formatDate } from "@/lib/utils";
 import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
-import { MetricCard } from "@/components/homevault";
+import { MetricCard, HVPageHeader } from "@/components/homevault";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -207,27 +207,54 @@ export default function PurchaseCosts() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{t("purchaseCosts.title")}</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="h-3.5 w-3.5 me-1.5" />
-            {t("common.exportCsv")}
-          </Button>
-          <Dialog
-            open={isDialogOpen}
-            onOpenChange={open => {
-              setIsDialogOpen(open);
-              if (!open) resetForm();
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-3.5 w-3.5 me-1.5" />
+      {hv ? (
+        <HVPageHeader
+          title={t("purchaseCosts.title")}
+          hideQuickAdd
+          actions={
+            <>
+              <Button
+                variant="outline"
+                onClick={handleExportCSV}
+                className="h-11 rounded-full px-[18px]"
+              >
+                <Download className="h-3.5 w-3.5 me-1.5" />
+                {t("common.exportCsv")}
+              </Button>
+              <Button
+                onClick={() => setIsDialogOpen(true)}
+                className="h-11 rounded-full px-[18px]"
+              >
+                <Plus className="me-1.5 h-4 w-4" />
                 {t("purchaseCosts.addCost")}
               </Button>
-            </DialogTrigger>
-            <DialogContent>
+            </>
+          }
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">{t("purchaseCosts.title")}</h1>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+              <Download className="h-3.5 w-3.5 me-1.5" />
+              {t("common.exportCsv")}
+            </Button>
+            <Button size="sm" onClick={() => setIsDialogOpen(true)}>
+              <Plus className="h-3.5 w-3.5 me-1.5" />
+              {t("purchaseCosts.addCost")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={open => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent>
               <DialogHeader>
                 <DialogTitle>
                   {editingId
@@ -332,9 +359,7 @@ export default function PurchaseCosts() {
                 </Button>
               </form>
             </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+      </Dialog>
 
       {hv ? (
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
