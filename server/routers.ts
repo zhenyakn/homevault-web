@@ -113,6 +113,18 @@ const loanSchema = createInsertSchema(loans, {
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
       .optional()
   ),
+  // interestRate is a decimal column. The client sends "" when the optional
+  // field is left blank — coerce that to undefined (NULL) so the insert
+  // doesn't fail with an "incorrect decimal value" error. A provided value
+  // must be a plain number ("5", "3.25"); reject e.g. "5%" up front with a
+  // clear message rather than a cryptic DB failure.
+  interestRate: z.preprocess(
+    v => (v === "" ? undefined : v),
+    z
+      .string()
+      .regex(/^\d+(\.\d+)?$/, "Interest rate must be a number")
+      .optional()
+  ),
   attachments: attachmentSchema,
 }).omit({ ...SERVER_FIELDS });
 

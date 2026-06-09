@@ -201,6 +201,38 @@ describe("Input Validation — loans", () => {
         expect(err?.code).not.toBe("BAD_REQUEST");
       });
   });
+
+  it("accepts loan with empty interestRate (optional field left blank)", async () => {
+    const caller = appRouter.createCaller(createTestContext());
+    // interestRate is a decimal DB column; the client sends "" when left
+    // blank. It must be coerced to undefined (NULL) at validation rather than
+    // reaching the DB as "" and triggering an "incorrect decimal value" error.
+    // We only assert it is not rejected as a validation error here.
+    await caller.loans
+      .create({
+        lender: "Test Bank",
+        originalAmount: 100000,
+        loanType: "mortgage",
+        startDate: "2026-01-01",
+        interestRate: "",
+      })
+      .catch((err: { code?: string }) => {
+        expect(err?.code).not.toBe("BAD_REQUEST");
+      });
+  });
+
+  it("rejects loan with non-numeric interestRate", async () => {
+    const caller = appRouter.createCaller(createTestContext());
+    await expect(
+      caller.loans.create({
+        lender: "Test Bank",
+        originalAmount: 100000,
+        loanType: "mortgage",
+        startDate: "2026-01-01",
+        interestRate: "5%",
+      })
+    ).rejects.toThrow();
+  });
 });
 
 describe("Input Validation — calendar", () => {
