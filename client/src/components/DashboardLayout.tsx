@@ -37,6 +37,7 @@ import {
   ChevronDown,
   ChevronRight,
   DollarSign,
+  FileText,
   Heart,
   Home,
   LayoutGrid,
@@ -55,6 +56,8 @@ import {
   TrendingUp,
   Wrench,
 } from "lucide-react";
+import { QuickAddMenu } from "@/components/homevault/QuickAddMenu";
+import { HomeFileCompleteness } from "@/components/homevault/HomeFileCompleteness";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -69,7 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: "nav.group.overview",
     items: [
-      { icon: Home, key: "nav.dashboard", path: "/" },
+      { icon: Home, key: "nav.today", path: "/" },
       { icon: Calendar, key: "nav.calendar", path: "/calendar" },
     ],
   },
@@ -85,7 +88,8 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: "nav.group.property",
     items: [
       { icon: Wrench, key: "nav.repairs", path: "/repairs" },
-      { icon: TrendingUp, key: "nav.upgrades", path: "/upgrades" },
+      { icon: TrendingUp, key: "nav.projects", path: "/upgrades" },
+      { icon: FileText, key: "nav.documents", path: "/documents" },
       { icon: Package, key: "nav.inventory", path: "/inventory" },
       { icon: Heart, key: "nav.wishlist", path: "/wishlist" },
     ],
@@ -98,7 +102,7 @@ const NAV_GROUPS: NavGroup[] = [
 
 // Page → (section label key, page label key) for breadcrumb
 const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
-  "/": { sectionKey: "nav.group.overview", pageKey: "nav.dashboard" },
+  "/": { sectionKey: "nav.group.overview", pageKey: "nav.today" },
   "/calendar": { sectionKey: "nav.group.overview", pageKey: "nav.calendar" },
   "/portfolio": { sectionKey: "nav.group.overview", pageKey: "nav.portfolio" },
   "/expenses": { sectionKey: "nav.group.finances", pageKey: "nav.expenses" },
@@ -108,7 +112,8 @@ const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
     pageKey: "nav.purchaseCosts",
   },
   "/repairs": { sectionKey: "nav.group.property", pageKey: "nav.repairs" },
-  "/upgrades": { sectionKey: "nav.group.property", pageKey: "nav.upgrades" },
+  "/upgrades": { sectionKey: "nav.group.property", pageKey: "nav.projects" },
+  "/documents": { sectionKey: "nav.group.property", pageKey: "nav.documents" },
   "/inventory": { sectionKey: "nav.group.property", pageKey: "nav.inventory" },
   "/wishlist": { sectionKey: "nav.group.property", pageKey: "nav.wishlist" },
   "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
@@ -170,16 +175,16 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
         <DropdownMenuTrigger asChild>
           <button className="flex items-center gap-1.5 w-full px-1 py-1 rounded-md hover:bg-sidebar-accent transition-colors focus:outline-none text-left">
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-semibold truncate leading-tight text-sidebar-foreground">
+              <p className="text-[13px] font-semibold truncate leading-tight text-white">
                 {activeProperty?.houseName ?? "My Home"}
               </p>
               {activeProperty?.address && (
-                <p className="text-[11px] text-muted-foreground truncate leading-tight">
+                <p className="text-[11px] text-white/50 truncate leading-tight">
                   {activeProperty.address}
                 </p>
               )}
             </div>
-            <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+            <ChevronDown className="h-3 w-3 text-white/50 shrink-0" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
@@ -242,16 +247,16 @@ function ThemeToggle({ compact }: { compact?: boolean }) {
   }
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border p-1 mb-1">
+    <div className="flex items-center gap-1 rounded-xl border border-white/10 p-1 mb-1">
       {options.map(({ value, icon: Icon, label }) => (
         <button
           key={value}
           onClick={() => setTheme(value)}
           title={label}
-          className={`flex-1 flex items-center justify-center rounded p-1.5 transition-colors text-xs gap-1 ${
+          className={`flex-1 flex items-center justify-center rounded-lg p-1.5 transition-colors text-xs gap-1 ${
             theme === value
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              ? "bg-white/15 text-white"
+              : "text-white/55 hover:text-white hover:bg-white/5"
           }`}
         >
           <Icon className="h-3.5 w-3.5" />
@@ -445,9 +450,9 @@ function DashboardLayoutContent({
                     aria-label="Collapse sidebar"
                   >
                     {isRTL ? (
-                      <PanelRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      <PanelRight className="h-3.5 w-3.5 text-white/50" />
                     ) : (
-                      <PanelLeft className="h-3.5 w-3.5 text-muted-foreground" />
+                      <PanelLeft className="h-3.5 w-3.5 text-white/50" />
                     )}
                   </button>
                 </>
@@ -460,18 +465,18 @@ function DashboardLayoutContent({
             {navGroups.map(group => (
               <div key={group.labelKey} className="mb-1">
                 {!isCollapsed && (
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                  <p className="px-4 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/35">
                     {t(group.labelKey)}
                   </p>
                 )}
-                <SidebarMenu className="px-2">
+                <SidebarMenu className="px-2.5">
                   {group.items.map(item => (
                     <SidebarMenuItem key={item.path}>
                       <SidebarMenuButton
                         isActive={isActive(item.path)}
                         onClick={() => setLocation(item.path)}
                         tooltip={t(item.key)}
-                        className="h-9 text-[13px]"
+                        className="h-9 rounded-2xl text-[13px] text-white/70 hover:bg-white/5 hover:text-white data-[active=true]:bg-[#fffcf7] data-[active=true]:font-bold data-[active=true]:text-[#214e3d] data-[active=true]:shadow-sm data-[active=true]:hover:bg-[#fffcf7] data-[active=true]:hover:text-[#214e3d]"
                       >
                         <item.icon className="h-4 w-4" />
                         <span>{t(item.key)}</span>
@@ -485,7 +490,7 @@ function DashboardLayoutContent({
             {/* Household members (multi-user) */}
             {!isCollapsed && profiles && profiles.length > 1 && (
               <div className="px-4 pt-4 pb-2">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/35 mb-2">
                   {t("common.household")}
                 </p>
                 <div className="space-y-1">
@@ -494,8 +499,8 @@ function DashboardLayoutContent({
                       key={profile.id}
                       className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-sm ${
                         profile.id === user?.id
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground"
+                          ? "bg-white/10 text-white"
+                          : "text-white/60"
                       }`}
                     >
                       <Avatar className="h-6 w-6">
@@ -518,24 +523,34 @@ function DashboardLayoutContent({
             )}
           </SidebarContent>
 
-          {/* ── Footer: theme + user ──────────────────────────────────── */}
+          {/* ── Footer: home file + theme + user ──────────────────────── */}
           <SidebarFooter className="p-3">
+            {/* TODO: replace placeholder completeness with real document-coverage
+                data once the documents backend lands. */}
+            {!isCollapsed && (
+              <HomeFileCompleteness
+                compact
+                percentage={72}
+                onClick={() => setLocation("/documents")}
+                className="mb-1"
+              />
+            )}
             <ThemeToggle />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className={`flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isCollapsed ? "justify-center" : "text-start"}`}
+                  className={`flex items-center gap-3 rounded-xl px-1 py-1 hover:bg-white/5 transition-colors w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isCollapsed ? "justify-center" : "text-start"}`}
                 >
-                  <Avatar className="h-9 w-9 border shrink-0">
-                    <AvatarFallback className="text-xs font-medium">
+                  <Avatar className="h-9 w-9 border border-white/10 shrink-0">
+                    <AvatarFallback className="bg-white/10 text-xs font-medium text-white">
                       {getInitials(user?.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none">
+                    <p className="text-sm font-medium truncate leading-none text-white">
                       {user?.name || "-"}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
+                    <p className="text-xs text-white/45 truncate mt-1.5">
                       {user?.email || "-"}
                     </p>
                   </div>
@@ -605,6 +620,15 @@ function DashboardLayoutContent({
               </span>
             </div>
             <div className="flex items-center gap-0.5">
+              <QuickAddMenu>
+                <button
+                  type="button"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-hv-primary text-white transition-colors hover:bg-hv-primary-dark"
+                  aria-label={t("homevault.quickAdd")}
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </QuickAddMenu>
               <NotificationCenter />
               <button
                 type="button"
@@ -647,6 +671,17 @@ function DashboardLayoutContent({
                 ⌘K
               </kbd>
             </button>
+            <QuickAddMenu>
+              <button
+                type="button"
+                className="flex h-8 items-center gap-1.5 rounded-full bg-hv-primary px-3.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-hv-primary-dark"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">
+                  {t("homevault.quickAdd")}
+                </span>
+              </button>
+            </QuickAddMenu>
             <NotificationCenter />
           </div>
         )}

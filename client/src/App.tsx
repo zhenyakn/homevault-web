@@ -13,6 +13,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Expenses from "./pages/Expenses";
 import Repairs from "./pages/Repairs";
+import Documents from "./pages/Documents";
 import Upgrades from "./pages/Upgrades";
 import Loans from "./pages/Loans";
 import Wishlist from "./pages/Wishlist";
@@ -170,6 +171,7 @@ function AppRouter() {
             <Route path="/expenses" component={Expenses} />
             <Route path="/repairs" component={Repairs} />
             <Route path="/repairs/:id" component={RepairDetail} />
+            <Route path="/documents" component={Documents} />
             <Route path="/upgrades" component={Upgrades} />
             <Route path="/upgrades/:id" component={UpgradeDetail} />
             <Route path="/loans" component={Loans} />

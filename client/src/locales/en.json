@@ -28,9 +28,12 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "today": "Today",
     "property": "Property",
     "expenses": "Expenses",
     "repairs": "Repairs",
+    "documents": "Documents",
+    "projects": "Projects",
     "upgrades": "Upgrades",
     "loans": "Loans",
     "purchaseCosts": "Purchase Costs",
@@ -866,6 +869,69 @@
       "Payment": "Payment",
       "Maintenance": "Maintenance",
       "Renovation": "Renovation"
+    }
+  },
+  "homevault": {
+    "homeFile": "Home file",
+    "homeFileComplete": "Home file {{pct}}% complete",
+    "missing": "Missing",
+    "thingsToHandle": "Things to handle",
+    "thingsToHandleSub": "{{count}} items need attention",
+    "allGood": "Everything looks good",
+    "allGoodSub": "No bills, repairs, or documents need attention right now.",
+    "quickAdd": "Add item",
+    "quickAddTitle": "Quick add",
+    "search": "Search home, docs, expenses…",
+    "viewAll": "View all",
+    "monthlySpend": "Monthly spend",
+    "upcoming": "Upcoming",
+    "openRepairs": "Open repairs",
+    "documents": "Documents",
+    "homeFileShort": "home file complete",
+    "paymentsThisWeek": "payments / events this week",
+    "highPriorityCount": "{{count}} high priority",
+    "leftVsBaseline": "{{amount}} left vs baseline",
+    "receiptUploaded": "Receipt",
+    "receiptMissing": "No receipt",
+    "upload": "Upload",
+    "review": "Review",
+    "pay": "Pay",
+    "view": "View",
+    "expenseStatus": {
+      "paid": "Paid",
+      "unpaid": "Unpaid",
+      "overdue": "Overdue",
+      "upcoming": "Upcoming"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "repairBoard": {
+      "open": "Open",
+      "waiting": "Waiting",
+      "done": "Done"
+    },
+    "documentsPage": {
+      "title": "Home Documents",
+      "subtitle": "Everything important about your home, organized in one place.",
+      "placeholderNote": "Document tracking is coming soon — for now this shows where your home file stands.",
+      "upload": "Upload",
+      "categories": {
+        "mortgage": "Mortgage",
+        "insurance": "Insurance",
+        "taxes": "Taxes",
+        "utilities": "Utilities",
+        "warranties": "Warranties",
+        "receipts": "Receipts",
+        "contractors": "Contractors",
+        "ownership": "Ownership / contract",
+        "renovations": "Renovations"
+      },
+      "fileCount": "{{count}} files",
+      "noFiles": "No files yet"
     }
   },
   "dashboard": {

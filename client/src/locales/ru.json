@@ -28,9 +28,12 @@
   },
   "nav": {
     "dashboard": "Панель",
+    "today": "Сегодня",
     "property": "Недвижимость",
     "expenses": "Расходы",
     "repairs": "Ремонт",
+    "documents": "Документы",
+    "projects": "Проекты",
     "upgrades": "Улучшения",
     "loans": "Кредиты",
     "purchaseCosts": "Расходы на покупку",
@@ -864,6 +867,69 @@
       "Payment": "Платёж",
       "Maintenance": "Обслуживание",
       "Renovation": "Ремонт"
+    }
+  },
+  "homevault": {
+    "homeFile": "Дело о доме",
+    "homeFileComplete": "Дело о доме заполнено на {{pct}}%",
+    "missing": "Отсутствует",
+    "thingsToHandle": "Требуют внимания",
+    "thingsToHandleSub": "{{count}} пунктов требуют внимания",
+    "allGood": "Всё в порядке",
+    "allGoodSub": "Сейчас нет счетов, ремонтов или документов, требующих внимания.",
+    "quickAdd": "Добавить",
+    "quickAddTitle": "Быстрое добавление",
+    "search": "Поиск по дому, документам, расходам…",
+    "viewAll": "Показать всё",
+    "monthlySpend": "Расходы за месяц",
+    "upcoming": "Скоро",
+    "openRepairs": "Открытые ремонты",
+    "documents": "Документы",
+    "homeFileShort": "дело о доме заполнено",
+    "paymentsThisWeek": "платежей / событий на этой неделе",
+    "highPriorityCount": "{{count}} высокого приоритета",
+    "leftVsBaseline": "{{amount}} осталось от базового",
+    "receiptUploaded": "Чек",
+    "receiptMissing": "Нет чека",
+    "upload": "Загрузить",
+    "review": "Просмотр",
+    "pay": "Оплатить",
+    "view": "Открыть",
+    "expenseStatus": {
+      "paid": "Оплачено",
+      "unpaid": "Не оплачено",
+      "overdue": "Просрочено",
+      "upcoming": "Скоро"
+    },
+    "priority": {
+      "low": "Низкий",
+      "medium": "Средний",
+      "high": "Высокий",
+      "urgent": "Срочно"
+    },
+    "repairBoard": {
+      "open": "Открыто",
+      "waiting": "Ожидание",
+      "done": "Готово"
+    },
+    "documentsPage": {
+      "title": "Документы дома",
+      "subtitle": "Всё важное о вашем доме, собрано в одном месте.",
+      "placeholderNote": "Учёт документов скоро появится — пока здесь показано состояние дела о доме.",
+      "upload": "Загрузить",
+      "categories": {
+        "mortgage": "Ипотека",
+        "insurance": "Страховка",
+        "taxes": "Налоги",
+        "utilities": "Коммунальные",
+        "warranties": "Гарантии",
+        "receipts": "Чеки",
+        "contractors": "Подрядчики",
+        "ownership": "Право собственности / договор",
+        "renovations": "Ремонты"
+      },
+      "fileCount": "{{count}} файлов",
+      "noFiles": "Пока нет файлов"
     }
   },
   "dashboard": {
