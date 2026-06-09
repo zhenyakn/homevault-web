@@ -181,6 +181,26 @@ describe("Input Validation — loans", () => {
       })
     ).rejects.toThrow();
   });
+
+  it("accepts loan with empty endDate (optional Due date left blank)", async () => {
+    const caller = appRouter.createCaller(createTestContext());
+    // The client sends "" when the optional Due date is left blank. That must
+    // pass input validation (an empty string is coerced to undefined) rather
+    // than failing the YYYY-MM-DD regex with a BAD_REQUEST. It may still fail
+    // later at the DB layer in environments without a database — that's fine;
+    // we only assert it is not rejected as a validation error.
+    await caller.loans
+      .create({
+        lender: "Test Bank",
+        originalAmount: 100000,
+        loanType: "mortgage",
+        startDate: "2026-01-01",
+        endDate: "",
+      })
+      .catch((err: { code?: string }) => {
+        expect(err?.code).not.toBe("BAD_REQUEST");
+      });
+  });
 });
 
 describe("Input Validation — calendar", () => {
