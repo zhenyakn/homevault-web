@@ -38,7 +38,7 @@ export function ActionItem({
   onAction,
 }: ActionItemProps) {
   return (
-    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-[16px] border border-hv-border bg-white px-3.5 py-3">
+    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-[16px] border border-hv-border bg-hv-item px-3.5 py-3">
       <div className="min-w-0">
         <p className="truncate text-[14px] font-semibold text-hv-ink">
           {title}

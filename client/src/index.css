@@ -65,6 +65,7 @@
   --color-hv-red: var(--hv-red);
   --color-hv-warning-bg: var(--hv-warning-bg);
   --color-hv-danger-bg: var(--hv-danger-bg);
+  --color-hv-item: var(--hv-item);
 }
 
 :root {
@@ -92,6 +93,9 @@
   --hv-red: #b84e4e;
   --hv-warning-bg: #f7eee2;
   --hv-danger-bg: #f8e9e7;
+  /* Inner row/ticket surface — pure white in light, a distinct dark surface in
+     dark so item text stays legible on cards and board columns. */
+  --hv-item: #ffffff;
   --hv-radius-sm: 10px;
   --hv-radius-md: 14px;
   --hv-radius-lg: 18px;
@@ -188,6 +192,7 @@
   --hv-primary-soft: #1f2c26;
   --hv-warning-bg: #2a2419;
   --hv-danger-bg: #2c1f1d;
+  --hv-item: #2a332f;
 }
 
 /* ── Opt-in HomeVault personal-premium theme ────────────────────────────────

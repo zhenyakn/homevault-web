@@ -44,7 +44,7 @@ export function RepairCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full flex-col gap-2.5 rounded-[16px] border border-hv-border bg-white p-3.5 text-start shadow-[var(--hv-shadow-card)] transition-colors hover:border-hv-primary/30",
+        "flex w-full flex-col gap-2.5 rounded-[16px] border border-hv-border bg-hv-item p-3.5 text-start shadow-[var(--hv-shadow-card)] transition-colors hover:border-hv-primary/30",
         status === "done" && "opacity-80"
       )}
     >
