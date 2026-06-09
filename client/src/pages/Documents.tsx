@@ -11,7 +11,11 @@ import {
   Upload,
   Wrench,
 } from "lucide-react";
-import { HVCard, HomeFileCompleteness } from "@/components/homevault";
+import {
+  HVCard,
+  HomeFileCompleteness,
+  HVPageHeader,
+} from "@/components/homevault";
 
 type LucideIcon = React.ComponentType<
   React.SVGProps<SVGSVGElement> & { className?: string }
@@ -45,25 +49,22 @@ export default function Documents() {
   return (
     <div className="mx-auto max-w-[1180px]">
       {/* Header */}
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-hv-ink">
-            {t("homevault.documentsPage.title")}
-          </h1>
-          <p className="mt-0.5 text-[13.5px] text-hv-muted">
-            {t("homevault.documentsPage.subtitle")}
-          </p>
-        </div>
-        <button
-          type="button"
-          disabled
-          title={t("homevault.documentsPage.placeholderNote")}
-          className="flex h-9 items-center gap-1.5 rounded-full bg-hv-primary px-4 text-[13px] font-semibold text-white opacity-60"
-        >
-          <Upload className="h-4 w-4" />
-          {t("homevault.documentsPage.upload")}
-        </button>
-      </div>
+      <HVPageHeader
+        title={t("homevault.documentsPage.title")}
+        subtitle={t("homevault.documentsPage.subtitle")}
+        hideQuickAdd
+        actions={
+          <button
+            type="button"
+            disabled
+            title={t("homevault.documentsPage.placeholderNote")}
+            className="flex h-11 items-center gap-1.5 rounded-full bg-hv-primary px-[18px] text-[13px] font-bold text-white opacity-60"
+          >
+            <Upload className="h-4 w-4" />
+            {t("homevault.documentsPage.upload")}
+          </button>
+        }
+      />
 
       {/* Home file completeness */}
       <HVCard className="mb-4">

@@ -42,6 +42,7 @@ import {
   HVCard,
   MetricCard,
   ExpenseRow,
+  HVPageHeader,
   type ExpenseStatus,
   type ReceiptStatus,
 } from "@/components/homevault";
@@ -292,33 +293,33 @@ export default function HVExpenses() {
   return (
     <div className="mx-auto max-w-[1180px]">
       {/* Header */}
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-[30px] font-bold tracking-[-0.03em] text-hv-ink">
-            {t("nav.expenses")}
-          </h1>
-          <p className="mt-1.5 text-[14px] text-hv-muted">
-            {t("homevault.expensesSubtitle")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="me-1.5 h-3.5 w-3.5" />
-            {t("common.exportCsv")}
-          </Button>
-          <Dialog
-            open={open}
-            onOpenChange={v => {
-              setOpen(v);
-              if (!v) reset();
-            }}
-          >
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="me-1.5 h-3.5 w-3.5" />
-                {t("expenses.addExpense")}
-              </Button>
-            </DialogTrigger>
+      <HVPageHeader
+        title={t("nav.expenses")}
+        subtitle={t("homevault.expensesSubtitle")}
+        hideQuickAdd
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={handleExportCSV}
+              className="h-11 rounded-full px-[18px]"
+            >
+              <Download className="me-1.5 h-3.5 w-3.5" />
+              {t("common.exportCsv")}
+            </Button>
+            <Dialog
+              open={open}
+              onOpenChange={v => {
+                setOpen(v);
+                if (!v) reset();
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button className="h-11 rounded-full px-[18px]">
+                  <Plus className="me-1.5 h-4 w-4" />
+                  {t("expenses.addExpense")}
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
@@ -477,9 +478,10 @@ export default function HVExpenses() {
                 </Button>
               </div>
             </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+            </Dialog>
+          </>
+        }
+      />
 
       {/* KPI row */}
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">

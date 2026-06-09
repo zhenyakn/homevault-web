@@ -35,6 +35,7 @@ import {
   MetricCard,
   StatusPill,
   UpcomingEventItem,
+  HVPageHeader,
   type StatusTone,
 } from "@/components/homevault";
 
@@ -232,21 +233,20 @@ export default function HVCalendar() {
   return (
     <div className="mx-auto max-w-[1180px]">
       {/* Header */}
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-[30px] font-bold tracking-[-0.03em] text-hv-ink">
-            {t("calendar.title")}
-          </h1>
-          <p className="mt-1.5 text-[14px] text-hv-muted">
-            {t("homevault.calendarSubtitle")}
-          </p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" onClick={resetForm}>
-              <Plus className="me-1.5 h-3.5 w-3.5" /> {t("calendar.addEvent")}
-            </Button>
-          </DialogTrigger>
+      <HVPageHeader
+        title={t("calendar.title")}
+        subtitle={t("homevault.calendarSubtitle")}
+        hideQuickAdd
+        actions={
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                onClick={resetForm}
+                className="h-11 rounded-full px-[18px]"
+              >
+                <Plus className="me-1.5 h-4 w-4" /> {t("calendar.addEvent")}
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
@@ -328,8 +328,9 @@ export default function HVCalendar() {
               </Button>
             </form>
           </DialogContent>
-        </Dialog>
-      </div>
+          </Dialog>
+        }
+      />
 
       {/* KPIs */}
       <div className="mb-4 grid grid-cols-2 gap-3">

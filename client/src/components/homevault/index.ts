@@ -34,3 +34,9 @@ export {
   type RepairPriority,
   type RepairStatus,
 } from "./RepairCard";
+export {
+  HVPageHeader,
+  HVTopActions,
+  HVChromeProvider,
+  useHVChrome,
+} from "./HVChrome";

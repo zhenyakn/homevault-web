@@ -11,6 +11,12 @@ import {
   PropertyProvider,
   getStoredPropertyId,
 } from "./contexts/PropertyContext";
+// Self-hosted fonts (bundled — do not rely on the Google Fonts CDN at runtime).
+import "@fontsource-variable/inter/wght.css";
+import "@fontsource/heebo/400.css";
+import "@fontsource/heebo/500.css";
+import "@fontsource/heebo/600.css";
+import "@fontsource/heebo/700.css";
 import "./index.css";
 import "./lib/i18n";
 

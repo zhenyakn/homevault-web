@@ -29,8 +29,10 @@ import {
   MetricCard,
   ActionItem,
   UpcomingEventItem,
+  HVPageHeader,
   type ActionTone,
 } from "@/components/homevault";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 // ── Category colours for the spend breakdown ───────────────────────────────────
 
@@ -410,13 +412,18 @@ export default function Today() {
       .slice(0, 6);
   }, [calEvents]);
 
+  const { user } = useAuth();
+
   const greeting = () => {
     const h = new Date().getHours();
-    return h < 12
-      ? t("dashboard.goodMorning")
-      : h < 18
-        ? t("dashboard.goodAfternoon")
-        : t("dashboard.goodEvening");
+    const base =
+      h < 12
+        ? t("dashboard.goodMorning")
+        : h < 18
+          ? t("dashboard.goodAfternoon")
+          : t("dashboard.goodEvening");
+    const firstName = user?.name?.trim().split(/\s+/)[0];
+    return firstName ? `${base}, ${firstName}` : base;
   };
 
   if (isLoading)
@@ -464,20 +471,20 @@ export default function Today() {
   return (
     <div className="mx-auto max-w-[1180px]">
       {/* Header */}
-      <div className="mb-7">
-        <h1 className="text-[32px] font-bold leading-tight tracking-[-0.03em] text-hv-ink">
-          {greeting()}
-        </h1>
-        <p className="mt-2 text-[14px] text-hv-muted">
-          {s.propertyName && (
-            <>
-              <span className="text-hv-ink/70">{s.propertyName}</span>
-              {" · "}
-            </>
-          )}
-          {format(new Date(), "EEEE, MMMM d")}
-        </p>
-      </div>
+      <HVPageHeader
+        title={greeting()}
+        subtitle={
+          <>
+            {s.propertyName && (
+              <>
+                <span className="text-hv-ink/70">{s.propertyName}</span>
+                {" · "}
+              </>
+            )}
+            {format(new Date(), "EEEE, MMMM d")}
+          </>
+        }
+      />
 
       {/* KPI row */}
       <div className="mb-5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">

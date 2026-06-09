@@ -57,6 +57,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { QuickAddMenu } from "@/components/homevault/QuickAddMenu";
+import { HVChromeProvider } from "@/components/homevault/HVChrome";
 import { HomeFileCompleteness } from "@/components/homevault/HomeFileCompleteness";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -214,57 +215,6 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AddPropertyDialog open={showAdd} onOpenChange={setShowAdd} />
-    </>
-  );
-}
-
-// ── Topbar property selector (warm pill) ───────────────────────────────────────
-
-function TopbarProperty() {
-  const { t } = useTranslation();
-  const { activePropertyId, switchProperty } = useProperty();
-  const { data: properties } = trpc.property.list.useQuery();
-  const [showAdd, setShowAdd] = useState(false);
-  const active =
-    properties?.find(p => p.id === activePropertyId) ?? properties?.[0];
-
-  return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="flex h-11 max-w-[220px] items-center gap-2 rounded-full border border-hv-border bg-hv-surface px-4 text-[13px] font-medium text-hv-ink transition-colors hover:bg-hv-surface-muted focus:outline-none">
-            <Home className="h-4 w-4 shrink-0 text-hv-primary" />
-            <span className="truncate">{active?.houseName ?? "My Home"}</span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-hv-muted-soft" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
-          {properties?.map(p => (
-            <DropdownMenuItem
-              key={p.id}
-              onClick={() => p.id !== activePropertyId && switchProperty(p.id)}
-              className="cursor-pointer"
-            >
-              <div className="me-2 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10">
-                <Home className="h-3 w-3 text-primary" />
-              </div>
-              <span className="flex-1 truncate">{p.houseName}</span>
-              {p.id === activePropertyId && (
-                <Check className="ms-2 h-3.5 w-3.5 shrink-0" />
-              )}
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={() => setShowAdd(true)}
-            className="cursor-pointer"
-          >
-            <Plus className="me-2 h-4 w-4" />
-            {t("common.addProperty")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
       <AddPropertyDialog open={showAdd} onOpenChange={setShowAdd} />
     </>
   );
@@ -685,46 +635,16 @@ function DashboardLayoutContent({
           </div>
         )}
 
-        {/* Desktop topbar: integrated warm bar with rounded pills */}
-        {!isMobile && (
-          <div className="flex h-[76px] flex-shrink-0 items-center gap-3 px-9">
-            <div className="flex-1" />
-            <button
-              type="button"
-              onClick={handleSearchOpen}
-              className="flex h-11 min-w-[200px] items-center gap-2 rounded-full border border-hv-border bg-hv-surface px-4 text-hv-muted transition-colors hover:bg-hv-surface-muted"
-              aria-label={t("search.dialogTitle")}
-            >
-              <Search className="h-4 w-4 shrink-0" />
-              <span className="flex-1 text-start text-[13px]">
-                {t("search.placeholder")}
-              </span>
-              <kbd className="hidden items-center rounded border border-hv-border bg-hv-surface-muted px-1.5 py-0.5 font-mono text-[10px] text-hv-muted-soft sm:inline-flex">
-                ⌘K
-              </kbd>
-            </button>
-            <TopbarProperty />
-            <QuickAddMenu>
-              <button
-                type="button"
-                className="flex h-11 items-center gap-1.5 rounded-full bg-hv-primary px-[18px] text-[13px] font-bold text-white transition-colors hover:bg-hv-primary-dark"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">
-                  {t("homevault.quickAdd")}
-                </span>
-              </button>
-            </QuickAddMenu>
-            <NotificationCenter />
-          </div>
-        )}
-
+        {/* Desktop: search / property / add live in each page header (HVPageHeader),
+            on the same row as the title — matching the concept's `.top`. */}
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 p-5 pb-24 md:p-8 md:pb-8 lg:p-9 outline-none"
+          className="flex-1 p-5 pb-24 md:px-9 md:pb-9 md:pt-7 outline-none"
         >
-          {children}
+          <HVChromeProvider openSearch={handleSearchOpen}>
+            {children}
+          </HVChromeProvider>
         </main>
         {isMobile && <MobileTabBar />}
       </SidebarInset>

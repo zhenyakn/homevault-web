@@ -28,6 +28,7 @@ import { toast } from "sonner";
 import {
   HVCard,
   RepairCard,
+  HVPageHeader,
   type RepairStatus,
   type RepairPriority,
 } from "@/components/homevault";
@@ -266,26 +267,30 @@ export default function HVRepairs() {
   return (
     <div className="mx-auto max-w-[1180px]">
       {/* Header */}
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-[30px] font-bold tracking-[-0.03em] text-hv-ink">
-            {t("homevault.repairsTitle")}
-          </h1>
-          <p className="mt-1.5 text-[14px] text-hv-muted">
-            {t("homevault.repairsSubtitle")}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportCSV}>
-            <Download className="me-1.5 h-3.5 w-3.5" />
-            {t("common.exportCsv")}
-          </Button>
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
-            <Plus className="me-1.5 h-3.5 w-3.5" />
-            {t("repairs.logRepair")}
-          </Button>
-        </div>
-      </div>
+      <HVPageHeader
+        title={t("homevault.repairsTitle")}
+        subtitle={t("homevault.repairsSubtitle")}
+        hideQuickAdd
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={handleExportCSV}
+              className="h-11 rounded-full px-[18px]"
+            >
+              <Download className="me-1.5 h-3.5 w-3.5" />
+              {t("common.exportCsv")}
+            </Button>
+            <Button
+              onClick={() => setDialogOpen(true)}
+              className="h-11 rounded-full px-[18px]"
+            >
+              <Plus className="me-1.5 h-4 w-4" />
+              {t("repairs.logRepair")}
+            </Button>
+          </>
+        }
+      />
 
       {repairs.length === 0 ? (
         <HVCard>
