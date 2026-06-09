@@ -888,6 +888,18 @@
     "review": "בדיקה",
     "pay": "תשלום",
     "view": "צפייה",
+    "thisMonth": "החודש",
+    "receiptsMissing": "קבלות חסרות",
+    "expensesSubtitle": "כמה הבית עולה לך.",
+    "repairsTitle": "תיקונים ותחזוקה",
+    "repairsSubtitle": "מעקב אחר תקלות ותיקונים מפתיחה ועד סיום.",
+    "filters": {
+      "all": "הכול",
+      "unpaid": "לא שולם",
+      "recurring": "קבוע",
+      "receiptsMissing": "קבלות חסרות",
+      "thisMonth": "החודש"
+    },
     "expenseStatus": {
       "paid": "שולם",
       "unpaid": "לא שולם",
@@ -903,7 +915,14 @@
     "repairBoard": {
       "open": "פתוח",
       "waiting": "ממתין",
-      "done": "הושלם"
+      "done": "הושלם",
+      "empty": "אין כאן פריטים"
+    },
+    "settings": {
+      "title": "עיצוב HomeVault חדש",
+      "hint": "נסה את העיצוב האישי-פרימיום (היום, מסמכים, מראה חמים יותר). אפשר לחזור בכל עת.",
+      "label": "השתמש בעיצוב החדש",
+      "preview": "תצוגה מקדימה"
     },
     "documentsPage": {
       "title": "מסמכי הבית",

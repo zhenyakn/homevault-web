@@ -43,7 +43,8 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* HomeVault personal-premium palette — exposed as Tailwind utilities
-     (bg-hv-surface, text-hv-ink, border-hv-border, …). */
+     (bg-hv-surface, text-hv-ink, border-hv-border, …). Available app-wide, but
+     only used by the opt-in HomeVault UI components. */
   --color-hv-bg: var(--hv-bg);
   --color-hv-bg-soft: var(--hv-bg-soft);
   --color-hv-surface: var(--hv-surface);
@@ -68,84 +69,74 @@
 }
 
 :root {
-  /* ── HomeVault personal-premium tokens ──────────────────────────────────
-     Raw values; the semantic shadcn tokens below are tuned to match so the
-     whole app inherits the warm, calm identity. */
+  /* ── HomeVault personal-premium tokens (raw values) ─────────────────────
+     The semantic shadcn tokens stay at their original values by default; the
+     opt-in `.hv-ui` class below remaps them to this palette. */
   --hv-bg: #f4f1ea;
   --hv-bg-soft: #ece7de;
-
   --hv-surface: #fffcf7;
   --hv-surface-muted: #f9f6ef;
-
   --hv-ink: #1f2933;
   --hv-muted: #6b7280;
   --hv-muted-soft: #8b8e91;
-
   --hv-border: #e3ded4;
-
   --hv-sidebar: #17211b;
   --hv-sidebar-soft: #223126;
   --hv-sidebar-border: #34483b;
-
   --hv-primary: #2f6f55;
   --hv-primary-dark: #214e3d;
   --hv-primary-soft: #eef5ef;
-
   --hv-accent: #d6a85d;
   --hv-blue: #3b6ea8;
   --hv-green: #2f7a5a;
   --hv-orange: #c47b38;
   --hv-red: #b84e4e;
-
   --hv-warning-bg: #f7eee2;
   --hv-danger-bg: #f8e9e7;
-
   --hv-radius-sm: 10px;
   --hv-radius-md: 14px;
   --hv-radius-lg: 18px;
   --hv-radius-xl: 22px;
   --hv-radius-2xl: 28px;
-
   --hv-shadow-card: 0 8px 22px rgba(31, 41, 51, 0.035);
   --hv-shadow-panel: 0 18px 60px rgba(38, 30, 18, 0.1);
+}
 
-  /* ── Semantic tokens (light) tuned to the HomeVault palette ───────────── */
-  /* Brand: forest green #2F6F55 */
-  --primary: var(--hv-primary);
-  --primary-foreground: #ffffff;
-  --sidebar-primary: var(--hv-primary);
-  --sidebar-primary-foreground: #ffffff;
+:root {
+  /* Brand: forest green #2B7A55 */
+  --primary: oklch(0.48 0.113 155);
+  --primary-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.48 0.113 155);
+  --sidebar-primary-foreground: oklch(1 0 0);
   --chart-1: oklch(0.78 0.1 155);
   --chart-2: oklch(0.64 0.11 155);
   --chart-3: oklch(0.52 0.112 155);
   --chart-4: oklch(0.42 0.105 155);
   --chart-5: oklch(0.34 0.095 155);
-  --radius: 0.875rem;
-  --background: var(--hv-bg);
-  --foreground: var(--hv-ink);
-  --card: var(--hv-surface);
-  --card-foreground: var(--hv-ink);
-  --popover: var(--hv-surface);
-  --popover-foreground: var(--hv-ink);
-  --secondary: var(--hv-surface-muted);
-  --secondary-foreground: var(--hv-primary-dark);
-  --muted: var(--hv-surface-muted);
-  --muted-foreground: var(--hv-muted);
-  --accent: var(--hv-primary-soft);
-  --accent-foreground: var(--hv-primary-dark);
+  --radius: 0.65rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.235 0.015 65);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.235 0.015 65);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.235 0.015 65);
+  --secondary: oklch(0.98 0.001 286.375);
+  --secondary-foreground: oklch(0.4 0.015 65);
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: oklch(0.141 0.005 285.823);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: var(--hv-border);
-  --input: var(--hv-border);
-  --ring: var(--hv-primary);
-
-  /* Deep-green sidebar */
-  --sidebar: var(--hv-sidebar);
-  --sidebar-foreground: #c7d2c9;
-  --sidebar-accent: var(--hv-sidebar-soft);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: var(--hv-sidebar-border);
-  --sidebar-ring: var(--hv-primary);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: oklch(0.48 0.113 155);
+  --sidebar: oklch(0.99 0.003 260);
+  --sidebar-foreground: oklch(0.235 0.015 65);
+  --sidebar-accent: oklch(0.94 0.03 155);
+  --sidebar-accent-foreground: oklch(0.37 0.09 155);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.48 0.113 155);
 }
 
 .dark {
@@ -176,16 +167,15 @@
   --chart-3: oklch(0.56 0.112 155);
   --chart-4: oklch(0.46 0.105 155);
   --chart-5: oklch(0.36 0.095 155);
-  --sidebar: var(--hv-sidebar);
-  --sidebar-foreground: #c7d2c9;
-  --sidebar-accent: var(--hv-sidebar-soft);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: var(--hv-sidebar-border);
+  --sidebar: oklch(0.185 0.008 272);
+  --sidebar-foreground: oklch(0.85 0.005 65);
+  --sidebar-accent: oklch(0.24 0.04 155);
+  --sidebar-accent-foreground: oklch(0.75 0.1 155);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.58 0.115 155);
 
-  /* HomeVault tokens, dark variants — keeps the hv-* utilities (and the
-     components built on them) coherent in dark mode. The deep-green sidebar is
-     intentionally shared across both themes. */
+  /* HomeVault tokens, dark variants — keep the hv-* utilities coherent when the
+     opt-in HomeVault UI is used in dark mode. */
   --hv-bg: #14191a;
   --hv-bg-soft: #1a2120;
   --hv-surface: #1b2321;
@@ -199,6 +189,66 @@
   --hv-primary-soft: #1f2c26;
   --hv-warning-bg: #2a2419;
   --hv-danger-bg: #2c1f1d;
+}
+
+/* ── Opt-in HomeVault personal-premium theme ────────────────────────────────
+   Applied by adding `hv-ui` to <html> (see HomeVaultUIContext). Remaps the
+   semantic tokens to the warm/green palette so shared shadcn primitives inherit
+   the identity. The deep-green sidebar is shared across light and dark. */
+.hv-ui {
+  --background: var(--hv-bg);
+  --foreground: var(--hv-ink);
+  --card: var(--hv-surface);
+  --card-foreground: var(--hv-ink);
+  --popover: var(--hv-surface);
+  --popover-foreground: var(--hv-ink);
+  --primary: var(--hv-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--hv-surface-muted);
+  --secondary-foreground: var(--hv-primary-dark);
+  --muted: var(--hv-surface-muted);
+  --muted-foreground: var(--hv-muted);
+  --accent: var(--hv-primary-soft);
+  --accent-foreground: var(--hv-primary-dark);
+  --border: var(--hv-border);
+  --input: var(--hv-border);
+  --ring: var(--hv-primary);
+  --sidebar: var(--hv-sidebar);
+  --sidebar-foreground: #c7d2c9;
+  --sidebar-primary: var(--hv-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--hv-sidebar-soft);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: var(--hv-sidebar-border);
+  --sidebar-ring: var(--hv-primary);
+}
+
+.hv-ui.dark {
+  --background: var(--hv-bg);
+  --foreground: var(--hv-ink);
+  --card: var(--hv-surface);
+  --card-foreground: var(--hv-ink);
+  --popover: var(--hv-surface);
+  --popover-foreground: var(--hv-ink);
+  --primary: var(--hv-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--hv-surface-muted);
+  --secondary-foreground: #c7d2c9;
+  --muted: var(--hv-surface-muted);
+  --muted-foreground: var(--hv-muted);
+  --accent: var(--hv-primary-soft);
+  --accent-foreground: #d7e3da;
+  --border: var(--hv-border);
+  --input: var(--hv-border);
+  --ring: var(--hv-primary);
+  --sidebar: var(--hv-sidebar);
+  --sidebar-foreground: #c7d2c9;
+  --sidebar-primary: var(--hv-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--hv-sidebar-soft);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: var(--hv-sidebar-border);
+  --sidebar-ring: var(--hv-primary);
 }
 
 @layer base {

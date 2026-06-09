@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
-import { Calendar, Home, Menu, Receipt, Wrench } from "lucide-react";
+import { FileText, Home, Menu, Plus, Receipt } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
+import { QuickAddMenu } from "@/components/homevault/QuickAddMenu";
 import { cn } from "@/lib/utils";
 
 type LucideIcon = React.ComponentType<
@@ -9,16 +10,16 @@ type LucideIcon = React.ComponentType<
 >;
 
 const TABS: { icon: LucideIcon; key: string; path: string }[] = [
-  { icon: Home, key: "nav.dashboard", path: "/" },
+  { icon: Home, key: "nav.today", path: "/" },
   { icon: Receipt, key: "nav.expenses", path: "/expenses" },
-  { icon: Wrench, key: "nav.repairs", path: "/repairs" },
-  { icon: Calendar, key: "nav.calendar", path: "/calendar" },
+  { icon: FileText, key: "nav.documents", path: "/documents" },
 ];
 
 /**
- * Bottom navigation for mobile. Surfaces the primary routes plus a "More" entry
- * that opens the full sidebar sheet for everything else. Rendered only on mobile
- * by DashboardLayout (inside the sidebar provider, so useSidebar is available).
+ * Bottom navigation for mobile. Prioritises the personal essentials — Today,
+ * Expenses, a central quick-add, Documents — plus a "More" entry that opens the
+ * full sidebar sheet. Rendered only on mobile by DashboardLayout (inside the
+ * sidebar provider, so useSidebar is available).
  */
 export default function MobileTabBar() {
   const { t } = useTranslation();
@@ -37,7 +38,7 @@ export default function MobileTabBar() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label={t("nav.primary")}
     >
-      {TABS.map(tab => {
+      {TABS.slice(0, 2).map(tab => {
         const Icon = tab.icon;
         const active = location === tab.path;
         return (
@@ -53,6 +54,37 @@ export default function MobileTabBar() {
           </button>
         );
       })}
+
+      {/* Central quick-add */}
+      <div className="flex flex-1 items-start justify-center">
+        <QuickAddMenu align="center">
+          <button
+            type="button"
+            aria-label={t("homevault.quickAdd")}
+            className="-mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-hv-primary text-white shadow-lg shadow-hv-primary/30 transition-colors hover:bg-hv-primary-dark"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </QuickAddMenu>
+      </div>
+
+      {TABS.slice(2).map(tab => {
+        const Icon = tab.icon;
+        const active = location === tab.path;
+        return (
+          <button
+            key={tab.path}
+            type="button"
+            onClick={() => setLocation(tab.path)}
+            aria-current={active ? "page" : undefined}
+            className={itemClass(active)}
+          >
+            <Icon className="h-5 w-5" />
+            <span>{t(tab.key)}</span>
+          </button>
+        );
+      })}
+
       <button
         type="button"
         onClick={() => setOpenMobile(true)}

@@ -25,6 +25,7 @@ import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -2896,6 +2897,7 @@ function FileStorageGroup() {
 function AppearanceSection() {
   const { theme, setTheme } = useTheme();
   const { language, setLanguage } = useLanguage();
+  const { enabled: hvUi, setEnabled: setHvUi } = useHomeVaultUI();
   const { t } = useTranslation();
 
   const THEMES = [
@@ -2910,6 +2912,15 @@ function AppearanceSection() {
         title={t("settings.appearance")}
         description={t("settings.appearanceDesc")}
       />
+
+      <Group label={t("homevault.settings.title")}>
+        <Row
+          label={t("homevault.settings.label")}
+          hint={t("homevault.settings.hint")}
+        >
+          <Switch checked={hvUi} onCheckedChange={setHvUi} />
+        </Row>
+      </Group>
 
       <Group label={t("settings.theme")}>
         <FullRow label={t("settings.theme")} hint={t("settings.themeHint")}>

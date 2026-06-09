@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
@@ -8,40 +8,47 @@ type OverdueExpense = Stats["overdueExpenses"][number];
 type StaleRepair = Stats["staleRepairs"][number];
 type DecisionUpgrade = Stats["upgradesNeedingDecision"][number];
 type ActiveUpgrade = Stats["activeUpgrades"][number];
+type LoanSummaryItem = Stats["loanSummary"][number];
+type OpenRepair = Stats["openRepairs"][number];
 type CalEvent = RouterOutputs["calendar"]["list"][number];
 
 import { Button } from "@/components/ui/button";
 import {
-  AlertCircle,
   ArrowRight,
-  CalendarDays,
+  AlertCircle,
   CheckCircle2,
-  FileText,
+  ChevronRight,
   Loader2,
-  Receipt,
   Settings,
-  Wrench,
 } from "lucide-react";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { format, isToday, isTomorrow } from "date-fns";
-import {
-  HVCard,
-  MetricCard,
-  ActionItem,
-  UpcomingEventItem,
-  type ActionTone,
-} from "@/components/homevault";
 
-// ── Category colours for the spend breakdown ───────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const STATUS_DOT: Record<string, string> = {
+  idea: "bg-slate-400",
+  planning: "bg-violet-400",
+  in_progress: "bg-orange-400",
+  completed: "bg-emerald-400",
+  cancelled: "bg-rose-400",
+};
 
 const CAT_COLOR: Record<string, string> = {
-  Mortgage: "#214E3D",
-  Utility: "#D6A85D",
-  Insurance: "#3B6EA8",
-  Tax: "#B84E4E",
-  Maintenance: "#C47B38",
+  Mortgage: "#2B7A55",
+  Utility: "#eab308",
+  Insurance: "#a855f7",
+  Tax: "#f43f5e",
+  Maintenance: "#f97316",
   Other: "#9ca3af",
 };
+
+function barColor(pct: number) {
+  if (pct >= 100) return "bg-rose-500";
+  if (pct >= 80) return "bg-amber-400";
+  return "bg-primary";
+}
 
 function relDate(d: string, t: (k: string) => string) {
   const dt = new Date(d);
@@ -64,6 +71,7 @@ function daysOverdue(d: string, interval?: string | null): number {
       else if (interval === "quarterly") date.setMonth(date.getMonth() + 3);
       else date.setMonth(date.getMonth() + 1); // monthly (default)
     };
+    // Walk forward while the next occurrence is still on/before today.
     for (;;) {
       const next = new Date(due);
       step(next);
@@ -77,162 +85,111 @@ function daysOverdue(d: string, interval?: string | null): number {
   );
 }
 
-// ── Things to handle ───────────────────────────────────────────────────────────
+// ── Card shell ────────────────────────────────────────────────────────────────
 
-type HandleItem = {
-  key: string;
-  title: string;
-  description?: string;
-  amount?: string;
-  status?: string;
-  tone: ActionTone;
-  icon: React.ReactNode;
-  actionLabel: string;
-  onAction: () => void;
-};
-
-function ThingsToHandle({
-  overdue,
-  stale,
-  decisionNeeded,
-  cur,
-  onMarkPaid,
+function Card({
+  children,
+  className,
 }: {
-  overdue: OverdueExpense[];
-  stale: StaleRepair[];
-  decisionNeeded: DecisionUpgrade[];
-  cur: string;
-  onMarkPaid: (id: string) => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "h-full border border-border rounded-xl bg-card p-4 shadow-xs",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CardLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[10.5px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-3">
+      {children}
+    </p>
+  );
+}
+
+// ── OpenItemsCard ─────────────────────────────────────────────────────────────
+
+function OpenItemsCard({
+  openRepairs,
+  overdueExpenses,
+  activeUpgrades,
+}: {
+  openRepairs: OpenRepair[];
+  overdueExpenses: OverdueExpense[];
+  activeUpgrades: ActiveUpgrade[];
 }) {
   const { t } = useTranslation();
-  const [, nav] = useLocation();
 
-  const items: HandleItem[] = [
-    ...overdue.map(e => {
-      const days = daysOverdue(e.date, e.recurringInterval);
-      return {
-        key: `exp-${e.id}`,
-        title: `${e.label} ${t("dashboard.unpaidSuffix")}`,
-        description: `${t("dashboard.due")} ${relDate(e.date, t)}`,
-        amount: formatCurrency(e.amount, cur),
-        status:
-          days === 0
-            ? t("dashboard.overdue")
-            : t("dashboard.daysOverdue", { count: days }),
-        tone: "danger" as ActionTone,
-        icon: <Receipt className="h-4 w-4" />,
-        actionLabel: t("homevault.pay"),
-        onAction: () => onMarkPaid(e.id),
-      };
-    }),
-    ...stale.map(r => ({
-      key: `rep-${r.id}`,
-      title: r.label,
-      description: r.contractor
-        ? `${t(`priority.${r.priority}`, { defaultValue: r.priority ?? "" })} · ${r.contractor}`
-        : t(`priority.${r.priority}`, { defaultValue: r.priority ?? "" }),
-      status: t("dashboard.stale5d"),
-      tone: "warning" as ActionTone,
-      icon: <Wrench className="h-4 w-4" />,
-      actionLabel: t("homevault.review"),
-      onAction: () => nav("/repairs"),
-    })),
-    ...decisionNeeded.map(u => ({
-      key: `upg-${u.id}`,
-      title: u.label,
-      description: t("dashboard.quotesReceived"),
-      tone: "info" as ActionTone,
-      icon: <FileText className="h-4 w-4" />,
-      actionLabel: t("homevault.review"),
-      onAction: () => nav(`/upgrades/${u.id}`),
-    })),
+  const urgent = openRepairs.filter(r => r.priority === "urgent").length;
+  const high = openRepairs.filter(r => r.priority === "high").length;
+  const overdue = overdueExpenses.length;
+  const inProg = activeUpgrades.length;
+
+  const rows = [
+    {
+      label: t("dashboard.urgentRepairs"),
+      count: urgent,
+      color: urgent > 0 ? "text-rose-500" : "text-muted-foreground",
+      dot: "bg-rose-500",
+    },
+    {
+      label: t("dashboard.highPriority"),
+      count: high,
+      color: high > 0 ? "text-orange-500" : "text-muted-foreground",
+      dot: "bg-orange-500",
+    },
+    {
+      label: t("dashboard.activeUpgrades"),
+      count: inProg,
+      color: inProg > 0 ? "text-foreground" : "text-muted-foreground",
+      dot: "bg-amber-400",
+    },
+    {
+      label: t("dashboard.overdueBills"),
+      count: overdue,
+      color: overdue > 0 ? "text-rose-500" : "text-muted-foreground",
+      dot: "bg-rose-500",
+    },
   ];
 
   return (
-    <HVCard
-      eyebrow={t("homevault.thingsToHandle")}
-      title={
-        items.length > 0
-          ? t("homevault.thingsToHandleSub", { count: items.length })
-          : undefined
-      }
-    >
-      {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hv-primary-soft">
-            <CheckCircle2 className="h-5 w-5 text-hv-primary" />
-          </span>
-          <p className="text-[14px] font-semibold text-hv-ink">
-            {t("homevault.allGood")}
-          </p>
-          <p className="max-w-xs text-[12.5px] text-hv-muted">
-            {t("homevault.allGoodSub")}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {items.map(item => (
-            <ActionItem
-              key={item.key}
-              title={item.title}
-              description={item.description}
-              amount={item.amount}
-              status={item.status}
-              tone={item.tone}
-              icon={item.icon}
-              actionLabel={item.actionLabel}
-              onAction={item.onAction}
-            />
-          ))}
-        </div>
-      )}
-    </HVCard>
+    <Card>
+      <CardLabel>{t("dashboard.openItems")}</CardLabel>
+      <div className="flex flex-col">
+        {rows.map((row, i) => (
+          <div
+            key={row.label}
+            className={cn(
+              "flex items-center justify-between py-2",
+              i < rows.length - 1 && "border-b border-border"
+            )}
+          >
+            <span className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+              <span
+                className={cn("w-1.5 h-1.5 rounded-full shrink-0", row.dot)}
+              />
+              {row.label}
+            </span>
+            <span
+              className={cn("text-[15px] font-bold tabular-nums", row.color)}
+            >
+              {row.count}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
-// ── Upcoming ───────────────────────────────────────────────────────────────────
-
-function UpcomingCard({ upcoming }: { upcoming: CalEvent[] }) {
-  const { t } = useTranslation();
-  const [, nav] = useLocation();
-
-  return (
-    <HVCard
-      eyebrow={t("homevault.upcoming")}
-      action={
-        <button
-          className="flex items-center gap-1 text-[12px] font-medium text-hv-primary hover:opacity-75"
-          onClick={() => nav("/calendar")}
-        >
-          {t("dashboard.fullCalendar")}
-        </button>
-      }
-    >
-      {upcoming.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-          <CalendarDays className="h-6 w-6 text-hv-muted-soft" />
-          <p className="text-[12.5px] text-hv-muted">
-            {t("dashboard.nothingScheduled")}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-0.5">
-          {upcoming.map(e => (
-            <UpcomingEventItem
-              key={e.id}
-              date={e.date}
-              title={e.title}
-              subtitle={e.category ?? undefined}
-              onClick={() => nav("/calendar")}
-            />
-          ))}
-        </div>
-      )}
-    </HVCard>
-  );
-}
-
-// ── Monthly cost ───────────────────────────────────────────────────────────────
+// ── SpendCard ─────────────────────────────────────────────────────────────────
 
 function SpendCard({
   spent,
@@ -252,51 +209,62 @@ function SpendCard({
   const { t } = useTranslation();
   const fmt = (n: number) => formatCurrency(n, cur);
   const now = new Date();
+  const daysLeft =
+    new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() -
+    now.getDate();
   const top = Object.entries(cats)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
 
   return (
-    <HVCard
-      eyebrow={`${t("dashboard.monthlySpend")} · ${format(now, "MMM yyyy")}`}
-    >
-      <div className="text-[28px] font-bold tracking-tight tabular-nums text-hv-ink">
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <CardLabel>
+          {t("dashboard.monthlySpend")} · {format(now, "MMM yyyy")}
+        </CardLabel>
+        <p className="text-xs text-muted-foreground -mt-3">
+          {daysLeft} {t("dashboard.daysLeft")}
+        </p>
+      </div>
+
+      <div className="text-3xl font-bold tracking-tight tabular-nums">
         {fmt(spent)}
       </div>
       {spent === 0 ? (
-        <p className="mt-1 text-[12.5px] text-hv-muted">
+        <p className="text-xs text-muted-foreground mt-1 mb-4">
           {t("dashboard.noExpensesThisMonth", { month: format(now, "MMMM") })}
         </p>
       ) : baseline > 0 ? (
         <>
-          <p className="mt-1 mb-4 text-[12.5px] text-hv-muted">
+          <p className="text-xs text-muted-foreground mt-1 mb-4">
             {t("expenses.of")} {fmt(baseline)}{" "}
             {t("dashboard.ofRecurringBaseline")}
             {remaining > 0 && (
               <>
-                {" · "}
-                <span className="font-medium text-hv-primary">
+                {" "}
+                ·{" "}
+                <span className="text-primary font-medium">
                   {fmt(remaining)} {t("dashboard.remaining")}
                 </span>
               </>
             )}
           </p>
-          <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-hv-surface-muted">
+          <div className="h-1.5 w-full rounded-full bg-border overflow-hidden mb-1.5">
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-500",
-                pct >= 100
-                  ? "bg-hv-red"
-                  : pct >= 80
-                    ? "bg-hv-orange"
-                    : "bg-hv-primary"
+                barColor(pct)
               )}
               style={{ width: `${Math.min(pct, 100)}%` }}
             />
           </div>
+          <p className="text-[11px] text-muted-foreground text-right mb-4">
+            {pct}
+            {t("dashboard.ofBaseline")}
+          </p>
         </>
       ) : (
-        <p className="mt-1 mb-4 text-[12.5px] text-hv-muted">
+        <p className="text-xs text-muted-foreground mt-1 mb-4">
           {t("dashboard.addRecurring")}
         </p>
       )}
@@ -305,86 +273,416 @@ function SpendCard({
         top.map(([cat, amount]) => (
           <div
             key={cat}
-            className="flex items-center gap-2.5 border-t border-hv-border py-1.5"
+            className="flex items-center gap-2.5 py-1.5 border-t border-border"
           >
             <span
-              className="h-2 w-2 shrink-0 rounded-full"
+              className="w-2 h-2 rounded-full shrink-0"
               style={{ background: CAT_COLOR[cat] ?? "#9ca3af" }}
             />
-            <span className="flex-1 text-[12px] text-hv-muted">
-              {t(`categories.${cat}`, { defaultValue: cat })}
-            </span>
-            <span className="w-16 text-right text-[12px] font-semibold tabular-nums text-hv-ink">
+            <span className="flex-1 text-xs text-muted-foreground">{cat}</span>
+            <div className="w-14 h-[3px] bg-border rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.round((amount / spent) * 100)}%`,
+                  background: CAT_COLOR[cat] ?? "#9ca3af",
+                }}
+              />
+            </div>
+            <span className="text-xs font-semibold tabular-nums w-16 text-right">
               {fmt(amount)}
             </span>
           </div>
         ))}
-    </HVCard>
+    </Card>
   );
 }
 
-// ── Active projects ────────────────────────────────────────────────────────────
+// ── LoansCard ─────────────────────────────────────────────────────────────────
 
-function ProjectsCard({
-  projects,
+function LoansCard({ loans, cur }: { loans: LoanSummaryItem[]; cur: string }) {
+  const { t } = useTranslation();
+  const [, nav] = useLocation();
+  const fmt = (n: number) => formatCurrency(n, cur);
+
+  const totalOutstanding = loans.reduce((s, l) => s + (l.remaining ?? 0), 0);
+
+  return (
+    <Card>
+      <CardLabel>{t("loans.title")}</CardLabel>
+      <div className="text-2xl font-bold tracking-tight tabular-nums mb-1">
+        {fmt(totalOutstanding)}
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        {t("dashboard.totalOutstanding")}
+      </p>
+
+      {loans.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">
+          {t("dashboard.noActiveLoans")}
+        </p>
+      ) : (
+        <>
+          <div className="h-px bg-border mb-3" />
+          <div className="space-y-3">
+            {loans.map(l => {
+              const repaid = l.repaid ?? 0;
+              const remaining =
+                l.remaining ?? Math.max(0, (l.totalAmount ?? 0) - repaid);
+              const pct = l.pct ?? 0;
+              return (
+                <div key={l.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[12.5px] font-medium text-foreground truncate flex-1 mr-2">
+                      {l.lender}
+                    </span>
+                    {l.paidOff ? (
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 shrink-0">
+                        <CheckCircle2 className="h-3 w-3" />
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {pct}% repaid
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mb-1.5">
+                    {fmt(remaining)} {t("dashboard.remaining")}
+                    {l.interestRate ? ` · ${l.interestRate}%` : ""}
+                    {l.endDate
+                      ? ` · until ${format(new Date(l.endDate), "MMM yyyy")}`
+                      : ""}
+                  </p>
+                  <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        l.paidOff ? "bg-emerald-500" : "bg-primary"
+                      )}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity mt-4 font-medium"
+            onClick={() => nav("/loans")}
+          >
+            {t("loans.title")} <ArrowRight className="h-3 w-3" />
+          </button>
+        </>
+      )}
+    </Card>
+  );
+}
+
+// ── AttentionCard ─────────────────────────────────────────────────────────────
+
+function AttentionCard({
+  overdue,
+  stale,
+  decisionNeeded,
+  cur,
+  onMarkPaid,
+}: {
+  overdue: OverdueExpense[];
+  stale: StaleRepair[];
+  decisionNeeded: DecisionUpgrade[];
+  cur: string;
+  onMarkPaid: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [, nav] = useLocation();
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const dismiss = (k: string) =>
+    setDismissed(p => new Set([...Array.from(p), k]));
+
+  const visOverdue = overdue.filter(e => !dismissed.has(`exp-${e.id}`));
+  const visStale = stale.filter(r => !dismissed.has(`rep-${r.id}`));
+  const visDecision = decisionNeeded.filter(u => !dismissed.has(`upg-${u.id}`));
+  const total = visOverdue.length + visStale.length + visDecision.length;
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <CardLabel>{t("dashboard.attention")}</CardLabel>
+          {total > 0 && (
+            <p className="text-[11.5px] text-muted-foreground -mt-2 mb-2">
+              {total} {t("dashboard.itemsNeedAction")}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <div className="flex items-center gap-2.5 px-4 py-3 rounded-lg border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-900/50 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {t("dashboard.noAttention")}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {visOverdue.map(e => {
+            const days = daysOverdue(e.date, e.recurringInterval);
+            const severe = days >= 30;
+            return (
+              <div
+                key={e.id}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/50"
+              >
+                <div className="w-7 h-7 rounded-md bg-rose-500 flex items-center justify-center shrink-0">
+                  <AlertCircle className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] font-semibold text-foreground truncate">
+                    {e.label} {t("dashboard.unpaidSuffix")}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {formatCurrency(e.amount, cur)} · {t("dashboard.due")}{" "}
+                    {relDate(e.date, t)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={cn(
+                      "text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full border",
+                      severe
+                        ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400 border-red-200 dark:border-red-900"
+                        : "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 border-orange-200 dark:border-orange-900"
+                    )}
+                  >
+                    {days === 0
+                      ? t("dashboard.overdue")
+                      : t("dashboard.daysOverdue", { count: days })}
+                  </span>
+                  <button
+                    className="text-[11px] font-semibold px-2 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
+                    aria-label={t("dashboard.markPaidNamed", { name: e.label })}
+                    onClick={() => {
+                      onMarkPaid(e.id);
+                      dismiss(`exp-${e.id}`);
+                    }}
+                  >
+                    {t("dashboard.markPaid")}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {visStale.map(r => (
+            <div
+              key={r.id}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/50"
+            >
+              <div className="w-7 h-7 rounded-md bg-orange-500 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12.5px] font-semibold text-foreground truncate">
+                  {r.label}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {r.priority} · {r.status}
+                  {r.contractor ? ` · ${r.contractor}` : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900">
+                  {t("dashboard.stale5d")}
+                </span>
+                <button
+                  className="text-[11px] font-semibold px-2 py-1 rounded-md bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 border border-amber-200 dark:border-amber-900 hover:opacity-75 transition-opacity"
+                  onClick={() => nav("/repairs")}
+                >
+                  {t("dashboard.updateStatus")}
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {visDecision.map(u => (
+            <div
+              key={u.id}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900/50"
+            >
+              <div className="w-7 h-7 rounded-md bg-blue-500 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12.5px] font-semibold text-foreground truncate">
+                  {u.label}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {t("dashboard.quotesReceived")}
+                </p>
+              </div>
+              <button
+                className="text-[11px] font-semibold px-2 py-1 rounded-md bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200 dark:border-blue-900 hover:opacity-75 transition-opacity shrink-0"
+                onClick={() => nav(`/upgrades/${u.id}`)}
+              >
+                {t("dashboard.reviewQuotes")}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ── CalendarCard ──────────────────────────────────────────────────────────────
+
+function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
+  const { t } = useTranslation();
+  const [, nav] = useLocation();
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <CardLabel>{t("dashboard.upcoming")}</CardLabel>
+        <button
+          className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity font-medium -mt-3"
+          onClick={() => nav("/calendar")}
+        >
+          {t("dashboard.fullCalendar")} <ArrowRight className="h-3 w-3" />
+        </button>
+      </div>
+
+      {upcoming.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">
+          {t("dashboard.nothingScheduled")}
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {upcoming.map(e => {
+            const d = new Date(e.date);
+            return (
+              <div
+                key={e.id}
+                className="flex items-center gap-3 px-2 py-2 rounded-lg bg-muted/30 hover:bg-muted/60 transition-colors cursor-pointer"
+                onClick={() => nav("/calendar")}
+              >
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex flex-col items-center justify-center shrink-0">
+                  <span className="text-[14px] font-extrabold text-primary leading-none">
+                    {format(d, "d")}
+                  </span>
+                  <span className="text-[8.5px] font-bold uppercase text-primary/70">
+                    {format(d, "MMM")}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] font-medium text-foreground truncate">
+                    {e.title}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {e.category}
+                  </p>
+                </div>
+                <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// ── UpgradesCard ──────────────────────────────────────────────────────────────
+
+function UpgradesCard({
+  activeUpgrades,
+  countMap,
   cur,
 }: {
-  projects: ActiveUpgrade[];
+  activeUpgrades: ActiveUpgrade[];
+  countMap: Record<string, { total: number; done: number }>;
   cur: string;
 }) {
   const { t } = useTranslation();
   const [, nav] = useLocation();
   const fmt = (n: number) => formatCurrency(n, cur);
 
-  if (projects.length === 0) return null;
+  if (activeUpgrades.length === 0) return null;
 
   return (
-    <HVCard
-      eyebrow={t("nav.projects")}
-      action={
-        <button
-          className="flex items-center gap-1 text-[12px] font-medium text-hv-primary hover:opacity-75"
-          onClick={() => nav("/upgrades")}
-        >
-          {t("homevault.viewAll")} <ArrowRight className="h-3 w-3" />
-        </button>
-      }
-    >
-      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        {projects.map(u => (
-          <button
-            key={u.id}
-            onClick={() => nav(`/upgrades/${u.id}`)}
-            className="rounded-[var(--hv-radius-md)] border border-hv-border bg-hv-surface-muted p-3.5 text-start transition-colors hover:border-hv-primary/30"
-          >
-            <p className="truncate text-[13.5px] font-semibold text-hv-ink">
-              {u.label}
-            </p>
-            <p className="mt-0.5 text-[12px] text-hv-muted">
-              {fmt(u.spent)}{" "}
-              <span className="text-hv-muted-soft">/ {fmt(u.budget)}</span>
-            </p>
-            <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-hv-border">
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <CardLabel>{t("dashboard.activeUpgrades")}</CardLabel>
+        <span className="text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 -mt-3">
+          {activeUpgrades.length} {t("upgrades.inProgress").toLowerCase()}
+        </span>
+      </div>
+      <div className="space-y-0">
+        {activeUpgrades.map(u => {
+          const counts = countMap[u.id];
+          return (
+            <div
+              key={u.id}
+              className="flex items-center gap-3 py-2.5 border-t border-border first:border-t-0 -mx-1 px-1 rounded-md cursor-pointer hover:bg-muted/40 transition-colors"
+              onClick={() => nav(`/upgrades/${u.id}`)}
+            >
               <div
                 className={cn(
-                  "h-full rounded-full",
-                  u.pct >= 100
-                    ? "bg-hv-red"
-                    : u.pct >= 80
-                      ? "bg-hv-orange"
-                      : "bg-hv-primary"
+                  "w-2 h-2 rounded-full shrink-0",
+                  STATUS_DOT[u.status ?? ""] ?? "bg-muted-foreground/40"
                 )}
-                style={{ width: `${Math.min(u.pct, 100)}%` }}
               />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate">{u.label}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t(`status.${u.status}`, {
+                    defaultValue: t("upgrades.inProgress"),
+                  })}
+                  {counts
+                    ? ` · ${counts.done}/${counts.total} ${t("upgradeDetail.items").toLowerCase()}`
+                    : ""}
+                </p>
+                <div className="h-[2px] w-full bg-border rounded-full overflow-hidden mt-1.5">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      barColor(u.pct)
+                    )}
+                    style={{ width: `${Math.min(u.pct, 100)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <p
+                  className={cn(
+                    "text-sm font-bold tabular-nums",
+                    u.pct >= 100
+                      ? "text-rose-500"
+                      : u.pct >= 80
+                        ? "text-amber-500"
+                        : ""
+                  )}
+                >
+                  {fmt(u.spent)}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  / {fmt(u.budget)}
+                </p>
+              </div>
             </div>
-          </button>
-        ))}
+          );
+        })}
       </div>
-    </HVCard>
+      <button
+        className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity mt-3 pt-3 border-t border-border font-medium"
+        onClick={() => nav("/upgrades")}
+      >
+        {t("nav.upgrades")} <ArrowRight className="h-3 w-3" />
+      </button>
+    </Card>
   );
 }
 
-// ── Today ──────────────────────────────────────────────────────────────────────
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
   const { t } = useTranslation();
@@ -397,6 +695,22 @@ export default function Dashboard() {
   const markPaid = trpc.expenses.markAsPaid.useMutation({
     onSuccess: () => utils.dashboard.stats.invalidate(),
   });
+
+  const activeUpgradeIds = useMemo(
+    () => (stats?.activeUpgrades ?? []).map(u => u.id),
+    [stats?.activeUpgrades]
+  );
+
+  const { data: itemCounts = [] } = trpc.upgradeItems.countByUpgrade.useQuery(
+    { upgradeIds: activeUpgradeIds },
+    { enabled: activeUpgradeIds.length > 0 }
+  );
+
+  const countMap = useMemo(() => {
+    const m: Record<string, { total: number; done: number }> = {};
+    for (const c of itemCounts) m[c.upgradeId] = c;
+    return m;
+  }, [itemCounts]);
 
   const upcoming = useMemo(() => {
     const now = new Date();
@@ -421,20 +735,20 @@ export default function Dashboard() {
 
   if (isLoading)
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-hv-muted-soft" />
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
 
   if (error || !stats)
     return (
-      <div className="flex h-[50vh] flex-col items-center justify-center gap-4 text-center">
-        <AlertCircle className="h-8 w-8 text-hv-muted-soft" />
+      <div className="flex flex-col items-center justify-center gap-4 h-[50vh] text-center">
+        <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
         <div>
           <p className="text-sm font-medium">
             {t("dashboard.loadError", "Couldn't load dashboard")}
           </p>
-          <p className="mt-1 text-xs text-hv-muted">
+          <p className="text-xs text-muted-foreground mt-1">
             {error?.message ??
               t(
                 "dashboard.loadErrorHint",
@@ -443,7 +757,7 @@ export default function Dashboard() {
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => nav("/settings")}>
-          <Settings className="me-1.5 h-3.5 w-3.5" />
+          <Settings className="h-3.5 w-3.5 me-1.5" />
           {t("nav.settings")}
         </Button>
       </div>
@@ -451,82 +765,63 @@ export default function Dashboard() {
 
   const s = stats;
   const cur = s.currency ?? "ILS";
-  const fmt = (n: number) => formatCurrency(n, cur);
 
-  const openRepairs = s.openRepairs ?? [];
-  const highPriority = openRepairs.filter(
-    r => r.priority === "high" || r.priority === "urgent"
-  ).length;
-
-  // TODO: replace placeholder completeness once a documents backend exists.
-  const homeFilePct = 72;
+  const hasLoans = (s.loanSummary?.length ?? 0) > 0;
 
   return (
-    <div className="mx-auto max-w-[1180px]">
-      {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-[22px] font-bold tracking-tight text-hv-ink">
-          {greeting()}
-        </h1>
-        <p className="mt-0.5 text-[13.5px] text-hv-muted">
-          {s.propertyName && (
-            <>
-              <span className="text-hv-ink/70">{s.propertyName}</span>
-              {" · "}
-            </>
+    <div>
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">{greeting()}</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {format(new Date(), "EEEE, MMMM d, yyyy")}
+            {s.propertyName && (
+              <>
+                {" "}
+                · <span className="text-foreground/70">{s.propertyName}</span>
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+
+      {/* Bento grid — cards in the same row stretch to equal height via h-full on Card */}
+      <div className="grid grid-cols-12 gap-3.5">
+        {/* Row 1: Monthly spend + Loans (conditional) + Open Items */}
+        <div
+          className={cn(
+            "col-span-12",
+            hasLoans ? "lg:col-span-5" : "lg:col-span-9"
           )}
-          {format(new Date(), "EEEE, MMMM d")}
-        </p>
-      </div>
+        >
+          <SpendCard
+            spent={s.monthSpent}
+            baseline={s.monthlyRecurring}
+            pct={s.monthPct}
+            remaining={s.monthRemaining}
+            cats={s.monthCats}
+            cur={cur}
+          />
+        </div>
 
-      {/* KPI row */}
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard
-          label={t("homevault.monthlySpend")}
-          value={fmt(s.monthSpent)}
-          tone="neutral"
-          icon={<Receipt className="h-4 w-4" />}
-          helper={
-            s.monthRemaining > 0
-              ? t("homevault.leftVsBaseline", { amount: fmt(s.monthRemaining) })
-              : undefined
-          }
-          onClick={() => nav("/expenses")}
-        />
-        <MetricCard
-          label={t("homevault.upcoming")}
-          value={upcoming.length}
-          tone="blue"
-          icon={<CalendarDays className="h-4 w-4" />}
-          helper={t("homevault.paymentsThisWeek")}
-          onClick={() => nav("/calendar")}
-        />
-        <MetricCard
-          label={t("homevault.openRepairs")}
-          value={openRepairs.length}
-          tone={highPriority > 0 ? "orange" : "neutral"}
-          icon={<Wrench className="h-4 w-4" />}
-          helper={
-            highPriority > 0
-              ? t("homevault.highPriorityCount", { count: highPriority })
-              : undefined
-          }
-          onClick={() => nav("/repairs")}
-        />
-        <MetricCard
-          label={t("homevault.documents")}
-          value={`${homeFilePct}%`}
-          tone="green"
-          icon={<FileText className="h-4 w-4" />}
-          helper={t("homevault.homeFileShort")}
-          onClick={() => nav("/documents")}
-        />
-      </div>
+        {hasLoans && (
+          <div className="col-span-12 lg:col-span-4">
+            <LoansCard loans={s.loanSummary ?? []} cur={cur} />
+          </div>
+        )}
 
-      {/* Things to handle + Upcoming */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <ThingsToHandle
+        <div className="col-span-12 lg:col-span-3">
+          <OpenItemsCard
+            openRepairs={s.openRepairs ?? []}
+            overdueExpenses={s.overdueExpenses ?? []}
+            activeUpgrades={s.activeUpgrades ?? []}
+          />
+        </div>
+
+        {/* Row 2: Attention (8) + Calendar (4) */}
+        <div className="col-span-12 lg:col-span-8">
+          <AttentionCard
             overdue={s.overdueExpenses ?? []}
             stale={s.staleRepairs ?? []}
             decisionNeeded={s.upgradesNeedingDecision ?? []}
@@ -539,26 +834,21 @@ export default function Dashboard() {
             }
           />
         </div>
-        <div>
-          <UpcomingCard upcoming={upcoming} />
-        </div>
-      </div>
 
-      {/* Monthly cost + projects */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <SpendCard
-            spent={s.monthSpent}
-            baseline={s.monthlyRecurring}
-            pct={s.monthPct}
-            remaining={s.monthRemaining}
-            cats={s.monthCats}
-            cur={cur}
-          />
+        <div className="col-span-12 lg:col-span-4">
+          <CalendarCard upcoming={upcoming} />
         </div>
-        <div className="lg:col-span-2">
-          <ProjectsCard projects={s.activeUpgrades ?? []} cur={cur} />
-        </div>
+
+        {/* Row 3: Active upgrades (full width, only when present) */}
+        {(s.activeUpgrades?.length ?? 0) > 0 && (
+          <div className="col-span-12">
+            <UpgradesCard
+              activeUpgrades={s.activeUpgrades ?? []}
+              countMap={countMap}
+              cur={cur}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

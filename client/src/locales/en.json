@@ -897,6 +897,18 @@
     "review": "Review",
     "pay": "Pay",
     "view": "View",
+    "thisMonth": "This month",
+    "receiptsMissing": "Receipts missing",
+    "expensesSubtitle": "How much your home costs you.",
+    "repairsTitle": "Repairs & Maintenance",
+    "repairsSubtitle": "Track home issues and fixes from open to done.",
+    "filters": {
+      "all": "All",
+      "unpaid": "Unpaid",
+      "recurring": "Recurring",
+      "receiptsMissing": "Receipts missing",
+      "thisMonth": "This month"
+    },
     "expenseStatus": {
       "paid": "Paid",
       "unpaid": "Unpaid",
@@ -912,7 +924,14 @@
     "repairBoard": {
       "open": "Open",
       "waiting": "Waiting",
-      "done": "Done"
+      "done": "Done",
+      "empty": "Nothing here"
+    },
+    "settings": {
+      "title": "New HomeVault design",
+      "hint": "Try the personal-premium redesign (Today, Documents, warmer look). You can switch back any time.",
+      "label": "Use the new design",
+      "preview": "Preview"
     },
     "documentsPage": {
       "title": "Home Documents",
