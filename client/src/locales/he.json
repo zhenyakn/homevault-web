@@ -893,6 +893,8 @@
     "expensesSubtitle": "כמה הבית עולה לך.",
     "repairsTitle": "תיקונים ותחזוקה",
     "repairsSubtitle": "מעקב אחר תקלות ותיקונים מפתיחה ועד סיום.",
+    "projectsSubtitle": "תכנון ומעקב אחר שיפוצים ושדרוגים בבית.",
+    "calendarSubtitle": "תשלומים, ביקורים וחידושים עבור הבית.",
     "filters": {
       "all": "הכול",
       "unpaid": "לא שולם",

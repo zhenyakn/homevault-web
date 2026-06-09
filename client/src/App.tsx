@@ -21,6 +21,8 @@ import Expenses from "./pages/Expenses";
 import HVExpenses from "./pages/homevault/Expenses";
 import Repairs from "./pages/Repairs";
 import HVRepairs from "./pages/homevault/Repairs";
+import HVProjects from "./pages/homevault/Projects";
+import HVCalendar from "./pages/homevault/Calendar";
 import Documents from "./pages/Documents";
 import Upgrades from "./pages/Upgrades";
 import Loans from "./pages/Loans";
@@ -168,6 +170,8 @@ function AppRouter() {
     const HomePage = hvUi ? Today : Dashboard;
     const ExpensesPage = hvUi ? HVExpenses : Expenses;
     const RepairsPage = hvUi ? HVRepairs : Repairs;
+    const ProjectsPage = hvUi ? HVProjects : Upgrades;
+    const CalendarPage = hvUi ? HVCalendar : Calendar;
 
     return (
       <>
@@ -187,13 +191,13 @@ function AppRouter() {
             <Route path="/repairs" component={RepairsPage} />
             <Route path="/repairs/:id" component={RepairDetail} />
             <Route path="/documents" component={Documents} />
-            <Route path="/upgrades" component={Upgrades} />
+            <Route path="/upgrades" component={ProjectsPage} />
             <Route path="/upgrades/:id" component={UpgradeDetail} />
             <Route path="/loans" component={Loans} />
             <Route path="/wishlist" component={Wishlist} />
             <Route path="/purchase-costs" component={PurchaseCosts} />
             <Route path="/inventory" component={Inventory} />
-            <Route path="/calendar" component={Calendar} />
+            <Route path="/calendar" component={CalendarPage} />
             <Route path="/portfolio" component={Portfolio} />
             <Route path="/settings" component={Settings} />
             <Route path="/settings/:section" component={Settings} />

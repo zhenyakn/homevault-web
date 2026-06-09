@@ -902,6 +902,8 @@
     "expensesSubtitle": "How much your home costs you.",
     "repairsTitle": "Repairs & Maintenance",
     "repairsSubtitle": "Track home issues and fixes from open to done.",
+    "projectsSubtitle": "Plan and track renovations and home upgrades.",
+    "calendarSubtitle": "Payments, visits and renewals for your home.",
     "filters": {
       "all": "All",
       "unpaid": "Unpaid",
