@@ -5,12 +5,15 @@ import {
   Hammer,
   Home,
   Landmark,
+  Loader2,
   Receipt,
   ScrollText,
   ShieldCheck,
   Upload,
   Wrench,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import {
   HVCard,
   HomeFileCompleteness,
@@ -21,30 +24,28 @@ type LucideIcon = React.ComponentType<
   React.SVGProps<SVGSVGElement> & { className?: string }
 >;
 
-// TODO: Documents are not yet backed by the API. This page presents the
-// "home file" concept and the category structure so the experience is in place;
-// wire each category to real file counts and upload flows when the backend lands.
-const CATEGORIES: { key: string; icon: LucideIcon }[] = [
-  { key: "mortgage", icon: Landmark },
-  { key: "insurance", icon: ShieldCheck },
-  { key: "taxes", icon: Banknote },
-  { key: "utilities", icon: Receipt },
-  { key: "warranties", icon: FileText },
-  { key: "receipts", icon: ScrollText },
-  { key: "contractors", icon: Wrench },
-  { key: "ownership", icon: Home },
-  { key: "renovations", icon: Hammer },
-];
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  mortgage: Landmark,
+  insurance: ShieldCheck,
+  taxes: Banknote,
+  utilities: Receipt,
+  warranties: FileText,
+  receipts: ScrollText,
+  contractors: Wrench,
+  ownership: Home,
+  renovations: Hammer,
+};
 
 export default function Documents() {
   const { t } = useTranslation();
+  const { data, isLoading } = trpc.documents.summary.useQuery();
 
-  // Placeholder figures until the documents backend exists.
-  const homeFilePct = 72;
-  const missing = [
-    t("homevault.documentsPage.categories.insurance"),
-    t("homevault.documentsPage.categories.taxes"),
-  ];
+  // The server returns the categories already in canonical order.
+  const ordered = data?.categories ?? [];
+  const pct = data?.percentage ?? 0;
+  const missingNames = (data?.missing ?? []).map(k =>
+    t(`homevault.documentsPage.categories.${k}`)
+  );
 
   return (
     <div className="mx-auto max-w-[1180px]">
@@ -57,7 +58,7 @@ export default function Documents() {
           <button
             type="button"
             disabled
-            title={t("homevault.documentsPage.placeholderNote")}
+            title={t("homevault.documentsPage.uploadHint")}
             className="flex h-11 items-center gap-1.5 rounded-full bg-hv-primary px-[18px] text-[13px] font-bold text-white opacity-60"
           >
             <Upload className="h-4 w-4" />
@@ -66,35 +67,65 @@ export default function Documents() {
         }
       />
 
-      {/* Home file completeness */}
-      <HVCard className="mb-4">
-        <HomeFileCompleteness percentage={homeFilePct} missing={missing} />
-        <p className="mt-4 text-[12px] text-hv-muted-soft">
-          {t("homevault.documentsPage.placeholderNote")}
-        </p>
-      </HVCard>
+      {isLoading ? (
+        <div className="flex h-[40vh] items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-hv-muted-soft" />
+        </div>
+      ) : (
+        <>
+          {/* Home file completeness */}
+          <HVCard className="mb-4">
+            <HomeFileCompleteness percentage={pct} missing={missingNames} />
+            <p className="mt-4 text-[12px] text-hv-muted-soft">
+              {t("homevault.documentsPage.coverageNote", {
+                done: data?.completedCount ?? 0,
+                total: data?.totalCategories ?? 9,
+                files: data?.totalFiles ?? 0,
+              })}
+            </p>
+          </HVCard>
 
-      {/* Categories */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {CATEGORIES.map(({ key, icon: Icon }) => (
-          <div
-            key={key}
-            className="flex items-center gap-3 rounded-[var(--hv-radius-lg)] border border-hv-border bg-hv-surface p-4 shadow-[var(--hv-shadow-card)]"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-hv-primary-soft text-hv-primary">
-              <Icon className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[14px] font-semibold text-hv-ink">
-                {t(`homevault.documentsPage.categories.${key}`)}
-              </p>
-              <p className="text-[12px] text-hv-muted-soft">
-                {t("homevault.documentsPage.noFiles")}
-              </p>
-            </div>
+          {/* Categories */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {ordered.map(({ key, count }) => {
+              const Icon = CATEGORY_ICONS[key] ?? FileText;
+              const empty = count === 0;
+              return (
+                <div
+                  key={key}
+                  className="flex items-center gap-3 rounded-[var(--hv-radius-lg)] border border-hv-border bg-hv-surface p-4 shadow-[var(--hv-shadow-card)]"
+                >
+                  <span
+                    className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                      empty
+                        ? "bg-hv-surface-muted text-hv-muted-soft"
+                        : "bg-hv-primary-soft text-hv-primary"
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[14px] font-semibold text-hv-ink">
+                      {t(`homevault.documentsPage.categories.${key}`)}
+                    </p>
+                    <p
+                      className={cn(
+                        "text-[12px]",
+                        empty ? "text-hv-orange" : "text-hv-muted"
+                      )}
+                    >
+                      {empty
+                        ? t("homevault.documentsPage.missing")
+                        : t("homevault.documentsPage.fileCount", { count })}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   );
 }

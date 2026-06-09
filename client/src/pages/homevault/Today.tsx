@@ -395,6 +395,7 @@ export default function Today() {
 
   const { data: stats, isLoading, error } = trpc.dashboard.stats.useQuery();
   const { data: calEvents = [] } = trpc.calendar.list.useQuery({});
+  const { data: docSummary } = trpc.documents.summary.useQuery();
 
   const markPaid = trpc.expenses.markAsPaid.useMutation({
     onSuccess: () => utils.dashboard.stats.invalidate(),
@@ -465,8 +466,7 @@ export default function Today() {
     r => r.priority === "high" || r.priority === "urgent"
   ).length;
 
-  // TODO: replace placeholder completeness once a documents backend exists.
-  const homeFilePct = 72;
+  const homeFilePct = docSummary?.percentage ?? 0;
 
   return (
     <div className="mx-auto max-w-[1180px]">

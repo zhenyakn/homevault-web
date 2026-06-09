@@ -375,6 +375,7 @@ function DashboardLayoutContent({
 
   const { data: profiles } = trpc.profiles.list.useQuery();
   const { data: properties } = trpc.property.list.useQuery();
+  const { data: docSummary } = trpc.documents.summary.useQuery();
   const hasMultipleProperties = (properties?.length ?? 0) > 1;
 
   // Flat nav with Portfolio surfaced only when there's more than one property.
@@ -459,11 +460,9 @@ function DashboardLayoutContent({
 
           {/* ── Footer: home-file widget + compact account ────────────── */}
           <SidebarFooter className="px-[22px] pb-7 pt-4">
-            {/* TODO: replace placeholder completeness with real document-coverage
-                data once the documents backend lands. */}
             <HomeFileCompleteness
               compact
-              percentage={72}
+              percentage={docSummary?.percentage ?? 0}
               onClick={() => setLocation("/documents")}
             />
             <DropdownMenu>

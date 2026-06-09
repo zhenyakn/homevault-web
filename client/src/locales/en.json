@@ -953,7 +953,10 @@
         "renovations": "Renovations"
       },
       "fileCount": "{{count}} files",
-      "noFiles": "No files yet"
+      "noFiles": "No files yet",
+      "missing": "No files yet",
+      "coverageNote": "{{done}} of {{total}} categories started · {{files}} files in your home file",
+      "uploadHint": "Direct uploads are coming soon — attach files to expenses, repairs and projects to build your home file."
     }
   },
   "dashboard": {
