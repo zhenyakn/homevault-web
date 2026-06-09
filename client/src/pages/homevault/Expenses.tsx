@@ -320,123 +320,58 @@ export default function HVExpenses() {
                   {t("expenses.addExpense")}
                 </Button>
               </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingId
-                    ? t("expenses.editExpense")
-                    : t("expenses.addExpense")}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3 pt-1">
-                <div className="space-y-1.5">
-                  <Label htmlFor="ex-label">{t("common.description")}</Label>
-                  <Input
-                    id="ex-label"
-                    value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })}
-                    placeholder={t("expenses.placeholderLabel")}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingId
+                      ? t("expenses.editExpense")
+                      : t("expenses.addExpense")}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 pt-1">
                   <div className="space-y-1.5">
-                    <Label htmlFor="ex-amount">{t("common.amount")}</Label>
+                    <Label htmlFor="ex-label">{t("common.description")}</Label>
                     <Input
-                      id="ex-amount"
-                      type="number"
-                      step="0.01"
-                      value={form.amount}
-                      onChange={e =>
-                        setForm({ ...form, amount: e.target.value })
-                      }
-                      placeholder="0.00"
+                      id="ex-label"
+                      value={form.name}
+                      onChange={e => setForm({ ...form, name: e.target.value })}
+                      placeholder={t("expenses.placeholderLabel")}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="ex-date">{t("common.date")}</Label>
-                    <Input
-                      id="ex-date"
-                      type="date"
-                      value={form.date}
-                      onChange={e => setForm({ ...form, date: e.target.value })}
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ex-amount">{t("common.amount")}</Label>
+                      <Input
+                        id="ex-amount"
+                        type="number"
+                        step="0.01"
+                        value={form.amount}
+                        onChange={e =>
+                          setForm({ ...form, amount: e.target.value })
+                        }
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ex-date">{t("common.date")}</Label>
+                      <Input
+                        id="ex-date"
+                        type="date"
+                        value={form.date}
+                        onChange={e =>
+                          setForm({ ...form, date: e.target.value })
+                        }
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>{t("common.category")}</Label>
-                  <Select
-                    value={form.category}
-                    onValueChange={v =>
-                      setForm({
-                        ...form,
-                        category: v as (typeof CATEGORIES)[number],
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map(c => (
-                        <SelectItem key={c} value={c}>
-                          {t(`categories.${c}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {form.category === "Loan" && (
                   <div className="space-y-1.5">
-                    <Label>{t("expenses.linkedLoan")}</Label>
+                    <Label>{t("common.category")}</Label>
                     <Select
-                      value={form.loanId || "none"}
-                      onValueChange={v =>
-                        setForm({ ...form, loanId: v === "none" ? "" : v })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">
-                          {t("expenses.noLoanLink")}
-                        </SelectItem>
-                        {(loans ?? []).map(l => (
-                          <SelectItem key={l.id} value={l.id}>
-                            {l.lender || l.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      {t("expenses.linkedLoanHint")}
-                    </p>
-                  </div>
-                )}
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="ex-rec"
-                    checked={form.isRecurring}
-                    onCheckedChange={v =>
-                      setForm({ ...form, isRecurring: v as boolean })
-                    }
-                  />
-                  <Label
-                    htmlFor="ex-rec"
-                    className="cursor-pointer font-normal"
-                  >
-                    {t("expenses.recurringExpense")}
-                  </Label>
-                </div>
-                {form.isRecurring && (
-                  <div className="space-y-1.5">
-                    <Label>{t("common.frequency")}</Label>
-                    <Select
-                      value={form.recurringInterval}
+                      value={form.category}
                       onValueChange={v =>
                         setForm({
                           ...form,
-                          recurringInterval: v as (typeof FREQUENCIES)[number],
+                          category: v as (typeof CATEGORIES)[number],
                         })
                       }
                     >
@@ -444,40 +379,112 @@ export default function HVExpenses() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {FREQUENCIES.map(f => (
-                          <SelectItem key={f} value={f}>
-                            {t(`frequency.${f}`)}
+                        {CATEGORIES.map(c => (
+                          <SelectItem key={c} value={c}>
+                            {t(`categories.${c}`)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-                <div className="space-y-1.5">
-                  <Label htmlFor="ex-notes">{t("common.notes")}</Label>
-                  <Input
-                    id="ex-notes"
-                    value={form.notes}
-                    onChange={e => setForm({ ...form, notes: e.target.value })}
-                    placeholder={t("common.optional")}
-                  />
+                  {form.category === "Loan" && (
+                    <div className="space-y-1.5">
+                      <Label>{t("expenses.linkedLoan")}</Label>
+                      <Select
+                        value={form.loanId || "none"}
+                        onValueChange={v =>
+                          setForm({ ...form, loanId: v === "none" ? "" : v })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            {t("expenses.noLoanLink")}
+                          </SelectItem>
+                          {(loans ?? []).map(l => (
+                            <SelectItem key={l.id} value={l.id}>
+                              {l.lender || l.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        {t("expenses.linkedLoanHint")}
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="ex-rec"
+                      checked={form.isRecurring}
+                      onCheckedChange={v =>
+                        setForm({ ...form, isRecurring: v as boolean })
+                      }
+                    />
+                    <Label
+                      htmlFor="ex-rec"
+                      className="cursor-pointer font-normal"
+                    >
+                      {t("expenses.recurringExpense")}
+                    </Label>
+                  </div>
+                  {form.isRecurring && (
+                    <div className="space-y-1.5">
+                      <Label>{t("common.frequency")}</Label>
+                      <Select
+                        value={form.recurringInterval}
+                        onValueChange={v =>
+                          setForm({
+                            ...form,
+                            recurringInterval:
+                              v as (typeof FREQUENCIES)[number],
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {FREQUENCIES.map(f => (
+                            <SelectItem key={f} value={f}>
+                              {t(`frequency.${f}`)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ex-notes">{t("common.notes")}</Label>
+                    <Input
+                      id="ex-notes"
+                      value={form.notes}
+                      onChange={e =>
+                        setForm({ ...form, notes: e.target.value })
+                      }
+                      placeholder={t("common.optional")}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("common.attachments")}</Label>
+                    <FileUpload
+                      onUpload={f => setAttachments([...attachments, f])}
+                      existingFiles={attachments}
+                      onRemove={i =>
+                        setAttachments(
+                          attachments.filter((_, idx) => idx !== i)
+                        )
+                      }
+                      accept="image/*,.pdf,.doc,.docx"
+                    />
+                  </div>
+                  <Button onClick={handleSubmit} className="w-full">
+                    {editingId ? t("common.update") : t("expenses.addExpense")}
+                  </Button>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>{t("common.attachments")}</Label>
-                  <FileUpload
-                    onUpload={f => setAttachments([...attachments, f])}
-                    existingFiles={attachments}
-                    onRemove={i =>
-                      setAttachments(attachments.filter((_, idx) => idx !== i))
-                    }
-                    accept="image/*,.pdf,.doc,.docx"
-                  />
-                </div>
-                <Button onClick={handleSubmit} className="w-full">
-                  {editingId ? t("common.update") : t("expenses.addExpense")}
-                </Button>
-              </div>
-            </DialogContent>
+              </DialogContent>
             </Dialog>
           </>
         }

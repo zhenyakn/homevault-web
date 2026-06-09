@@ -91,7 +91,11 @@ function TopbarProperty() {
 }
 
 /** The global action cluster: search, property, quick-add, notifications. */
-export function HVTopActions({ showQuickAdd = true }: { showQuickAdd?: boolean }) {
+export function HVTopActions({
+  showQuickAdd = true,
+}: {
+  showQuickAdd?: boolean;
+}) {
   const { t } = useTranslation();
   const { openSearch } = useHVChrome();
   return (

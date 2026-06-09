@@ -35,7 +35,9 @@ export function UpcomingEventItem({
         {format(d, "d")}
       </div>
       <div className="min-w-0">
-        <p className="truncate text-[14px] font-semibold text-hv-ink">{title}</p>
+        <p className="truncate text-[14px] font-semibold text-hv-ink">
+          {title}
+        </p>
         {(subtitle || amount) && (
           <p className="truncate text-[13px] text-hv-muted">
             {[subtitle, amount].filter(Boolean).join(" · ")}

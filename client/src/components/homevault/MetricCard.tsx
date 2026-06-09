@@ -58,7 +58,9 @@ export function MetricCard({
         {value}
       </p>
       {helper && (
-        <p className="mt-1.5 text-[13px] leading-snug text-hv-muted">{helper}</p>
+        <p className="mt-1.5 text-[13px] leading-snug text-hv-muted">
+          {helper}
+        </p>
       )}
     </Wrapper>
   );
