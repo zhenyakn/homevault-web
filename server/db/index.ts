@@ -11,5 +11,6 @@ export * from "./purchaseCosts";
 export * from "./calendar";
 export * from "./inventory";
 export * from "./dashboard";
+export * from "./documents";
 export * from "./notifications";
 export * from "./seed";

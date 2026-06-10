@@ -383,6 +383,14 @@ export const appRouter = router({
     }),
   }),
 
+  documents: router({
+    // Home-file completeness derived from attachments across the app's entity
+    // tables (see server/db/documents.ts). No dedicated documents table yet.
+    summary: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getDocumentsSummary(ctx.user.id, ctx.propertyId);
+    }),
+  }),
+
   expenses: router({
     list: protectedProcedure
       .input(
