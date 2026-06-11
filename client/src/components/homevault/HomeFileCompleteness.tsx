@@ -31,17 +31,19 @@ export function HomeFileCompleteness({
         type="button"
         onClick={onClick}
         className={cn(
-          "w-full rounded-[20px] border border-hv-sidebar-border bg-hv-sidebar-soft p-[18px] text-start transition-colors hover:brightness-110",
+          "w-full rounded-[14px] border border-hv-sidebar-border bg-hv-sidebar-soft px-3 py-2.5 text-start transition-colors hover:brightness-110",
           className
         )}
       >
-        <p className="text-[14px] font-bold text-white">
-          {t("homevault.homeFile")}
-        </p>
-        <p className="mt-1 text-[13px] text-white/55">
-          {t("homevault.homeFilePercent", { pct })}
-        </p>
-        <div className="mt-3.5 h-[9px] w-full overflow-hidden rounded-full bg-[#3b4b40]">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="truncate text-[13px] font-semibold text-white">
+            {t("homevault.homeFile")}
+          </p>
+          <span className="shrink-0 text-[12px] font-semibold tabular-nums text-white/55">
+            {pct}%
+          </span>
+        </div>
+        <div className="mt-2 h-[6px] w-full overflow-hidden rounded-full bg-[#3b4b40]">
           <div
             className="h-full rounded-full bg-hv-accent transition-all"
             style={{ width: `${pct}%` }}
