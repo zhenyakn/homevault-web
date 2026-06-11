@@ -116,3 +116,9 @@ client/public/__manus__/
 # shared project skills which are committed.
 .claude/*
 !.claude/skills/
+
+# QA (Playwright) run artifacts — screenshots, traces, HTML report, seed state.
+# The harness, helpers and specs under qa/ ARE committed; only outputs are not.
+qa/artifacts/
+test-results/
+playwright-report/

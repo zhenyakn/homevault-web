@@ -10,6 +10,9 @@
     "check": "tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest run",
+    "qa": "playwright test",
+    "qa:headed": "playwright test --headed",
+    "qa:report": "playwright show-report qa/artifacts/report",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
@@ -97,6 +100,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.3",
     "@types/archiver": "^7.0.0",
