@@ -210,26 +210,25 @@ function SwipeRow({
     <li className="group relative overflow-hidden">
       {/* Swipe-to-delete zone, revealed as the content slides away. It mirrors
           the entry's own surface (--card === --popover) plus the row's tint, so
-          the gap reads as the same row — only the circular chip carries the
-          danger colour, fading in as the swipe progresses. */}
+          the gap reads as the same row. The circular chip stays centred in the
+          revealed strip — emerging from under the content and tracking the
+          finger — and is the only thing carrying the danger colour. */}
       <div className="pointer-events-none absolute inset-0 bg-popover">
         {tintClass && <div className={cn("absolute inset-0", tintClass)} />}
         <div
-          className={cn(
-            "absolute inset-0 flex items-center",
-            deleteSign < 0 ? "justify-end" : "justify-start"
-          )}
+          className="absolute inset-y-0 end-0 flex items-center justify-center"
+          style={{ width: distance }}
         >
           <span
             className={cn(
-              "mx-5 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition-shadow",
+              "flex h-10 w-10 items-center justify-center rounded-full text-white shadow-md transition-[box-shadow]",
               hv ? "bg-hv-red" : "bg-destructive",
               armed &&
-                (hv ? "ring-2 ring-hv-red/25" : "ring-2 ring-destructive/25")
+                (hv ? "ring-4 ring-hv-red/20" : "ring-4 ring-destructive/20")
             )}
             style={{
-              transform: `scale(${0.5 + progress * 0.5})`,
-              opacity: progress,
+              transform: `scale(${Math.min(1, 0.4 + progress * 0.7)})`,
+              opacity: Math.min(1, progress * 1.3),
             }}
           >
             <Trash2 className="h-[18px] w-[18px]" />
