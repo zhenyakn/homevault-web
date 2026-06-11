@@ -71,7 +71,7 @@ export async function runReminderSweep(
 
     for (const payload of due) {
       try {
-        await notifyFn(userId, payload);
+        await notifyFn(userId, payload, { propertyId: property.id });
         reminders++;
       } catch (err) {
         logger.warn(
