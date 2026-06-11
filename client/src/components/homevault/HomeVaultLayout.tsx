@@ -78,13 +78,7 @@ const HV_HEADER_ROUTES = [
   "/wishlist",
 ];
 import { HomeFileCompleteness } from "@/components/homevault/HomeFileCompleteness";
-import {
-  CSSProperties,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
 import { cn } from "@/lib/utils";
