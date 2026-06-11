@@ -78,9 +78,16 @@ const HV_HEADER_ROUTES = [
   "/wishlist",
 ];
 import { HomeFileCompleteness } from "@/components/homevault/HomeFileCompleteness";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import {
+  CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
+import { cn } from "@/lib/utils";
 
 type LucideIcon = React.ComponentType<
   React.SVGProps<SVGSVGElement> & { className?: string }
@@ -405,6 +412,37 @@ function DashboardLayoutContent({
       ? location === "/"
       : location === path || location.startsWith(path + "/");
 
+  // Scroll affordance: when the nav list overflows and isn't scrolled to the
+  // bottom, fade its lower edge so it's obvious there are more items below
+  // (the pinned footer otherwise hides that the list scrolls — most visible on
+  // short mobile viewports). A callback ref wires up the ResizeObserver the
+  // moment the nav mounts, which matters on mobile where the sidebar lives in
+  // an offcanvas sheet that mounts after the layout's first render.
+  const navElRef = useRef<HTMLDivElement | null>(null);
+  const navObserverRef = useRef<ResizeObserver | null>(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+
+  const updateScrollHint = useCallback(() => {
+    const el = navElRef.current;
+    if (!el) return;
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollHint(remaining > 4);
+  }, []);
+
+  const navRefCallback = useCallback(
+    (el: HTMLDivElement | null) => {
+      navObserverRef.current?.disconnect();
+      navElRef.current = el;
+      if (!el) return;
+      updateScrollHint();
+      if (typeof ResizeObserver !== "undefined") {
+        navObserverRef.current = new ResizeObserver(updateScrollHint);
+        navObserverRef.current.observe(el);
+      }
+    },
+    [updateScrollHint]
+  );
+
   return (
     <>
       <a
@@ -442,21 +480,34 @@ function DashboardLayoutContent({
           </SidebarHeader>
 
           {/* ── Nav (flat, calm — matches the concept) ────────────────── */}
-          <SidebarContent className="overflow-y-auto px-[22px] py-0">
-            <SidebarMenu className="gap-2">
-              {navItems.map(item => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton
-                    isActive={isActive(item.path)}
-                    onClick={() => setLocation(item.path)}
-                    className="h-auto rounded-[16px] px-[14px] py-[11px] text-[14px] font-normal text-[#d6ddd6] transition-colors hover:bg-white/[0.08] hover:text-white data-[active=true]:bg-[#FFFCF7] data-[active=true]:font-bold data-[active=true]:text-[#214E3D] data-[active=true]:shadow-none data-[active=true]:hover:bg-[#FFFCF7] data-[active=true]:hover:text-[#214E3D]"
-                  >
-                    <span>{t(item.key)}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarContent>
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <SidebarContent
+              ref={navRefCallback}
+              onScroll={updateScrollHint}
+              className="overflow-y-auto px-[22px] py-0"
+            >
+              <SidebarMenu className="gap-2">
+                {navItems.map(item => (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive(item.path)}
+                      onClick={() => setLocation(item.path)}
+                      className="h-auto rounded-[16px] px-[14px] py-[11px] text-[14px] font-normal text-[#d6ddd6] transition-colors hover:bg-white/[0.08] hover:text-white data-[active=true]:bg-[#FFFCF7] data-[active=true]:font-bold data-[active=true]:text-[#214E3D] data-[active=true]:shadow-none data-[active=true]:hover:bg-[#FFFCF7] data-[active=true]:hover:text-[#214E3D]"
+                    >
+                      <span>{t(item.key)}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarContent>
+            <div
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-sidebar to-transparent transition-opacity duration-200",
+                showScrollHint ? "opacity-100" : "opacity-0"
+              )}
+            />
+          </div>
 
           {/* ── Footer: home-file widget + compact account ────────────── */}
           <SidebarFooter className="px-[22px] pb-7 pt-4">
