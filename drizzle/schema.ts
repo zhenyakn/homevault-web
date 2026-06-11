@@ -689,6 +689,10 @@ export const notificationLog = mysqlTable(
     userId: int("userId")
       .notNull()
       .references(() => users.id),
+    // The property this notification belongs to. Reminders (expense/loan/etc.)
+    // are property-specific and only surface while that property is active;
+    // system notifications (e.g. test sends) leave this null and show globally.
+    propertyId: int("propertyId").references(() => properties.id),
     channel: mysqlEnum("channel", [
       "inapp",
       "push",
@@ -716,6 +720,11 @@ export const notificationLog = mysqlTable(
   },
   table => ({
     userIdx: index("notif_log_user_idx").on(table.userId),
+    // Feed reads filter on (user, property); index the pair to keep them fast.
+    propertyIdx: index("notif_log_property_idx").on(
+      table.userId,
+      table.propertyId
+    ),
     // Idempotency: one row per (user, logical event, channel).
     dedupeIdx: index("notif_log_dedupe_idx").on(
       table.userId,

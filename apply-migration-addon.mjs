@@ -937,6 +937,7 @@ async function main() {
     `CREATE TABLE IF NOT EXISTS \`notification_log\` (
       \`id\` int AUTO_INCREMENT PRIMARY KEY,
       \`userId\` int NOT NULL,
+      \`propertyId\` int DEFAULT NULL,
       \`channel\` enum('inapp','push','email','webpush','telegram','whatsapp') NOT NULL,
       \`category\` enum('expense','loan','repair','warranty','calendar','system') NOT NULL,
       \`title\` varchar(300) NOT NULL,
@@ -957,6 +958,16 @@ async function main() {
   await run(
     `CREATE INDEX \`notif_log_dedupe_idx\` ON \`notification_log\` (\`userId\`, \`dedupeKey\`, \`channel\`)`,
     "index notif_log_dedupe_idx"
+  );
+  // Idempotent additions for already-deployed addons: scope notifications to a
+  // property so reminders only surface while that property is active.
+  await run(
+    `ALTER TABLE \`notification_log\` ADD COLUMN \`propertyId\` int DEFAULT NULL`,
+    "notification_log.propertyId"
+  );
+  await run(
+    `CREATE INDEX \`notif_log_property_idx\` ON \`notification_log\` (\`userId\`, \`propertyId\`)`,
+    "index notif_log_property_idx"
   );
   await run(
     `CREATE TABLE IF NOT EXISTS \`web_push_subscriptions\` (

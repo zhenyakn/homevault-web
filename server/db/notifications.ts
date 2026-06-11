@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, gt } from "drizzle-orm";
+import { and, desc, eq, isNull, gt, or } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
 import {
   users,
@@ -138,7 +138,7 @@ export async function recordDelivery(
 
 export async function listInApp(
   userId: number,
-  opts: { unreadOnly?: boolean; limit?: number } = {}
+  opts: { unreadOnly?: boolean; limit?: number; propertyId?: number } = {}
 ) {
   const db = await getDb();
   const conds = [
@@ -147,6 +147,20 @@ export async function listInApp(
     eq(notificationLog.status, "sent"),
   ];
   if (opts.unreadOnly) conds.push(isNull(notificationLog.readAt));
+  // Property scoping: reminders carry the property they were raised for and
+  // only appear while that property is active. System notifications (e.g. test
+  // sends) are account-wide — they carry no property and stay visible on every
+  // property. Pre-scoping reminder rows (propertyId null, non-system category)
+  // are intentionally dropped from the feed so they stop leaking across
+  // properties; the daily sweep re-stamps live ones with their property.
+  if (opts.propertyId != null) {
+    conds.push(
+      or(
+        eq(notificationLog.propertyId, opts.propertyId),
+        eq(notificationLog.category, "system")
+      )!
+    );
+  }
   return db
     .select()
     .from(notificationLog)
@@ -163,18 +177,31 @@ export async function markRead(id: number, userId: number): Promise<void> {
     .where(and(eq(notificationLog.id, id), eq(notificationLog.userId, userId)));
 }
 
-export async function markAllRead(userId: number): Promise<void> {
+export async function markAllRead(
+  userId: number,
+  opts: { propertyId?: number } = {}
+): Promise<void> {
   const db = await getDb();
+  const conds = [
+    eq(notificationLog.userId, userId),
+    eq(notificationLog.channel, "inapp"),
+    isNull(notificationLog.readAt),
+  ];
+  // Only clear what the user can actually see on the active property: its own
+  // reminders plus account-wide system notifications. Other properties' unread
+  // items stay unread so their badge is intact when the user switches back.
+  if (opts.propertyId != null) {
+    conds.push(
+      or(
+        eq(notificationLog.propertyId, opts.propertyId),
+        eq(notificationLog.category, "system")
+      )!
+    );
+  }
   await db
     .update(notificationLog)
     .set({ readAt: new Date() })
-    .where(
-      and(
-        eq(notificationLog.userId, userId),
-        eq(notificationLog.channel, "inapp"),
-        isNull(notificationLog.readAt)
-      )
-    );
+    .where(and(...conds));
 }
 
 // ── Web Push subscriptions ────────────────────────────────────────────────────
