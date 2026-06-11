@@ -143,12 +143,15 @@ function SwipeRow({
   actions,
   children,
   isRTL,
+  tintClass,
 }: {
   hv: boolean;
   onDelete: () => void;
   actions?: React.ReactNode;
   children: React.ReactNode;
   isRTL: boolean;
+  /** The row's own background tint, so the revealed gap matches the entry. */
+  tintClass?: string;
 }) {
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -205,30 +208,33 @@ function SwipeRow({
 
   return (
     <li className="group relative overflow-hidden">
-      {/* Swipe-to-delete zone, revealed as the content slides away. It shares
-          the panel surface (--card === --popover) so the gap reads as the same
-          window — only the circular chip carries the danger colour, fading in
-          as the swipe progresses. */}
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-0 flex items-center bg-popover",
-          deleteSign < 0 ? "justify-end" : "justify-start"
-        )}
-      >
-        <span
+      {/* Swipe-to-delete zone, revealed as the content slides away. It mirrors
+          the entry's own surface (--card === --popover) plus the row's tint, so
+          the gap reads as the same row — only the circular chip carries the
+          danger colour, fading in as the swipe progresses. */}
+      <div className="pointer-events-none absolute inset-0 bg-popover">
+        {tintClass && <div className={cn("absolute inset-0", tintClass)} />}
+        <div
           className={cn(
-            "mx-5 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition-shadow",
-            hv ? "bg-hv-red" : "bg-destructive",
-            armed &&
-              (hv ? "ring-2 ring-hv-red/25" : "ring-2 ring-destructive/25")
+            "absolute inset-0 flex items-center",
+            deleteSign < 0 ? "justify-end" : "justify-start"
           )}
-          style={{
-            transform: `scale(${0.5 + progress * 0.5})`,
-            opacity: progress,
-          }}
         >
-          <Trash2 className="h-[18px] w-[18px]" />
-        </span>
+          <span
+            className={cn(
+              "mx-5 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-sm transition-shadow",
+              hv ? "bg-hv-red" : "bg-destructive",
+              armed &&
+                (hv ? "ring-2 ring-hv-red/25" : "ring-2 ring-destructive/25")
+            )}
+            style={{
+              transform: `scale(${0.5 + progress * 0.5})`,
+              opacity: progress,
+            }}
+          >
+            <Trash2 className="h-[18px] w-[18px]" />
+          </span>
+        </div>
       </div>
 
       <div
@@ -473,6 +479,7 @@ export function NotificationCenter({ className }: { className?: string }) {
         hv={hv}
         isRTL={isRTL}
         onDelete={() => requestDelete(n)}
+        tintClass={n.readAt ? undefined : "bg-primary/[0.03]"}
         actions={
           <>
             {!n.readAt && (
@@ -556,6 +563,7 @@ export function NotificationCenter({ className }: { className?: string }) {
                 hv={hv}
                 isRTL={isRTL}
                 onDelete={() => requestDismiss(a.key)}
+                tintClass="bg-rose-500/[0.03]"
                 actions={
                   <RowAction
                     hv={hv}
