@@ -5,9 +5,10 @@
  * the badge.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import {
   Bell,
   Wallet,
@@ -19,8 +20,10 @@ import {
   Check,
   AlertCircle,
   X,
+  Trash2,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/lib/trpc";
 import {
   Popover,
@@ -71,6 +74,111 @@ const CATEGORY_COLOR: Record<Category, string> = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ATTENTION_DISMISS_KEY = "hv:attention-dismissed";
 
+// How long the undo toast stays up before a delete/dismiss is committed.
+const UNDO_MS = 5000;
+// Horizontal distance (px) a touch must travel to trigger a swipe delete.
+const SWIPE_THRESHOLD = 72;
+// Movement below this (px) is treated as a tap, not the start of a gesture.
+const GESTURE_SLOP = 8;
+
+/**
+ * Row wrapper that adds two delete affordances on top of arbitrary content:
+ *  - desktop (hover-capable pointers): action buttons revealed on hover;
+ *  - touch: swipe toward the inline edge to delete, with a red reveal behind.
+ * `onDelete` fires once the gesture commits; the caller owns the undo flow.
+ */
+function SwipeRow({
+  onDelete,
+  actions,
+  children,
+  isRTL,
+  deleteLabel,
+  className,
+}: {
+  onDelete: () => void;
+  actions?: React.ReactNode;
+  children: React.ReactNode;
+  isRTL: boolean;
+  deleteLabel: string;
+  className?: string;
+}) {
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const start = useRef<{ x: number; y: number } | null>(null);
+  const axis = useRef<"h" | "v" | null>(null);
+
+  // Delete toward the inline-start edge: leftwards in LTR, rightwards in RTL.
+  const deleteSign = isRTL ? 1 : -1;
+
+  const reset = () => {
+    start.current = null;
+    axis.current = null;
+    setDragging(false);
+    setDragX(0);
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    start.current = { x: touch.clientX, y: touch.clientY };
+    axis.current = null;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!start.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - start.current.x;
+    const dy = touch.clientY - start.current.y;
+    if (axis.current == null) {
+      if (Math.abs(dx) < GESTURE_SLOP && Math.abs(dy) < GESTURE_SLOP) return;
+      // Lock the gesture to one axis so vertical scrolls aren't hijacked.
+      axis.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v";
+      if (axis.current === "h") setDragging(true);
+    }
+    if (axis.current !== "h") return;
+    // Only follow the finger toward the delete edge; clamp the other way.
+    const constrained = deleteSign < 0 ? Math.min(0, dx) : Math.max(0, dx);
+    setDragX(constrained);
+  };
+
+  const onTouchEnd = () => {
+    const committed =
+      axis.current === "h" && Math.abs(dragX) >= SWIPE_THRESHOLD;
+    reset();
+    if (committed) onDelete();
+  };
+
+  return (
+    <li className="group relative overflow-hidden">
+      <div
+        className={cn(
+          "pointer-events-none absolute inset-0 flex items-center bg-destructive px-4 text-white",
+          deleteSign < 0 ? "justify-end" : "justify-start"
+        )}
+        style={{ opacity: dragX !== 0 ? 1 : 0 }}
+      >
+        <span className="flex items-center gap-1.5 text-xs font-medium">
+          <Trash2 className="h-4 w-4" />
+          {deleteLabel}
+        </span>
+      </div>
+      <div
+        className={cn("relative flex items-stretch bg-popover", className)}
+        style={{
+          transform: `translateX(${dragX}px)`,
+          touchAction: "pan-y",
+          transition: dragging ? "none" : "transform 0.2s ease",
+        }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        {children}
+        {actions}
+      </div>
+    </li>
+  );
+}
+
 function minutesSince(d: Date | string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 60000));
 }
@@ -86,6 +194,7 @@ function relativeTime(d: Date | string, t: (k: string, o?: any) => string) {
 
 export function NotificationCenter({ className }: { className?: string }) {
   const { t } = useTranslation();
+  const { isRTL } = useLanguage();
   const [, setLocation] = useLocation();
   const [open, setOpen] = useState(false);
   const utils = trpc.useUtils();
@@ -102,6 +211,56 @@ export function NotificationCenter({ className }: { className?: string }) {
   const markAllRead = trpc.notification.markAllRead.useMutation({
     onSuccess: () => utils.notification.listInApp.invalidate(),
   });
+  const deleteInApp = trpc.notification.deleteInApp.useMutation({
+    // Keep the row hidden until the refetch settles so it can't flash back.
+    onSuccess: async (_data, vars) => {
+      await utils.notification.listInApp.invalidate();
+      setHiddenIds(prev => {
+        const next = new Set(prev);
+        next.delete(vars.id);
+        return next;
+      });
+    },
+  });
+
+  // Deferred-delete with undo: a deleted item is hidden immediately and the
+  // server delete is fired only after the undo window lapses. Undo cancels the
+  // pending commit and restores the row — no server round-trip either way.
+  const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
+  const deleteTimers = useRef(new Map<number, ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const timers = deleteTimers.current;
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, []);
+
+  const requestDelete = (item: FeedItem) => {
+    setHiddenIds(prev => new Set(prev).add(item.id));
+    const timer = setTimeout(() => {
+      deleteTimers.current.delete(item.id);
+      deleteInApp.mutate({ id: item.id });
+    }, UNDO_MS);
+    deleteTimers.current.set(item.id, timer);
+    toast(t("notifs.deleted"), {
+      duration: UNDO_MS,
+      action: {
+        label: t("notifs.undo"),
+        onClick: () => {
+          const pending = deleteTimers.current.get(item.id);
+          if (pending) {
+            clearTimeout(pending);
+            deleteTimers.current.delete(item.id);
+          }
+          setHiddenIds(prev => {
+            const next = new Set(prev);
+            next.delete(item.id);
+            return next;
+          });
+        },
+      },
+    });
+  };
 
   // Live "needs attention" items from the dashboard, surfaced here so the bell
   // can't say "all caught up" while the dashboard shows overdue bills / stale
@@ -179,10 +338,34 @@ export function NotificationCenter({ className }: { className?: string }) {
     });
   };
 
+  const undismissAttention = (key: string) => {
+    setDismissed(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      persistDismissed(next);
+      return next;
+    });
+  };
+
+  const requestDismiss = (key: string) => {
+    dismissAttention(key);
+    toast(t("notifs.dismissed"), {
+      duration: UNDO_MS,
+      action: {
+        label: t("notifs.undo"),
+        onClick: () => undismissAttention(key),
+      },
+    });
+  };
+
   const visibleAttention = attention.filter(a => !dismissed.has(a.key));
 
+  // Items pending a deferred delete are hidden from the feed (and badge count).
+  const visibleNotifications = notifications.filter(n => !hiddenIds.has(n.id));
+
   const unread =
-    notifications.filter(n => !n.readAt).length + visibleAttention.length;
+    visibleNotifications.filter(n => !n.readAt).length +
+    visibleAttention.length;
 
   const handleOpen = (item: FeedItem) => {
     if (!item.readAt) markRead.mutate({ id: item.id });
@@ -192,24 +375,54 @@ export function NotificationCenter({ className }: { className?: string }) {
     }
   };
 
-  const today = notifications.filter(
+  const today = visibleNotifications.filter(
     n => Date.now() - new Date(n.createdAt).getTime() < DAY_MS
   );
-  const earlier = notifications.filter(
+  const earlier = visibleNotifications.filter(
     n => Date.now() - new Date(n.createdAt).getTime() >= DAY_MS
   );
 
   const renderItem = (n: FeedItem) => {
     const Icon = CATEGORY_ICON[n.category] ?? Info;
     return (
-      <li key={n.id}>
+      <SwipeRow
+        key={n.id}
+        isRTL={isRTL}
+        deleteLabel={t("notifs.delete")}
+        onDelete={() => requestDelete(n)}
+        className={cn(
+          "transition-colors [@media(hover:hover)]:group-hover:bg-muted/50",
+          !n.readAt && "bg-primary/[0.03]"
+        )}
+        actions={
+          <div className="hidden items-center gap-0.5 self-center pe-1.5 [@media(hover:hover)]:flex">
+            {!n.readAt && (
+              <button
+                type="button"
+                onClick={() => markRead.mutate({ id: n.id })}
+                aria-label={t("notifs.markRead")}
+                title={t("notifs.markRead")}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-primary/10 hover:text-primary group-hover:opacity-100"
+              >
+                <Check className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => requestDelete(n)}
+              aria-label={t("notifs.delete")}
+              title={t("notifs.delete")}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        }
+      >
         <button
           type="button"
           onClick={() => handleOpen(n)}
-          className={cn(
-            "flex w-full items-start gap-3 px-3 py-3 text-start transition-colors hover:bg-muted/50",
-            !n.readAt && "bg-primary/[0.03]"
-          )}
+          className="flex min-w-0 flex-1 items-start gap-3 px-3 py-3 text-start"
         >
           <div
             className={cn(
@@ -241,7 +454,7 @@ export function NotificationCenter({ className }: { className?: string }) {
             </p>
           </div>
         </button>
-      </li>
+      </SwipeRow>
     );
   };
 
@@ -260,9 +473,25 @@ export function NotificationCenter({ className }: { className?: string }) {
           {visibleAttention.map(a => {
             const Icon = CATEGORY_ICON[a.category] ?? AlertCircle;
             return (
-              <li
+              <SwipeRow
                 key={a.key}
-                className="group flex items-stretch bg-rose-500/[0.03] hover:bg-muted/50 transition-colors"
+                isRTL={isRTL}
+                deleteLabel={t("notifs.dismiss")}
+                onDelete={() => requestDismiss(a.key)}
+                className="bg-rose-500/[0.03] transition-colors [@media(hover:hover)]:group-hover:bg-muted/50"
+                actions={
+                  <div className="hidden items-center self-center pe-1.5 [@media(hover:hover)]:flex">
+                    <button
+                      type="button"
+                      onClick={() => requestDismiss(a.key)}
+                      aria-label={t("notifs.dismiss")}
+                      title={t("notifs.dismiss")}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                }
               >
                 <button
                   type="button"
@@ -284,16 +513,7 @@ export function NotificationCenter({ className }: { className?: string }) {
                     </p>
                   </div>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => dismissAttention(a.key)}
-                  aria-label={t("notifs.dismiss")}
-                  title={t("notifs.dismiss")}
-                  className="px-2 text-muted-foreground/50 hover:text-foreground transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </li>
+              </SwipeRow>
             );
           })}
         </ul>
@@ -353,7 +573,7 @@ export function NotificationCenter({ className }: { className?: string }) {
           )}
         </div>
 
-        {notifications.length === 0 && visibleAttention.length === 0 ? (
+        {visibleNotifications.length === 0 && visibleAttention.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/50 text-muted-foreground">
               <Check className="h-5 w-5" />

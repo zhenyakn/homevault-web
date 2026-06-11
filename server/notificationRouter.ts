@@ -108,6 +108,13 @@ export const notificationRouter = router({
     return { ok: true } as const;
   }),
 
+  deleteInApp: protectedProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      await notif.deleteInApp(input.id, ctx.user.id);
+      return { ok: true } as const;
+    }),
+
   // ── Test send ──────────────────────────────────────────────────────────────
   sendTest: protectedProcedure
     .input(z.object({ channel: channelEnum }))
