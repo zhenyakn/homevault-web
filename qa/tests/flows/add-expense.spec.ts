@@ -1,4 +1,4 @@
-import { test, expect } from "../fixtures";
+import { test, expect } from "../../fixtures";
 
 /**
  * Data-entry flow — exercises the full "add expense" journey end to end:

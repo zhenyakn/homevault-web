@@ -20,13 +20,27 @@ qa/
   fixtures.ts          ← `app` (a Driver) + `propertyId` test fixtures
   support/
     driver.ts          ← Driver: the Selenium-like action vocabulary
+    scenarios.ts       ← reusable scenario builders (e.g. "screen loads")
     app.ts             ← seedDemoData / waitForServer / seed-state helpers
     chromium.ts        ← resolves the prebuilt Chromium executable
-  tests/
-    smoke.spec.ts      ← breadth: every screen loads with data (+ screenshots)
-    expenses.spec.ts   ← depth: add-an-expense data-entry flow
+  tests/               ← one scenario per file
+    screens/           ← breadth: each screen loads with data (+ screenshot)
+      dashboard.spec.ts  calendar.spec.ts   expenses.spec.ts
+      loans.spec.ts      purchase-costs.spec.ts  repairs.spec.ts
+      upgrades.spec.ts   inventory.spec.ts  wishlist.spec.ts
+      settings.spec.ts
+    flows/             ← depth: multi-step user journeys
+      add-expense.spec.ts   ← open dialog → fill → select → submit → verify
   artifacts/           ← screenshots, traces, HTML report (gitignored)
 ```
+
+Every scenario lives in its own `*.spec.ts` file. Screen-load checks share the
+`screenLoadsScenario(...)` builder so each file is a thin, declarative
+one-liner; richer journeys (forms, drill-ins) get a hand-written `flows/` file.
+
+This whole folder is **excluded from the build** (it's not in `tsconfig.json`'s
+`include`, is listed in its `exclude`, and `vite build` only bundles `client/`)
+— same treatment as `.claude/skills/`: committed to the repo, never shipped.
 
 The Playwright config lives at the repo root: `playwright.config.ts`.
 
