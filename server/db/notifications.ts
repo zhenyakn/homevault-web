@@ -177,6 +177,19 @@ export async function markRead(id: number, userId: number): Promise<void> {
     .where(and(eq(notificationLog.id, id), eq(notificationLog.userId, userId)));
 }
 
+export async function deleteInApp(id: number, userId: number): Promise<void> {
+  const db = await getDb();
+  await db
+    .delete(notificationLog)
+    .where(
+      and(
+        eq(notificationLog.id, id),
+        eq(notificationLog.userId, userId),
+        eq(notificationLog.channel, "inapp")
+      )
+    );
+}
+
 export async function markAllRead(
   userId: number,
   opts: { propertyId?: number } = {}
