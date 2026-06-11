@@ -153,18 +153,20 @@ const MAX_WIDTH = 480;
 
 // Flat navigation for the HomeVault sidebar — the concept uses a single calm
 // list (no admin-style section groups). Primary items lead, Settings trails.
-type HVNavItem = { key: string; path: string };
+// Each item carries a lucide icon that mirrors the section-grouped nav above so
+// the two layouts stay visually consistent.
+type HVNavItem = { icon: LucideIcon; key: string; path: string };
 const HV_NAV: HVNavItem[] = [
-  { key: "nav.today", path: "/" },
-  { key: "nav.expenses", path: "/expenses" },
-  { key: "nav.repairs", path: "/repairs" },
-  { key: "nav.projects", path: "/upgrades" },
-  { key: "nav.documents", path: "/documents" },
-  { key: "nav.calendar", path: "/calendar" },
-  { key: "nav.loans", path: "/loans" },
-  { key: "nav.purchaseCosts", path: "/purchase-costs" },
-  { key: "nav.inventory", path: "/inventory" },
-  { key: "nav.wishlist", path: "/wishlist" },
+  { icon: Home, key: "nav.today", path: "/" },
+  { icon: Receipt, key: "nav.expenses", path: "/expenses" },
+  { icon: Wrench, key: "nav.repairs", path: "/repairs" },
+  { icon: TrendingUp, key: "nav.projects", path: "/upgrades" },
+  { icon: FileText, key: "nav.documents", path: "/documents" },
+  { icon: Calendar, key: "nav.calendar", path: "/calendar" },
+  { icon: DollarSign, key: "nav.loans", path: "/loans" },
+  { icon: ShoppingCart, key: "nav.purchaseCosts", path: "/purchase-costs" },
+  { icon: Package, key: "nav.inventory", path: "/inventory" },
+  { icon: Heart, key: "nav.wishlist", path: "/wishlist" },
 ];
 
 const AVATAR_COLORS = [
@@ -389,10 +391,10 @@ function DashboardLayoutContent({
   const navItems: HVNavItem[] = hasMultipleProperties
     ? [
         ...HV_NAV,
-        { key: "nav.portfolio", path: "/portfolio" },
-        { key: "nav.settings", path: "/settings" },
+        { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
+        { icon: Settings, key: "nav.settings", path: "/settings" },
       ]
-    : [...HV_NAV, { key: "nav.settings", path: "/settings" }];
+    : [...HV_NAV, { icon: Settings, key: "nav.settings", path: "/settings" }];
 
   const handleSearchOpen = () => {
     onSearchOpen?.();
@@ -487,17 +489,21 @@ function DashboardLayoutContent({
               className="overflow-y-auto px-[22px] py-0"
             >
               <SidebarMenu className="gap-2">
-                {navItems.map(item => (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive(item.path)}
-                      onClick={() => setLocation(item.path)}
-                      className="h-auto rounded-[16px] px-[14px] py-[11px] text-[14px] font-normal text-[#d6ddd6] transition-colors hover:bg-white/[0.08] hover:text-white data-[active=true]:bg-[#FFFCF7] data-[active=true]:font-bold data-[active=true]:text-[#214E3D] data-[active=true]:shadow-none data-[active=true]:hover:bg-[#FFFCF7] data-[active=true]:hover:text-[#214E3D]"
-                    >
-                      <span>{t(item.key)}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {navItems.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <SidebarMenuItem key={item.path}>
+                      <SidebarMenuButton
+                        isActive={isActive(item.path)}
+                        onClick={() => setLocation(item.path)}
+                        className="h-auto gap-3 rounded-[16px] px-[14px] py-[11px] text-[14px] font-normal text-[#d6ddd6] transition-colors hover:bg-white/[0.08] hover:text-white data-[active=true]:bg-[#FFFCF7] data-[active=true]:font-bold data-[active=true]:text-[#214E3D] data-[active=true]:shadow-none data-[active=true]:hover:bg-[#FFFCF7] data-[active=true]:hover:text-[#214E3D]"
+                      >
+                        <Icon className="opacity-90" />
+                        <span>{t(item.key)}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarContent>
             <div
