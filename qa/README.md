@@ -123,8 +123,22 @@ Apartment" via `data.seedMock`, and each test sets that property active in
   them. Target visible text / roles; if a screen needs stable hooks, add
   `data-testid`s to the component and prefer them.
 
+## CI & nightly
+
+Two GitHub Actions workflows run the suite (each spins up a throwaway MySQL,
+installs Chromium, runs `pnpm qa`, uploads the HTML report + JUnit + traces):
+
+- **`.github/workflows/qa-e2e.yml`** — per-PR / push gate on `dev`/`main`, plus
+  manual dispatch. Publishes a JUnit check on the PR.
+- **`.github/workflows/qa-nightly.yml`** — the "is `main` healthy?" runner:
+  a daily cron (03:00 UTC) **and** on-demand (`workflow_dispatch`, pick the
+  branch). Scheduled runs always execute on the default branch (`main`). On
+  failure it opens / updates a tracking GitHub issue so a broken `main` is
+  visible without watching the Actions tab.
+
 ## Roadmap
 
-- Wire `pnpm qa` into CI (JUnit reporter + GitHub Actions, upload the report).
 - Deepen mobile coverage (drive flows through the mobile nav, not just breadth).
 - Visual-diff snapshots; shrink the a11y `KNOWN_ISSUES` baseline as fixes land.
+- Swap the nightly failure notification for the team's channel (Slack/email) if
+  a GitHub issue isn't the right surface.
