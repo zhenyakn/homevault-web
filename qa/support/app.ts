@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 
 /** localStorage key the app reads to decide which property is active. */
 export const ACTIVE_PROPERTY_KEY = "hv_active_property_id";
@@ -57,6 +58,8 @@ export async function waitForServer(
 }
 
 export function saveSeedState(propertyId: number): void {
+  // qa/artifacts is gitignored, so a fresh checkout (CI) has no such dir yet.
+  mkdirSync(dirname(STATE_FILE), { recursive: true });
   writeFileSync(STATE_FILE, JSON.stringify({ propertyId }), "utf8");
 }
 
