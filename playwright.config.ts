@@ -82,6 +82,12 @@ export default defineConfig({
         process.env.JWT_SECRET ?? "devjwtsecret_at_least_16_chars_long_123456",
       STORAGE_BACKEND: "local",
       STORAGE_DIR: "/tmp/hv-uploads",
+      // Define the analytics placeholders (Vite picks up VITE_* from process.env)
+      // so index.html's `%VITE_ANALYTICS_ENDPOINT%/umami` script resolves instead
+      // of producing a literal, undecodable URL that spams the server log with
+      // "Malformed URI sequence" on every page load. Empty = analytics disabled.
+      VITE_ANALYTICS_ENDPOINT: "",
+      VITE_ANALYTICS_WEBSITE_ID: "",
     },
   },
 });
