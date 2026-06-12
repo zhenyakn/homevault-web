@@ -148,8 +148,11 @@ function QuoteDialog({
         <div className="space-y-3 pt-1">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
-              <Label>{t("repairDetail.contractorName")}</Label>
+              <Label htmlFor="quote-contractor">
+                {t("repairDetail.contractorName")}
+              </Label>
               <Input
+                id="quote-contractor"
                 value={f.contractorName}
                 onChange={e =>
                   setF(p => ({ ...p, contractorName: e.target.value }))
@@ -359,7 +362,7 @@ function QuoteCard({
         {(payments.length > 0 || quote.selected) && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("repairDetail.payments")}
               </p>
               {quote.selected && (

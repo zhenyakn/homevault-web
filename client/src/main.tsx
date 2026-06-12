@@ -20,6 +20,19 @@ import "@fontsource/heebo/700.css";
 import "./index.css";
 import "./lib/i18n";
 
+// Privacy analytics (umami) — injected only when configured. Avoids requesting a
+// literal "%VITE_ANALYTICS_ENDPOINT%/umami" URL (an undecodable path that the
+// server logs as a URIError on every page load) when the env vars are unset.
+const analyticsEndpoint = import.meta.env.VITE_ANALYTICS_ENDPOINT;
+const analyticsWebsiteId = import.meta.env.VITE_ANALYTICS_WEBSITE_ID;
+if (analyticsEndpoint && analyticsWebsiteId) {
+  const script = document.createElement("script");
+  script.defer = true;
+  script.src = `${analyticsEndpoint}/umami`;
+  script.setAttribute("data-website-id", analyticsWebsiteId);
+  document.head.appendChild(script);
+}
+
 const queryClient = new QueryClient();
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {

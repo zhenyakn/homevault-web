@@ -22,7 +22,7 @@ export const STATUS_BADGE: Record<string, string> = {
     "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
   completed:
     "bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
-  cancelled: "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-500",
+  cancelled: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400",
 };
 
 export const PRIORITY_BADGE: Record<string, string> = {

@@ -202,16 +202,17 @@ export default function Wishlist() {
     item => item.priority === "high"
   ).length;
 
+  // Soft-tinted pills with dark text — AA-contrast compliant (white on mid-tone
+  // fills like orange/yellow-500 failed) and consistent with the other badges.
   const getPriorityColor = (priority: string | null) => {
     switch (priority) {
       case "high":
-        return "bg-orange-500 hover:bg-orange-600 text-white";
+        return "bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-300";
       case "medium":
-        return "bg-yellow-500 hover:bg-yellow-600 text-white";
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300";
       case "low":
-        return "bg-slate-500 hover:bg-slate-600 text-white";
       default:
-        return "bg-slate-500 hover:bg-slate-600 text-white";
+        return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
     }
   };
 
@@ -534,6 +535,7 @@ export default function Wishlist() {
                   size="sm"
                   variant="outline"
                   className="h-7 w-7 p-0"
+                  aria-label={t("common.edit")}
                   onClick={() => handleEdit(item)}
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -542,6 +544,7 @@ export default function Wishlist() {
                   size="sm"
                   variant="outline"
                   className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                  aria-label={t("common.delete")}
                   onClick={() => handleDelete(item.id)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />

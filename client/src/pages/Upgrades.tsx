@@ -187,7 +187,7 @@ function UpgradeRow({
     <div
       className={cn(
         "flex items-start gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors cursor-pointer",
-        isDone && "opacity-70"
+        isDone && "bg-muted/40"
       )}
       onClick={onClick}
     >
@@ -226,13 +226,13 @@ function UpgradeRow({
               {counts.done}/{counts.total} {t("dashboard.itemsDone")}
             </span>
             {counts.needsAction > 0 && (
-              <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
+              <span className="flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400 font-medium">
                 <AlertTriangle className="h-3 w-3" />
                 {counts.needsAction} {t("dashboard.needAction")}
               </span>
             )}
             {isDone && counts.done === counts.total && (
-              <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+              <span className="flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
                 <CheckCircle2 className="h-3 w-3" />
                 {t("dashboard.allComplete")}
               </span>
@@ -247,7 +247,7 @@ function UpgradeRow({
               <span className="tabular-nums">
                 {formatCurrency(spent)} {t("dashboard.paid")}
                 {spent > budget && (
-                  <span className="text-red-500 font-medium ms-1">
+                  <span className="text-red-600 font-medium ms-1">
                     · {t("dashboard.overBudget")}
                   </span>
                 )}
@@ -382,7 +382,7 @@ export default function Upgrades() {
         </div>
 
         <div className="border border-dashed border-border rounded-xl p-10 text-center space-y-4">
-          <div className="flex justify-center gap-4 text-muted-foreground/40">
+          <div className="flex justify-center gap-4 text-muted-foreground">
             <Hammer className="h-8 w-8" />
             <ListChecks className="h-8 w-8" />
             <FolderOpen className="h-8 w-8" />

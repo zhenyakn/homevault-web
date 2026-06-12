@@ -33,11 +33,15 @@ test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "rtl", "RTL-only spec");
 });
 
-/** Switch the UI to Hebrew via Settings → Appearance and confirm dir=rtl. */
+/**
+ * Switch the UI to Hebrew via the in-app language toggle and confirm dir=rtl.
+ * Navigates straight to the Appearance settings section by URL (the nav label
+ * is itself translated, so it isn't a reliable target) and clicks the "עברית"
+ * option, whose label is the same regardless of the current language — so this
+ * works whether the app is currently English or already Hebrew.
+ */
 async function switchToHebrew(app: Driver): Promise<void> {
-  await app.goto("/settings");
-  await app.page.getByText("Appearance", { exact: true }).first().click();
-  await app.settle(300);
+  await app.goto("/settings/appearance");
   await app.page.getByText("עברית").first().click();
   await app.settle();
   await expect(app.page.locator("html")).toHaveAttribute("dir", "rtl");

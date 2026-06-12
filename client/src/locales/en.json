@@ -124,7 +124,10 @@
     "progress": "Progress",
     "show": "Show",
     "hide": "Hide",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "filterByMonth": "Filter by month",
+    "filterByCategory": "Filter by category",
+    "filterByRoom": "Filter by room"
   },
   "propertyType": {
     "Apartment": "Apartment",
@@ -873,7 +876,9 @@
       "Payment": "Payment",
       "Maintenance": "Maintenance",
       "Renovation": "Renovation"
-    }
+    },
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month"
   },
   "homevault": {
     "homeFile": "Home file",
@@ -1017,5 +1022,8 @@
     "upcoming": "Upcoming",
     "totalOutstanding": "total outstanding",
     "itemsNeedAction": "items need your action"
+  },
+  "inventory": {
+    "deleteConfirm": "Delete this inventory item?"
   }
 }

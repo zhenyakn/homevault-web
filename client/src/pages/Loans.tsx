@@ -575,6 +575,7 @@ export default function Loans() {
                       size="sm"
                       variant="outline"
                       className="h-7 w-7 p-0"
+                      aria-label={t("common.edit")}
                       onClick={() => handleEdit(loan)}
                     >
                       <Edit className="h-3.5 w-3.5" />
@@ -583,6 +584,7 @@ export default function Loans() {
                       size="sm"
                       variant="outline"
                       className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      aria-label={t("common.delete")}
                       onClick={() => handleDelete(loan.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -624,7 +626,12 @@ export default function Loans() {
                   </div>
 
                   {repayments.length > 0 ? (
-                    <div className="space-y-2 max-h-32 overflow-y-auto pe-2">
+                    <div
+                      className="space-y-2 max-h-32 overflow-y-auto pe-2"
+                      tabIndex={0}
+                      role="region"
+                      aria-label={t("loans.repaymentHistory")}
+                    >
                       {repayments
                         .sort(
                           (a, b) =>
@@ -637,7 +644,7 @@ export default function Loans() {
                             className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded"
                           >
                             <span>{formatDate(rep.date)}</span>
-                            <span className="font-medium text-green-600">
+                            <span className="font-medium text-green-700">
                               {formatCurrency(rep.amount)}
                             </span>
                           </div>
