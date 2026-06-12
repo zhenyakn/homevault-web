@@ -12,7 +12,10 @@ export class PurchaseCostsPage extends BasePage {
   protected readonly route = "/purchase-costs";
 
   private openCreate() {
-    return this.page.getByRole("button", { name: /Add cost/i }).first().click();
+    return this.page
+      .getByRole("button", { name: /Add cost/i })
+      .first()
+      .click();
   }
 
   async addCost(input: PurchaseCostInput): Promise<void> {

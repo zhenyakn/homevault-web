@@ -12,7 +12,10 @@ export class LoansPage extends BasePage {
   protected readonly route = "/loans";
 
   private openCreate() {
-    return this.page.getByRole("button", { name: /Add loan/i }).first().click();
+    return this.page
+      .getByRole("button", { name: /Add loan/i })
+      .first()
+      .click();
   }
 
   async addLoan(input: LoanInput): Promise<void> {
@@ -21,15 +24,20 @@ export class LoansPage extends BasePage {
     await this.fillInDialog(/Lender/i, input.lender);
     await this.fillInDialog(/Total amount/i, input.amount);
     if (input.type) await this.selectInDialog(input.type, 0);
-    if (input.interestRate) await this.fillInDialog(/Interest rate/i, input.interestRate);
+    if (input.interestRate)
+      await this.fillInDialog(/Interest rate/i, input.interestRate);
     await this.submitDialog(/Save loan/i);
     await this.app.expectDialogOpen(false);
   }
 
-  async editLoan(lender: string, changes: { interestRate?: string }): Promise<void> {
+  async editLoan(
+    lender: string,
+    changes: { interestRate?: string }
+  ): Promise<void> {
     await this.app.clickRowIcon(lender, "lucide-square-pen");
     await this.app.expectDialogOpen();
-    if (changes.interestRate) await this.fillInDialog(/Interest rate/i, changes.interestRate);
+    if (changes.interestRate)
+      await this.fillInDialog(/Interest rate/i, changes.interestRate);
     await this.submitDialog(/Update loan/i);
     await this.app.expectDialogOpen(false);
   }
@@ -41,7 +49,11 @@ export class LoansPage extends BasePage {
   }
 
   async addRepayment(lender: string, amount: string): Promise<void> {
-    await this.app.rowFor(lender).getByRole("button", { name: /Repay/i }).first().click();
+    await this.app
+      .rowFor(lender)
+      .getByRole("button", { name: /Repay/i })
+      .first()
+      .click();
     await this.app.expectDialogOpen();
     await this.fillInDialog(/Amount/i, amount);
     await this.submitDialog(/Add repayment/i);

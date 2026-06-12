@@ -1,0 +1,86 @@
+name: QA E2E
+
+# Browser-driven end-to-end QA (Playwright). Boots the real Express/tRPC/Vite
+# stack under NO_AUTH against a throwaway MySQL, seeds the demo property, and
+# runs the deep flows + breadth + accessibility + mobile/RTL suites. Mirrors the
+# Node/pnpm/MySQL setup in ci.yml so the gates share one source of truth.
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+concurrency:
+  group: qa-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: homevault
+          MYSQL_USER: homevault
+          MYSQL_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+
+    env:
+      # global-setup connects directly (mysql2) to pin the English baseline; the
+      # webServer reads the same URL. Matches the mysql service above.
+      DATABASE_URL: mysql://homevault:password@127.0.0.1:3306/homevault
+      JWT_SECRET: devjwtsecret_at_least_16_chars_long_123456
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # CI runners can reach the Playwright CDN (unlike the dev sandbox), so we
+      # download Chromium here. qa/support/chromium.ts auto-falls back to
+      # Playwright's own browser when no prebuilt path / PW_CHROMIUM_PATH is set.
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run QA E2E suite (desktop + mobile + rtl)
+        run: pnpm qa
+
+      - name: Upload QA report & artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-artifacts
+          path: |
+            qa/artifacts/report
+            qa/artifacts/results
+            qa/artifacts/*.png
+            qa/artifacts/test-results
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Publish JUnit test summary
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: qa/artifacts/results/junit.xml
+          fail_on_failure: false

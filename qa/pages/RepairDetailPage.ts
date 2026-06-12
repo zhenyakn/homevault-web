@@ -22,7 +22,10 @@ export class RepairDetailPage extends BasePage {
   }
 
   async addQuote(contractor: string, price: string): Promise<void> {
-    await this.page.getByRole("button", { name: /Add quote/i }).first().click();
+    await this.page
+      .getByRole("button", { name: /Add quote/i })
+      .first()
+      .click();
     await this.app.expectDialogOpen();
     // Quote dialog uses bare <Label>s → target inputs positionally.
     await this.fillDialogText(0, contractor);
@@ -33,13 +36,19 @@ export class RepairDetailPage extends BasePage {
 
   async selectQuote(): Promise<void> {
     await this.expandCard();
-    await this.page.getByRole("button", { name: /^Select$/i }).first().click();
+    await this.page
+      .getByRole("button", { name: /^Select$/i })
+      .first()
+      .click();
     await this.app.settle();
   }
 
   async logPayment(amount: string): Promise<void> {
     await this.expandCard();
-    await this.page.getByRole("button", { name: /Log payment/i }).first().click();
+    await this.page
+      .getByRole("button", { name: /Log payment/i })
+      .first()
+      .click();
     await this.app.expectDialogOpen();
     await this.fillDialogNumber(0, amount);
     await this.submitDialog(/Log payment/i);

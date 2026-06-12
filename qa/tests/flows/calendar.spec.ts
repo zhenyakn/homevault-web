@@ -2,7 +2,10 @@ import { test } from "../../fixtures";
 import { factories } from "../../support/factories";
 
 test.describe("Calendar — create event & validation", () => {
-  test("create an event for today → it appears", async ({ calendar, sandbox }) => {
+  test("create an event for today → it appears", async ({
+    calendar,
+    sandbox,
+  }) => {
     await calendar.open();
     const title = sandbox.name("Event");
 

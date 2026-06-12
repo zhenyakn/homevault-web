@@ -33,14 +33,17 @@ export abstract class BasePage {
   }
 
   /** Fill a labelled field inside the open dialog. */
-  protected async fillInDialog(label: string | RegExp, value: string): Promise<void> {
+  protected async fillInDialog(
+    label: string | RegExp,
+    value: string
+  ): Promise<void> {
     await this.dialog().getByLabel(label).first().fill(value);
   }
 
   /** Fill a field by placeholder inside the open dialog (for unlabeled inputs). */
   protected async fillByPlaceholderInDialog(
     placeholder: string | RegExp,
-    value: string,
+    value: string
   ): Promise<void> {
     await this.dialog().getByPlaceholder(placeholder).first().fill(value);
   }
@@ -48,7 +51,7 @@ export abstract class BasePage {
   /** Pick an option from a Radix <Select> inside the dialog (by trigger index). */
   protected async selectInDialog(
     option: string | RegExp,
-    triggerIndex = 0,
+    triggerIndex = 0
   ): Promise<void> {
     await this.dialog().getByRole("combobox").nth(triggerIndex).click();
     await this.page.getByRole("option", { name: option }).first().click();
@@ -61,13 +64,18 @@ export abstract class BasePage {
    */
   protected async fillDialogText(index: number, value: string): Promise<void> {
     await this.dialog()
-      .locator('input:not([type="number"]):not([type="date"]):not([type="time"])')
+      .locator(
+        'input:not([type="number"]):not([type="date"]):not([type="time"])'
+      )
       .nth(index)
       .fill(value);
   }
 
   /** Fill the Nth number input in the dialog (for unlabeled numeric fields). */
-  protected async fillDialogNumber(index: number, value: string): Promise<void> {
+  protected async fillDialogNumber(
+    index: number,
+    value: string
+  ): Promise<void> {
     await this.dialog().locator('input[type="number"]').nth(index).fill(value);
   }
 

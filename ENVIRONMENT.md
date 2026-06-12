@@ -12,17 +12,18 @@ Read this **first** so the same facts aren't re-derived every session.
 
 ## 1. Stack at a glance
 
-| Layer | Tech |
-| --- | --- |
-| Client | React 19 + Vite + TypeScript + Tailwind + shadcn/ui (`client/`) |
-| Server | Express + tRPC v11, serves API **and** client on one port (`server/`) |
-| ORM / DB | Drizzle ORM → **MySQL / MariaDB**; schema in `shared/schema.ts` |
-| Shared | types/utils in `shared/` (imported by both sides) |
-| Router | **hash-based** — `/#/expenses`, `/#/loans`, … (wouter `useHashLocation`) |
-| Pkg manager | **pnpm** (has `patchedDependencies` → `npm install`/`ci` FAIL) |
-| Dev entry | `tsx watch server/_core/index.ts` (`pnpm dev`) |
+| Layer       | Tech                                                                     |
+| ----------- | ------------------------------------------------------------------------ |
+| Client      | React 19 + Vite + TypeScript + Tailwind + shadcn/ui (`client/`)          |
+| Server      | Express + tRPC v11, serves API **and** client on one port (`server/`)    |
+| ORM / DB    | Drizzle ORM → **MySQL / MariaDB**; schema in `shared/schema.ts`          |
+| Shared      | types/utils in `shared/` (imported by both sides)                        |
+| Router      | **hash-based** — `/#/expenses`, `/#/loans`, … (wouter `useHashLocation`) |
+| Pkg manager | **pnpm** (has `patchedDependencies` → `npm install`/`ci` FAIL)           |
+| Dev entry   | `tsx watch server/_core/index.ts` (`pnpm dev`)                           |
 
 Other facts worth not re-discovering:
+
 - Money is stored in **minor units** (agorot/cents); the UI divides by 100.
 - Active property is stored in `localStorage` key **`hv_active_property_id`**.
 - DB migrations run automatically on boot (`AUTO_MIGRATE` defaults true).
@@ -52,15 +53,15 @@ Other facts worth not re-discovering:
 
 ## 3. Required environment variables
 
-| Var | Value used here | Notes |
-| --- | --- | --- |
-| `DATABASE_URL` | `mysql://homevault:password@127.0.0.1:3306/homevault` | required |
-| `JWT_SECRET` | any string **≥16 chars** | required |
-| `NO_AUTH` | `true` | bypasses OAuth; every request is an auto-upserted admin |
-| `OWNER_OPEN_ID` | `owner` | the NO_AUTH identity |
-| `NODE_ENV` | `development` | |
-| `PORT` | `5000` | |
-| `STORAGE_BACKEND` / `STORAGE_DIR` | `local` / `/tmp/hv-uploads` | local file uploads |
+| Var                               | Value used here                                       | Notes                                                   |
+| --------------------------------- | ----------------------------------------------------- | ------------------------------------------------------- |
+| `DATABASE_URL`                    | `mysql://homevault:password@127.0.0.1:3306/homevault` | required                                                |
+| `JWT_SECRET`                      | any string **≥16 chars**                              | required                                                |
+| `NO_AUTH`                         | `true`                                                | bypasses OAuth; every request is an auto-upserted admin |
+| `OWNER_OPEN_ID`                   | `owner`                                               | the NO_AUTH identity                                    |
+| `NODE_ENV`                        | `development`                                         |                                                         |
+| `PORT`                            | `5000`                                                |                                                         |
+| `STORAGE_BACKEND` / `STORAGE_DIR` | `local` / `/tmp/hv-uploads`                           | local file uploads                                      |
 
 `NO_AUTH=true` is the single most important flag for local/automated testing.
 
@@ -129,13 +130,13 @@ Then set `localStorage['hv_active_property_id'] = <propertyId>` in the browser
 
 ## 7. Useful commands
 
-| Command | What it does |
-| --- | --- |
-| `pnpm dev` | start dev server (API + client) on `:5000` |
+| Command      | What it does                                                  |
+| ------------ | ------------------------------------------------------------- |
+| `pnpm dev`   | start dev server (API + client) on `:5000`                    |
 | `pnpm build` | `vite build` (client → `dist/public`) + esbuild server bundle |
-| `pnpm check` | `tsc --noEmit` (typecheck; excludes tests + `qa/`) |
-| `pnpm test` | vitest unit/integration tests (`server/**/*.test.ts`) |
-| `pnpm qa` | Playwright browser-driven QA suite (see `qa/README.md`) |
+| `pnpm check` | `tsc --noEmit` (typecheck; excludes tests + `qa/`)            |
+| `pnpm test`  | vitest unit/integration tests (`server/**/*.test.ts`)         |
+| `pnpm qa`    | Playwright browser-driven QA suite (see `qa/README.md`)       |
 
 ---
 

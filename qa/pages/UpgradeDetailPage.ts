@@ -15,9 +15,14 @@ export class UpgradeDetailPage extends BasePage {
 
   /** Expand the Vendors & Options accordion (guarded on the add button's visibility). */
   private async expandOptions(): Promise<void> {
-    const addBtn = this.page.getByRole("button", { name: /Add quote/i }).first();
+    const addBtn = this.page
+      .getByRole("button", { name: /Add quote/i })
+      .first();
     if (!(await addBtn.isVisible().catch(() => false))) {
-      await this.page.getByRole("button", { name: /Vendors & Options/i }).first().click();
+      await this.page
+        .getByRole("button", { name: /Vendors & Options/i })
+        .first()
+        .click();
       await this.app.settle(300);
     }
   }
@@ -33,7 +38,10 @@ export class UpgradeDetailPage extends BasePage {
 
   async addOption(name: string, price: string): Promise<void> {
     await this.expandOptions();
-    await this.page.getByRole("button", { name: /Add quote/i }).first().click();
+    await this.page
+      .getByRole("button", { name: /Add quote/i })
+      .first()
+      .click();
     await this.app.expectDialogOpen();
     await this.fillDialogText(0, name);
     await this.fillDialogNumber(0, price);
@@ -44,14 +52,20 @@ export class UpgradeDetailPage extends BasePage {
   async selectOption(): Promise<void> {
     await this.expandOptions();
     await this.expandCard();
-    await this.page.getByRole("button", { name: /^Select$/i }).first().click();
+    await this.page
+      .getByRole("button", { name: /^Select$/i })
+      .first()
+      .click();
     await this.app.settle();
   }
 
   async logPayment(amount: string): Promise<void> {
     await this.expandOptions();
     await this.expandCard();
-    await this.page.getByRole("button", { name: /Log payment/i }).first().click();
+    await this.page
+      .getByRole("button", { name: /Log payment/i })
+      .first()
+      .click();
     await this.app.expectDialogOpen();
     await this.fillDialogNumber(0, amount);
     await this.submitDialog(/Log payment/i);
@@ -59,7 +73,10 @@ export class UpgradeDetailPage extends BasePage {
   }
 
   async addItem(name: string): Promise<void> {
-    await this.page.getByRole("button", { name: /Add item/i }).first().click();
+    await this.page
+      .getByRole("button", { name: /Add item/i })
+      .first()
+      .click();
     await this.app.expectDialogOpen();
     await this.fillDialogText(0, name); // item dialog uses a bare <Label>
     await this.submitDialog(/Add item/i);
@@ -68,7 +85,10 @@ export class UpgradeDetailPage extends BasePage {
 
   /** Toggle the (single) item between Pending and Purchased by clicking its badge. */
   async toggleItemPurchased(): Promise<void> {
-    await this.page.getByText(/^Pending$|^Purchased$/i).first().click();
+    await this.page
+      .getByText(/^Pending$|^Purchased$/i)
+      .first()
+      .click();
     await this.app.settle();
   }
 

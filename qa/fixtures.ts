@@ -27,7 +27,7 @@ export class Sandbox {
   readonly prefix = `QA-${shortId()}`;
   constructor(
     private readonly baseURL: string,
-    private readonly propertyId: number,
+    private readonly propertyId: number
   ) {}
   /** A unique, prefix-tagged name, e.g. sandbox.name("Loan") → "QA-x1y2 Loan". */
   name(label: string): string {
@@ -67,7 +67,7 @@ export const test = base.extend<Fixtures>({
     // in-app control (see qa/tests/rtl/rtl-smoke.spec.ts).
     await page.addInitScript(
       ([propKey, id]) => window.localStorage.setItem(propKey, String(id)),
-      [ACTIVE_PROPERTY_KEY, propertyId] as const,
+      [ACTIVE_PROPERTY_KEY, propertyId] as const
     );
     await use(new Driver(page, baseURL ?? DEFAULT_BASE));
   },

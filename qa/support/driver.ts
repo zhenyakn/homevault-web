@@ -13,7 +13,7 @@ import { expect, type Page, type Locator } from "@playwright/test";
 export class Driver {
   constructor(
     readonly page: Page,
-    private readonly baseURL: string,
+    private readonly baseURL: string
   ) {}
 
   // ── Navigation ────────────────────────────────────────────────────────────
@@ -30,10 +30,7 @@ export class Driver {
 
   /** Click a left-nav / sidebar item by its visible label (e.g. "Expenses"). */
   async clickNav(name: string): Promise<void> {
-    await this.page
-      .getByRole("button", { name, exact: true })
-      .first()
-      .click();
+    await this.page.getByRole("button", { name, exact: true }).first().click();
     await this.settle();
   }
 
@@ -56,7 +53,10 @@ export class Driver {
   }
 
   /** Type into a field located by placeholder text. */
-  async fillByPlaceholder(placeholder: string | RegExp, value: string): Promise<void> {
+  async fillByPlaceholder(
+    placeholder: string | RegExp,
+    value: string
+  ): Promise<void> {
     await this.page.getByPlaceholder(placeholder).first().fill(value);
   }
 
@@ -68,7 +68,10 @@ export class Driver {
    *                 several selects share the page (default: first select).
    * @param option   visible text of the option to pick.
    */
-  async select(option: string | RegExp, trigger: string | number = 0): Promise<void> {
+  async select(
+    option: string | RegExp,
+    trigger: string | number = 0
+  ): Promise<void> {
     const combo =
       typeof trigger === "number"
         ? this.page.getByRole("combobox").nth(trigger)
@@ -93,7 +96,9 @@ export class Driver {
 
   /** Assert the current hash route. */
   async expectRoute(route: string): Promise<void> {
-    await expect(this.page).toHaveURL(new RegExp(`#${route.replace(/[/]/g, "\\/")}(\\b|$)`));
+    await expect(this.page).toHaveURL(
+      new RegExp(`#${route.replace(/[/]/g, "\\/")}(\\b|$)`)
+    );
   }
 
   /** Locator escape hatch for assertions the helpers don't cover. */
@@ -164,7 +169,7 @@ export class Driver {
    */
   async expectToast(
     text?: string | RegExp,
-    type?: "success" | "error",
+    type?: "success" | "error"
   ): Promise<void> {
     const sel = `[data-sonner-toast]${type ? `[data-type="${type}"]` : ""}`;
     let toast = this.page.locator(sel);
@@ -193,8 +198,14 @@ export class Driver {
   }
 
   /** Click a row's action button identified by its lucide icon class. */
-  async clickRowIcon(text: string | RegExp, lucideClass: string): Promise<void> {
-    await this.rowFor(text).locator(`button:has(svg.${lucideClass})`).first().click();
+  async clickRowIcon(
+    text: string | RegExp,
+    lucideClass: string
+  ): Promise<void> {
+    await this.rowFor(text)
+      .locator(`button:has(svg.${lucideClass})`)
+      .first()
+      .click();
   }
 
   /** Assert how many elements match a selector. */

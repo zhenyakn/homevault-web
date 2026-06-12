@@ -38,7 +38,10 @@ export async function seedDemoData(baseURL: string): Promise<number> {
  * NO_AUTH user-language cache, and we want the first tRPC call to be the seed
  * (after global-setup has reset the language) — see qa/global-setup.ts.
  */
-export async function waitForServer(baseURL: string, timeoutMs = 60_000): Promise<void> {
+export async function waitForServer(
+  baseURL: string,
+  timeoutMs = 60_000
+): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastErr: unknown;
   while (Date.now() < deadline) {

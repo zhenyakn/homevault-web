@@ -70,11 +70,11 @@ listed in its `exclude`, and `vite build` only bundles `client/`) — same as
 
 ## Projects & tags
 
-| Project | Runs | Notes |
-| --- | --- | --- |
-| `desktop` | everything | deep flows + breadth + a11y (English, 1280×900) |
-| `mobile` | `@responsive` | screen-loads + a11y on a Pixel-7 viewport |
-| `rtl` | `@rtl` | Hebrew RTL rendering + a11y (`tests/rtl`) |
+| Project   | Runs          | Notes                                           |
+| --------- | ------------- | ----------------------------------------------- |
+| `desktop` | everything    | deep flows + breadth + a11y (English, 1280×900) |
+| `mobile`  | `@responsive` | screen-loads + a11y on a Pixel-7 viewport       |
+| `rtl`     | `@rtl`        | Hebrew RTL rendering + a11y (`tests/rtl`)       |
 
 ```bash
 export PW_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome
@@ -111,7 +111,11 @@ Apartment" via `data.seedMock`, and each test sets that property active in
 - **A screen that should load** → `qa/tests/screens/<name>.spec.ts`:
   ```ts
   import { screenLoadsScenario } from "../../support/scenarios";
-  screenLoadsScenario({ name: "<name>", route: "/<route>", heading: /Heading/i });
+  screenLoadsScenario({
+    name: "<name>",
+    route: "/<route>",
+    heading: /Heading/i,
+  });
   ```
 - **A CRUD / multi-step flow** → add methods to the relevant `qa/pages/*Page.ts`
   and a `qa/tests/flows/<screen>.spec.ts` using the page-object + `sandbox`

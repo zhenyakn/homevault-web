@@ -12,7 +12,10 @@ export class CalendarPage extends BasePage {
   protected readonly route = "/calendar";
 
   async addEvent(input: CalendarEventInput): Promise<void> {
-    await this.page.getByRole("button", { name: /Add event/i }).first().click();
+    await this.page
+      .getByRole("button", { name: /Add event/i })
+      .first()
+      .click();
     await this.app.expectDialogOpen();
     await this.fillInDialog(/Title/i, input.title);
     await this.fillInDialog(/Date/i, input.date ?? today());
@@ -30,12 +33,18 @@ export class CalendarPage extends BasePage {
   /** Delete an event from the open day dialog (native confirm). */
   async deleteEventFromDay(title: string): Promise<void> {
     this.app.acceptConfirm();
-    await this.dialog().getByRole("button", { name: /Delete|Remove/i }).first().click();
+    await this.dialog()
+      .getByRole("button", { name: /Delete|Remove/i })
+      .first()
+      .click();
     await this.app.settle();
   }
 
   async tryCreateEmpty(): Promise<void> {
-    await this.page.getByRole("button", { name: /Add event/i }).first().click();
+    await this.page
+      .getByRole("button", { name: /Add event/i })
+      .first()
+      .click();
     await this.submitDialog(/Save event/i);
   }
 }

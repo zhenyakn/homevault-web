@@ -13,7 +13,10 @@ export class ExpensesPage extends BasePage {
   protected readonly route = "/expenses";
 
   private openCreate() {
-    return this.page.getByRole("button", { name: /Add expense/i }).first().click();
+    return this.page
+      .getByRole("button", { name: /Add expense/i })
+      .first()
+      .click();
   }
 
   async addExpense(input: ExpenseInput): Promise<void> {
@@ -61,7 +64,10 @@ export class ExpensesPage extends BasePage {
   }
 
   async search(query: string): Promise<void> {
-    await this.page.getByPlaceholder(/Search/i).first().fill(query);
+    await this.page
+      .getByPlaceholder(/Search/i)
+      .first()
+      .fill(query);
     await this.app.settle(400);
   }
 

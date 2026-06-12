@@ -29,7 +29,7 @@ const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
 
 export async function assertNoA11yViolations(
   page: Page,
-  opts: { disableRules?: string[] } = {},
+  opts: { disableRules?: string[] } = {}
 ): Promise<void> {
   let builder = new AxeBuilder({ page }).withTags([
     "wcag2a",
@@ -37,19 +37,22 @@ export async function assertNoA11yViolations(
     "wcag21a",
     "wcag21aa",
   ]);
-  if (opts.disableRules?.length) builder = builder.disableRules(opts.disableRules);
+  if (opts.disableRules?.length)
+    builder = builder.disableRules(opts.disableRules);
 
   const { violations } = await builder.analyze();
 
   const known = violations.filter(v => KNOWN_ISSUES.has(v.id));
   const blocking = violations.filter(
-    v => BLOCKING_IMPACTS.has(v.impact ?? "") && !KNOWN_ISSUES.has(v.id),
+    v => BLOCKING_IMPACTS.has(v.impact ?? "") && !KNOWN_ISSUES.has(v.id)
   );
 
   // Surface the accepted baseline so it stays visible (and shrinkable) over time.
   if (known.length) {
     const ids = [...new Set(known.map(v => v.id))].join(", ");
-    console.warn(`[a11y] ${page.url()} — ${known.length} known baseline issue(s): ${ids}`);
+    console.warn(
+      `[a11y] ${page.url()} — ${known.length} known baseline issue(s): ${ids}`
+    );
   }
 
   if (blocking.length) {
@@ -57,7 +60,7 @@ export async function assertNoA11yViolations(
       .map(
         v =>
           `  • [${v.impact}] ${v.id}: ${v.help} (${v.nodes.length} node(s))\n` +
-          `    ${v.helpUrl}`,
+          `    ${v.helpUrl}`
       )
       .join("\n");
     expect(blocking, `New accessibility violations:\n${summary}`).toEqual([]);

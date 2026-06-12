@@ -42,14 +42,17 @@ function headers(propertyId?: number): Record<string, string> {
 async function query(
   baseURL: string,
   proc: string,
-  propertyId?: number,
+  propertyId?: number
 ): Promise<AnyRecord[]> {
   // List procedures validate their input as an object (e.g. {limit?, offset?}),
   // so send an empty object — `null` is rejected with BAD_REQUEST.
   const input = encodeURIComponent(JSON.stringify({ "0": { json: {} } }));
-  const res = await fetch(`${baseURL}/api/trpc/${proc}.list?batch=1&input=${input}`, {
-    headers: headers(propertyId),
-  });
+  const res = await fetch(
+    `${baseURL}/api/trpc/${proc}.list?batch=1&input=${input}`,
+    {
+      headers: headers(propertyId),
+    }
+  );
   if (!res.ok) return [];
   const body = (await res.json()) as Array<{
     result?: { data?: { json?: unknown } };
@@ -62,7 +65,7 @@ async function mutate(
   baseURL: string,
   proc: string,
   json: unknown,
-  propertyId?: number,
+  propertyId?: number
 ): Promise<void> {
   await fetch(`${baseURL}/api/trpc/${proc}?batch=1`, {
     method: "POST",
@@ -86,7 +89,7 @@ function matchesPrefix(record: AnyRecord, prefix: string): boolean {
 export async function cleanupByPrefix(
   prefix: string,
   baseURL: string = DEFAULT_BASE,
-  propertyId?: number,
+  propertyId?: number
 ): Promise<number> {
   let deleted = 0;
   for (const { proc } of ENTITIES) {
@@ -115,7 +118,7 @@ export async function cleanupByPrefix(
 export async function countEntity(
   proc: string,
   baseURL: string = DEFAULT_BASE,
-  propertyId?: number,
+  propertyId?: number
 ): Promise<number> {
   return (await query(baseURL, proc, propertyId)).length;
 }

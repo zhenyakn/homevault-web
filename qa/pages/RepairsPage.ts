@@ -14,7 +14,10 @@ export class RepairsPage extends BasePage {
   protected readonly route = "/repairs";
 
   private openCreate() {
-    return this.page.getByRole("button", { name: /Log repair/i }).first().click();
+    return this.page
+      .getByRole("button", { name: /Log repair/i })
+      .first()
+      .click();
   }
 
   async logRepair(input: RepairInput): Promise<void> {
@@ -35,7 +38,10 @@ export class RepairsPage extends BasePage {
   async deleteRepair(title: string): Promise<void> {
     await this.app.clickRowIcon(title, "lucide-trash2");
     await expect(this.app.alertDialog()).toBeVisible();
-    await this.app.alertDialog().getByRole("button", { name: /^Delete$/i }).click();
+    await this.app
+      .alertDialog()
+      .getByRole("button", { name: /^Delete$/i })
+      .click();
     await this.app.settle();
   }
 

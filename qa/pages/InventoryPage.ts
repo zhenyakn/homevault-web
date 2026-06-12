@@ -13,7 +13,10 @@ export class InventoryPage extends BasePage {
   protected readonly route = "/inventory";
 
   private openCreate() {
-    return this.page.getByRole("button", { name: /Add item/i }).first().click();
+    return this.page
+      .getByRole("button", { name: /Add item/i })
+      .first()
+      .click();
   }
 
   async addItem(input: InventoryInput): Promise<void> {
@@ -30,7 +33,8 @@ export class InventoryPage extends BasePage {
   async editItem(name: string, changes: { quantity?: string }): Promise<void> {
     await this.app.clickRowIcon(name, "lucide-pencil");
     await this.app.expectDialogOpen();
-    if (changes.quantity) await this.fillInDialog(/^Quantity$/i, changes.quantity);
+    if (changes.quantity)
+      await this.fillInDialog(/^Quantity$/i, changes.quantity);
     await this.submitDialog(/Update/i);
     await this.app.expectDialogOpen(false);
   }

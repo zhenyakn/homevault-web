@@ -25,7 +25,7 @@ export function screenLoadsScenario(opts: {
 
     await expect(app.page.getByText(/something went wrong/i)).toHaveCount(0);
     await expect(
-      app.page.getByRole("heading", { name: opts.heading }).first(),
+      app.page.getByRole("heading", { name: opts.heading }).first()
     ).toBeVisible();
 
     await app.screenshot(`screen-${opts.name}`);

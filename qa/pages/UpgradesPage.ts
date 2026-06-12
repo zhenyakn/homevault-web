@@ -12,7 +12,10 @@ export class UpgradesPage extends BasePage {
 
   // Trigger button is "New project"; the dialog's submit button is "Create project".
   private openCreate() {
-    return this.page.getByRole("button", { name: /New project/i }).first().click();
+    return this.page
+      .getByRole("button", { name: /New project/i })
+      .first()
+      .click();
   }
 
   async createProject(input: UpgradeInput): Promise<void> {
@@ -20,7 +23,8 @@ export class UpgradesPage extends BasePage {
     await this.app.expectDialogOpen();
     await this.fillInDialog(/Project name/i, input.title);
     if (input.budget) await this.fillInDialog(/Budget/i, input.budget);
-    if (input.description) await this.fillInDialog(/Description/i, input.description);
+    if (input.description)
+      await this.fillInDialog(/Description/i, input.description);
     await this.submitDialog(/Create project/i);
     await this.app.expectDialogOpen(false);
   }

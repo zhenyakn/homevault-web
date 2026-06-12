@@ -25,9 +25,13 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
+  // One retry in CI smooths over rare animation/timing flakes; none locally so
+  // failures surface immediately.
+  retries: process.env.CI ? 1 : 0,
   reporter: [
     ["list"],
     ["html", { outputFolder: "qa/artifacts/report", open: "never" }],
+    ["junit", { outputFile: "qa/artifacts/results/junit.xml" }],
   ],
   use: {
     baseURL,

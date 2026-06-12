@@ -2,7 +2,10 @@ import { test } from "../../fixtures";
 import { factories } from "../../support/factories";
 
 test.describe("Wishlist — CRUD, mark-purchased & validation", () => {
-  test("create → edit → mark purchased → delete", async ({ wishlist, sandbox }) => {
+  test("create → edit → mark purchased → delete", async ({
+    wishlist,
+    sandbox,
+  }) => {
     await wishlist.open();
     const name = sandbox.name("Wish");
 
