@@ -116,4 +116,89 @@ export class Driver {
     await this.page.waitForLoadState("networkidle").catch(() => {});
     await this.page.waitForTimeout(ms);
   }
+
+  // ── Dialogs (Radix) ─────────────────────────────────────────────────────────
+
+  /** The currently-open Radix `<Dialog>` (role="dialog"), for scoping. */
+  dialog(): Locator {
+    return this.page.getByRole("dialog");
+  }
+
+  /** The currently-open Radix `<AlertDialog>` (role="alertdialog"). */
+  alertDialog(): Locator {
+    return this.page.getByRole("alertdialog");
+  }
+
+  /** Wait for a dialog to be open / closed. */
+  async expectDialogOpen(open = true): Promise<void> {
+    await expect(this.dialog()).toHaveCount(open ? 1 : 0);
+  }
+
+  /** Close any open dialog with Escape. */
+  async closeDialog(): Promise<void> {
+    await this.page.keyboard.press("Escape");
+  }
+
+  // ── Native confirm() handling ────────────────────────────────────────────────
+  //
+  // Several deletes use the browser's native confirm(); Playwright auto-dismisses
+  // dialogs unless a handler is registered. Call these *before* the click that
+  // triggers the prompt.
+
+  /** Auto-accept the next native confirm()/alert() dialog. */
+  acceptConfirm(): void {
+    this.page.once("dialog", d => d.accept());
+  }
+
+  /** Auto-dismiss (cancel) the next native confirm() dialog. */
+  dismissConfirm(): void {
+    this.page.once("dialog", d => d.dismiss());
+  }
+
+  // ── Toasts (sonner) ──────────────────────────────────────────────────────────
+
+  /**
+   * Assert a sonner toast appeared. Toasts render as `[data-sonner-toast]` with
+   * `data-type="success|error"`; pass `text` to match its content and `type` to
+   * require a specific kind.
+   */
+  async expectToast(
+    text?: string | RegExp,
+    type?: "success" | "error",
+  ): Promise<void> {
+    const sel = `[data-sonner-toast]${type ? `[data-type="${type}"]` : ""}`;
+    let toast = this.page.locator(sel);
+    if (text) toast = toast.filter({ hasText: text });
+    await expect(toast.first()).toBeVisible();
+  }
+
+  /** Assert an error toast appeared (optionally matching text). */
+  async expectErrorToast(text?: string | RegExp): Promise<void> {
+    await this.expectToast(text, "error");
+  }
+
+  // ── Rows / lists ─────────────────────────────────────────────────────────────
+
+  /**
+   * The tightest row container that holds both `text` and at least one button —
+   * works across the app's varied list/card markup without `data-testid`s. Use
+   * it to scope row-level actions (edit/delete/etc.).
+   */
+  rowFor(text: string | RegExp): Locator {
+    return this.page
+      .locator("div")
+      .filter({ hasText: text })
+      .filter({ has: this.page.locator("button") })
+      .last();
+  }
+
+  /** Click a row's action button identified by its lucide icon class. */
+  async clickRowIcon(text: string | RegExp, lucideClass: string): Promise<void> {
+    await this.rowFor(text).locator(`button:has(svg.${lucideClass})`).first().click();
+  }
+
+  /** Assert how many elements match a selector. */
+  async expectCount(selector: string, n: number): Promise<void> {
+    await expect(this.page.locator(selector)).toHaveCount(n);
+  }
 }

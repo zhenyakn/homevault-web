@@ -19,7 +19,8 @@ export function screenLoadsScenario(opts: {
   route: string;
   heading: RegExp;
 }): void {
-  test(`screen loads: ${opts.name}`, async ({ app }) => {
+  // `@responsive` tags this breadth check to also run on the mobile + RTL projects.
+  test(`screen loads: ${opts.name} @responsive`, async ({ app }) => {
     await app.goto(opts.route);
 
     await expect(app.page.getByText(/something went wrong/i)).toHaveCount(0);

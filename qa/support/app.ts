@@ -32,13 +32,18 @@ export async function seedDemoData(baseURL: string): Promise<number> {
   return propertyId;
 }
 
-/** Poll the server until it answers, so setup is independent of boot timing. */
+/**
+ * Poll the server until it answers, so setup is independent of boot timing.
+ * Hits the SPA root (a non-tRPC route) on purpose: tRPC requests seed the
+ * NO_AUTH user-language cache, and we want the first tRPC call to be the seed
+ * (after global-setup has reset the language) — see qa/global-setup.ts.
+ */
 export async function waitForServer(baseURL: string, timeoutMs = 60_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastErr: unknown;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${baseURL}/api/trpc/system.noAuth?batch=1&input=${encodeURIComponent('{"0":{"json":null}}')}`);
+      const res = await fetch(`${baseURL}/`);
       if (res.ok) return;
     } catch (err) {
       lastErr = err;

@@ -20,7 +20,7 @@ switching screens, asserting — i.e. Selenium-style E2E.
 ```bash
 # 0. deps (pnpm only — patched deps make npm fail)
 pnpm install --frozen-lockfile
-pnpm ls @playwright/test >/dev/null 2>&1 || pnpm add -D @playwright/test
+pnpm ls @playwright/test >/dev/null 2>&1 || pnpm add -D @playwright/test @axe-core/playwright
 
 # 1. database (no Docker/systemd here → start mariadbd directly, in background)
 apt-get update -q && apt-get install -y -q mariadb-server
@@ -35,7 +35,7 @@ mysql -u root -e "CREATE DATABASE IF NOT EXISTS homevault;
 export PW_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome
 
 # 3. run
-pnpm qa                       # headless; expect "11 passed"
+pnpm qa                       # all projects (desktop + mobile + rtl), headless
 ```
 
 That's it. `pnpm qa` (Playwright) **auto-starts the app** via its `webServer`
@@ -61,11 +61,31 @@ You do **not** need to start the dev server or seed by hand.
 
 | Command | Purpose |
 | --- | --- |
-| `pnpm qa` | run the whole suite headless |
+| `pnpm qa` | run the whole suite (desktop + mobile + rtl) headless |
+| `pnpm qa:desktop` | deep CRUD flows + breadth + a11y (English) |
+| `pnpm qa:mobile` | `@responsive` breadth + a11y on a mobile viewport |
+| `pnpm qa:rtl` | Hebrew / RTL rendering + a11y |
+| `pnpm qa:a11y` | accessibility specs only |
 | `pnpm qa:headed` | watch it drive the browser |
 | `pnpm qa:report` | open the HTML report after a run |
-| `pnpm exec playwright test qa/tests/flows/add-expense.spec.ts` | run one scenario |
-| `pnpm exec playwright test -g "screen loads: loans"` | run by title |
+| `pnpm exec playwright test qa/tests/flows/loans.spec.ts` | run one spec |
+| `pnpm exec playwright test -g "add an"` | run by title |
+
+## Architecture (what to know before extending)
+
+- **Page Object Model** in `qa/pages/*` (one `*Page` per screen) over the
+  `Driver` (`qa/support/driver.ts`). Specs call page-object methods; selectors
+  live in the page objects. The app has **no `data-testid`s** — target visible
+  i18n text + roles; icon-only buttons by their lucide class (`lucide-trash2`).
+- **Self-cleaning** via the `sandbox` fixture: tests create records named
+  `sandbox.name("Thing")` and teardown deletes everything with that prefix via
+  the tRPC API (`qa/support/api.ts`). The seeded demo data is never disturbed.
+- **Accessibility** (`qa/support/a11y.ts`) fails on serious/critical axe
+  violations except a documented `KNOWN_ISSUES` baseline (pre-existing app debt).
+- **Projects** (`playwright.config.ts`): `desktop` runs everything; `mobile`
+  greps `@responsive`; `rtl` greps `@rtl` and switches to Hebrew via the in-app
+  control. `global-setup` resets the DB language to English first — the server
+  caches the NO_AUTH language per process, so this baseline matters.
 
 ## Artifacts & delivering results
 
@@ -84,10 +104,20 @@ One scenario per file under `qa/tests/`:
   import { screenLoadsScenario } from "../../support/scenarios";
   screenLoadsScenario({ name: "<name>", route: "/<route>", heading: /Heading/i });
   ```
-- **A multi-step journey** → `qa/tests/flows/<name>.spec.ts` using the `app`
-  fixture (a `Driver`): `app.goto`, `clickNav`, `clickButton`, `fill`,
-  `select`, `check`, `expectVisible`, `expectRoute`, `screenshot`. Target
-  visible/i18n text and accessible roles — the app has no `data-testid`s.
+- **A CRUD / multi-step journey** → add methods to the relevant
+  `qa/pages/<Screen>Page.ts` (encapsulate the dialog/row selectors there) and a
+  `qa/tests/flows/<screen>.spec.ts` that uses the page-object + `sandbox`
+  fixtures, e.g.:
+  ```ts
+  import { test } from "../../fixtures";
+  test("create → delete", async ({ loans, sandbox }) => {
+    await loans.open();
+    const lender = sandbox.name("Lender");        // unique, auto-cleaned
+    await loans.addLoan({ lender, amount: "50000" });
+    await loans.expectRow(lender);
+    await loans.deleteLoan(lender);
+  });
+  ```
 
 The `qa/` folder is **excluded from the build** (not in `tsconfig` `include`,
 listed in its `exclude`, and `vite build` only bundles `client/`) — same as

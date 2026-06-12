@@ -41,11 +41,29 @@ export default defineConfig({
     },
   },
   projects: [
+    // Desktop runs the whole suite (deep flows + breadth + a11y).
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
+    // Mobile + RTL run only the breadth/a11y checks tagged @responsive
+    // (deep CRUD flows assume the desktop nav chrome).
+    {
+      name: "mobile",
+      grep: /@responsive/,
+      use: { ...devices["Pixel 7"] },
+    },
+    {
+      name: "rtl",
+      grep: /@rtl/,
+      // Hebrew is RTL; the `app` fixture sets the server language + app-language
+      // to "he" for this project. Runs the locale-agnostic a11y + rtl-smoke specs.
+      use: { ...devices["Desktop Chrome"], locale: "he-IL" },
+    },
   ],
   webServer: {
     command: "node_modules/.bin/tsx server/_core/index.ts",
-    url: `${baseURL}/api/trpc/system.noAuth?batch=1&input=%7B%220%22%3A%7B%22json%22%3Anull%7D%7D`,
+    // Health-check the SPA root, not a tRPC route: the first tRPC request seeds
+    // the server's NO_AUTH user-language cache, and we want that to be the seed
+    // call (after global-setup resets the language) — see qa/global-setup.ts.
+    url: `${baseURL}/`,
     reuseExistingServer: true,
     timeout: 120_000,
     env: {

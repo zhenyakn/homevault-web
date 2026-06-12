@@ -12,6 +12,10 @@
     "test": "vitest run",
     "qa": "playwright test",
     "qa:headed": "playwright test --headed",
+    "qa:desktop": "playwright test --project=desktop",
+    "qa:mobile": "playwright test --project=mobile",
+    "qa:rtl": "playwright test --project=rtl",
+    "qa:a11y": "playwright test qa/tests/a11y",
     "qa:report": "playwright show-report qa/artifacts/report",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
@@ -100,6 +104,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.3",
