@@ -14,10 +14,8 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script
-      defer
-      src="%VITE_ANALYTICS_ENDPOINT%/umami"
-      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"
-    ></script>
+    <!-- Analytics (umami) is injected at runtime from main.tsx, and only when
+         VITE_ANALYTICS_ENDPOINT/_WEBSITE_ID are configured — so an unset endpoint
+         never produces a literal "%VITE_ANALYTICS_ENDPOINT%/umami" request. -->
   </body>
 </html>

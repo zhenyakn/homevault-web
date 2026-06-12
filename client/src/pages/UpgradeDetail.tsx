@@ -339,8 +339,11 @@ function OptionDialog({
         <div className="space-y-3 pt-1">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
-              <Label>{t("upgradeDetail.vendorName")}</Label>
+              <Label htmlFor="option-name">
+                {t("upgradeDetail.vendorName")}
+              </Label>
               <Input
+                id="option-name"
                 value={f.name}
                 onChange={e => setF({ ...f, name: e.target.value })}
                 placeholder={t("upgradeDetail.vendorNamePlaceholder")}
@@ -514,8 +517,9 @@ function AddItemDialog({
         </DialogHeader>
         <div className="space-y-3 pt-1">
           <div className="space-y-1.5">
-            <Label>{t("upgradeDetail.itemName")}</Label>
+            <Label htmlFor="item-name">{t("upgradeDetail.itemName")}</Label>
             <Input
+              id="item-name"
               value={f.name}
               onChange={e => setF({ ...f, name: e.target.value })}
               placeholder={t("upgradeDetail.itemNamePlaceholder")}
@@ -713,7 +717,7 @@ function OptionCard({
         {(payments.length > 0 || option.selected) && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {t("upgradeDetail.payments")}
               </p>
               {option.selected && (

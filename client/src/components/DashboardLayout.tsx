@@ -460,7 +460,7 @@ function DashboardLayoutContent({
             {navGroups.map(group => (
               <div key={group.labelKey} className="mb-1">
                 {!isCollapsed && (
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                  <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                     {t(group.labelKey)}
                   </p>
                 )}
@@ -485,7 +485,7 @@ function DashboardLayoutContent({
             {/* Household members (multi-user) */}
             {!isCollapsed && profiles && profiles.length > 1 && (
               <div className="px-4 pt-4 pb-2">
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-2">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
                   {t("common.household")}
                 </p>
                 <div className="space-y-1">

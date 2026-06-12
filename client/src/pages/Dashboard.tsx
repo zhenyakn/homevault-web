@@ -108,7 +108,7 @@ function Card({
 
 function CardLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10.5px] font-semibold uppercase tracking-widest text-muted-foreground/60 mb-3">
+    <p className="text-[10.5px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
       {children}
     </p>
   );
@@ -458,7 +458,7 @@ function AttentionCard({
                       : t("dashboard.daysOverdue", { count: days })}
                   </span>
                   <button
-                    className="text-[11px] font-semibold px-2 py-1 rounded-md bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
+                    className="text-[11px] font-semibold px-2 py-1 rounded-md bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:opacity-75 transition-opacity"
                     aria-label={t("dashboard.markPaidNamed", { name: e.label })}
                     onClick={() => {
                       onMarkPaid(e.id);
@@ -581,7 +581,7 @@ function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
                     {e.category}
                   </p>
                 </div>
-                <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
               </div>
             );
           })}
@@ -743,7 +743,7 @@ export default function Dashboard() {
   if (error || !stats)
     return (
       <div className="flex flex-col items-center justify-center gap-4 h-[50vh] text-center">
-        <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
+        <AlertCircle className="h-8 w-8 text-muted-foreground" />
         <div>
           <p className="text-sm font-medium">
             {t("dashboard.loadError", "Couldn't load dashboard")}

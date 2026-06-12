@@ -68,7 +68,7 @@ const CATEGORY_COLOR: Record<Category, string> = {
   loan: "text-violet-600 bg-violet-500/10 border-violet-500/20",
   repair: "text-amber-600 bg-amber-500/10 border-amber-500/20",
   warranty: "text-sky-600 bg-sky-500/10 border-sky-500/20",
-  calendar: "text-rose-600 bg-rose-500/10 border-rose-500/20",
+  calendar: "text-rose-700 bg-rose-500/10 border-rose-500/20",
   system: "text-muted-foreground bg-muted/40 border-border",
 };
 
@@ -533,7 +533,7 @@ export function NotificationCenter({ className }: { className?: string }) {
             <p className="line-clamp-2 text-xs text-muted-foreground leading-snug">
               {n.body}
             </p>
-            <p className="text-[11px] text-muted-foreground/70">
+            <p className="text-[11px] text-muted-foreground">
               {relativeTime(n.createdAt, t)}
             </p>
           </div>
@@ -550,7 +550,7 @@ export function NotificationCenter({ className }: { className?: string }) {
   const renderAttention = () =>
     visibleAttention.length === 0 ? null : (
       <li>
-        <p className="bg-rose-500/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-rose-600 dark:text-rose-400">
+        <p className="bg-rose-500/5 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-rose-700 dark:text-rose-400">
           {t("notifs.needsAttention")}
         </p>
         <ul className="divide-y divide-border">
@@ -581,7 +581,7 @@ export function NotificationCenter({ className }: { className?: string }) {
                   <div
                     className={cn(
                       "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border",
-                      "text-rose-600 bg-rose-500/10 border-rose-500/20"
+                      "text-rose-700 bg-rose-500/10 border-rose-500/20"
                     )}
                   >
                     <Icon className="h-4 w-4" />

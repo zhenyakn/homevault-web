@@ -214,7 +214,7 @@ function RepairRow({
       className={cn(
         "flex items-start gap-4 ltr:pl-3 ltr:pr-4 rtl:pr-3 rtl:pl-4 py-3.5 ltr:border-l-2 rtl:border-r-2 hover:bg-muted/30 transition-colors cursor-pointer",
         priorityAccentClass(priority),
-        isDone && "opacity-70"
+        isDone && "bg-muted/40"
       )}
       onClick={onClick}
     >
@@ -269,8 +269,8 @@ function RepairRow({
               className={cn(
                 "flex items-center gap-1 text-xs font-medium",
                 quoteCounts.hasSelected
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-amber-600 dark:text-amber-400"
+                  ? "text-green-700 dark:text-green-400"
+                  : "text-amber-700 dark:text-amber-400"
               )}
             >
               {quoteCounts.hasSelected ? (
@@ -423,7 +423,7 @@ export default function Repairs() {
         </div>
 
         <div className="border border-dashed border-border rounded-xl p-10 text-center space-y-4">
-          <div className="flex justify-center text-muted-foreground/40">
+          <div className="flex justify-center text-muted-foreground">
             <Wrench className="h-10 w-10" />
           </div>
           <div className="space-y-1">
@@ -478,7 +478,7 @@ export default function Repairs() {
             {openRepairs.length}
           </p>
           {urgentCount > 0 && (
-            <p className="text-xs text-red-500 font-medium mt-0.5">
+            <p className="text-xs text-red-600 font-medium mt-0.5">
               {urgentCount} {t("priority.urgent")}
             </p>
           )}

@@ -498,7 +498,10 @@ export default function Expenses() {
           />
         </div>
         <Select value={monthFilter} onValueChange={setMonthFilter}>
-          <SelectTrigger className="h-8 w-44 text-sm">
+          <SelectTrigger
+            className="h-8 w-44 text-sm"
+            aria-label={t("common.filterByMonth")}
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -511,7 +514,10 @@ export default function Expenses() {
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="h-8 w-44 text-sm">
+          <SelectTrigger
+            className="h-8 w-44 text-sm"
+            aria-label={t("common.filterByCategory")}
+          >
             <SelectValue placeholder={t("expenses.allCategories")} />
           </SelectTrigger>
           <SelectContent>
@@ -566,7 +572,7 @@ export default function Expenses() {
                   className={cn(
                     "flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors border-s-2",
                     isPaid
-                      ? "opacity-60 border-s-transparent"
+                      ? "border-s-transparent bg-muted/30"
                       : "border-s-amber-500 bg-amber-50/40 dark:bg-amber-950/10"
                   )}
                 >
@@ -607,7 +613,7 @@ export default function Expenses() {
                         </span>
                       )}
                       {expense.category === "Loan" && !expense.loanId && (
-                        <span className="text-xs italic text-muted-foreground/70">
+                        <span className="text-xs italic text-muted-foreground">
                           {t("expenses.loanUnlinked")}
                         </span>
                       )}
@@ -627,7 +633,7 @@ export default function Expenses() {
                       {formatCurrency(expense.amount)}
                     </p>
                     {isPaid && (
-                      <p className="text-xs text-green-600 dark:text-green-400 flex items-center justify-end gap-1 mt-0.5">
+                      <p className="text-xs text-green-700 dark:text-green-400 flex items-center justify-end gap-1 mt-0.5">
                         <Check className="h-3 w-3" />
                         {t("expenses.paid")}
                       </p>
@@ -652,6 +658,7 @@ export default function Expenses() {
                       size="sm"
                       variant="outline"
                       className="h-7 w-7 p-0"
+                      aria-label={t("common.edit")}
                       onClick={() => handleEdit(expense)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -660,6 +667,7 @@ export default function Expenses() {
                       size="sm"
                       variant="outline"
                       className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      aria-label={t("common.delete")}
                       onClick={() => handleDelete(expense.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />

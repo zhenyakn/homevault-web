@@ -82,11 +82,13 @@ const CATEGORIES: Category[] = [
 ];
 const CONDITIONS: Condition[] = ["New", "Good", "Fair", "Poor"];
 
+// Soft-tinted pills with dark text — consistent with the status/priority badges
+// and AA-contrast compliant (white on light fills like yellow-500 failed).
 const CONDITION_COLORS: Record<Condition, string> = {
-  New: "bg-emerald-500 text-white",
-  Good: "bg-blue-500 text-white",
-  Fair: "bg-yellow-500 text-white",
-  Poor: "bg-red-500 text-white",
+  New: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+  Good: "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
+  Fair: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-300",
+  Poor: "bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300",
 };
 
 const defaultForm = {
@@ -216,7 +218,7 @@ export default function Inventory() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm("Delete this inventory item?")) deleteMutation.mutate({ id });
+    if (confirm(t("inventory.deleteConfirm"))) deleteMutation.mutate({ id });
   };
 
   const closeDialog = () => {
@@ -636,7 +638,7 @@ export default function Inventory() {
                   <button
                     type="button"
                     aria-label="What counts as a fixture?"
-                    className="text-muted-foreground/60 hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <Info className="h-3 w-3" />
                   </button>
@@ -693,7 +695,10 @@ export default function Inventory() {
           className="max-w-xs"
         />
         <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger
+            className="w-40"
+            aria-label={t("common.filterByCategory")}
+          >
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
@@ -707,7 +712,10 @@ export default function Inventory() {
         </Select>
         {rooms.length > 0 && (
           <Select value={filterRoom} onValueChange={setFilterRoom}>
-            <SelectTrigger className="w-36">
+            <SelectTrigger
+              className="w-36"
+              aria-label={t("common.filterByRoom")}
+            >
               <SelectValue placeholder="All rooms" />
             </SelectTrigger>
             <SelectContent>
@@ -725,7 +733,7 @@ export default function Inventory() {
       {/* Empty state */}
       {filteredItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground border border-dashed border-border rounded-lg">
-          <Package className="h-10 w-10 mb-3 text-muted-foreground/50" />
+          <Package className="h-10 w-10 mb-3 text-muted-foreground" />
           <p className="font-medium text-foreground">No inventory items</p>
           <p className="text-sm mt-1 max-w-xs">
             Track appliances, furniture, tools, and consumables. Add your first
@@ -839,6 +847,7 @@ export default function Inventory() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
+                          aria-label={t("common.edit")}
                           onClick={() => handleEdit(item as InventoryItem)}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -847,6 +856,7 @@ export default function Inventory() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-destructive hover:text-destructive"
+                          aria-label={t("common.delete")}
                           onClick={() => handleDelete(item.id)}
                           disabled={deleteMutation.isPending}
                         >

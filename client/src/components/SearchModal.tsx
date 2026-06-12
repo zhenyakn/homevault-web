@@ -26,7 +26,7 @@ const TYPE_ICONS: Record<SearchResultItem["type"], React.ReactNode> = {
 
 const TYPE_COLORS: Record<SearchResultItem["type"], string> = {
   expense: "text-orange-500 bg-orange-50 dark:bg-orange-950/40",
-  repair: "text-red-500   bg-red-50   dark:bg-red-950/40",
+  repair: "text-red-600   bg-red-50   dark:bg-red-950/40",
   upgrade: "text-blue-500  bg-blue-50  dark:bg-blue-950/40",
   loan: "text-purple-500 bg-purple-50 dark:bg-purple-950/40",
   wishlist: "text-pink-500  bg-pink-50  dark:bg-pink-950/40",

@@ -5,6 +5,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { clearNoAuthUserCache } from "./_core/context";
 import { systemRouter } from "./_core/systemRouter";
 import { notificationRouter } from "./notificationRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
@@ -295,6 +296,9 @@ export const appRouter = router({
       .input(z.object({ language: z.enum(["en", "he", "ru"]) }))
       .mutation(async ({ ctx, input }) => {
         await db.setUserLanguage(ctx.user.id, input.language);
+        // Under NO_AUTH the user (incl. language) is cached per process; drop it
+        // so the new language takes effect on the next request, not after a restart.
+        clearNoAuthUserCache();
         return { success: true };
       }),
   }),

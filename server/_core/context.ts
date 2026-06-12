@@ -73,3 +73,13 @@ export async function createContext(
 // Module-level cache for the NO_AUTH admin user — avoids a DB round-trip
 // on every single request when running as a Home Assistant addon.
 let _noAuthUserCache: User | null = null;
+
+/**
+ * Invalidate the cached NO_AUTH user so the next request re-reads it from the
+ * DB. Must be called after mutating a cached field (e.g. the UI language via
+ * profiles.setLanguage); otherwise the change wouldn't take effect until the
+ * server process restarts.
+ */
+export function clearNoAuthUserCache(): void {
+  _noAuthUserCache = null;
+}

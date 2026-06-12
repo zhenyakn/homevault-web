@@ -124,7 +124,10 @@
     "progress": "התקדמות",
     "show": "הצג",
     "hide": "הסתר",
-    "loading": "טוען…"
+    "loading": "טוען…",
+    "filterByMonth": "סינון לפי חודש",
+    "filterByCategory": "סינון לפי קטגוריה",
+    "filterByRoom": "סינון לפי חדר"
   },
   "categories": {
     "Mortgage": "משכנתא",
@@ -864,7 +867,9 @@
       "Payment": "תשלום",
       "Maintenance": "תחזוקה",
       "Renovation": "שיפוץ"
-    }
+    },
+    "prevMonth": "החודש הקודם",
+    "nextMonth": "החודש הבא"
   },
   "homevault": {
     "homeFile": "תיק הבית",
@@ -1008,5 +1013,8 @@
     "upcoming": "הקרוב",
     "totalOutstanding": "סה״כ יתרה",
     "itemsNeedAction": "פריטים דורשים פעולה"
+  },
+  "inventory": {
+    "deleteConfirm": "למחוק פריט מלאי זה?"
   }
 }

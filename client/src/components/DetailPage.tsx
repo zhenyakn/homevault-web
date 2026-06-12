@@ -92,7 +92,7 @@ export function StatusStepperCard({
 
   return (
     <div className="border border-border rounded-lg p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-3">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
         {label}
       </p>
       <div className="overflow-x-auto pb-1">
@@ -157,7 +157,7 @@ export function DetailSectionHeader({
   return (
     <div className="flex items-center justify-between mb-3">
       <div className="flex items-center gap-3 min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 shrink-0">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground shrink-0">
           {label}
         </p>
         <div className="flex-1 h-px bg-border max-w-16" />
@@ -254,7 +254,7 @@ export function NotesCard({
   if (!notes) return null;
   return (
     <div className="border border-border rounded-lg p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">
         {label}
       </p>
       <p className="text-sm text-muted-foreground whitespace-pre-wrap">

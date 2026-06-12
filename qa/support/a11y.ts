@@ -19,11 +19,11 @@ import { expect, type Page } from "@playwright/test";
  * tighter. `@axe-core/playwright` is a pure npm package (injects axe's JS) — no
  * browser download — so it works behind the firewalled CDN.
  */
-export const KNOWN_ISSUES: ReadonlySet<string> = new Set([
-  "button-name", // icon-only action buttons (edit/delete/etc.) lack a label
-  "color-contrast", // muted-foreground text below AA contrast in many places
-  "scrollable-region-focusable", // scrollable lists not keyboard-focusable
-]);
+// Baseline is now EMPTY — the previously-accepted debt (button-name,
+// color-contrast, scrollable-region-focusable) has been fixed, so the gate is
+// strict: ANY serious/critical violation fails. Add an id back here only as a
+// deliberate, documented exception.
+export const KNOWN_ISSUES: ReadonlySet<string> = new Set<string>([]);
 
 const BLOCKING_IMPACTS = new Set(["serious", "critical"]);
 

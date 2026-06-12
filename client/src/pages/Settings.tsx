@@ -651,7 +651,7 @@ function Pending({ show }: { show: boolean }) {
       aria-live="polite"
       className={cn(
         "inline-flex items-center gap-1.5 text-xs transition-opacity duration-300",
-        show ? "text-muted-foreground" : "text-green-600 dark:text-green-400",
+        show ? "text-muted-foreground" : "text-green-700 dark:text-green-400",
         visible ? "opacity-100" : "opacity-0 pointer-events-none"
       )}
     >
@@ -805,7 +805,10 @@ function PropertySection({ p }: { p: any }) {
             value={g("propertyType") || "Apartment"}
             onValueChange={v => save({ propertyType: v })}
           >
-            <SelectTrigger className={cn("h-8 text-sm", CONTROL_W)}>
+            <SelectTrigger
+              className={cn("h-8 text-sm", CONTROL_W)}
+              aria-label={t("common.type")}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -1741,7 +1744,7 @@ function IntegrationsSection({ p }: { p: any }) {
             }
           />
 
-          <p className="px-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
+          <p className="px-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             {t("settings.cat.comingSoon")}
           </p>
           <div className="opacity-60">
@@ -3445,7 +3448,7 @@ export default function Settings() {
         </div>
         {NAV_GROUPS.map(group => (
           <div key={group.groupKey} className="space-y-0.5">
-            <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+            <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
               {t(`settings.navGroup.${group.groupKey}`)}
             </p>
             {group.items.map(({ id, icon: Icon }) => (

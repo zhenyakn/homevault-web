@@ -446,6 +446,7 @@ export default function PurchaseCosts() {
                         size="sm"
                         variant="outline"
                         className="h-7 w-7 p-0"
+                        aria-label={t("common.edit")}
                         onClick={() => handleEdit(cost)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -454,6 +455,7 @@ export default function PurchaseCosts() {
                         size="sm"
                         variant="outline"
                         className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        aria-label={t("common.delete")}
                         onClick={() => handleDelete(cost.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

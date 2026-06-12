@@ -83,8 +83,9 @@ export function LogPaymentDialog({
         </DialogHeader>
         <div className="space-y-3 pt-1">
           <div className="space-y-1.5">
-            <Label>{amountLabel}</Label>
+            <Label htmlFor="payment-amount">{amountLabel}</Label>
             <Input
+              id="payment-amount"
               type="number"
               min="0"
               value={amount}
@@ -94,16 +95,21 @@ export function LogPaymentDialog({
             />
           </div>
           <div className="space-y-1.5">
-            <Label>{t("common.date")}</Label>
+            <Label htmlFor="payment-date">{t("common.date")}</Label>
             <Input
+              id="payment-date"
               type="date"
               value={date}
               onChange={e => setDate(e.target.value)}
             />
           </div>
           <div className="space-y-1.5">
-            <Label>{t("common.notes")}</Label>
-            <Input value={notes} onChange={e => setNotes(e.target.value)} />
+            <Label htmlFor="payment-notes">{t("common.notes")}</Label>
+            <Input
+              id="payment-notes"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>
