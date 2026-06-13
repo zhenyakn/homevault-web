@@ -63,6 +63,13 @@ export class ExpensesPage extends BasePage {
     await this.app.settle();
   }
 
+  /** The category filter is the second combobox in the filter bar. */
+  async filterCategory(label: string | RegExp): Promise<void> {
+    await this.page.getByRole("combobox").nth(1).click();
+    await this.page.getByRole("option", { name: label }).first().click();
+    await this.app.settle();
+  }
+
   async search(query: string): Promise<void> {
     await this.page
       .getByPlaceholder(/Search/i)

@@ -47,4 +47,27 @@ export class CalendarPage extends BasePage {
       .click();
     await this.submitDialog(/Save event/i);
   }
+
+  // ── Month navigation ────────────────────────────────────────────────────────
+
+  async nextMonth(): Promise<void> {
+    await this.page
+      .getByRole("button", { name: /Next month/i })
+      .first()
+      .click();
+    await this.app.settle(300);
+  }
+
+  async prevMonth(): Promise<void> {
+    await this.page
+      .getByRole("button", { name: /Previous month/i })
+      .first()
+      .click();
+    await this.app.settle(300);
+  }
+
+  /** Assert the "<Month> <year>" grid header is showing. */
+  async expectMonthLabel(label: string): Promise<void> {
+    await this.app.expectVisible(label);
+  }
 }
