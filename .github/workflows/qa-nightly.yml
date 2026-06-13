@@ -20,8 +20,10 @@ name: QA Nightly
 
 on:
   schedule:
-    # 03:00 UTC daily (~early morning Israel time). Adjust as desired.
-    - cron: "0 3 * * *"
+    # 02:00 UTC daily. NOTE: GitHub cron is UTC-only — this is 04:00/05:00 in
+    # Israel (IDT/IST). Shift the hour if you want 02:00 Israel local time
+    # (≈ "0 0 * * *" in summer / "0 23 * * *" the night before in winter).
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 concurrency:
