@@ -37,4 +37,17 @@ export class DashboardPage extends BasePage {
     await this.app.settle();
     await this.app.expectRoute(expectedRoute);
   }
+
+  /** The "Mark <name> as paid" quick-action button in the Needs-attention card. */
+  markPaidButton(name: string) {
+    return this.page.getByRole("button", {
+      name: new RegExp(`Mark .*${name}.* as paid`, "i"),
+    });
+  }
+
+  /** Use the dashboard quick-action to mark an overdue expense paid. */
+  async markAttentionPaid(name: string): Promise<void> {
+    await this.markPaidButton(name).first().click();
+    await this.app.settle();
+  }
 }

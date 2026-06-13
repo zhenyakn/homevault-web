@@ -6,6 +6,8 @@ export interface ExpenseInput {
   amount: string;
   category?: string; // resolved English category label, e.g. "Utilities"
   notes?: string;
+  date?: string; // YYYY-MM-DD; defaults to today in the form
+  recurring?: boolean; // tick the "Recurring expense" checkbox (defaults monthly)
 }
 
 /** Expenses screen: create / edit / delete / mark-paid / filter. */
@@ -25,6 +27,10 @@ export class ExpensesPage extends BasePage {
     await this.fillInDialog(/Description/i, input.name);
     await this.fillInDialog(/Amount/i, input.amount);
     if (input.category) await this.selectInDialog(input.category, 0);
+    if (input.date)
+      await this.dialog().getByLabel(/^Date$/i).first().fill(input.date);
+    if (input.recurring)
+      await this.dialog().getByLabel(/Recurring expense/i).first().check();
     if (input.notes) await this.fillInDialog(/Notes/i, input.notes);
     await this.submitDialog(/Add expense/i);
     await this.app.expectDialogOpen(false);
