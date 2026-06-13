@@ -24,7 +24,7 @@ import {
 import { getLoginUrl } from "@/const";
 import NotificationCenter from "@/components/NotificationCenter";
 import MobileTabBar from "@/components/homevault/HomeVaultMobileNav";
-import AddPropertyDialog from "@/components/AddPropertyDialog";
+import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -253,7 +253,7 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AddPropertyDialog open={showAdd} onOpenChange={setShowAdd} />
+      <AddPropertyWizard open={showAdd} onOpenChange={setShowAdd} />
     </>
   );
 }

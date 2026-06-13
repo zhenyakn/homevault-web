@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import AddPropertyDialog from "@/components/AddPropertyDialog";
+import AddPropertyWizard from "@/components/AddPropertyWizard";
 import NotificationCenter from "@/components/NotificationCenter";
 import { QuickAddMenu } from "@/components/homevault/QuickAddMenu";
 
@@ -85,7 +85,7 @@ function TopbarProperty() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <AddPropertyDialog open={showAdd} onOpenChange={setShowAdd} />
+      <AddPropertyWizard open={showAdd} onOpenChange={setShowAdd} />
     </>
   );
 }

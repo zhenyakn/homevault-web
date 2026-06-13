@@ -7,7 +7,7 @@ import { HVPageHeader } from "@/components/homevault";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import AddPropertyDialog from "@/components/AddPropertyDialog";
+import AddPropertyWizard from "@/components/AddPropertyWizard";
 import {
   Building2,
   MapPin,
@@ -62,7 +62,7 @@ export default function Portfolio() {
           <Plus className="w-4 h-4 mr-1.5" />
           Add property
         </Button>
-        <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} />
+        <AddPropertyWizard open={addOpen} onOpenChange={setAddOpen} />
       </div>
     );
   }
@@ -209,7 +209,7 @@ export default function Portfolio() {
         </button>
       </div>
 
-      <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} />
+      <AddPropertyWizard open={addOpen} onOpenChange={setAddOpen} />
     </div>
   );
 }
