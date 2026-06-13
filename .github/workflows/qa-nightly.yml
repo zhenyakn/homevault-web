@@ -6,17 +6,24 @@ name: QA Nightly
 #
 # - schedule: once a day. Scheduled runs always execute the workflow as it
 #   exists on the DEFAULT branch (main), so this is effectively "nightly on main".
-# - workflow_dispatch: trigger manually from the Actions tab / API, optionally
-#   against another branch.
+#   A gate job skips the suite when main has NOT changed since the previous run,
+#   so we only spend CI (and only report) when there's something new to test.
+# - workflow_dispatch: trigger manually from the Actions tab / API; always runs,
+#   regardless of whether main changed (optionally against another branch).
+#
+# Every run that actually executes posts a report (pass or fail) as a comment on
+# a single persistent tracking issue, so whoever watches/owns the repo gets the
+# nightly result by email. A failing run also flags the issue title.
 #
 # Kept separate from qa-e2e.yml (the per-PR/push gate) on purpose: different
-# cadence, and a failure here opens a tracking issue instead of blocking a PR.
-# The e2e job below mirrors qa-e2e.yml; keep the two in sync when changing setup.
+# cadence and reporting. The e2e job below mirrors qa-e2e.yml; keep them in sync.
 
 on:
   schedule:
-    # 03:00 UTC daily (~early morning Israel time). Adjust as desired.
-    - cron: "0 3 * * *"
+    # 02:00 UTC daily. NOTE: GitHub cron is UTC-only — this is 04:00/05:00 in
+    # Israel (IDT/IST). Shift the hour if you want 02:00 Israel local time
+    # (≈ "0 0 * * *" in summer / "0 23 * * *" the night before in winter).
+    - cron: "0 2 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -29,7 +36,46 @@ permissions:
   issues: write
 
 jobs:
+  # ── Gate: only run the suite when main actually changed ─────────────────────
+  # Scheduled runs check whether the tip commit is newer than the cron interval
+  # (with a small overlap so a commit landing near the boundary is never missed).
+  # Manual dispatch always runs.
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.decide.outputs.should_run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Tip commit is enough to read its timestamp; shallow is fine.
+          fetch-depth: 1
+
+      - name: Decide whether to run
+        id: decide
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual dispatch → run."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          age_h=$(( (now - last) / 3600 ))
+          branch=$(git rev-parse --abbrev-ref HEAD)
+          # Cron interval is 24h; allow 25h of overlap so scheduler drift can't
+          # drop a commit that landed just before the previous run.
+          if [ "$age_h" -lt 25 ]; then
+            echo "Tip of $branch is ${age_h}h old (< 25h) → changes since last run, run the suite."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tip of $branch is ${age_h}h old (>= 25h) → no new commits, skip."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   e2e:
+    needs: gate
+    if: ${{ needs.gate.outputs.should_run == 'true' }}
     runs-on: ubuntu-latest
 
     services:
@@ -70,6 +116,7 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run QA suite (desktop + mobile + rtl)
+        id: qa
         run: pnpm qa
 
       - name: Upload QA report & artifacts
@@ -92,49 +139,124 @@ jobs:
           report_paths: qa/artifacts/results/junit.xml
           fail_on_failure: false
 
-  # On failure, open a tracking issue (or comment on the existing open one) so a
-  # broken main is visible without anyone watching the Actions tab.
-  notify-failure:
-    needs: e2e
-    if: failure()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Open or update the nightly-failure issue
+      # ── Nightly report ────────────────────────────────────────────────────
+      # Always (pass or fail) parse the JUnit results, write a job summary, and
+      # post the report as a comment on a single persistent tracking issue so
+      # the result lands in the repo owner's inbox. The issue title is flagged
+      # green/red so the issues list reflects current main health at a glance.
+      - name: Post nightly report
+        if: always()
         uses: actions/github-script@v7
+        env:
+          QA_OUTCOME: ${{ steps.qa.outcome }}
         with:
           script: |
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const titlePrefix = "🌙 Nightly QA failed on " + context.ref.replace("refs/heads/", "");
-            const body = [
-              `The nightly QA suite failed.`,
-              ``,
-              `- Branch: \`${context.ref.replace("refs/heads/", "")}\``,
-              `- Commit: ${context.sha}`,
-              `- Run: ${runUrl}`,
-            ].join("\n");
+            const fs = require("fs");
 
-            const existing = await github.rest.issues.listForRepo({
+            // 1) Parse JUnit (best-effort; sum across all <testsuite> elements).
+            const path = "qa/artifacts/results/junit.xml";
+            let tests = 0, failures = 0, errors = 0, skipped = 0;
+            const failed = [];
+            let parsed = false;
+            try {
+              const xml = fs.readFileSync(path, "utf8");
+              parsed = true;
+              const num = (s, a) => {
+                const m = s.match(new RegExp(`${a}="(\\d+)"`));
+                return m ? parseInt(m[1], 10) : 0;
+              };
+              for (const m of xml.matchAll(/<testsuite\s[^>]*>/g)) {
+                tests += num(m[0], "tests");
+                failures += num(m[0], "failures");
+                errors += num(m[0], "errors");
+                skipped += num(m[0], "skipped");
+              }
+              for (const m of xml.matchAll(
+                /<testcase\b[^>]*\bname="([^"]+)"[^>]*>([\s\S]*?)<\/testcase>/g
+              )) {
+                if (/<(failure|error)\b/.test(m[2])) failed.push(m[1]);
+              }
+            } catch (e) {
+              core.warning(`Could not read JUnit at ${path}: ${e.message}`);
+            }
+
+            const outcome = process.env.QA_OUTCOME || "unknown";
+            const ok = outcome === "success" && failures === 0 && errors === 0;
+            const icon = ok ? "✅" : "❌";
+            const passed = Math.max(0, tests - failures - errors - skipped);
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const branch = context.ref.replace("refs/heads/", "");
+            const when = new Date().toISOString().replace("T", " ").slice(0, 16) + " UTC";
+
+            const lines = [
+              `## ${icon} Nightly QA — ${branch} — ${ok ? "passing" : "FAILING"}`,
+              ``,
+              `| Result | Total | Passed | Failed | Errors | Skipped |`,
+              `| ------ | ----- | ------ | ------ | ------ | ------- |`,
+              `| ${icon} | ${tests} | ${passed} | ${failures} | ${errors} | ${skipped} |`,
+              ``,
+              `- Commit: \`${context.sha.slice(0, 9)}\``,
+              `- Run: ${runUrl}`,
+              `- Artifacts: HTML report + traces attached to the run (14-day retention).`,
+              `- ${when}`,
+            ];
+            if (!parsed) {
+              lines.push(
+                ``,
+                `> ⚠️ No JUnit results were produced — the suite likely failed to start (infra/setup). See the run log.`
+              );
+            }
+            if (failed.length) {
+              lines.push(``, `### Failed tests`, ...failed.slice(0, 50).map(n => `- ${n}`));
+              if (failed.length > 50) lines.push(`- …and ${failed.length - 50} more`);
+            }
+            const body = lines.join("\n");
+
+            // 2) Job summary (visible in the Actions UI).
+            await core.summary.addRaw(body).write();
+
+            // 3) Comment on (or create) the single persistent tracking issue.
+            const TITLE_PREFIX = `🌙 Nightly QA — ${branch}`;
+            const list = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              state: "open",
+              state: "all",
               per_page: 100,
             });
-            const match = existing.data.find(
-              i => !i.pull_request && i.title.startsWith(titlePrefix),
+            let issue = list.data.find(
+              i => !i.pull_request && i.title.startsWith(TITLE_PREFIX)
             );
 
-            if (match) {
-              await github.rest.issues.createComment({
+            const newTitle = `${TITLE_PREFIX}: ${ok ? "✅ passing" : "❌ failing"}`;
+            if (!issue) {
+              const created = await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: match.number,
-                body,
+                title: newTitle,
+                body:
+                  `Rolling status of the nightly QA suite on \`${branch}\`. ` +
+                  `Each night main changes, a report is posted below.\n\n` +
+                  `_The latest result is reflected in this issue's title._`,
+                assignees: [context.repo.owner],
               });
-            } else {
-              await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title: `${titlePrefix} (${new Date().toISOString().slice(0, 10)})`,
-                body,
-              });
+              issue = created.data;
             }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body,
+            });
+
+            // Keep the title/state in sync with the latest result: a green run
+            // closes the issue, a red run (re)opens it so it stays visible.
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              title: newTitle,
+              state: ok ? "closed" : "open",
+            });
+
+            if (!ok) core.setFailed(`Nightly QA failing: ${failures} failed, ${errors} errored.`);

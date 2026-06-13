@@ -14,6 +14,12 @@ import { WishlistPage } from "./pages/WishlistPage";
 import { PurchaseCostsPage } from "./pages/PurchaseCostsPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { DocumentsPage } from "./pages/DocumentsPage";
+import { PortfolioPage } from "./pages/PortfolioPage";
+import { PropertyDashboardPage } from "./pages/PropertyDashboardPage";
+import { SearchModal } from "./pages/SearchPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 
 const DEFAULT_BASE = "http://127.0.0.1:5000";
 
@@ -53,6 +59,12 @@ type Fixtures = {
   purchaseCosts: PurchaseCostsPage;
   calendar: CalendarPage;
   settings: SettingsPage;
+  dashboard: DashboardPage;
+  documents: DocumentsPage;
+  portfolio: PortfolioPage;
+  propertyDashboard: PropertyDashboardPage;
+  search: SearchModal;
+  notifications: NotificationsPage;
 };
 
 export const test = base.extend<Fixtures>({
@@ -90,6 +102,13 @@ export const test = base.extend<Fixtures>({
   purchaseCosts: async ({ app }, use) => use(new PurchaseCostsPage(app)),
   calendar: async ({ app }, use) => use(new CalendarPage(app)),
   settings: async ({ app }, use) => use(new SettingsPage(app)),
+  dashboard: async ({ app }, use) => use(new DashboardPage(app)),
+  documents: async ({ app }, use) => use(new DocumentsPage(app)),
+  portfolio: async ({ app }, use) => use(new PortfolioPage(app)),
+  propertyDashboard: async ({ app }, use) =>
+    use(new PropertyDashboardPage(app)),
+  search: async ({ app }, use) => use(new SearchModal(app)),
+  notifications: async ({ app }, use) => use(new NotificationsPage(app)),
 });
 
 export { expect };

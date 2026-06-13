@@ -130,13 +130,14 @@ Then set `localStorage['hv_active_property_id'] = <propertyId>` in the browser
 
 ## 7. Useful commands
 
-| Command      | What it does                                                  |
-| ------------ | ------------------------------------------------------------- |
-| `pnpm dev`   | start dev server (API + client) on `:5000`                    |
-| `pnpm build` | `vite build` (client → `dist/public`) + esbuild server bundle |
-| `pnpm check` | `tsc --noEmit` (typecheck; excludes tests + `qa/`)            |
-| `pnpm test`  | vitest unit/integration tests (`server/**/*.test.ts`)         |
-| `pnpm qa`    | Playwright browser-driven QA suite (see `qa/README.md`)       |
+| Command       | What it does                                                  |
+| ------------- | ------------------------------------------------------------- |
+| `pnpm dev`    | start dev server (API + client) on `:5000`                    |
+| `pnpm build`  | `vite build` (client → `dist/public`) + esbuild server bundle |
+| `pnpm check`  | `tsc --noEmit` (typecheck; excludes tests + `qa/`)            |
+| `pnpm test`   | vitest unit/integration tests (`server/**/*.test.ts`)         |
+| `pnpm qa`     | Playwright browser-driven QA suite (see `qa/README.md`)       |
+| `pnpm format` | **Prettier write — run before committing** (CI checks this)   |
 
 ---
 
@@ -150,3 +151,7 @@ Then set `localStorage['hv_active_property_id'] = <propertyId>` in the browser
 5. Env vars empty in server → `export` them in the same command as the launch.
 6. Daemon "died" → it was reaped; use `run_in_background: true` and read its
    output file.
+7. CI "quality gate" fails but tests/typecheck pass → it's **Prettier**. The
+   `ci.yml` gate runs `pnpm exec prettier --check .` across the **whole repo**
+   (`qa/` included). Always run `pnpm format` (or `pnpm exec prettier --write .`)
+   before committing; verify with `pnpm exec prettier --check .`.

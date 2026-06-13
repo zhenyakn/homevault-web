@@ -96,4 +96,11 @@ export class UpgradeDetailPage extends BasePage {
     await this.expandOptions();
     await expect(this.page.getByText(/Selected/i).first()).toBeVisible();
   }
+
+  /** Delete a shopping-list item by name (native confirm). */
+  async deleteItem(name: string): Promise<void> {
+    this.app.acceptConfirm();
+    await this.app.clickRowIcon(name, "lucide-trash2");
+    await this.app.settle();
+  }
 }

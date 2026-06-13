@@ -25,14 +25,32 @@ qa/
     a11y.ts            ← assertNoA11yViolations (axe-core) + known-issue baseline
     scenarios.ts       ← screenLoadsScenario builder
     app.ts, chromium.ts
-  pages/               ← Page Object Model (one per screen)
+  pages/               ← Page Object Model (one per screen / chrome surface)
     BasePage.ts  ExpensesPage.ts  LoansPage.ts  RepairsPage.ts
     RepairDetailPage.ts  UpgradesPage.ts  UpgradeDetailPage.ts
     InventoryPage.ts  WishlistPage.ts  PurchaseCostsPage.ts
-    CalendarPage.ts  SettingsPage.ts
+    CalendarPage.ts  SettingsPage.ts  DashboardPage.ts
+    DocumentsPage.ts  PortfolioPage.ts  PropertyDashboardPage.ts
+    SearchPage.ts (global ⌘K modal)  NotificationsPage.ts (bell popover)
   tests/
     screens/*.spec.ts          ← breadth: each screen loads with data  (@responsive)
     flows/*.spec.ts            ← depth: CRUD + validation per screen (desktop)
+    flows/navigation.spec.ts   ← every sidebar route + breadcrumb + 404
+    flows/dashboard.spec.ts    ← dashboard cards + inline shortcuts
+    flows/search.spec.ts       ← global search: states, results, keyboard nav
+    flows/notifications.spec.ts← bell popover: feed / empty / settings link
+    flows/settings*.spec.ts    ← section nav, theme, export, danger zone, autosave,
+                                 notification toggle, Telegram code, integrations,
+                                 maps provider
+    flows/export-csv.spec.ts   ← every module's CSV export download
+    flows/*-filters.spec.ts    ← expenses + inventory search / category filters
+    flows/calendar-*.spec.ts   ← month navigation + event lifecycle (day dialog)
+    flows/loans-repayments…    ← repayment progress %; flows/repair-quotes (multi)
+    flows/upgrade-items.spec.ts← project shopping-list item delete
+    flows/dashboard-mark-paid… ← overdue-expense quick-action (end-to-end)
+    flows/mobile-nav.spec.ts   ← bottom tab bar (mobile-only, self-skips ≥768px)
+    flows/sidebar.spec.ts      ← collapse/expand + footer theme toggle
+    flows/edge-cases.spec.ts   ← dialog cancel, decimals, special chars, empty search
     a11y/accessibility.spec.ts ← axe audit per screen                (@responsive)
     rtl/rtl-smoke.spec.ts      ← Hebrew / RTL rendering + a11y        (@rtl)
   artifacts/           ← screenshots, traces, HTML report (gitignored)
@@ -122,6 +140,13 @@ Apartment" via `data.seedMock`, and each test sets that property active in
   fixtures. Name created records with `sandbox.name("Thing")` so teardown finds
   them. Target visible text / roles; if a screen needs stable hooks, add
   `data-testid`s to the component and prefer them.
+
+> **⚠️ Format before you commit.** The `ci.yml` quality gate runs
+> `pnpm exec prettier --check .` over the whole repo — `qa/` is **not** exempt.
+> Hand-written specs rarely match Prettier's wrapping, so an unformatted file
+> fails the gate even when every test passes. Always run
+> `pnpm exec prettier --write qa/` (or `pnpm format`) before committing, and
+> sanity-check with `pnpm exec prettier --check . && pnpm check`.
 
 ## CI & nightly
 
