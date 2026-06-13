@@ -25,14 +25,22 @@ qa/
     a11y.ts            ← assertNoA11yViolations (axe-core) + known-issue baseline
     scenarios.ts       ← screenLoadsScenario builder
     app.ts, chromium.ts
-  pages/               ← Page Object Model (one per screen)
+  pages/               ← Page Object Model (one per screen / chrome surface)
     BasePage.ts  ExpensesPage.ts  LoansPage.ts  RepairsPage.ts
     RepairDetailPage.ts  UpgradesPage.ts  UpgradeDetailPage.ts
     InventoryPage.ts  WishlistPage.ts  PurchaseCostsPage.ts
-    CalendarPage.ts  SettingsPage.ts
+    CalendarPage.ts  SettingsPage.ts  DashboardPage.ts
+    DocumentsPage.ts  PortfolioPage.ts  PropertyDashboardPage.ts
+    SearchPage.ts (global ⌘K modal)  NotificationsPage.ts (bell popover)
   tests/
     screens/*.spec.ts          ← breadth: each screen loads with data  (@responsive)
     flows/*.spec.ts            ← depth: CRUD + validation per screen (desktop)
+    flows/navigation.spec.ts   ← every sidebar route + breadcrumb + 404
+    flows/dashboard.spec.ts    ← dashboard cards + inline shortcuts
+    flows/search.spec.ts       ← global search: states, results, keyboard nav
+    flows/notifications.spec.ts← bell popover: feed / empty / settings link
+    flows/settings.spec.ts     ← section nav, theme toggle, JSON export, danger zone
+    flows/edge-cases.spec.ts   ← dialog cancel, decimals, special chars, empty search
     a11y/accessibility.spec.ts ← axe audit per screen                (@responsive)
     rtl/rtl-smoke.spec.ts      ← Hebrew / RTL rendering + a11y        (@rtl)
   artifacts/           ← screenshots, traces, HTML report (gitignored)

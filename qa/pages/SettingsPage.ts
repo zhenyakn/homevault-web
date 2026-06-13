@@ -9,10 +9,82 @@ import { BasePage } from "./BasePage";
 export class SettingsPage extends BasePage {
   protected readonly route = "/settings";
 
-  /** Click a section in the settings side-nav (e.g. "Regional", "Data"). */
-  async openSection(label: string | RegExp): Promise<void> {
-    await this.page.getByText(label, { exact: true }).first().click();
+  /** Click a section in the settings side-nav (e.g. "Regional", "Data"). The
+   *  nav entries are <button>s; target the role so we don't accidentally hit the
+   *  identically-worded group heading <p>. */
+  async openSection(label: string): Promise<void> {
+    // Scope to the settings content: the header notification bell also exposes
+    // an accessible name of "Notifications", so an unscoped match would open the
+    // bell popover instead of the section.
+    await this.page
+      .locator("#main-content")
+      .getByRole("button", { name: label, exact: true })
+      .first()
+      .click();
     await this.app.settle();
+  }
+
+  /** Assert the active section rendered by its SectionHeader <h2>. */
+  async expectSectionHeading(name: string | RegExp): Promise<void> {
+    await expect(
+      this.page.getByRole("heading", { name, level: 2 }).first()
+    ).toBeVisible();
+  }
+
+  // ── Appearance ──────────────────────────────────────────────────────────────
+
+  /** Click a theme tile (Light / Dark / System) in the Appearance section.
+   *  Scoped to the main content so we hit the section tile, not the identically
+   *  -labelled sidebar-footer theme toggle. */
+  async setTheme(label: "Light" | "Dark" | "System"): Promise<void> {
+    await this.page
+      .locator("#main-content")
+      .getByRole("button", { name: label, exact: true })
+      .first()
+      .click();
+    await this.app.settle(300);
+  }
+
+  /** Assert the <html> element reflects the chosen theme. The app toggles only a
+   *  `dark` class (light = its absence), so assert presence/absence accordingly. */
+  async expectThemeClass(cls: "light" | "dark"): Promise<void> {
+    const html = this.page.locator("html");
+    if (cls === "dark") await expect(html).toHaveClass(/\bdark\b/);
+    else await expect(html).not.toHaveClass(/\bdark\b/);
+  }
+
+  /** The language toggle group exposes English / Hebrew / Russian. */
+  async expectLanguageOptions(): Promise<void> {
+    for (const lang of ["English", "עברית", "Русский"]) {
+      await expect(this.page.getByText(lang, { exact: true }).first()).toBeVisible();
+    }
+  }
+
+  // ── Data ────────────────────────────────────────────────────────────────────
+
+  /** Click "Download JSON" and return the resolved Playwright download. */
+  async downloadJson() {
+    const waitForDownload = this.page.waitForEvent("download", {
+      timeout: 15_000,
+    });
+    await this.page
+      .getByRole("button", { name: /Download JSON/i })
+      .first()
+      .click();
+    return waitForDownload;
+  }
+
+  /** Open the "Delete all records" type-to-confirm dialog. */
+  async openDeleteAll(): Promise<void> {
+    await this.page
+      .getByRole("button", { name: /Delete all…/i })
+      .first()
+      .click();
+    await expect(this.page.getByRole("alertdialog")).toBeVisible();
+  }
+
+  alertDialog(): Locator {
+    return this.page.getByRole("alertdialog");
   }
 
   private fieldByLabel(label: string | RegExp): Locator {
