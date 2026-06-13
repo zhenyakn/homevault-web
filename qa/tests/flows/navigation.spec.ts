@@ -30,7 +30,9 @@ test.describe("Navigation — sidebar routes, breadcrumb & 404", () => {
       await app.clickNav(label);
       await app.expectRoute(route);
       // The breadcrumb section label is rendered in the desktop top bar.
-      await expect(app.page.getByText(section, { exact: true }).first()).toBeVisible();
+      await expect(
+        app.page.getByText(section, { exact: true }).first()
+      ).toBeVisible();
     }
   });
 

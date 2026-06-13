@@ -28,9 +28,15 @@ export class ExpensesPage extends BasePage {
     await this.fillInDialog(/Amount/i, input.amount);
     if (input.category) await this.selectInDialog(input.category, 0);
     if (input.date)
-      await this.dialog().getByLabel(/^Date$/i).first().fill(input.date);
+      await this.dialog()
+        .getByLabel(/^Date$/i)
+        .first()
+        .fill(input.date);
     if (input.recurring)
-      await this.dialog().getByLabel(/Recurring expense/i).first().check();
+      await this.dialog()
+        .getByLabel(/Recurring expense/i)
+        .first()
+        .check();
     if (input.notes) await this.fillInDialog(/Notes/i, input.notes);
     await this.submitDialog(/Add expense/i);
     await this.app.expectDialogOpen(false);

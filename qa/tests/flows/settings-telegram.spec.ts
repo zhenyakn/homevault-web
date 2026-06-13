@@ -21,7 +21,9 @@ test.describe("Settings — Telegram link code", () => {
     await app.settle(600);
 
     // A code of the form HV-xxxx-xxx is shown, plus a Copy affordance.
-    await expect(app.page.getByText(/HV-[A-Za-z0-9]+-[A-Za-z0-9]+/)).toBeVisible();
+    await expect(
+      app.page.getByText(/HV-[A-Za-z0-9]+-[A-Za-z0-9]+/)
+    ).toBeVisible();
     await expect(
       app.page.getByRole("button", { name: /Copy code/i })
     ).toBeVisible();

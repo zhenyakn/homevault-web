@@ -11,7 +11,9 @@ test.describe("Sidebar — collapse & theme toggle", () => {
     await app.goto("/");
 
     // Starts expanded → the collapse control is present.
-    const collapse = app.page.getByRole("button", { name: /Collapse sidebar/i });
+    const collapse = app.page.getByRole("button", {
+      name: /Collapse sidebar/i,
+    });
     await expect(collapse).toBeVisible();
     await collapse.click();
     await app.settle(300);
@@ -30,11 +32,17 @@ test.describe("Sidebar — collapse & theme toggle", () => {
   test("footer theme control flips the html theme class", async ({ app }) => {
     await app.goto("/");
 
-    await app.page.getByRole("button", { name: "Dark", exact: true }).first().click();
+    await app.page
+      .getByRole("button", { name: "Dark", exact: true })
+      .first()
+      .click();
     await app.settle(300);
     await expect(app.page.locator("html")).toHaveClass(/\bdark\b/);
 
-    await app.page.getByRole("button", { name: "Light", exact: true }).first().click();
+    await app.page
+      .getByRole("button", { name: "Light", exact: true })
+      .first()
+      .click();
     await app.settle(300);
     await expect(app.page.locator("html")).not.toHaveClass(/\bdark\b/);
   });

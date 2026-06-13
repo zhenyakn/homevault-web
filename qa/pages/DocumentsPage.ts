@@ -11,9 +11,7 @@ export class DocumentsPage extends BasePage {
   protected readonly route = "/documents";
 
   async expectTitle(): Promise<void> {
-    await expect(
-      this.page.getByText(/Home Documents/i).first()
-    ).toBeVisible();
+    await expect(this.page.getByText(/Home Documents/i).first()).toBeVisible();
   }
 
   /** Every canonical category tile should render. */
@@ -23,9 +21,7 @@ export class DocumentsPage extends BasePage {
 
   /** The Upload affordance is present but disabled in this build. */
   async expectUploadDisabled(): Promise<void> {
-    const upload = this.page
-      .getByRole("button", { name: /Upload/i })
-      .first();
+    const upload = this.page.getByRole("button", { name: /Upload/i }).first();
     await expect(upload).toBeVisible();
     await expect(upload).toBeDisabled();
   }

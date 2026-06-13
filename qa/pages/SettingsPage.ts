@@ -56,7 +56,9 @@ export class SettingsPage extends BasePage {
   /** The language toggle group exposes English / Hebrew / Russian. */
   async expectLanguageOptions(): Promise<void> {
     for (const lang of ["English", "עברית", "Русский"]) {
-      await expect(this.page.getByText(lang, { exact: true }).first()).toBeVisible();
+      await expect(
+        this.page.getByText(lang, { exact: true }).first()
+      ).toBeVisible();
     }
   }
 

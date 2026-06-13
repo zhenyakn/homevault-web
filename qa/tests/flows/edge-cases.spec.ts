@@ -17,7 +17,11 @@ test.describe("Edge cases — dialogs, odd inputs & empty states", () => {
     const name = sandbox.name("Phantom");
     await app.clickButton(/Add expense/i);
     await app.expectDialogOpen();
-    await app.dialog().getByLabel(/Description/i).first().fill(name);
+    await app
+      .dialog()
+      .getByLabel(/Description/i)
+      .first()
+      .fill(name);
     await app.closeDialog();
     await app.expectDialogOpen(false);
     // Dialog was abandoned — nothing should have been persisted.
@@ -67,8 +71,6 @@ test.describe("Edge cases — dialogs, odd inputs & empty states", () => {
 
     // A query that can't match our item should hide it.
     await inventory.search("zzz-no-such-item-9999");
-    await expect(
-      inventory.app.page.getByText(name)
-    ).toHaveCount(0);
+    await expect(inventory.app.page.getByText(name)).toHaveCount(0);
   });
 });
