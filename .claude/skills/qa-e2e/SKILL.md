@@ -123,6 +123,18 @@ The `qa/` folder is **excluded from the build** (not in `tsconfig` `include`,
 listed in its `exclude`, and `vite build` only bundles `client/`) — same as
 this skills directory: committed, never shipped.
 
+> **Before you commit any `qa/` change, run Prettier — always.** The CI quality
+> gate (`.github/workflows/ci.yml`) runs `pnpm exec prettier --check .` over the
+> whole repo, `qa/` included. Hand-written specs/page-objects almost never match
+> Prettier's wrapping, so an unformatted file fails the gate (the
+> `prettier --check` step) even though every test passes. One-liner:
+>
+> ```bash
+> pnpm exec prettier --write qa/        # then commit
+> # verify the gate locally before pushing:
+> pnpm exec prettier --check . && pnpm check
+> ```
+
 ## Gotchas (quick index)
 
 1. `npm` errors → use **pnpm** (patched deps).
@@ -134,3 +146,5 @@ this skills directory: committed, never shipped.
 4. Seed 404 → the endpoint is `data.seedMock`, not `property.seedMock`.
 5. Daemon "died" between calls → it was reaped; use `run_in_background: true`.
 6. Server won't boot → `DATABASE_URL` unreachable or `JWT_SECRET` <16 chars.
+7. CI "quality gate" red but tests green → it's **Prettier**. Run
+   `pnpm exec prettier --write qa/` and re-push (see the boxed note above).

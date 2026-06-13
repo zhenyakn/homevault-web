@@ -141,6 +141,13 @@ Apartment" via `data.seedMock`, and each test sets that property active in
   them. Target visible text / roles; if a screen needs stable hooks, add
   `data-testid`s to the component and prefer them.
 
+> **⚠️ Format before you commit.** The `ci.yml` quality gate runs
+> `pnpm exec prettier --check .` over the whole repo — `qa/` is **not** exempt.
+> Hand-written specs rarely match Prettier's wrapping, so an unformatted file
+> fails the gate even when every test passes. Always run
+> `pnpm exec prettier --write qa/` (or `pnpm format`) before committing, and
+> sanity-check with `pnpm exec prettier --check . && pnpm check`.
+
 ## CI & nightly
 
 Two GitHub Actions workflows run the suite (each spins up a throwaway MySQL,
