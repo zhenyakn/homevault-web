@@ -17,7 +17,6 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { DocumentsPage } from "./pages/DocumentsPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
-import { PropertyDashboardPage } from "./pages/PropertyDashboardPage";
 import { SearchModal } from "./pages/SearchPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 
@@ -62,7 +61,6 @@ type Fixtures = {
   dashboard: DashboardPage;
   documents: DocumentsPage;
   portfolio: PortfolioPage;
-  propertyDashboard: PropertyDashboardPage;
   search: SearchModal;
   notifications: NotificationsPage;
 };
@@ -105,8 +103,6 @@ export const test = base.extend<Fixtures>({
   dashboard: async ({ app }, use) => use(new DashboardPage(app)),
   documents: async ({ app }, use) => use(new DocumentsPage(app)),
   portfolio: async ({ app }, use) => use(new PortfolioPage(app)),
-  propertyDashboard: async ({ app }, use) =>
-    use(new PropertyDashboardPage(app)),
   search: async ({ app }, use) => use(new SearchModal(app)),
   notifications: async ({ app }, use) => use(new NotificationsPage(app)),
 });
