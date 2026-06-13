@@ -52,6 +52,13 @@ export type WarrantyItem = {
 
 export type StaleRepair = { id: string; label: string; days: number };
 
+/**
+ * Lease whose end date should trigger a renewal reminder. Populated by the DB
+ * layer only for rental properties (tenant or rented-out) — owner-occupied
+ * properties have no lease, so they never produce one.
+ */
+export type DueLease = { id: string | number; leaseEnd?: string | null };
+
 export type ReminderInput = {
   /** ISO date, YYYY-MM-DD. */
   today: string;
@@ -62,6 +69,8 @@ export type ReminderInput = {
   warrantyItems?: WarrantyItem[];
   /** Precomputed by the dashboard layer (getDashboardStats). */
   staleRepairs?: StaleRepair[];
+  /** Only set for rental-mode properties. */
+  lease?: DueLease | null;
 };
 
 // ── Date helpers (ISO strings compare lexicographically) ──────────────────────
@@ -169,6 +178,23 @@ export function collectDueReminders(input: ReminderInput): ReminderMessage[] {
         url: "/inventory",
       });
     }
+  }
+
+  // Lease-end renewal reminder for rental properties. Gated on the calendar
+  // toggle (it's a date-based, calendar-style nudge). The DB layer only passes
+  // `lease` for tenant / rented-out properties.
+  if (
+    prefs.remindCalendar &&
+    withinLeadWindow(today, input.lease?.leaseEnd, lead)
+  ) {
+    out.push({
+      dedupeKey: `lease-end:${input.lease!.id}:${input.lease!.leaseEnd}`,
+      category: "calendar",
+      titleKey: "leaseEnding.title",
+      bodyKey: "leaseEnding.body",
+      params: { date: input.lease!.leaseEnd ?? "" },
+      url: "/portfolio",
+    });
   }
 
   if (prefs.remindRepairs) {

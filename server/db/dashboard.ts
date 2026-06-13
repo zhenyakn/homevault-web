@@ -484,6 +484,11 @@ export async function getPortfolioSummary(userId: number) {
         propertyType: prop.propertyType,
         purchasePrice: prop.purchasePrice,
         currencyCode: prop.currencyCode || "ILS",
+        // Mode-aware fields so the portfolio summary can show rental income /
+        // lease info for rental properties instead of purchase/loan figures.
+        propertyMode: prop.propertyMode ?? "owned_personal",
+        monthlyRent: prop.monthlyRent,
+        leaseEnd: prop.leaseEnd,
         monthSpent,
         openRepairsCount,
         outstandingLoanBalance,

@@ -67,6 +67,13 @@ export async function runReminderSweep(
         label: r.label,
         days: 5,
       })),
+      // Lease-end reminders only apply to rental properties (tenant or
+      // rented-out); owner-occupied properties have no lease.
+      lease:
+        property.propertyMode === "rented" ||
+        property.propertyMode === "owned_rented"
+          ? { id: property.id, leaseEnd: property.leaseEnd }
+          : null,
     });
 
     for (const payload of due) {
