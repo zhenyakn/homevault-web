@@ -39,7 +39,17 @@ qa/
     flows/dashboard.spec.ts    ← dashboard cards + inline shortcuts
     flows/search.spec.ts       ← global search: states, results, keyboard nav
     flows/notifications.spec.ts← bell popover: feed / empty / settings link
-    flows/settings.spec.ts     ← section nav, theme toggle, JSON export, danger zone
+    flows/settings*.spec.ts    ← section nav, theme, export, danger zone, autosave,
+                                 notification toggle, Telegram code, integrations,
+                                 maps provider
+    flows/export-csv.spec.ts   ← every module's CSV export download
+    flows/*-filters.spec.ts    ← expenses + inventory search / category filters
+    flows/calendar-*.spec.ts   ← month navigation + event lifecycle (day dialog)
+    flows/loans-repayments…    ← repayment progress %; flows/repair-quotes (multi)
+    flows/upgrade-items.spec.ts← project shopping-list item delete
+    flows/dashboard-mark-paid… ← overdue-expense quick-action (end-to-end)
+    flows/mobile-nav.spec.ts   ← bottom tab bar (mobile-only, self-skips ≥768px)
+    flows/sidebar.spec.ts      ← collapse/expand + footer theme toggle
     flows/edge-cases.spec.ts   ← dialog cancel, decimals, special chars, empty search
     a11y/accessibility.spec.ts ← axe audit per screen                (@responsive)
     rtl/rtl-smoke.spec.ts      ← Hebrew / RTL rendering + a11y        (@rtl)
