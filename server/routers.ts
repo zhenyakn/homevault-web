@@ -154,6 +154,76 @@ const propertySchema = createInsertSchema(properties, {
   mapsProvider: z.enum(["google", "osm"]).optional(),
 }).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
 
+const propertyModeEnum = z.enum(["owned_rented", "owned_personal", "rented"]);
+const wizardDate = z.preprocess(
+  v => (v === "" ? undefined : v),
+  z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD")
+    .optional()
+);
+
+// Payload for the multi-step Add-Property wizard. Beyond the property fields it
+// can carry optional linked records to create transactionally with the new
+// property: a mortgage loan and itemised purchase costs (purchased modes), and a
+// recurring rent expense (tenant mode only — a landlord's rent is informational).
+export const wizardSchema = z.object({
+  mode: propertyModeEnum,
+  // shared basics
+  houseName: z.string().min(1),
+  houseNickname: z.string().optional(),
+  propertyType: z.string().optional(),
+  address: z.string().optional(),
+  squareMeters: z.number().int().positive().optional(),
+  rooms: z.number().int().positive().optional(),
+  yearBuilt: z.number().int().optional(),
+  floor: z.number().int().optional(),
+  parkingSpots: z.number().int().min(0).optional(),
+  hasStorage: z.boolean().optional(),
+  // purchased modes
+  purchasePrice: z.number().int().positive().optional(),
+  purchaseDate: wizardDate,
+  // rental terms (tenant lease, or landlord's rented-out terms)
+  monthlyRent: z.number().int().positive().optional(),
+  leaseStart: wizardDate,
+  leaseEnd: wizardDate,
+  deposit: z.number().int().min(0).optional(),
+  landlord: z.string().optional(),
+  // optional linked records
+  loan: z
+    .object({
+      name: z.string().optional(),
+      lender: z.string().optional(),
+      originalAmount: z.number().int().positive(),
+      currentBalance: z.number().int().optional(),
+      interestRate: z.number().optional(),
+      monthlyPayment: z.number().int().optional(),
+      startDate: wizardDate,
+      endDate: wizardDate,
+    })
+    .optional(),
+  purchaseCosts: z
+    .array(
+      z.object({
+        name: z.string().min(1),
+        amount: z.number().int().positive(),
+        category: z.string().optional(),
+        date: wizardDate,
+      })
+    )
+    .optional(),
+  // tenant mode only: recurring rent expense to mirror into Expenses
+  rentExpense: z
+    .object({
+      amount: z.number().int().positive(),
+      recurringInterval: z
+        .enum(["monthly", "quarterly", "yearly"])
+        .default("monthly"),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+    })
+    .optional(),
+});
+
 // ─── Ownership guard helpers ───────────────────────────────────────────────────
 // Used only for child entities (repairQuotes, upgradeOptions/Items) that have no
 // direct ownerId column — ownership is checked through the parent record.
@@ -1128,10 +1198,33 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return await db.createProperty(ctx.user.id, input);
       }),
-    update: protectedProcedure
-      .input(propertySchema)
+    // Create a property and its optional linked records (mortgage, purchase
+    // costs, recurring rent) in one transaction. Child rows are attached to the
+    // freshly-inserted property id — NOT ctx.propertyId, which still points at
+    // the previously-active property until the client switches.
+    createWithWizard: protectedProcedure
+      .input(wizardSchema)
       .mutation(async ({ ctx, input }) => {
-        return await db.updateProperty(ctx.propertyId, input);
+        return await db.createPropertyWithWizard(ctx.user.id, input);
+      }),
+    update: protectedProcedure
+      // Optional propertyId lets the Portfolio editor save a property other than
+      // the active one (e.g. the master/detail panel). Falls back to the
+      // header-scoped active property when omitted. Ownership is verified.
+      .input(propertySchema.extend({ propertyId: z.number().int().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const { propertyId, ...data } = input;
+        const target = propertyId ?? ctx.propertyId;
+        if (propertyId && propertyId !== ctx.propertyId) {
+          const owns = await db.checkPropertyOwnership(ctx.user.id, propertyId);
+          if (!owns) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Property not found",
+            });
+          }
+        }
+        return await db.updateProperty(target, data);
       }),
     delete: protectedProcedure
       .input(z.object({ propertyId: z.number().int() }))

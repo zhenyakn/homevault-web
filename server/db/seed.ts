@@ -11,6 +11,7 @@ import {
   mockPurchaseCosts,
   mockCalendarEvents,
   mockInventory,
+  mockExtraProperties,
 } from "../mockData.js";
 import {
   properties,
@@ -302,5 +303,87 @@ export async function seedMockProperty(userId: number): Promise<number> {
     }))
   );
 
+  // Seed the extra demo properties (owned-and-rented-out, rented) so the
+  // redesigned Portfolio shows all three modes. Idempotent by houseName.
+  await seedExtraProperties(userId);
+
   return propertyId;
+}
+
+/**
+ * Idempotently seed the extra demo properties (one per non-default mode). Each
+ * is matched by houseName; its property row + small linked-record set are
+ * replaced on every run. Best-effort: failures here never block the primary
+ * seed (already returned by the caller).
+ */
+async function seedExtraProperties(userId: number): Promise<void> {
+  const db = await getDb();
+
+  for (const bundle of mockExtraProperties) {
+    const found = await db
+      .select({ id: properties.id })
+      .from(properties)
+      .where(
+        and(
+          eq(properties.userId, userId),
+          eq(properties.houseName, bundle.property.houseName as string)
+        )
+      )
+      .limit(1);
+
+    let pid: number;
+    if (found.length > 0) {
+      pid = found[0].id;
+      await db
+        .update(properties)
+        .set(bundle.property)
+        .where(eq(properties.id, pid));
+    } else {
+      const [res] = await db
+        .insert(properties)
+        .values({ userId, ...bundle.property });
+      pid = (res as any).insertId as number;
+    }
+
+    // Wipe & re-insert this property's linked records.
+    await Promise.all([
+      db.delete(expenses).where(eq(expenses.propertyId, pid)),
+      db.delete(loans).where(eq(loans.propertyId, pid)),
+      db.delete(purchaseCosts).where(eq(purchaseCosts.propertyId, pid)),
+    ]);
+
+    if (bundle.expenses?.length) {
+      await db.insert(expenses).values(
+        bundle.expenses.map(e => ({
+          id: nanoid(),
+          ...e,
+          attachments: [] as any,
+          ownerId: userId,
+          propertyId: pid,
+        }))
+      );
+    }
+    if (bundle.loans?.length) {
+      await db.insert(loans).values(
+        bundle.loans.map(l => ({
+          id: nanoid(),
+          ...l,
+          attachments: [] as any,
+          ownerId: userId,
+          propertyId: pid,
+        }))
+      );
+    }
+    if (bundle.purchaseCosts?.length) {
+      await db.insert(purchaseCosts).values(
+        bundle.purchaseCosts.map(c => ({
+          id: nanoid(),
+          ...c,
+          attachments: [] as any,
+          ownerId: userId,
+          propertyId: pid,
+        }))
+      );
+    }
+  }
 }

@@ -60,6 +60,8 @@ export const mockProperty: Seed<InsertProperty> = {
   houseName: MOCK_PROPERTY_NAME,
   houseNickname: "Florentin",
   propertyType: "Apartment",
+  // The user's own home — bought and lived in, not rented out.
+  propertyMode: "owned_personal" as const,
   address: "Abarbanel St 12, Tel Aviv-Yafo, 6612421",
   latitude: "32.0580",
   longitude: "34.7699",
@@ -82,6 +84,145 @@ export const mockProperty: Seed<InsertProperty> = {
   remindRepairs: true,
   remindCalendar: true,
 };
+
+// ─── Extra demo properties (one per other mode) ─────────────────────────────────
+// These showcase the redesigned Portfolio's mode-specific flows. Each carries a
+// small set of linked records (no need to rival Florentin's depth). Seeded
+// idempotently by houseName alongside the main property.
+
+export type MockPropertyBundle = {
+  property: Seed<InsertProperty>;
+  expenses?: Seed<InsertExpense>[];
+  loans?: Seed<InsertLoan>[];
+  purchaseCosts?: Seed<InsertPurchaseCost>[];
+};
+
+/** Unique houseNames so the seed can find/replace each demo property. */
+export const MOCK_RENTED_OUT_NAME = "Allenby Rental";
+export const MOCK_TENANT_NAME = "Carmel Sublet";
+
+export const mockExtraProperties: MockPropertyBundle[] = [
+  // ── Owned & rented out (landlord / investment) ──────────────────────────────
+  {
+    property: {
+      houseName: MOCK_RENTED_OUT_NAME,
+      houseNickname: "Allenby investment",
+      propertyType: "Apartment",
+      propertyMode: "owned_rented" as const,
+      address: "Allenby St 88, Tel Aviv-Yafo",
+      latitude: "32.0668",
+      longitude: "34.7706",
+      purchaseDate: "2019-05-01",
+      purchasePrice: ils(2_400_000),
+      squareMeters: 64,
+      rooms: 2,
+      yearBuilt: 1978,
+      floor: 2,
+      parkingSpots: 0,
+      hasStorage: false,
+      // Rented out to a tenant — informational income + lease terms.
+      monthlyRent: ils(6_500),
+      leaseStart: "2024-01-01",
+      leaseEnd: "2024-12-31",
+      deposit: ils(13_000),
+      landlord: null,
+      currency: "₪",
+      currencyCode: "ILS",
+      timezone: "Asia/Jerusalem",
+      startOfWeek: "Sunday",
+      reminderDaysBefore: 7,
+    },
+    expenses: [
+      {
+        name: "Mortgage — Bank Hapoalim",
+        amount: ils(5_400),
+        date: "2026-04-01",
+        category: "Other" as const,
+        isRecurring: true,
+        recurringInterval: "monthly" as const,
+      },
+      {
+        name: "Building insurance",
+        amount: ils(1_900),
+        date: "2026-01-10",
+        category: "Insurance" as const,
+      },
+    ],
+    loans: [
+      {
+        name: "Mortgage — Bank Hapoalim",
+        lender: "Bank Hapoalim",
+        originalAmount: ils(1_200_000),
+        currentBalance: ils(890_000),
+        interestRate: "3.50",
+        monthlyPayment: ils(5_400),
+        startDate: "2019-05-01",
+        endDate: "2044-05-01",
+        loanType: "mortgage" as const,
+      },
+    ],
+    purchaseCosts: [
+      {
+        name: "Purchase tax (Mas Rechisha)",
+        amount: ils(72_000),
+        category: "Tax" as const,
+        date: "2019-05-01",
+      },
+      {
+        name: "Lawyer — conveyancing",
+        amount: ils(9_000),
+        category: "Legal" as const,
+        date: "2019-05-01",
+      },
+    ],
+  },
+  // ── Rented (the user is the tenant) ─────────────────────────────────────────
+  {
+    property: {
+      houseName: MOCK_TENANT_NAME,
+      houseNickname: "Carmel flat",
+      propertyType: "Apartment",
+      propertyMode: "rented" as const,
+      address: "HaNassi Ave 8, Haifa",
+      latitude: "32.7940",
+      longitude: "34.9896",
+      squareMeters: 70,
+      rooms: 3,
+      floor: 5,
+      parkingSpots: 1,
+      hasStorage: true,
+      // Lease the user pays as a tenant.
+      monthlyRent: ils(6_500),
+      leaseStart: "2024-01-01",
+      leaseEnd: "2024-12-31",
+      deposit: ils(13_000),
+      landlord: "Mr. Cohen · 052-555-0199",
+      currency: "₪",
+      currencyCode: "ILS",
+      timezone: "Asia/Jerusalem",
+      startOfWeek: "Sunday",
+      reminderDaysBefore: 7,
+    },
+    expenses: [
+      {
+        name: "Rent",
+        amount: ils(6_500),
+        date: "2026-04-01",
+        category: "Other" as const,
+        isRecurring: true,
+        recurringInterval: "monthly" as const,
+      },
+      {
+        name: "Electricity",
+        amount: ils(280),
+        date: "2026-04-05",
+        category: "Utilities" as const,
+        isRecurring: true,
+        recurringInterval: "monthly" as const,
+      },
+    ],
+  },
+];
 
 // ─── Expenses ─────────────────────────────────────────────────────────────────
 

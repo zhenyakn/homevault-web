@@ -70,6 +70,23 @@ export const properties = mysqlTable("properties", {
   remindLoans: boolean("remindLoans").default(true),
   remindRepairs: boolean("remindRepairs").default(true),
   remindCalendar: boolean("remindCalendar").default(true),
+  // How the user holds this property. Drives which financial fields and
+  // reminders apply: owned_rented = bought & rented out (landlord),
+  // owned_personal = bought, owner-occupied, not rented, rented = the user is
+  // the tenant. Defaults so every pre-existing row stays valid.
+  propertyMode: mysqlEnum("propertyMode", [
+    "owned_rented",
+    "owned_personal",
+    "rented",
+  ]).default("owned_personal"),
+  // Rental terms. For `rented` these describe the lease the user pays; for
+  // `owned_rented` `monthlyRent` is the (informational) income received. All
+  // nullable — only populated for rental modes.
+  monthlyRent: int("monthlyRent"),
+  leaseStart: varchar("leaseStart", { length: 20 }),
+  leaseEnd: varchar("leaseEnd", { length: 20 }),
+  deposit: int("deposit"),
+  landlord: varchar("landlord", { length: 200 }),
   userId: int("userId").notNull().default(1),
 });
 
