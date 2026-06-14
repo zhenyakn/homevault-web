@@ -78,6 +78,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
 declare global {
@@ -86,11 +87,32 @@ declare global {
   }
 }
 
-const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
+const LIBRARIES = "marker,places,geocoding,geometry";
+
+// Build-time fallback: the Forge maps proxy, used only when no API key has been
+// configured from the UI (keeps existing Manus/Forge deployments working).
+const FORGE_API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
 const FORGE_BASE_URL =
   import.meta.env.VITE_FRONTEND_FORGE_API_URL ||
   "https://forge.butterfly-effect.dev";
 const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
+
+/**
+ * Resolve the script URL: prefer a user-supplied key (loaded straight from
+ * Google), otherwise fall back to the built-in Forge proxy + build-time key.
+ * Returns null when no key is available anywhere.
+ */
+function mapScriptUrl(apiKey?: string | null): string | null {
+  if (apiKey) {
+    return `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
+      apiKey
+    )}&v=weekly&libraries=${LIBRARIES}`;
+  }
+  if (FORGE_API_KEY) {
+    return `${MAPS_PROXY_URL}/maps/api/js?key=${FORGE_API_KEY}&v=weekly&libraries=${LIBRARIES}`;
+  }
+  return null;
+}
 
 // Single shared loader: the Google Maps script is heavy and may only be
 // injected once per page. Both <MapView> and the address autocomplete await
@@ -99,15 +121,22 @@ let mapsPromise: Promise<typeof google | null> | null = null;
 
 /**
  * Load the Google Maps JS API (once) and resolve with the `google` namespace,
- * or `null` if loading failed. Safe to call from many components concurrently.
+ * or `null` if loading failed / no key is configured. Pass the admin-configured
+ * key (see `useGoogleMapsKey`); the first non-null caller wins, since the key is
+ * app-wide. Safe to call from many components concurrently.
  */
-export function ensureGoogleMaps(): Promise<typeof google | null> {
+export function ensureGoogleMaps(
+  apiKey?: string | null
+): Promise<typeof google | null> {
   if (window.google?.maps) return Promise.resolve(window.google);
   if (mapsPromise) return mapsPromise;
 
+  const url = mapScriptUrl(apiKey);
+  if (!url) return Promise.resolve(null); // no key configured anywhere
+
   mapsPromise = new Promise(resolve => {
     const script = document.createElement("script");
-    script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
+    script.src = url;
     script.async = true;
     script.crossOrigin = "anonymous";
     script.onload = () => {
@@ -122,6 +151,22 @@ export function ensureGoogleMaps(): Promise<typeof google | null> {
     document.head.appendChild(script);
   });
   return mapsPromise;
+}
+
+/**
+ * The active Google Maps API key (admin-configured, stored server-side) and
+ * whether that lookup has finished. Components should wait for `settled` before
+ * loading the map so a stored key isn't skipped in favour of the fallback.
+ */
+export function useGoogleMapsKey(): {
+  apiKey: string | null;
+  settled: boolean;
+} {
+  const { data, isFetched } = trpc.system.googleMapsKey.useQuery(undefined, {
+    staleTime: Infinity,
+    retry: false,
+  });
+  return { apiKey: data?.apiKey ?? null, settled: isFetched };
 }
 
 interface MapViewProps {
@@ -139,9 +184,10 @@ export function MapView({
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<google.maps.Map | null>(null);
+  const { apiKey, settled } = useGoogleMapsKey();
 
   const init = usePersistFn(async () => {
-    const google = await ensureGoogleMaps();
+    const google = await ensureGoogleMaps(apiKey);
     if (!google || !mapContainer.current) {
       if (!google) console.error("Google Maps unavailable");
       return;
@@ -160,9 +206,10 @@ export function MapView({
     }
   });
 
+  // Wait until the key lookup settles so a stored key isn't skipped.
   useEffect(() => {
-    init();
-  }, [init]);
+    if (settled) init();
+  }, [settled, init]);
 
   return (
     <div ref={mapContainer} className={cn("w-full h-[500px]", className)} />

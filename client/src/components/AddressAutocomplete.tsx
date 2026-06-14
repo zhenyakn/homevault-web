@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ensureGoogleMaps } from "@/components/Map";
+import { ensureGoogleMaps, useGoogleMapsKey } from "@/components/Map";
 import { cn } from "@/lib/utils";
 
 export interface AddressSelection {
@@ -66,10 +66,12 @@ export function AddressAutocomplete({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const { apiKey, settled } = useGoogleMapsKey();
 
   useEffect(() => {
+    if (!settled) return;
     let cancelled = false;
-    ensureGoogleMaps().then(google => {
+    ensureGoogleMaps(apiKey).then(google => {
       if (cancelled || !google?.maps?.places) return;
       serviceRef.current = new google.maps.places.AutocompleteService();
       geocoderRef.current = new google.maps.Geocoder();
@@ -80,7 +82,7 @@ export function AddressAutocomplete({
       if (debounceRef.current) clearTimeout(debounceRef.current);
       if (blurRef.current) clearTimeout(blurRef.current);
     };
-  }, []);
+  }, [settled, apiKey]);
 
   function queryPredictions(input: string) {
     const service = serviceRef.current;
