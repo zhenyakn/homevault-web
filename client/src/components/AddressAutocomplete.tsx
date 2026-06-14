@@ -56,8 +56,9 @@ export function AddressAutocomplete({
     null
   );
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
-  const tokenRef =
-    useRef<google.maps.places.AutocompleteSessionToken | null>(null);
+  const tokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(
+    null
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blurRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
