@@ -63,12 +63,12 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2.5 border-b border-border/70 last:border-0">
+    <div className="flex flex-col gap-1.5 py-2.5 border-b border-border/70 last:border-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div>
         <Label className="text-sm text-foreground/90">{label}</Label>
         {hint && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
       </div>
-      <div className="w-52 shrink-0">{children}</div>
+      <div className="w-full sm:w-52 sm:shrink-0">{children}</div>
     </div>
   );
 }
@@ -201,7 +201,7 @@ export default function PropertyEditor({
 
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="mb-4">
+      <TabsList className="mb-4 grid w-full grid-cols-3 sm:inline-flex sm:w-auto">
         <TabsTrigger value="overview">{t("portfolio.tabOverview")}</TabsTrigger>
         <TabsTrigger value="details">{t("portfolio.tabDetails")}</TabsTrigger>
         <TabsTrigger value="financials">
@@ -211,7 +211,7 @@ export default function PropertyEditor({
 
       {/* ── Overview ──────────────────────────────────────────────────── */}
       <TabsContent value="overview" className="space-y-3">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Metric
             label={t("portfolio.thisMonth")}
             value={money(metrics?.monthSpent ?? 0)}
@@ -228,12 +228,14 @@ export default function PropertyEditor({
                   : t("portfolio.rentPaid")
               }
               value={property.monthlyRent ? money(property.monthlyRent) : "—"}
+              className="col-span-2 sm:col-span-1"
               accent
             />
           ) : (
             <Metric
               label={t("portfolio.loanBalance")}
               value={money(metrics?.outstandingLoanBalance ?? 0)}
+              className="col-span-2 sm:col-span-1"
             />
           )}
         </div>
@@ -430,14 +432,21 @@ function Metric({
   label,
   value,
   accent,
+  className,
 }: {
   label: string;
   value: string;
   accent?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="rounded-lg bg-muted/50 p-3 text-center">
-      <p className={cn("text-base font-semibold", accent && "text-primary")}>
+    <div className={cn("rounded-lg bg-muted/50 p-3 text-center", className)}>
+      <p
+        className={cn(
+          "text-sm sm:text-base font-semibold tabular-nums truncate",
+          accent && "text-primary"
+        )}
+      >
         {value}
       </p>
       <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
