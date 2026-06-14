@@ -1,7 +1,7 @@
 /// <reference types="@types/google.maps" />
 
 import { useEffect, useRef, useState } from "react";
-import { ensureGoogleMaps, MapView } from "@/components/Map";
+import { ensureGoogleMaps, useGoogleMapsKey, MapView } from "@/components/Map";
 
 type Property = Record<string, any>;
 
@@ -35,6 +35,7 @@ export default function PortfolioMap({
   onGeocoded,
 }: PortfolioMapProps) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
+  const { apiKey } = useGoogleMapsKey();
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   const markersRef = useRef<
     Map<number, google.maps.marker.AdvancedMarkerElement>
@@ -49,7 +50,7 @@ export default function PortfolioMap({
     if (!map) return;
     let cancelled = false;
 
-    ensureGoogleMaps().then(google => {
+    ensureGoogleMaps(apiKey).then(google => {
       if (cancelled || !google) return;
       if (!geocoderRef.current)
         geocoderRef.current = new google.maps.Geocoder();

@@ -1452,12 +1452,159 @@ function NotificationChannelsIntegration() {
   );
 }
 
+/**
+ * Google Maps API key configuration for the Maps integration card. Admins can
+ * set / replace / remove the key (persisted server-side in app_settings) and
+ * expand step-by-step instructions for obtaining one. Non-admins only see a
+ * nudge when no key is configured yet.
+ */
+function MapsKeyConfig({ isAdmin }: { isAdmin: boolean }) {
+  const { t } = useTranslation();
+  const utils = trpc.useUtils();
+  const { data, isLoading } = trpc.system.googleMapsKey.useQuery();
+  const hasKey = Boolean(data?.apiKey);
+  const [value, setValue] = useState("");
+  const [show, setShow] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+
+  const mutation = trpc.system.setGoogleMapsKey.useMutation({
+    onSuccess: () => {
+      utils.system.googleMapsKey.invalidate();
+      setValue("");
+      setShow(false);
+    },
+    onError: e => toast.error(e.message),
+  });
+
+  const save = () =>
+    mutation.mutate(
+      { apiKey: value.trim() },
+      { onSuccess: () => toast.success(t("settings.saved")) }
+    );
+  const remove = () =>
+    mutation.mutate(
+      { apiKey: "" },
+      { onSuccess: () => toast.success(t("settings.mapsKeyRemoved")) }
+    );
+
+  if (isLoading) return null;
+
+  // Non-admins can't change the key — only nudge them when none is set.
+  if (!isAdmin) {
+    return hasKey ? null : (
+      <Callout variant="warning">{t("settings.mapsKeyNotice")}</Callout>
+    );
+  }
+
+  const steps = [1, 2, 3, 4, 5].map(n => t(`settings.mapsKeyStep${n}`));
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <StatusBadge
+          tone={hasKey ? "active" : "off"}
+          label={
+            hasKey
+              ? t("settings.mapsKeyConfigured")
+              : t("settings.mapsKeyMissing")
+          }
+        />
+        {hasKey && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+            onClick={remove}
+            disabled={mutation.isPending}
+          >
+            <Trash2 className="mr-1 h-3.5 w-3.5" />
+            {t("settings.mapsKeyRemove")}
+          </Button>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Input
+            type={show ? "text" : "password"}
+            value={value}
+            placeholder={
+              hasKey ? "••••••••••••••••" : t("settings.mapsKeyPlaceholder")
+            }
+            autoComplete="off"
+            className="h-9 pr-9 font-mono text-sm"
+            onChange={e => setValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && value.trim()) save();
+            }}
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setShow(s => !s)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            {show ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+        <Button
+          size="sm"
+          className="h-9"
+          onClick={save}
+          disabled={!value.trim() || mutation.isPending}
+        >
+          {mutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            t("common.save")
+          )}
+        </Button>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowHelp(s => !s)}
+        className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+      >
+        <ChevronRight
+          className={cn(
+            "h-3.5 w-3.5 transition-transform",
+            showHelp && "rotate-90"
+          )}
+        />
+        {t("settings.mapsKeyHowto")}
+      </button>
+      {showHelp && (
+        <div className="space-y-2 rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+          <ol className="list-decimal space-y-1.5 pl-4">
+            {steps.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ol>
+          <a
+            href="https://console.cloud.google.com/google/maps-apis/credentials"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+          >
+            {t("settings.mapsKeyOpenConsole")}
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const { save, isPending } = usePropertyAutosave();
   const { data: me } = trpc.profiles.current.useQuery();
   const isAdmin = me?.role === "admin";
-  const hasKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
   const mapsProvider = p?.mapsProvider ?? "google";
   // Selected storage backend is owned here so the Google Drive panel only
   // renders when Drive is the selected backend (not always, as before).
@@ -1503,20 +1650,8 @@ function IntegrationsSection({ p }: { p: any }) {
               </ToggleGroup>
             }
             footer={
-              !hasKey && mapsProvider === "google" ? (
-                <Callout variant="warning">
-                  <div className="space-y-1">
-                    <p>{t("settings.mapsKeyNotice")}</p>
-                    {isAdmin && (
-                      <p className="text-xs opacity-80">
-                        {t("settings.mapsKeyAdminHint")}{" "}
-                        <code className="font-mono">
-                          VITE_GOOGLE_MAPS_API_KEY
-                        </code>
-                      </p>
-                    )}
-                  </div>
-                </Callout>
+              mapsProvider === "google" ? (
+                <MapsKeyConfig isAdmin={isAdmin} />
               ) : undefined
             }
           />
