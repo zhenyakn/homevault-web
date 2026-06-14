@@ -54,8 +54,15 @@ export const properties = mysqlTable("properties", {
   rooms: int("rooms"),
   yearBuilt: int("yearBuilt"),
   floor: int("floor"),
+  // Number of floors the dwelling itself has (houses/villas/townhouses), as
+  // opposed to `floor` which is the storey an apartment sits on.
+  floors: int("floors"),
+  // Garden / yard size in m² — relevant for ground-level dwellings.
+  gardenSize: int("gardenSize"),
   parkingSpots: int("parkingSpots"),
   hasStorage: boolean("hasStorage").default(false),
+  // Building has an elevator — relevant for apartments / penthouses / studios.
+  hasElevator: boolean("hasElevator").default(false),
   currency: varchar("currency", { length: 10 }).default("₪"),
   currencyCode: varchar("currencyCode", { length: 10 }).default("ILS"),
   timezone: varchar("timezone", { length: 50 }).default("Asia/Jerusalem"),

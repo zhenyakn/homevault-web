@@ -32,6 +32,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getSpecFields, SPEC_META } from "@/lib/propertySpecs";
 
 type Mode = "owned_rented" | "owned_personal" | "rented";
 
@@ -54,9 +55,12 @@ type FormValues = {
   squareMeters: string;
   rooms: string;
   floor: string;
+  floors: string;
+  gardenSize: string;
   parkingSpots: string;
   yearBuilt: string;
   hasStorage: boolean;
+  hasElevator: boolean;
   purchasePrice: string;
   purchaseDate: string;
   monthlyRent: string;
@@ -83,9 +87,12 @@ const DEFAULTS: FormValues = {
   squareMeters: "",
   rooms: "",
   floor: "",
+  floors: "",
+  gardenSize: "",
   parkingSpots: "",
   yearBuilt: "",
   hasStorage: false,
+  hasElevator: false,
   purchasePrice: "",
   purchaseDate: "",
   monthlyRent: "",
@@ -182,9 +189,12 @@ export default function AddPropertyWizard({
       squareMeters: toInt(v.squareMeters),
       rooms: toInt(v.rooms),
       floor: toInt(v.floor),
+      floors: toInt(v.floors),
+      gardenSize: toInt(v.gardenSize),
       parkingSpots: toInt(v.parkingSpots),
       yearBuilt: toInt(v.yearBuilt),
       hasStorage: v.hasStorage,
+      hasElevator: v.hasElevator,
     };
 
     if (isOwned) {
@@ -291,30 +301,7 @@ export default function AddPropertyWizard({
               <Field label={t("wizard.address")}>
                 <Input {...register("address")} />
               </Field>
-              <div className="grid grid-cols-3 gap-3">
-                <Field label={t("wizard.sizeM2")}>
-                  <Input type="number" min={0} {...register("squareMeters")} />
-                </Field>
-                <Field label={t("wizard.rooms")}>
-                  <Input type="number" min={0} {...register("rooms")} />
-                </Field>
-                <Field label={t("wizard.floor")}>
-                  <Input type="number" {...register("floor")} />
-                </Field>
-                <Field label={t("wizard.parking")}>
-                  <Input type="number" min={0} {...register("parkingSpots")} />
-                </Field>
-                <Field label={t("wizard.yearBuilt")}>
-                  <Input type="number" {...register("yearBuilt")} />
-                </Field>
-                <div className="flex items-end pb-2 gap-2">
-                  <Switch
-                    checked={watch("hasStorage")}
-                    onCheckedChange={c => setValue("hasStorage", c)}
-                  />
-                  <Label className="text-sm">{t("wizard.storage")}</Label>
-                </div>
-              </div>
+              <SpecsFields form={form} />
             </div>
           )}
 
@@ -603,6 +590,47 @@ function StepMode({ mode, onPick }: { mode: Mode; onPick: (m: Mode) => void }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** Type-aware spec inputs: only renders the fields relevant to the chosen type. */
+function SpecsFields({
+  form,
+}: {
+  form: ReturnType<typeof useForm<FormValues>>;
+}) {
+  const { t } = useTranslation();
+  const { register, watch, setValue } = form;
+  const fields = getSpecFields(watch("propertyType"));
+  const numFields = fields.filter(f => SPEC_META[f].kind === "num");
+  const boolFields = fields.filter(f => SPEC_META[f].kind === "bool");
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {numFields.map(f => (
+          <Field key={f} label={t(SPEC_META[f].labelKey)}>
+            <Input
+              type="number"
+              min={0}
+              {...register(f as keyof FormValues)}
+            />
+          </Field>
+        ))}
+      </div>
+      {boolFields.length > 0 && (
+        <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1">
+          {boolFields.map(f => (
+            <label key={f} className="flex items-center gap-2">
+              <Switch
+                checked={!!watch(f as keyof FormValues)}
+                onCheckedChange={c => (setValue as any)(f, c)}
+              />
+              <span className="text-sm">{t(SPEC_META[f].labelKey)}</span>
+            </label>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

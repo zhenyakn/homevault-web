@@ -557,6 +557,18 @@ async function main() {
     `ALTER TABLE \`properties\` ADD COLUMN \`landlord\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
     "properties.landlord"
   );
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`floors\` int DEFAULT NULL`,
+    "properties.floors"
+  );
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`gardenSize\` int DEFAULT NULL`,
+    "properties.gardenSize"
+  );
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`hasElevator\` tinyint(1) DEFAULT '0'`,
+    "properties.hasElevator"
+  );
 
   // ── expenses ──────────────────────────────────────────────────────────────────
   await run(

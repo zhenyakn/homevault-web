@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KeyRound, MapPin, Ruler, Tag, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getSpecFields, SPEC_META } from "@/lib/propertySpecs";
 
 /** Loose shape — the full property row returned by trpc.property.list. */
 type Property = Record<string, any>;
@@ -220,6 +221,12 @@ export default function PropertyEditor({
   const isRentedOut = mode === "owned_rented";
   const isRental = mode === "owned_rented" || mode === "rented";
 
+  // Spec fields relevant to this property type (e.g. houses ask for a garden
+  // and number of floors; apartments ask for the storey and an elevator).
+  const specFields = getSpecFields(property.propertyType);
+  const numSpecs = specFields.filter(f => SPEC_META[f].kind === "num");
+  const boolSpecs = specFields.filter(f => SPEC_META[f].kind === "bool");
+
   const set = (data: Record<string, unknown>) => save(id, data);
   const money = (v: number) =>
     new Intl.NumberFormat(undefined, {
@@ -335,44 +342,27 @@ export default function PropertyEditor({
 
         <Section icon={Ruler} title={t("portfolio.specs")}>
           <div className="grid grid-cols-2 gap-3">
-            <Field label={t("wizard.sizeM2")}>
-              <NumField
-                value={property.squareMeters}
-                onSave={n => set({ squareMeters: n ?? undefined })}
-              />
-            </Field>
-            <Field label={t("wizard.rooms")}>
-              <NumField
-                value={property.rooms}
-                onSave={n => set({ rooms: n ?? undefined })}
-              />
-            </Field>
-            <Field label={t("wizard.floor")}>
-              <NumField
-                value={property.floor}
-                onSave={n => set({ floor: n ?? undefined })}
-              />
-            </Field>
-            <Field label={t("wizard.parking")}>
-              <NumField
-                value={property.parkingSpots}
-                onSave={n => set({ parkingSpots: n ?? undefined })}
-              />
-            </Field>
-            <Field label={t("wizard.yearBuilt")}>
-              <NumField
-                value={property.yearBuilt}
-                onSave={n => set({ yearBuilt: n ?? undefined })}
-              />
-            </Field>
+            {numSpecs.map(f => (
+              <Field key={f} label={t(SPEC_META[f].labelKey)}>
+                <NumField
+                  value={property[f]}
+                  onSave={n => set({ [f]: n ?? undefined })}
+                />
+              </Field>
+            ))}
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5">
-            <Label className="text-sm">{t("wizard.storage")}</Label>
-            <Switch
-              checked={!!property.hasStorage}
-              onCheckedChange={c => set({ hasStorage: c })}
-            />
-          </div>
+          {boolSpecs.map(f => (
+            <div
+              key={f}
+              className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5"
+            >
+              <Label className="text-sm">{t(SPEC_META[f].labelKey)}</Label>
+              <Switch
+                checked={!!property[f]}
+                onCheckedChange={c => set({ [f]: c })}
+              />
+            </div>
+          ))}
         </Section>
       </TabsContent>
 
