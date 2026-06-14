@@ -1184,6 +1184,11 @@
     "reconsider": "שקלו מחדש",
     "deleteCandidateConfirm": "למחוק את הדירה הזו?",
     "convertedToast": "נוצר נכס מהדירה הזו",
-    "alreadyConverted": "הדירה הזו נוספה לנכסים שלכם."
+    "alreadyConverted": "הדירה הזו נוספה לנכסים שלכם.",
+    "technicalDetails": "פרטים טכניים",
+    "propertyType": "סוג נכס",
+    "scoreLabel": "ציון (1–10)",
+    "scorePlaceholder": "1–10",
+    "yes": "כן"
   }
 }

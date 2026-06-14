@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DetailHeader } from "@/components/DetailPage";
 import { CandidateDialog } from "@/components/apartmentSearch/CandidateDialog";
-import { StarRating } from "@/components/apartmentSearch/StarRating";
+import { ScoreBadge } from "@/components/apartmentSearch/ScoreBadge";
 import { stageColor } from "@/components/apartmentSearch/stages";
 import {
   Loader2,
@@ -54,8 +54,11 @@ function CandidateRow({
           </Badge>
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+          {candidate.propertyType && (
+            <span>{t(`propertyType.${candidate.propertyType}`)}</span>
+          )}
           {candidate.address && (
-            <span className="truncate max-w-[220px]">{candidate.address}</span>
+            <span className="truncate max-w-[200px]">{candidate.address}</span>
           )}
           {candidate.squareMeters ? (
             <span className="inline-flex items-center gap-1">
@@ -69,12 +72,14 @@ function CandidateRow({
               {t("apartmentSearch.roomsCount", { n: candidate.rooms })}
             </span>
           ) : null}
-          {candidate.rating ? (
-            <StarRating value={candidate.rating} size="sm" />
-          ) : null}
         </div>
+        {candidate.notes && (
+          <p className="mt-1 truncate text-xs italic text-muted-foreground">
+            {candidate.notes}
+          </p>
+        )}
       </div>
-      <div className="shrink-0 text-end">
+      <div className="flex shrink-0 flex-col items-end gap-1">
         {candidate.price ? (
           <p className="text-sm font-semibold tabular-nums">
             {formatCurrency(candidate.price)}
@@ -89,6 +94,7 @@ function CandidateRow({
             {t("apartmentSearch.noPrice")}
           </p>
         )}
+        <ScoreBadge value={candidate.rating} />
       </div>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180 group-hover:text-foreground" />
     </button>

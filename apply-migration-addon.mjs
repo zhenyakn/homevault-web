@@ -559,9 +559,12 @@ async function main() {
       \`listingUrl\` text COLLATE utf8mb4_unicode_ci,
       \`price\` int DEFAULT NULL,
       \`deposit\` int DEFAULT NULL,
+      \`propertyType\` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'Apartment',
       \`squareMeters\` int DEFAULT NULL,
       \`rooms\` int DEFAULT NULL,
       \`floor\` int DEFAULT NULL,
+      \`floors\` int DEFAULT NULL,
+      \`gardenSize\` int DEFAULT NULL,
       \`yearBuilt\` int DEFAULT NULL,
       \`parkingSpots\` int DEFAULT NULL,
       \`hasElevator\` tinyint(1) DEFAULT '0',
@@ -585,6 +588,21 @@ async function main() {
       CONSTRAINT \`aptcand_search_fk\` FOREIGN KEY (\`searchId\`) REFERENCES \`apartmentSearches\` (\`id\`) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "apartmentCandidates"
+  );
+
+  // Idempotent additions for installs that created apartmentCandidates before
+  // the technical-detail columns were added.
+  await run(
+    `ALTER TABLE \`apartmentCandidates\` ADD COLUMN \`propertyType\` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'Apartment'`,
+    "apartmentCandidates.propertyType"
+  );
+  await run(
+    `ALTER TABLE \`apartmentCandidates\` ADD COLUMN \`floors\` int DEFAULT NULL`,
+    "apartmentCandidates.floors"
+  );
+  await run(
+    `ALTER TABLE \`apartmentCandidates\` ADD COLUMN \`gardenSize\` int DEFAULT NULL`,
+    "apartmentCandidates.gardenSize"
   );
 
   // ── Phase 3: convergence — bring v2+ installs up to current schema ───────────

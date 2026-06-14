@@ -1185,6 +1185,11 @@
     "reconsider": "Вернуть",
     "deleteCandidateConfirm": "Удалить этот вариант?",
     "convertedToast": "Из этой квартиры создан объект",
-    "alreadyConverted": "Эта квартира добавлена в ваши объекты."
+    "alreadyConverted": "Эта квартира добавлена в ваши объекты.",
+    "technicalDetails": "Технические детали",
+    "propertyType": "Тип недвижимости",
+    "scoreLabel": "Оценка (1–10)",
+    "scorePlaceholder": "1–10",
+    "yes": "Да"
   }
 }

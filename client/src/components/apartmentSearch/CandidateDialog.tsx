@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -13,20 +21,47 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { StarRating } from "./StarRating";
+import { getSpecFields, SPEC_META, type SpecField } from "@/lib/propertySpecs";
 
 type Candidate = RouterOutputs["apartmentSearch"]["candidates"]["list"][number];
+
+// Property types offered — mirrors the Add-Property wizard.
+const PROPERTY_TYPES = [
+  "Apartment",
+  "House",
+  "Villa",
+  "Townhouse",
+  "Studio",
+  "Penthouse",
+  "Other",
+];
+
+// The numeric spec fields a candidate can carry (the bool ones are toggles).
+const NUM_SPEC_FIELDS = [
+  "squareMeters",
+  "gardenSize",
+  "rooms",
+  "floor",
+  "floors",
+  "parkingSpots",
+  "yearBuilt",
+] as const;
+const BOOL_SPEC_FIELDS = ["hasElevator", "hasStorage"] as const;
 
 const toCents = (v: string) =>
   v ? Math.round(parseFloat(v) * 100) : undefined;
 const toMajor = (v: number | null | undefined) =>
   v != null ? String(v / 100) : "";
 const toInt = (v: string) => (v ? Math.round(parseFloat(v)) : undefined);
+const numStr = (v: number | null | undefined) => (v != null ? String(v) : "");
+
+type SpecState = Record<(typeof NUM_SPEC_FIELDS)[number], string> &
+  Record<(typeof BOOL_SPEC_FIELDS)[number], boolean>;
 
 /**
- * Add/edit a candidate listing. The price-related fields adapt to whether the
- * parent search is for renting (monthly rent + deposit) or buying (asking
- * price). Used from both the candidate list and the candidate detail page.
+ * Add/edit a candidate listing. Captures the same technical details as a real
+ * property (driven by propertyType via propertySpecs), so a converted candidate
+ * loses nothing. Price fields adapt to rent (monthly + deposit) vs buy (asking).
  */
 export function CandidateDialog({
   searchId,
@@ -71,14 +106,21 @@ export function CandidateDialog({
     listingUrl: "",
     price: "",
     deposit: "",
-    squareMeters: "",
-    rooms: "",
-    floor: "",
+    propertyType: "Apartment",
     availableDate: "",
     agentName: "",
     agentContact: "",
-    rating: 0,
+    rating: "",
     notes: "",
+    squareMeters: "",
+    gardenSize: "",
+    rooms: "",
+    floor: "",
+    floors: "",
+    parkingSpots: "",
+    yearBuilt: "",
+    hasElevator: false,
+    hasStorage: false,
   };
   const [f, setF] = useState(blank);
 
@@ -92,17 +134,21 @@ export function CandidateDialog({
               listingUrl: editCandidate.listingUrl ?? "",
               price: toMajor(editCandidate.price),
               deposit: toMajor(editCandidate.deposit),
-              squareMeters: editCandidate.squareMeters
-                ? String(editCandidate.squareMeters)
-                : "",
-              rooms: editCandidate.rooms ? String(editCandidate.rooms) : "",
-              floor:
-                editCandidate.floor != null ? String(editCandidate.floor) : "",
+              propertyType: editCandidate.propertyType ?? "Apartment",
               availableDate: editCandidate.availableDate ?? "",
               agentName: editCandidate.agentName ?? "",
               agentContact: editCandidate.agentContact ?? "",
-              rating: editCandidate.rating ?? 0,
+              rating: numStr(editCandidate.rating),
               notes: editCandidate.notes ?? "",
+              squareMeters: numStr(editCandidate.squareMeters),
+              gardenSize: numStr(editCandidate.gardenSize),
+              rooms: numStr(editCandidate.rooms),
+              floor: numStr(editCandidate.floor),
+              floors: numStr(editCandidate.floors),
+              parkingSpots: numStr(editCandidate.parkingSpots),
+              yearBuilt: numStr(editCandidate.yearBuilt),
+              hasElevator: editCandidate.hasElevator ?? false,
+              hasStorage: editCandidate.hasStorage ?? false,
             }
           : blank
       );
@@ -111,23 +157,39 @@ export function CandidateDialog({
   }, [open, editCandidate?.id]);
 
   const isPending = create.isPending || update.isPending;
+  const specFields = getSpecFields(f.propertyType);
 
   const submit = () => {
     if (!f.title.trim()) return;
+    const score = toInt(f.rating);
+    // Only persist the spec fields relevant to the chosen property type;
+    // irrelevant ones are cleared so a type switch doesn't keep stale values.
+    const rel = new Set<SpecField>(specFields);
+    const num = (field: SpecField, v: string) =>
+      rel.has(field) ? toInt(v) : undefined;
+    const bool = (field: SpecField, v: boolean) =>
+      rel.has(field) ? v : undefined;
     const data = {
       title: f.title.trim(),
       address: f.address || undefined,
       listingUrl: f.listingUrl || undefined,
       price: toCents(f.price),
       deposit: isRent ? toCents(f.deposit) : undefined,
-      squareMeters: toInt(f.squareMeters),
-      rooms: toInt(f.rooms),
-      floor: toInt(f.floor),
+      propertyType: f.propertyType,
       availableDate: f.availableDate || undefined,
       agentName: f.agentName || undefined,
       agentContact: f.agentContact || undefined,
-      rating: f.rating > 0 ? f.rating : undefined,
+      rating: score && score >= 1 && score <= 10 ? score : undefined,
       notes: f.notes || undefined,
+      squareMeters: num("squareMeters", f.squareMeters),
+      gardenSize: num("gardenSize", f.gardenSize),
+      rooms: num("rooms", f.rooms),
+      floor: num("floor", f.floor),
+      floors: num("floors", f.floors),
+      parkingSpots: num("parkingSpots", f.parkingSpots),
+      yearBuilt: num("yearBuilt", f.yearBuilt),
+      hasElevator: bool("hasElevator", f.hasElevator),
+      hasStorage: bool("hasStorage", f.hasStorage),
     };
     if (editCandidate) update.mutate({ id: editCandidate.id, data });
     else create.mutate({ searchId, ...data });
@@ -193,35 +255,70 @@ export function CandidateDialog({
               </div>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-3">
+
+          {/* Technical details — type-relevant, mirroring real properties. */}
+          <div className="rounded-lg border border-border p-3 space-y-3">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+              {t("apartmentSearch.technicalDetails")}
+            </p>
             <div className="space-y-1.5">
-              <Label>{t("apartmentSearch.size")}</Label>
-              <Input
-                type="number"
-                min="0"
-                value={f.squareMeters}
-                onChange={e => setF({ ...f, squareMeters: e.target.value })}
-                placeholder="m²"
-              />
+              <Label>{t("apartmentSearch.propertyType")}</Label>
+              <Select
+                value={f.propertyType}
+                onValueChange={v => setF({ ...f, propertyType: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROPERTY_TYPES.map(pt => (
+                    <SelectItem key={pt} value={pt}>
+                      {t(`propertyType.${pt}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>{t("apartmentSearch.rooms")}</Label>
-              <Input
-                type="number"
-                min="0"
-                value={f.rooms}
-                onChange={e => setF({ ...f, rooms: e.target.value })}
-              />
+            <div className="grid grid-cols-3 gap-3">
+              {specFields
+                .filter(field => SPEC_META[field].kind === "num")
+                .map(field => (
+                  <div key={field} className="space-y-1.5">
+                    <Label>{t(SPEC_META[field].labelKey)}</Label>
+                    <Input
+                      type="number"
+                      value={
+                        (f as SpecState)[
+                          field as (typeof NUM_SPEC_FIELDS)[number]
+                        ]
+                      }
+                      onChange={e => setF({ ...f, [field]: e.target.value })}
+                    />
+                  </div>
+                ))}
             </div>
-            <div className="space-y-1.5">
-              <Label>{t("apartmentSearch.floor")}</Label>
-              <Input
-                type="number"
-                value={f.floor}
-                onChange={e => setF({ ...f, floor: e.target.value })}
-              />
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {specFields
+                .filter(field => SPEC_META[field].kind === "bool")
+                .map(field => (
+                  <label
+                    key={field}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <Switch
+                      checked={
+                        (f as SpecState)[
+                          field as (typeof BOOL_SPEC_FIELDS)[number]
+                        ]
+                      }
+                      onCheckedChange={v => setF({ ...f, [field]: v })}
+                    />
+                    {t(SPEC_META[field].labelKey)}
+                  </label>
+                ))}
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>{t("apartmentSearch.availableFrom")}</Label>
@@ -260,10 +357,14 @@ export function CandidateDialog({
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>{t("apartmentSearch.rating")}</Label>
-            <StarRating
+            <Label>{t("apartmentSearch.scoreLabel")}</Label>
+            <Input
+              type="number"
+              min="1"
+              max="10"
               value={f.rating}
-              onChange={r => setF({ ...f, rating: r })}
+              onChange={e => setF({ ...f, rating: e.target.value })}
+              placeholder={t("apartmentSearch.scorePlaceholder")}
             />
           </div>
           <div className="space-y-1.5">
