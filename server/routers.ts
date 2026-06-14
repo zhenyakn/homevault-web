@@ -178,8 +178,11 @@ export const wizardSchema = z.object({
   rooms: z.number().int().positive().optional(),
   yearBuilt: z.number().int().optional(),
   floor: z.number().int().optional(),
+  floors: z.number().int().positive().optional(),
+  gardenSize: z.number().int().min(0).optional(),
   parkingSpots: z.number().int().min(0).optional(),
   hasStorage: z.boolean().optional(),
+  hasElevator: z.boolean().optional(),
   // purchased modes
   purchasePrice: z.number().int().positive().optional(),
   purchaseDate: wizardDate,

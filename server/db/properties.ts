@@ -20,8 +20,11 @@ export type PropertyWizardInput = {
   rooms?: number;
   yearBuilt?: number;
   floor?: number;
+  floors?: number;
+  gardenSize?: number;
   parkingSpots?: number;
   hasStorage?: boolean;
+  hasElevator?: boolean;
   purchasePrice?: number;
   purchaseDate?: string;
   monthlyRent?: number;
@@ -126,8 +129,11 @@ export async function createPropertyWithWizard(
       rooms: input.rooms,
       yearBuilt: input.yearBuilt,
       floor: input.floor,
+      floors: input.floors,
+      gardenSize: input.gardenSize,
       parkingSpots: input.parkingSpots,
       hasStorage: input.hasStorage,
+      hasElevator: input.hasElevator,
       // Purchase only applies to owned modes.
       purchasePrice: isPurchased ? input.purchasePrice : undefined,
       purchaseDate: isPurchased ? input.purchaseDate : undefined,

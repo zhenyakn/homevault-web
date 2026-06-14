@@ -200,7 +200,10 @@
     "willCreateLeaseReminder": "Lease-end reminder — {{date}}",
     "createProperty": "Create property",
     "next": "Next",
-    "switchNote": "You'll switch to this property after it's created."
+    "switchNote": "You'll switch to this property after it's created.",
+    "gardenSize": "Garden (m²)",
+    "floors": "Floors",
+    "elevator": "Elevator"
   },
   "portfolio": {
     "count_one": "{{count}} property",

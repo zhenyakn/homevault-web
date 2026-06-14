@@ -197,7 +197,10 @@
     "willCreateLeaseReminder": "Напоминание о конце договора — {{date}}",
     "createProperty": "Создать объект",
     "next": "Далее",
-    "switchNote": "После создания вы переключитесь на этот объект."
+    "switchNote": "После создания вы переключитесь на этот объект.",
+    "gardenSize": "Сад (м²)",
+    "floors": "Этажей",
+    "elevator": "Лифт"
   },
   "portfolio": {
     "count_one": "{{count}} объект",

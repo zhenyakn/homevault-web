@@ -191,7 +191,10 @@
     "willCreateLeaseReminder": "תזכורת סיום חוזה — {{date}}",
     "createProperty": "יצירת נכס",
     "next": "הבא",
-    "switchNote": "תעבור לנכס הזה לאחר היצירה."
+    "switchNote": "תעבור לנכס הזה לאחר היצירה.",
+    "gardenSize": "גינה (מ\"ר)",
+    "floors": "מספר קומות",
+    "elevator": "מעלית"
   },
   "portfolio": {
     "count_one": "נכס {{count}}",
