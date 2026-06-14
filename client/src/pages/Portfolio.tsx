@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
 import { useIsMobile } from "@/hooks/useMobile";
-import { HVPageHeader } from "@/components/homevault";
+import { HVPageHeader, HVCard } from "@/components/homevault";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -141,8 +141,8 @@ export default function Portfolio() {
   const mappable = properties.some(
     p => p.address || (p.latitude && p.longitude)
   );
-  const mapSection = mappable && (
-    <Card className="overflow-hidden p-0">
+  const mapBody = (
+    <>
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2 text-sm font-semibold">
           <MapIcon className="h-4 w-4 text-muted-foreground" />
@@ -172,8 +172,19 @@ export default function Portfolio() {
           }
         />
       )}
-    </Card>
+    </>
   );
+  // Match the surrounding surface: the premium HV UI uses HVCard (warm surface,
+  // 22px radius, soft shadow); the default UI uses the standard Card.
+  const mapSection =
+    mappable &&
+    (hv ? (
+      <HVCard flush className="overflow-hidden">
+        {mapBody}
+      </HVCard>
+    ) : (
+      <Card className="overflow-hidden p-0">{mapBody}</Card>
+    ));
 
   // ── A single property row in the master list ─────────────────────────────
   const renderCard = (prop: (typeof properties)[number]) => {

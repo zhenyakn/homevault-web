@@ -106,12 +106,14 @@ export default function PortfolioMap({
       live.add(id);
       bounds.extend(coords);
 
+      // Brand palette: forest green for properties, gold accent for the
+      // selected one so it stands out while staying on-theme.
       const selected = id === selectedId;
       const pin = new google.maps.marker.PinElement({
-        background: selected ? "#2563eb" : "#ef4444",
-        borderColor: selected ? "#1d4ed8" : "#b91c1c",
+        background: selected ? "#d6a85d" : "#2f6f55",
+        borderColor: selected ? "#b9863c" : "#214e3d",
         glyphColor: "#ffffff",
-        scale: selected ? 1.25 : 1,
+        scale: selected ? 1.3 : 1,
       });
 
       let marker = markersRef.current.get(id);

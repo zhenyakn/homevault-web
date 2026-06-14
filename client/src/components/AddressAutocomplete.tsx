@@ -178,7 +178,7 @@ export function AddressAutocomplete({
       </div>
 
       {open && predictions.length > 0 && (
-        <ul className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover p-1 shadow-md">
+        <ul className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-border bg-popover p-1.5 shadow-lg">
           {predictions.map((p, i) => (
             <li key={p.place_id}>
               <button
@@ -190,7 +190,7 @@ export function AddressAutocomplete({
                 }}
                 onMouseEnter={() => setActiveIdx(i)}
                 className={cn(
-                  "flex w-full items-start gap-2 rounded-sm px-2 py-1.5 text-left text-sm",
+                  "flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
                   i === activeIdx
                     ? "bg-accent text-accent-foreground"
                     : "hover:bg-accent/60"
