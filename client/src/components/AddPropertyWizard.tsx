@@ -610,11 +610,7 @@ function SpecsFields({
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {numFields.map(f => (
           <Field key={f} label={t(SPEC_META[f].labelKey)}>
-            <Input
-              type="number"
-              min={0}
-              {...register(f as keyof FormValues)}
-            />
+            <Input type="number" min={0} {...register(f as keyof FormValues)} />
           </Field>
         ))}
       </div>

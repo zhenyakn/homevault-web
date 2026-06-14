@@ -315,7 +315,10 @@ export default function PropertyEditor({
               </SelectContent>
             </Select>
           </Field>
-          <Field label={t("portfolio.howHeld")} hint={t("portfolio.howHeldHint")}>
+          <Field
+            label={t("portfolio.howHeld")}
+            hint={t("portfolio.howHeldHint")}
+          >
             <ModeSelect mode={mode} onChange={m => set({ propertyMode: m })} />
           </Field>
         </Section>
@@ -394,7 +397,9 @@ export default function PropertyEditor({
         {isRental && (
           <Section
             icon={KeyRound}
-            title={isRentedOut ? t("portfolio.rentingOut") : t("portfolio.lease")}
+            title={
+              isRentedOut ? t("portfolio.rentingOut") : t("portfolio.lease")
+            }
           >
             <Field
               label={

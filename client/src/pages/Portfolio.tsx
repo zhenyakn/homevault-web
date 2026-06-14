@@ -143,7 +143,9 @@ export default function Portfolio() {
       <button
         key={prop.id}
         type="button"
-        onClick={() => (isMobile ? openDetail(prop.id) : setSelectedId(prop.id))}
+        onClick={() =>
+          isMobile ? openDetail(prop.id) : setSelectedId(prop.id)
+        }
         className={cn(
           "group w-full text-left rounded-2xl border p-4 transition-all bg-card",
           "active:scale-[0.99]",
@@ -193,10 +195,7 @@ export default function Portfolio() {
             {isRental && prop.monthlyRent ? (
               <span className="font-medium text-foreground">
                 {formatMoney(prop.monthlyRent, currencyCode)}
-                <span className="text-muted-foreground font-normal">
-                  {" "}
-                  / mo
-                </span>
+                <span className="text-muted-foreground font-normal"> / mo</span>
               </span>
             ) : (
               m && (
@@ -313,7 +312,9 @@ export default function Portfolio() {
             {nameBlock}
             {deleteButton}
           </div>
-          {switchButton && <div className="[&>button]:w-full">{switchButton}</div>}
+          {switchButton && (
+            <div className="[&>button]:w-full">{switchButton}</div>
+          )}
           <PropertyEditor
             key={selected.id}
             property={selected}
