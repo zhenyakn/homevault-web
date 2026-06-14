@@ -75,7 +75,9 @@ export default function Portfolio() {
   const { enabled: hv } = useHomeVaultUI();
   const [addOpen, setAddOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [showMap, setShowMap] = useState(true);
+  // Collapsed by default so the map doesn't dominate the screen; the user can
+  // expand it with the "Show map" toggle in the card header.
+  const [showMap, setShowMap] = useState(false);
   // On mobile the list and the editor are two distinct screens; this tracks
   // whether the user has drilled into a property's detail screen.
   const [mobileDetail, setMobileDetail] = useState(false);
@@ -143,7 +145,12 @@ export default function Portfolio() {
   );
   const mapBody = (
     <>
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div
+        className={cn(
+          "flex items-center justify-between px-4 py-3",
+          showMap && "border-b border-border"
+        )}
+      >
         <div className="flex items-center gap-2 text-sm font-semibold">
           <MapIcon className="h-4 w-4 text-muted-foreground" />
           {t("portfolio.mapTitle")}
