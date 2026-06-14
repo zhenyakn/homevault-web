@@ -112,6 +112,43 @@ export async function cleanupByPrefix(
       }
     }
   }
+
+  deleted += await cleanupProperties(prefix, baseURL, propertyId);
+  return deleted;
+}
+
+/**
+ * Properties need special handling: they're keyed on `houseName` (not the
+ * name/title/lender fields), deleted by `{ propertyId }` rather than `{ id }`,
+ * and the server refuses to delete the user's only property. The Apartment
+ * Search convert flow mints a property named after the candidate (prefix-tagged),
+ * so without this those leak. Best-effort — the only-property guard just throws
+ * and is swallowed.
+ */
+async function cleanupProperties(
+  prefix: string,
+  baseURL: string,
+  propertyId?: number
+): Promise<number> {
+  let deleted = 0;
+  let rows: AnyRecord[];
+  try {
+    rows = await query(baseURL, "property", propertyId);
+  } catch {
+    return 0;
+  }
+  for (const row of rows) {
+    const name = row.houseName;
+    if (typeof name !== "string" || !name.startsWith(prefix)) continue;
+    const pid = row.id;
+    if (pid == null) continue;
+    try {
+      await mutate(baseURL, "property.delete", { propertyId: pid }, propertyId);
+      deleted += 1;
+    } catch {
+      /* best-effort — e.g. server's "cannot delete your only property" guard */
+    }
+  }
   return deleted;
 }
 
