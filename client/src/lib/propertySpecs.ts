@@ -17,7 +17,8 @@ export type SpecField =
   | "parkingSpots"
   | "yearBuilt"
   | "hasElevator"
-  | "hasStorage";
+  | "hasStorage"
+  | "hasShelter";
 
 /** Field metadata: the i18n label key and whether it's numeric or a toggle. */
 export const SPEC_META: Record<
@@ -33,6 +34,7 @@ export const SPEC_META: Record<
   yearBuilt: { labelKey: "wizard.yearBuilt", kind: "num" },
   hasElevator: { labelKey: "wizard.elevator", kind: "bool" },
   hasStorage: { labelKey: "wizard.storage", kind: "bool" },
+  hasShelter: { labelKey: "wizard.shelter", kind: "bool" },
 };
 
 // Apartment-like units: a storey + (maybe) an elevator, no garden.
@@ -44,6 +46,7 @@ const UNIT: SpecField[] = [
   "yearBuilt",
   "hasElevator",
   "hasStorage",
+  "hasShelter",
 ];
 
 // Ground dwellings: own number of floors + a garden, no elevator.
@@ -55,6 +58,7 @@ const DWELLING: SpecField[] = [
   "parkingSpots",
   "yearBuilt",
   "hasStorage",
+  "hasShelter",
 ];
 
 const TYPE_SPECS: Record<string, SpecField[]> = {
@@ -72,6 +76,7 @@ const TYPE_SPECS: Record<string, SpecField[]> = {
     "parkingSpots",
     "yearBuilt",
     "hasStorage",
+    "hasShelter",
   ],
 };
 

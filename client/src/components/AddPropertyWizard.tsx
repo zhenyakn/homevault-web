@@ -64,6 +64,7 @@ type FormValues = {
   yearBuilt: string;
   hasStorage: boolean;
   hasElevator: boolean;
+  hasShelter: boolean;
   purchasePrice: string;
   purchaseDate: string;
   monthlyRent: string;
@@ -98,6 +99,7 @@ const DEFAULTS: FormValues = {
   yearBuilt: "",
   hasStorage: false,
   hasElevator: false,
+  hasShelter: false,
   purchasePrice: "",
   purchaseDate: "",
   monthlyRent: "",
@@ -202,6 +204,7 @@ export default function AddPropertyWizard({
       yearBuilt: toInt(v.yearBuilt),
       hasStorage: v.hasStorage,
       hasElevator: v.hasElevator,
+      hasShelter: v.hasShelter,
     };
 
     if (isOwned) {

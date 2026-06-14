@@ -46,7 +46,7 @@ const NUM_SPEC_FIELDS = [
   "parkingSpots",
   "yearBuilt",
 ] as const;
-const BOOL_SPEC_FIELDS = ["hasElevator", "hasStorage"] as const;
+const BOOL_SPEC_FIELDS = ["hasElevator", "hasStorage", "hasShelter"] as const;
 
 const toCents = (v: string) =>
   v ? Math.round(parseFloat(v) * 100) : undefined;
@@ -120,6 +120,7 @@ export function CandidateDialog({
     yearBuilt: "",
     hasElevator: false,
     hasStorage: false,
+    hasShelter: false,
   };
   const [f, setF] = useState(blank);
 
@@ -147,6 +148,7 @@ export function CandidateDialog({
               yearBuilt: numStr(editCandidate.yearBuilt),
               hasElevator: editCandidate.hasElevator ?? false,
               hasStorage: editCandidate.hasStorage ?? false,
+              hasShelter: editCandidate.hasShelter ?? false,
             }
           : blank
       );
