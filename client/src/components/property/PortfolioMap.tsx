@@ -36,9 +36,9 @@ export default function PortfolioMap({
 }: PortfolioMapProps) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
-  const markersRef = useRef<Map<number, google.maps.marker.AdvancedMarkerElement>>(
-    new Map()
-  );
+  const markersRef = useRef<
+    Map<number, google.maps.marker.AdvancedMarkerElement>
+  >(new Map());
   // Coordinates resolved this session (stored + geocoded), keyed by property id.
   const coordsRef = useRef<Map<number, google.maps.LatLngLiteral>>(new Map());
   // Property ids we've already tried to geocode, to avoid repeat lookups.
@@ -51,7 +51,8 @@ export default function PortfolioMap({
 
     ensureGoogleMaps().then(google => {
       if (cancelled || !google) return;
-      if (!geocoderRef.current) geocoderRef.current = new google.maps.Geocoder();
+      if (!geocoderRef.current)
+        geocoderRef.current = new google.maps.Geocoder();
 
       properties.forEach(p => {
         const id = p.id as number;
@@ -146,11 +147,5 @@ export default function PortfolioMap({
     }
   }
 
-  return (
-    <MapView
-      className={className}
-      initialZoom={11}
-      onMapReady={setMap}
-    />
-  );
+  return <MapView className={className} initialZoom={11} onMapReady={setMap} />;
 }
