@@ -1190,6 +1190,9 @@
     "propertyType": "Тип недвижимости",
     "scoreLabel": "Оценка (1–10)",
     "scorePlaceholder": "1–10",
-    "yes": "Да"
+    "yes": "Да",
+    "rate": "Оценить",
+    "clearScore": "Убрать оценку",
+    "attachmentsHint": "Фото, планировки, проект договора, PDF…"
   }
 }

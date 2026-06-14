@@ -1189,6 +1189,9 @@
     "propertyType": "סוג נכס",
     "scoreLabel": "ציון (1–10)",
     "scorePlaceholder": "1–10",
-    "yes": "כן"
+    "yes": "כן",
+    "rate": "דרגו",
+    "clearScore": "נקה ציון",
+    "attachmentsHint": "תמונות, תוכניות, טיוטת חוזה, מסמכים…"
   }
 }

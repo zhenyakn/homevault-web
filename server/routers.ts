@@ -170,8 +170,8 @@ const apartmentCandidateSchema = createInsertSchema(apartmentCandidates, {
   gardenSize: z.number().int().min(0).optional(),
   parkingSpots: z.number().int().min(0).optional(),
   yearBuilt: z.number().int().optional(),
-  // Numeric score, 1–10.
-  rating: z.number().int().min(1).max(10).optional(),
+  // Numeric score, 1–10. Nullable so it can be cleared from the list.
+  rating: z.number().int().min(1).max(10).nullable().optional(),
   pros: z.array(z.string()).optional(),
   cons: z.array(z.string()).optional(),
   attachments: attachmentSchema,

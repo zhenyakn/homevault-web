@@ -1198,6 +1198,9 @@
     "propertyType": "Property type",
     "scoreLabel": "Score (1–10)",
     "scorePlaceholder": "1–10",
-    "yes": "Yes"
+    "yes": "Yes",
+    "rate": "Rate",
+    "clearScore": "Clear score",
+    "attachmentsHint": "Photos, floor plans, a draft contract, listing PDFs…"
   }
 }

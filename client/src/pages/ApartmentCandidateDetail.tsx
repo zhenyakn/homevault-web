@@ -15,6 +15,7 @@ import {
 } from "@/components/DetailPage";
 import { CandidateDialog } from "@/components/apartmentSearch/CandidateDialog";
 import { ScoreBadge } from "@/components/apartmentSearch/ScoreBadge";
+import { AttachmentsCard } from "@/components/apartmentSearch/AttachmentsCard";
 import { STAGE_STEPS, stageColor } from "@/components/apartmentSearch/stages";
 import {
   Loader2,
@@ -372,6 +373,11 @@ export default function ApartmentCandidateDetail() {
       </div>
 
       <NotesCard label={t("common.notes")} notes={candidate.notes} />
+
+      <AttachmentsCard
+        candidateId={candidate.id}
+        attachments={candidate.attachments}
+      />
 
       {/* Decision actions */}
       <div className="flex flex-wrap items-center gap-2">

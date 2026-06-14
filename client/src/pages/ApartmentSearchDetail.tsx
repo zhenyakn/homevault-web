@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DetailHeader } from "@/components/DetailPage";
 import { CandidateDialog } from "@/components/apartmentSearch/CandidateDialog";
-import { ScoreBadge } from "@/components/apartmentSearch/ScoreBadge";
+import { ScoreSelect } from "@/components/apartmentSearch/ScoreSelect";
 import { stageColor } from "@/components/apartmentSearch/stages";
+import { toast } from "sonner";
 import {
   Loader2,
   Plus,
@@ -32,72 +33,101 @@ function CandidateRow({
 }) {
   const { t } = useTranslation();
   const [, navigate] = useLocation();
+  const u = trpc.useUtils();
+  const open = () =>
+    navigate(`/apartment-search/${searchId}/candidate/${candidate.id}`);
+
+  // Rate in place — the score is set here, after viewing, not in the add form.
+  const rateMut = trpc.apartmentSearch.candidates.update.useMutation({
+    onSuccess: () => u.apartmentSearch.candidates.list.invalidate({ searchId }),
+    onError: e => toast.error(e.message),
+  });
 
   return (
-    <button
-      type="button"
-      onClick={() =>
-        navigate(`/apartment-search/${searchId}/candidate/${candidate.id}`)
-      }
-      className="group flex items-center gap-4 px-4 py-3.5 text-start transition-colors hover:bg-muted/30 w-full"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          {candidate.isFavorite && (
-            <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
-          )}
-          <p className="truncate text-sm font-medium">{candidate.title}</p>
-          <Badge
-            className={cn("h-5 border-0 text-xs", stageColor(candidate.stage))}
-          >
-            {t(`apartmentSearch.stage.${candidate.stage}`)}
-          </Badge>
-        </div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          {candidate.propertyType && (
-            <span>{t(`propertyType.${candidate.propertyType}`)}</span>
-          )}
-          {candidate.address && (
-            <span className="truncate max-w-[200px]">{candidate.address}</span>
-          )}
-          {candidate.squareMeters ? (
-            <span className="inline-flex items-center gap-1">
-              <Ruler className="h-3 w-3" />
-              {candidate.squareMeters} m²
-            </span>
-          ) : null}
-          {candidate.rooms ? (
-            <span className="inline-flex items-center gap-1">
-              <DoorOpen className="h-3 w-3" />
-              {t("apartmentSearch.roomsCount", { n: candidate.rooms })}
-            </span>
-          ) : null}
-        </div>
-        {candidate.notes && (
-          <p className="mt-1 truncate text-xs italic text-muted-foreground">
-            {candidate.notes}
-          </p>
-        )}
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        {candidate.price ? (
-          <p className="text-sm font-semibold tabular-nums">
-            {formatCurrency(candidate.price)}
-            {isRent && (
-              <span className="text-xs font-normal text-muted-foreground">
-                {t("apartmentSearch.perMonthSuffix")}
+    <div className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/30">
+      <button
+        type="button"
+        onClick={open}
+        className="flex min-w-0 flex-1 items-center gap-4 text-start"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            {candidate.isFavorite && (
+              <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
+            )}
+            <p className="truncate text-sm font-medium">{candidate.title}</p>
+            <Badge
+              className={cn(
+                "h-5 border-0 text-xs",
+                stageColor(candidate.stage)
+              )}
+            >
+              {t(`apartmentSearch.stage.${candidate.stage}`)}
+            </Badge>
+          </div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+            {candidate.propertyType && (
+              <span>{t(`propertyType.${candidate.propertyType}`)}</span>
+            )}
+            {candidate.address && (
+              <span className="truncate max-w-[200px]">
+                {candidate.address}
               </span>
             )}
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            {t("apartmentSearch.noPrice")}
-          </p>
-        )}
-        <ScoreBadge value={candidate.rating} />
-      </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground rtl:rotate-180 group-hover:text-foreground" />
-    </button>
+            {candidate.squareMeters ? (
+              <span className="inline-flex items-center gap-1">
+                <Ruler className="h-3 w-3" />
+                {candidate.squareMeters} m²
+              </span>
+            ) : null}
+            {candidate.rooms ? (
+              <span className="inline-flex items-center gap-1">
+                <DoorOpen className="h-3 w-3" />
+                {t("apartmentSearch.roomsCount", { n: candidate.rooms })}
+              </span>
+            ) : null}
+          </div>
+          {candidate.notes && (
+            <p className="mt-1 truncate text-xs italic text-muted-foreground">
+              {candidate.notes}
+            </p>
+          )}
+        </div>
+        <div className="shrink-0 text-end">
+          {candidate.price ? (
+            <p className="text-sm font-semibold tabular-nums">
+              {formatCurrency(candidate.price)}
+              {isRent && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  {t("apartmentSearch.perMonthSuffix")}
+                </span>
+              )}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {t("apartmentSearch.noPrice")}
+            </p>
+          )}
+        </div>
+      </button>
+      {/* Interactive score picker — sibling of the navigate button so it isn't
+          nested inside it. */}
+      <ScoreSelect
+        value={candidate.rating}
+        disabled={rateMut.isPending}
+        onChange={score =>
+          rateMut.mutate({ id: candidate.id, data: { rating: score ?? null } })
+        }
+      />
+      <button
+        type="button"
+        onClick={open}
+        aria-label={candidate.title}
+        className="shrink-0"
+      >
+        <ChevronRight className="h-4 w-4 text-muted-foreground rtl:rotate-180 group-hover:text-foreground" />
+      </button>
+    </div>
   );
 }
 

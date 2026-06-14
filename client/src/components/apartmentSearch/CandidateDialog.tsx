@@ -110,7 +110,6 @@ export function CandidateDialog({
     availableDate: "",
     agentName: "",
     agentContact: "",
-    rating: "",
     notes: "",
     squareMeters: "",
     gardenSize: "",
@@ -138,7 +137,6 @@ export function CandidateDialog({
               availableDate: editCandidate.availableDate ?? "",
               agentName: editCandidate.agentName ?? "",
               agentContact: editCandidate.agentContact ?? "",
-              rating: numStr(editCandidate.rating),
               notes: editCandidate.notes ?? "",
               squareMeters: numStr(editCandidate.squareMeters),
               gardenSize: numStr(editCandidate.gardenSize),
@@ -161,7 +159,6 @@ export function CandidateDialog({
 
   const submit = () => {
     if (!f.title.trim()) return;
-    const score = toInt(f.rating);
     // Only persist the spec fields relevant to the chosen property type;
     // irrelevant ones are cleared so a type switch doesn't keep stale values.
     const rel = new Set<SpecField>(specFields);
@@ -179,7 +176,6 @@ export function CandidateDialog({
       availableDate: f.availableDate || undefined,
       agentName: f.agentName || undefined,
       agentContact: f.agentContact || undefined,
-      rating: score && score >= 1 && score <= 10 ? score : undefined,
       notes: f.notes || undefined,
       squareMeters: num("squareMeters", f.squareMeters),
       gardenSize: num("gardenSize", f.gardenSize),
@@ -355,17 +351,6 @@ export function CandidateDialog({
                 placeholder="05x-xxx-xxxx"
               />
             </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label>{t("apartmentSearch.scoreLabel")}</Label>
-            <Input
-              type="number"
-              min="1"
-              max="10"
-              value={f.rating}
-              onChange={e => setF({ ...f, rating: e.target.value })}
-              placeholder={t("apartmentSearch.scorePlaceholder")}
-            />
           </div>
           <div className="space-y-1.5">
             <Label>{t("common.notes")}</Label>
