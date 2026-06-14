@@ -15,8 +15,10 @@ name: QA Nightly
 # a single persistent tracking issue, so whoever watches/owns the repo gets the
 # nightly result by email. A failing run also flags the issue title.
 #
-# Kept separate from qa-e2e.yml (the per-PR/push gate) on purpose: different
-# cadence and reporting. The e2e job below mirrors qa-e2e.yml; keep them in sync.
+# This is the ONLY place the browser-driven e2e suite runs: it is intentionally
+# NOT wired into per-PR/push CI (that would run the heavy suite on every build).
+# The fast quality gate (type-check, lint, unit + integration tests) lives in
+# ci.yml and runs on every PR/push; the full e2e suite runs here, once a night.
 
 on:
   schedule:
