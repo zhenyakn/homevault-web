@@ -1,5 +1,5 @@
 # Changelog
 
-## 0.6.0
-- Portfolio redesign: property modes, add-property wizard & settings consolidation (#92)
-- Comprehensive automated QA coverage + nightly report (#91)
+## 0.6.1
+- Redesign portfolio for mobile + type-relevant property fields (#95)
+- fix(deps): bump esbuild to >=0.28.1 to resolve security advisories (#93)
