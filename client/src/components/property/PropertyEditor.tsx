@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -324,23 +325,7 @@ export default function PropertyEditor({
         </Section>
 
         <Section icon={MapPin} title={t("portfolio.location")}>
-          <Textarea
-            key={property.address ?? ""}
-            defaultValue={property.address ?? ""}
-            rows={2}
-            placeholder={t("wizard.address")}
-            className="resize-none text-sm"
-            onBlur={e => {
-              if (e.target.value !== (property.address ?? ""))
-                set({ address: e.target.value });
-            }}
-          />
-          {property.latitude && property.longitude && (
-            <p className="text-[11px] text-muted-foreground">
-              {parseFloat(property.latitude).toFixed(4)},{" "}
-              {parseFloat(property.longitude).toFixed(4)}
-            </p>
-          )}
+          <LocationField property={property} onSave={set} />
         </Section>
 
         <Section icon={Ruler} title={t("portfolio.specs")}>
@@ -475,6 +460,53 @@ function Metric({
         {value}
       </p>
       <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+/**
+ * Address field with Google Places autocomplete. Picking a suggestion saves the
+ * formatted address and its coordinates together; typing a custom address saves
+ * the text on blur and clears stale coordinates (the portfolio map re-geocodes
+ * any property that has an address but no coordinates).
+ */
+function LocationField({
+  property,
+  onSave,
+}: {
+  property: Property;
+  onSave: (data: Record<string, unknown>) => void;
+}) {
+  const { t } = useTranslation();
+  const original = (property.address as string) ?? "";
+  const [text, setText] = useState(original);
+  const lat = property.latitude as string | null;
+  const lng = property.longitude as string | null;
+
+  return (
+    <div className="space-y-1.5">
+      <AddressAutocomplete
+        value={text}
+        placeholder={t("wizard.address")}
+        onChange={setText}
+        onSelect={sel => {
+          setText(sel.address);
+          onSave({
+            address: sel.address,
+            latitude: sel.latitude,
+            longitude: sel.longitude,
+          });
+        }}
+        onBlur={value => {
+          if (value !== original)
+            onSave({ address: value, latitude: null, longitude: null });
+        }}
+      />
+      {lat && lng && (
+        <p className="text-[11px] text-muted-foreground">
+          {parseFloat(lat).toFixed(4)}, {parseFloat(lng).toFixed(4)}
+        </p>
+      )}
     </div>
   );
 }

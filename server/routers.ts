@@ -174,6 +174,8 @@ export const wizardSchema = z.object({
   houseNickname: z.string().optional(),
   propertyType: z.string().optional(),
   address: z.string().optional(),
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
   squareMeters: z.number().int().positive().optional(),
   rooms: z.number().int().positive().optional(),
   yearBuilt: z.number().int().optional(),
