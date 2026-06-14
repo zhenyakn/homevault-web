@@ -24,6 +24,22 @@ export class SettingsPage extends BasePage {
     await this.app.settle();
   }
 
+  /** Expand a collapsible category by its header (e.g. "Connected services",
+   *  "Notification channels"). These categories collapse by default, so their
+   *  inner controls aren't in the DOM until the header is toggled open. No-op if
+   *  already expanded. */
+  async expandCategory(label: string | RegExp): Promise<void> {
+    const header = this.page
+      .locator("#main-content")
+      .getByRole("button", { name: label })
+      .first();
+    await expect(header).toBeVisible();
+    if ((await header.getAttribute("aria-expanded")) !== "true") {
+      await header.click();
+      await this.app.settle(300);
+    }
+  }
+
   /** Assert the active section rendered by its SectionHeader <h2>. */
   async expectSectionHeading(name: string | RegExp): Promise<void> {
     await expect(

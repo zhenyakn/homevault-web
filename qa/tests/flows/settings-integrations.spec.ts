@@ -36,6 +36,8 @@ test.describe("Settings — integrations chrome", () => {
   }) => {
     await settings.open();
     await settings.openSection("Integrations");
+    // The Maps control sits inside the (collapsed-by-default) services group.
+    await settings.expandCategory(/Connected services/i);
 
     // The only toggle-group containing "OpenStreetMap" is the Maps control.
     const maps = app.page

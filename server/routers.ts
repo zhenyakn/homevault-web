@@ -32,6 +32,8 @@ import {
   purchaseCosts,
   inventoryItems,
   properties,
+  apartmentSearches,
+  apartmentCandidates,
 } from "../drizzle/schema";
 
 // Fields always assigned by the server — never accepted from the client
@@ -149,6 +151,45 @@ const purchaseCostSchema = createInsertSchema(purchaseCosts, {
   attachments: attachmentSchema,
 }).omit(SERVER_FIELDS);
 
+// Apartment-search (hunting mode). User-scoped: omit the server-assigned id,
+// userId and timestamps — and for candidates the parent searchId, the
+// conversion link, and lat/lng (no map picker in v1; columns reserved).
+const apartmentSearchSchema = createInsertSchema(apartmentSearches, {
+  name: z.string().min(1),
+  searchType: z.enum(["rent", "buy"]),
+  targetBudget: z.number().int().min(0).optional(),
+}).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
+
+const apartmentCandidateSchema = createInsertSchema(apartmentCandidates, {
+  title: z.string().min(1),
+  price: z.number().int().min(0).optional(),
+  deposit: z.number().int().min(0).optional(),
+  squareMeters: z.number().int().min(0).optional(),
+  rooms: z.number().int().min(0).optional(),
+  rating: z.number().int().min(1).max(5).optional(),
+  pros: z.array(z.string()).optional(),
+  cons: z.array(z.string()).optional(),
+  attachments: attachmentSchema,
+}).omit({
+  id: true,
+  userId: true,
+  searchId: true,
+  convertedPropertyId: true,
+  latitude: true,
+  longitude: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+const candidateStageEnum = z.enum([
+  "saved",
+  "viewing_scheduled",
+  "viewed",
+  "applied",
+  "accepted",
+  "rejected",
+]);
+
 const propertySchema = createInsertSchema(properties, {
   reminderDaysBefore: z.number().int().min(1).max(30).optional(),
   mapsProvider: z.enum(["google", "osm"]).optional(),
@@ -248,6 +289,30 @@ async function assertUpgradeOwner(id: string, userId: number) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Not authorised to modify this upgrade",
+    });
+  }
+  return record;
+}
+
+// Apartment-search rows carry a direct userId (no propertyId scoping), so these
+// guards compare ownership against the authenticated user.
+async function assertSearchOwned(id: string, userId: number) {
+  const record = await db.getSearchById(id);
+  if (!record || record.userId !== userId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Search not found",
+    });
+  }
+  return record;
+}
+
+async function assertCandidateOwned(id: string, userId: number) {
+  const record = await db.getCandidateById(id);
+  if (!record || record.userId !== userId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Candidate not found",
     });
   }
   return record;
@@ -1361,6 +1426,145 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         return await db.deleteInventoryItem(input.id, ctx.user.id);
       }),
+  }),
+
+  // Apartment Search ("hunting" mode). User-scoped — these procedures
+  // deliberately ignore ctx.propertyId: a candidate isn't an owned property.
+  apartmentSearch: router({
+    // Accepts (and ignores) an optional input object so generic tooling that
+    // posts an empty payload to `.list` works uniformly across entities.
+    list: protectedProcedure
+      .input(z.object({}).optional())
+      .query(async ({ ctx }) => {
+        return await db.getSearches(ctx.user.id);
+      }),
+    get: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .query(async ({ ctx, input }) => {
+        return await assertSearchOwned(input.id, ctx.user.id);
+      }),
+    create: protectedProcedure
+      .input(apartmentSearchSchema)
+      .mutation(async ({ ctx, input }) => {
+        return await db.createSearch({
+          id: nanoid(),
+          ...input,
+          userId: ctx.user.id,
+        });
+      }),
+    update: protectedProcedure
+      .input(
+        z.object({ id: z.string(), data: apartmentSearchSchema.partial() })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await assertSearchOwned(input.id, ctx.user.id);
+        return await db.updateSearch(input.id, ctx.user.id, input.data);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await assertSearchOwned(input.id, ctx.user.id);
+        return await db.deleteSearch(input.id, ctx.user.id);
+      }),
+    counts: protectedProcedure
+      .input(z.object({ searchIds: z.array(z.string()) }))
+      .query(async ({ ctx, input }) => {
+        // Restrict to the caller's own searches before counting.
+        const owned = (await db.getSearches(ctx.user.id))
+          .filter(s => input.searchIds.includes(s.id))
+          .map(s => s.id);
+        return await db.getCandidateCounts(owned);
+      }),
+
+    candidates: router({
+      list: protectedProcedure
+        .input(z.object({ searchId: z.string() }))
+        .query(async ({ ctx, input }) => {
+          await assertSearchOwned(input.searchId, ctx.user.id);
+          return await db.getCandidates(input.searchId);
+        }),
+      get: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .query(async ({ ctx, input }) => {
+          return await assertCandidateOwned(input.id, ctx.user.id);
+        }),
+      create: protectedProcedure
+        .input(apartmentCandidateSchema.extend({ searchId: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const { searchId, ...data } = input;
+          await assertSearchOwned(searchId, ctx.user.id);
+          return await db.createCandidate({
+            id: nanoid(),
+            searchId,
+            userId: ctx.user.id,
+            ...data,
+          });
+        }),
+      update: protectedProcedure
+        .input(
+          z.object({ id: z.string(), data: apartmentCandidateSchema.partial() })
+        )
+        .mutation(async ({ ctx, input }) => {
+          const existing = await assertCandidateOwned(input.id, ctx.user.id);
+          // Candidates key on userId (not ownerId), so reap removed
+          // attachments directly rather than via the ownerId-based helper.
+          if ("attachments" in input.data) {
+            try {
+              await syncAttachmentRemovals({
+                oldList: parseJsonArray(existing.attachments) as string[],
+                newList: input.data.attachments ?? [],
+                ownerUserId: ctx.user.id,
+              });
+            } catch (err) {
+              logger.error(
+                { err: (err as Error).message },
+                "[apartmentCandidate] attachment sync failed"
+              );
+            }
+          }
+          return await db.updateCandidate(input.id, ctx.user.id, input.data);
+        }),
+      setStage: protectedProcedure
+        .input(z.object({ id: z.string(), stage: candidateStageEnum }))
+        .mutation(async ({ ctx, input }) => {
+          await assertCandidateOwned(input.id, ctx.user.id);
+          return await db.updateCandidate(input.id, ctx.user.id, {
+            stage: input.stage,
+          });
+        }),
+      toggleFavorite: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const candidate = await assertCandidateOwned(input.id, ctx.user.id);
+          return await db.updateCandidate(input.id, ctx.user.id, {
+            isFavorite: !candidate.isFavorite,
+          });
+        }),
+      delete: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          const existing = await assertCandidateOwned(input.id, ctx.user.id);
+          try {
+            await deleteAttachmentList(
+              parseJsonArray(existing.attachments) as string[],
+              ctx.user.id
+            );
+          } catch (err) {
+            logger.error(
+              { err: (err as Error).message },
+              "[apartmentCandidate] attachment delete failed"
+            );
+          }
+          return await db.deleteCandidate(input.id, ctx.user.id);
+        }),
+      // Pick the winner: spin up a real tracked property from this candidate.
+      convertToProperty: protectedProcedure
+        .input(z.object({ id: z.string() }))
+        .mutation(async ({ ctx, input }) => {
+          await assertCandidateOwned(input.id, ctx.user.id);
+          return await db.convertCandidateToProperty(ctx.user.id, input.id);
+        }),
+    }),
   }),
 });
 

@@ -527,6 +527,66 @@ async function main() {
     "files_property_idx"
   );
 
+  // ── apartmentSearches (hunting mode — user-scoped, not property-scoped) ──────
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`apartmentSearches\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`userId\` int NOT NULL,
+      \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`searchType\` enum('rent','buy') COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`targetBudget\` int DEFAULT NULL,
+      \`currencyCode\` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT 'ILS',
+      \`status\` enum('active','completed','archived') COLLATE utf8mb4_unicode_ci DEFAULT 'active',
+      \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      KEY \`aptsearch_user_idx\` (\`userId\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "apartmentSearches"
+  );
+
+  // ── apartmentCandidates ──────────────────────────────────────────────────────
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`apartmentCandidates\` (
+      \`id\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`searchId\` varchar(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`userId\` int NOT NULL,
+      \`title\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`address\` text COLLATE utf8mb4_unicode_ci,
+      \`latitude\` decimal(10,8) DEFAULT NULL,
+      \`longitude\` decimal(11,8) DEFAULT NULL,
+      \`listingUrl\` text COLLATE utf8mb4_unicode_ci,
+      \`price\` int DEFAULT NULL,
+      \`deposit\` int DEFAULT NULL,
+      \`squareMeters\` int DEFAULT NULL,
+      \`rooms\` int DEFAULT NULL,
+      \`floor\` int DEFAULT NULL,
+      \`yearBuilt\` int DEFAULT NULL,
+      \`parkingSpots\` int DEFAULT NULL,
+      \`hasElevator\` tinyint(1) DEFAULT '0',
+      \`hasStorage\` tinyint(1) DEFAULT '0',
+      \`availableDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`agentName\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`agentContact\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`rating\` int DEFAULT NULL,
+      \`stage\` enum('saved','viewing_scheduled','viewed','applied','accepted','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'saved',
+      \`pros\` json DEFAULT NULL,
+      \`cons\` json DEFAULT NULL,
+      \`notes\` text COLLATE utf8mb4_unicode_ci,
+      \`attachments\` json DEFAULT NULL,
+      \`isFavorite\` tinyint(1) DEFAULT '0',
+      \`convertedPropertyId\` int DEFAULT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      KEY \`aptcand_search_idx\` (\`searchId\`),
+      KEY \`aptcand_user_idx\` (\`userId\`),
+      CONSTRAINT \`aptcand_search_fk\` FOREIGN KEY (\`searchId\`) REFERENCES \`apartmentSearches\` (\`id\`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "apartmentCandidates"
+  );
+
   // ── Phase 3: convergence — bring v2+ installs up to current schema ───────────
   // Every ALTER is idempotent — ER_DUP_FIELDNAME is silently skipped.
   // Phase 1 handles v1→v2 resets. This section handles v2→now additions:

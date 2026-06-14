@@ -803,3 +803,105 @@ export const botLinkCodes = mysqlTable(
 
 export type BotLinkCode = typeof botLinkCodes.$inferSelect;
 export type InsertBotLinkCode = typeof botLinkCodes.$inferInsert;
+
+// ─── Apartment Search (hunting mode) ──────────────────────────────────────────
+// A standalone workspace for tracking the apartment-picking process — before a
+// place is actually owned or rented. Unlike every other entity, these rows are
+// scoped to the user account directly (userId), NOT to an active propertyId: a
+// candidate isn't a property yet. When the user "picks" a winning candidate it
+// can be converted into a real `properties` row via the property wizard, and
+// `apartmentCandidates.convertedPropertyId` records the link.
+
+/** A search project, e.g. "2BR rental near the office". Drives rent-vs-buy. */
+export const apartmentSearches = mysqlTable(
+  "apartmentSearches",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id),
+    name: varchar("name", { length: 200 }).notNull(),
+    // Drives which money fields apply: 'rent' → monthly rent + deposit,
+    // 'buy' → asking price.
+    searchType: mysqlEnum("searchType", ["rent", "buy"]).notNull(),
+    // Max monthly rent (rent) or max purchase price (buy), in minor units.
+    targetBudget: int("targetBudget"),
+    currencyCode: varchar("currencyCode", { length: 10 }).default("ILS"),
+    status: mysqlEnum("status", ["active", "completed", "archived"]).default(
+      "active"
+    ),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    userIdx: index("aptsearch_user_idx").on(table.userId),
+  })
+);
+
+export type ApartmentSearch = typeof apartmentSearches.$inferSelect;
+export type InsertApartmentSearch = typeof apartmentSearches.$inferInsert;
+
+/** A candidate listing being evaluated within a search. */
+export const apartmentCandidates = mysqlTable(
+  "apartmentCandidates",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    searchId: varchar("searchId", { length: 36 })
+      .notNull()
+      .references(() => apartmentSearches.id, { onDelete: "cascade" }),
+    // Denormalised owner so candidate queries can scope by user without a join.
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id),
+    title: varchar("title", { length: 200 }).notNull(),
+    address: text("address"),
+    latitude: decimal("latitude", { precision: 10, scale: 8 }),
+    longitude: decimal("longitude", { precision: 11, scale: 8 }),
+    listingUrl: text("listingUrl"),
+    // Monthly rent (rent searches) OR asking price (buy searches), minor units.
+    price: int("price"),
+    deposit: int("deposit"),
+    squareMeters: int("squareMeters"),
+    rooms: int("rooms"),
+    floor: int("floor"),
+    yearBuilt: int("yearBuilt"),
+    parkingSpots: int("parkingSpots"),
+    hasElevator: boolean("hasElevator").default(false),
+    hasStorage: boolean("hasStorage").default(false),
+    availableDate: varchar("availableDate", { length: 20 }),
+    agentName: varchar("agentName", { length: 200 }),
+    agentContact: varchar("agentContact", { length: 200 }),
+    // Subjective rating 1–5.
+    rating: int("rating"),
+    // Pipeline stage. `accepted`/`rejected` are terminal decisions.
+    stage: mysqlEnum("stage", [
+      "saved",
+      "viewing_scheduled",
+      "viewed",
+      "applied",
+      "accepted",
+      "rejected",
+    ])
+      .default("saved")
+      .notNull(),
+    pros: json("pros").$type<string[]>(),
+    cons: json("cons").$type<string[]>(),
+    notes: text("notes"),
+    attachments: json("attachments").$type<string[]>(),
+    isFavorite: boolean("isFavorite").default(false),
+    // Set once the candidate is converted into a tracked property.
+    convertedPropertyId: int("convertedPropertyId").references(
+      () => properties.id
+    ),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    searchIdx: index("aptcand_search_idx").on(table.searchId),
+    userIdx: index("aptcand_user_idx").on(table.userId),
+  })
+);
+
+export type ApartmentCandidate = typeof apartmentCandidates.$inferSelect;
+export type InsertApartmentCandidate = typeof apartmentCandidates.$inferInsert;

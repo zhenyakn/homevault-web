@@ -32,6 +32,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTranslation } from "react-i18next";
 import {
+  Building2,
   Calendar,
   Check,
   ChevronDown,
@@ -91,6 +92,16 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    labelKey: "nav.group.search",
+    items: [
+      {
+        icon: Building2,
+        key: "nav.apartmentSearch",
+        path: "/apartment-search",
+      },
+    ],
+  },
+  {
     labelKey: "nav.group.account",
     items: [{ icon: Settings, key: "nav.settings", path: "/settings" }],
   },
@@ -111,6 +122,10 @@ const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
   "/upgrades": { sectionKey: "nav.group.property", pageKey: "nav.upgrades" },
   "/inventory": { sectionKey: "nav.group.property", pageKey: "nav.inventory" },
   "/wishlist": { sectionKey: "nav.group.property", pageKey: "nav.wishlist" },
+  "/apartment-search": {
+    sectionKey: "nav.group.search",
+    pageKey: "nav.apartmentSearch",
+  },
   "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
 };
 

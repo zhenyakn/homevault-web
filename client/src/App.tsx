@@ -34,6 +34,9 @@ import Settings from "./pages/Settings";
 import Portfolio from "./pages/Portfolio";
 import UpgradeDetail from "./pages/UpgradeDetail";
 import RepairDetail from "./pages/RepairDetail";
+import ApartmentSearch from "./pages/ApartmentSearch";
+import ApartmentSearchDetail from "./pages/ApartmentSearchDetail";
+import ApartmentCandidateDetail from "./pages/ApartmentCandidateDetail";
 import { Home, Loader2, LogIn, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SearchModal } from "./components/SearchModal";
@@ -199,6 +202,15 @@ function AppRouter() {
             <Route path="/wishlist" component={Wishlist} />
             <Route path="/purchase-costs" component={PurchaseCosts} />
             <Route path="/inventory" component={Inventory} />
+            <Route
+              path="/apartment-search/:searchId/candidate/:id"
+              component={ApartmentCandidateDetail}
+            />
+            <Route
+              path="/apartment-search/:searchId"
+              component={ApartmentSearchDetail}
+            />
+            <Route path="/apartment-search" component={ApartmentSearch} />
             <Route path="/calendar" component={CalendarPage} />
             <Route path="/portfolio" component={Portfolio} />
             <Route path="/settings" component={Settings} />

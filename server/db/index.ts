@@ -10,6 +10,7 @@ export * from "./wishlist";
 export * from "./purchaseCosts";
 export * from "./calendar";
 export * from "./inventory";
+export * from "./apartmentSearch";
 export * from "./dashboard";
 export * from "./documents";
 export * from "./notifications";
