@@ -16,9 +16,8 @@ import { test, expect } from "../../fixtures";
  * here we only assert the language options are present.
  */
 test.describe("Settings — sections, theme, export & danger zone", () => {
+  // Property & Purchase settings moved to the Portfolio page.
   const SECTIONS: ReadonlyArray<[string, RegExp]> = [
-    ["Property", /^Property$/],
-    ["Purchase", /^Purchase$/],
     ["Household", /^Household$/],
     ["Regional", /^Regional$/],
     ["Notifications", /^Notifications$/],

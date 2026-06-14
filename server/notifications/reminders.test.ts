@@ -215,6 +215,38 @@ describe("collectDueReminders — stale repairs", () => {
   });
 });
 
+describe("collectDueReminders — lease end", () => {
+  it("flags a lease ending within the lead window", () => {
+    const r = collectDueReminders(
+      base({ lease: { id: 7, leaseEnd: "2026-06-08" } })
+    );
+    expect(r).toHaveLength(1);
+    expect(r[0].dedupeKey).toBe("lease-end:7:2026-06-08");
+    expect(r[0].titleKey).toBe("leaseEnding.title");
+    expect(r[0].category).toBe("calendar");
+    expect(r[0].url).toBe("/portfolio");
+  });
+
+  it("does not flag a lease ending outside the window", () => {
+    expect(
+      collectDueReminders(base({ lease: { id: 7, leaseEnd: "2026-07-01" } }))
+    ).toHaveLength(0);
+  });
+
+  it("respects the remindCalendar toggle", () => {
+    expect(
+      collectDueReminders({
+        ...base({ lease: { id: 7, leaseEnd: "2026-06-08" } }),
+        prefs: { ...allOn, remindCalendar: false },
+      })
+    ).toHaveLength(0);
+  });
+
+  it("ignores a null lease (owner-occupied property)", () => {
+    expect(collectDueReminders(base({ lease: null }))).toHaveLength(0);
+  });
+});
+
 describe("collectDueReminders — empty", () => {
   it("returns an empty array with no data", () => {
     expect(collectDueReminders(base())).toEqual([]);

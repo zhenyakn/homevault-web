@@ -92,7 +92,6 @@ import {
   Calendar as CalendarIcon,
   Map as MapIcon,
   Home,
-  Wallet,
   Users,
   Globe,
   Bell,
@@ -129,8 +128,6 @@ const CHANNEL_ORDER: ChannelKey[] = [
 // ─── Nav ──────────────────────────────────────────────────────────────────────
 
 const NAV_IDS = [
-  "property",
-  "purchase",
   "household",
   "regional",
   "notifications",
@@ -147,11 +144,7 @@ const NAV_GROUPS: {
 }[] = [
   {
     groupKey: "property",
-    items: [
-      { id: "property", icon: Home },
-      { id: "purchase", icon: Wallet },
-      { id: "household", icon: Users },
-    ],
+    items: [{ id: "household", icon: Users }],
   },
   {
     groupKey: "preferences",
@@ -741,222 +734,6 @@ function usePropertyAutosave() {
     [m, t]
   );
   return { save, isPending: m.isPending };
-}
-
-function PropertySection({ p }: { p: any }) {
-  const { t } = useTranslation();
-  const { save, isPending } = usePropertyAutosave();
-  const g = (k: string, fb: any = "") => p?.[k] ?? fb;
-
-  const specs = [
-    {
-      k: "squareMeters",
-      lKey: "settings.size",
-      placeholder: t("settings.sqm"),
-      suffix: t("settings.sqm"),
-    },
-    { k: "rooms", lKey: "settings.rooms", placeholder: "0", step: "0.5" },
-    { k: "floor", lKey: "settings.floor", placeholder: "0" },
-    { k: "parkingSpots", lKey: "settings.parking", placeholder: "0", min: 0 },
-    {
-      k: "yearBuilt",
-      lKey: "settings.yearBuilt",
-      placeholder: "1998",
-      min: 1800,
-      max: new Date().getFullYear(),
-    },
-  ] as const;
-
-  return (
-    <div className="space-y-5">
-      <SectionHeader
-        title={t("settings.property")}
-        description={t("settings.propertyDesc")}
-        pending={isPending}
-      />
-
-      <Group label={t("settings.identity")}>
-        <Row
-          label={t("common.name")}
-          hint={t("settings.propertyNameHint")}
-          htmlFor="p-name"
-        >
-          <Field
-            id="p-name"
-            value={g("houseName")}
-            placeholder={t("settings.placeholderMyHome")}
-            onSave={v => save({ houseName: v })}
-          />
-        </Row>
-        <Row
-          label={t("settings.nickname")}
-          hint={t("settings.nicknameHint")}
-          htmlFor="p-nick"
-        >
-          <Field
-            id="p-nick"
-            value={g("houseNickname")}
-            placeholder={t("settings.placeholderHome")}
-            onSave={v => save({ houseNickname: v })}
-          />
-        </Row>
-        <Row label={t("common.type")}>
-          <Select
-            value={g("propertyType") || "Apartment"}
-            onValueChange={v => save({ propertyType: v })}
-          >
-            <SelectTrigger
-              className={cn("h-8 text-sm", CONTROL_W)}
-              aria-label={t("common.type")}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[
-                "Apartment",
-                "House",
-                "Villa",
-                "Townhouse",
-                "Studio",
-                "Penthouse",
-                "Other",
-              ].map(ptype => (
-                <SelectItem key={ptype} value={ptype}>
-                  {t(`propertyType.${ptype}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Row>
-      </Group>
-
-      <Group label={t("settings.location")}>
-        <FullRow label={t("settings.address")} hint={t("settings.addressHint")}>
-          <div className="flex gap-2">
-            <Textarea
-              key={g("address")}
-              defaultValue={g("address")}
-              placeholder={t("settings.addressPlaceholder")}
-              rows={2}
-              className="text-sm resize-none"
-              onBlur={e => {
-                if (e.target.value !== g("address"))
-                  save({ address: e.target.value });
-              }}
-            />
-          </div>
-          {g("latitude") && g("longitude") && (
-            <Callout variant="info">
-              {t("settings.coordinates")}:{" "}
-              {parseFloat(g("latitude")).toFixed(5)},{" "}
-              {parseFloat(g("longitude")).toFixed(5)}
-            </Callout>
-          )}
-        </FullRow>
-      </Group>
-
-      <Group label={t("settings.specifications")}>
-        {specs.map(({ k, lKey, placeholder, step, min, max, suffix }: any) => (
-          <Row key={k} label={t(lKey)} htmlFor={`ps-${k}`}>
-            <div className="flex items-center justify-end gap-1.5">
-              <Field
-                id={`ps-${k}`}
-                type="number"
-                step={step}
-                min={min}
-                max={max}
-                value={p?.[k] ? String(p[k]) : ""}
-                placeholder={placeholder}
-                width={NUM_W}
-                onSave={v => save({ [k]: v ? Number(v) : undefined })}
-              />
-              <span className="w-10 shrink-0 text-xs text-muted-foreground">
-                {suffix ?? ""}
-              </span>
-            </div>
-          </Row>
-        ))}
-        <Row
-          label={t("settings.storageUnit")}
-          hint={t("settings.storageUnitHint")}
-          htmlFor="ps-stor"
-        >
-          <Switch
-            id="ps-stor"
-            checked={g("hasStorage", false)}
-            onCheckedChange={v => save({ hasStorage: v })}
-          />
-        </Row>
-      </Group>
-    </div>
-  );
-}
-
-function PurchaseSection({ p }: { p: any }) {
-  const { t } = useTranslation();
-  const { save, isPending } = usePropertyAutosave();
-  const { data: costs } = trpc.purchaseCosts.list.useQuery();
-  const [, nav] = useLocation();
-  const price = p?.purchasePrice ?? 0;
-  const acq = costs?.reduce((s, c) => s + c.amount, 0) ?? 0;
-  const code = p?.currencyCode ?? "ILS";
-  const fmt = (c: number) => formatCurrency(c, code);
-
-  return (
-    <div className="space-y-5">
-      <SectionHeader
-        title={t("settings.purchase")}
-        description={t("settings.purchaseDesc")}
-        pending={isPending}
-      />
-
-      <Group>
-        <Row label={t("settings.purchasePrice")} htmlFor="pu-price">
-          <Field
-            id="pu-price"
-            type="number"
-            min={0}
-            step="0.01"
-            value={price ? String(price / 100) : ""}
-            placeholder="0.00"
-            onSave={v =>
-              save({
-                purchasePrice: v ? Math.round(parseFloat(v) * 100) : undefined,
-              })
-            }
-          />
-        </Row>
-        <Row label={t("settings.purchaseDate")} htmlFor="pu-date">
-          <Field
-            id="pu-date"
-            type="date"
-            value={p?.purchaseDate ?? ""}
-            onSave={v => save({ purchaseDate: v || undefined })}
-          />
-        </Row>
-        <Row
-          label={t("settings.acquisitionCosts")}
-          hint={t("settings.acquisitionCostsHint")}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium tabular-nums">{fmt(acq)}</span>
-            <button
-              type="button"
-              onClick={() => nav("/purchase-costs")}
-              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 transition-colors"
-            >
-              {t("settings.manage")} <ChevronRight className="h-3 w-3" />
-            </button>
-          </div>
-        </Row>
-      </Group>
-
-      <StatCard
-        label={t("settings.totalInvestedDesc")}
-        value={fmt(price + acq)}
-      />
-    </div>
-  );
 }
 
 function HouseholdSection() {
@@ -3391,9 +3168,19 @@ export default function Settings() {
     routeParams.section &&
     (NAV_IDS as readonly string[]).includes(routeParams.section)
       ? (routeParams.section as SID)
-      : "property";
+      : "household";
   const [active, setActive] = useState<SID>(initialSection);
   const [, setLocation] = useLocation();
+
+  // Property + purchase settings moved to the Portfolio page — keep old deep
+  // links working by redirecting them there.
+  useEffect(() => {
+    if (
+      routeParams.section === "property" ||
+      routeParams.section === "purchase"
+    )
+      setLocation("/portfolio", { replace: true });
+  }, [routeParams.section, setLocation]);
   const { data: property, isLoading } = trpc.property.get.useQuery();
   const { data: allProperties } = trpc.property.list.useQuery();
   const { activePropertyId, switchProperty } = useProperty();
@@ -3492,8 +3279,6 @@ export default function Settings() {
             ))}
           </div>
         </div>
-        {active === "property" && <PropertySection p={property} />}
-        {active === "purchase" && <PurchaseSection p={property} />}
         {active === "household" && <HouseholdSection />}
         {active === "regional" && <RegionalSection p={property} />}
         {active === "notifications" && <NotificationsSection p={property} />}

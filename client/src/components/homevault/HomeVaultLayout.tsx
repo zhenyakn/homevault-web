@@ -24,7 +24,7 @@ import {
 import { getLoginUrl } from "@/const";
 import NotificationCenter from "@/components/NotificationCenter";
 import MobileTabBar from "@/components/homevault/HomeVaultMobileNav";
-import AddPropertyDialog from "@/components/AddPropertyDialog";
+import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -253,7 +253,7 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AddPropertyDialog open={showAdd} onOpenChange={setShowAdd} />
+      <AddPropertyWizard open={showAdd} onOpenChange={setShowAdd} />
     </>
   );
 }
@@ -377,18 +377,14 @@ function DashboardLayoutContent({
   const isMobile = useIsMobile();
 
   const { data: profiles } = trpc.profiles.list.useQuery();
-  const { data: properties } = trpc.property.list.useQuery();
   const { data: docSummary } = trpc.documents.summary.useQuery();
-  const hasMultipleProperties = (properties?.length ?? 0) > 1;
 
-  // Flat nav with Portfolio surfaced only when there's more than one property.
-  const navItems: HVNavItem[] = hasMultipleProperties
-    ? [
-        ...HV_NAV,
-        { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
-        { icon: Settings, key: "nav.settings", path: "/settings" },
-      ]
-    : [...HV_NAV, { icon: Settings, key: "nav.settings", path: "/settings" }];
+  // Portfolio is the home for all property settings, so it's always in the nav.
+  const navItems: HVNavItem[] = [
+    ...HV_NAV,
+    { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
+    { icon: Settings, key: "nav.settings", path: "/settings" },
+  ];
 
   const handleSearchOpen = () => {
     onSearchOpen?.();

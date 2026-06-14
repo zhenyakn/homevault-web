@@ -24,6 +24,10 @@
     "title": "Repair needs attention",
     "body": "{{label}} has had no update for {{days}}+ days."
   },
+  "leaseEnding": {
+    "title": "Lease ending soon",
+    "body": "The lease for your property ends on {{date}}."
+  },
   "test": {
     "title": "HomeVault test notification",
     "body": "This is a test notification. If you can read it, the channel works."

@@ -139,6 +139,12 @@ async function main() {
       \`remindLoans\` tinyint(1) DEFAULT '1',
       \`remindRepairs\` tinyint(1) DEFAULT '1',
       \`remindCalendar\` tinyint(1) DEFAULT '1',
+      \`propertyMode\` enum('owned_rented','owned_personal','rented') COLLATE utf8mb4_unicode_ci DEFAULT 'owned_personal',
+      \`monthlyRent\` int DEFAULT NULL,
+      \`leaseStart\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`leaseEnd\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`deposit\` int DEFAULT NULL,
+      \`landlord\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`userId\` int NOT NULL DEFAULT '1',
       PRIMARY KEY (\`id\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
@@ -525,6 +531,32 @@ async function main() {
   // Every ALTER is idempotent — ER_DUP_FIELDNAME is silently skipped.
   // Phase 1 handles v1→v2 resets. This section handles v2→now additions:
   //   isPaid/paidDate, repayments, payments, attachments, etc.
+
+  // ── properties ────────────────────────────────────────────────────────────────
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`propertyMode\` enum('owned_rented','owned_personal','rented') COLLATE utf8mb4_unicode_ci DEFAULT 'owned_personal'`,
+    "properties.propertyMode"
+  );
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`monthlyRent\` int DEFAULT NULL`,
+    "properties.monthlyRent"
+  );
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`leaseStart\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "properties.leaseStart"
+  );
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`leaseEnd\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "properties.leaseEnd"
+  );
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`deposit\` int DEFAULT NULL`,
+    "properties.deposit"
+  );
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`landlord\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "properties.landlord"
+  );
 
   // ── expenses ──────────────────────────────────────────────────────────────────
   await run(

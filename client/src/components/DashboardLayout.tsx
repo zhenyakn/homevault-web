@@ -24,7 +24,7 @@ import {
 import { getLoginUrl } from "@/const";
 import NotificationCenter from "@/components/NotificationCenter";
 import MobileTabBar from "@/components/MobileTabBar";
-import AddPropertyDialog from "@/components/AddPropertyDialog";
+import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -209,7 +209,7 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AddPropertyDialog open={showAdd} onOpenChange={setShowAdd} />
+      <AddPropertyWizard open={showAdd} onOpenChange={setShowAdd} />
     </>
   );
 }
@@ -338,24 +338,23 @@ function DashboardLayoutContent({
   const isMobile = useIsMobile();
 
   const { data: profiles } = trpc.profiles.list.useQuery();
-  const { data: properties } = trpc.property.list.useQuery();
-  const hasMultipleProperties = (properties?.length ?? 0) > 1;
 
   const handleSearchOpen = () => {
     onSearchOpen?.();
   };
 
-  // Build nav groups, inserting Portfolio into Overview when needed
-  const navGroups: NavGroup[] = NAV_GROUPS.map(g => {
-    if (g.labelKey !== "nav.group.overview") return g;
-    const items = hasMultipleProperties
-      ? [
-          ...g.items,
-          { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
-        ]
-      : g.items;
-    return { ...g, items };
-  });
+  // Portfolio is the home for all property settings, so it's always in the nav.
+  const navGroups: NavGroup[] = NAV_GROUPS.map(g =>
+    g.labelKey === "nav.group.overview"
+      ? {
+          ...g,
+          items: [
+            ...g.items,
+            { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
+          ],
+        }
+      : g
+  );
 
   // Breadcrumb lookup
   const pathKey =

@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch, Router as WouterRouter } from "wouter";
+import { Route, Switch, Redirect, Router as WouterRouter } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -29,8 +29,6 @@ import Loans from "./pages/Loans";
 import Wishlist from "./pages/Wishlist";
 import PurchaseCosts from "./pages/PurchaseCosts";
 import Calendar from "./pages/Calendar";
-import PropertySettings from "./pages/PropertySettings";
-import PropertyDashboard from "./pages/PropertyDashboard";
 import Inventory from "./pages/Inventory";
 import Settings from "./pages/Settings";
 import Portfolio from "./pages/Portfolio";
@@ -186,7 +184,11 @@ function AppRouter() {
         <Layout onSearchOpen={() => search.setOpen(true)}>
           <Switch>
             <Route path="/" component={HomePage} />
-            <Route path="/property" component={PropertyDashboard} />
+            {/* Per-property dashboard + legacy property settings folded into
+                the Portfolio page. */}
+            <Route path="/property">
+              <Redirect to="/portfolio" />
+            </Route>
             <Route path="/expenses" component={ExpensesPage} />
             <Route path="/repairs" component={RepairsPage} />
             <Route path="/repairs/:id" component={RepairDetail} />
@@ -201,7 +203,9 @@ function AppRouter() {
             <Route path="/portfolio" component={Portfolio} />
             <Route path="/settings" component={Settings} />
             <Route path="/settings/:section" component={Settings} />
-            <Route path="/property-settings" component={PropertySettings} />
+            <Route path="/property-settings">
+              <Redirect to="/portfolio" />
+            </Route>
             <Route path="/404" component={NotFound} />
             <Route component={NotFound} />
           </Switch>
