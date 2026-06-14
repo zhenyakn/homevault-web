@@ -12,6 +12,8 @@ test.describe("Settings — Telegram link code", () => {
   }) => {
     await settings.open();
     await settings.openSection("Integrations");
+    // The Telegram card lives inside the (collapsed-by-default) channels group.
+    await settings.expandCategory(/Notification channels/i);
 
     const generate = app.page.getByRole("button", {
       name: /Generate link code/i,
