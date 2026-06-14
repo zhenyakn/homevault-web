@@ -87,11 +87,13 @@ function TextField({
   onSave,
   placeholder,
   type = "text",
+  testId,
 }: {
   value: string;
   onSave: (v: string) => void;
   placeholder?: string;
   type?: string;
+  testId?: string;
 }) {
   return (
     <Input
@@ -99,6 +101,7 @@ function TextField({
       defaultValue={value}
       type={type}
       placeholder={placeholder}
+      data-testid={testId}
       className="h-8 text-sm"
       onBlur={e => {
         if (e.target.value !== value) onSave(e.target.value);
@@ -254,6 +257,7 @@ export default function PropertyEditor({
           <TextField
             value={property.houseNickname ?? ""}
             onSave={v => set({ houseNickname: v })}
+            testId="property-nickname"
           />
         </Row>
         <Row label={t("wizard.type")}>
