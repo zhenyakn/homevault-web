@@ -27,6 +27,7 @@ export type PropertyWizardInput = {
   parkingSpots?: number;
   hasStorage?: boolean;
   hasElevator?: boolean;
+  hasShelter?: boolean;
   purchasePrice?: number;
   purchaseDate?: string;
   monthlyRent?: number;
@@ -138,6 +139,7 @@ export async function createPropertyWithWizard(
       parkingSpots: input.parkingSpots,
       hasStorage: input.hasStorage,
       hasElevator: input.hasElevator,
+      hasShelter: input.hasShelter,
       // Purchase only applies to owned modes.
       purchasePrice: isPurchased ? input.purchasePrice : undefined,
       purchaseDate: isPurchased ? input.purchaseDate : undefined,

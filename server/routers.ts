@@ -231,6 +231,7 @@ export const wizardSchema = z.object({
   parkingSpots: z.number().int().min(0).optional(),
   hasStorage: z.boolean().optional(),
   hasElevator: z.boolean().optional(),
+  hasShelter: z.boolean().optional(),
   // purchased modes
   purchasePrice: z.number().int().positive().optional(),
   purchaseDate: wizardDate,

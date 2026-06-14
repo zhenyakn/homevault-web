@@ -333,6 +333,10 @@ export default function ApartmentCandidateDetail() {
             value={candidate.hasStorage ? t("apartmentSearch.yes") : null}
           />
           <Fact
+            label={t("wizard.shelter")}
+            value={candidate.hasShelter ? t("apartmentSearch.yes") : null}
+          />
+          <Fact
             label={t("apartmentSearch.availableFrom")}
             value={candidate.availableDate}
           />

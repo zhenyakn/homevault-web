@@ -63,6 +63,8 @@ export const properties = mysqlTable("properties", {
   hasStorage: boolean("hasStorage").default(false),
   // Building has an elevator — relevant for apartments / penthouses / studios.
   hasElevator: boolean("hasElevator").default(false),
+  // Has a protected space / safe room (ממ״ד) — relevant across dwelling types.
+  hasShelter: boolean("hasShelter").default(false),
   currency: varchar("currency", { length: 10 }).default("₪"),
   currencyCode: varchar("currencyCode", { length: 10 }).default("ILS"),
   timezone: varchar("timezone", { length: 50 }).default("Asia/Jerusalem"),
@@ -877,6 +879,7 @@ export const apartmentCandidates = mysqlTable(
     parkingSpots: int("parkingSpots"),
     hasElevator: boolean("hasElevator").default(false),
     hasStorage: boolean("hasStorage").default(false),
+    hasShelter: boolean("hasShelter").default(false),
     availableDate: varchar("availableDate", { length: 20 }),
     agentName: varchar("agentName", { length: 200 }),
     agentContact: varchar("agentContact", { length: 200 }),

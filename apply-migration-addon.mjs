@@ -569,6 +569,7 @@ async function main() {
       \`parkingSpots\` int DEFAULT NULL,
       \`hasElevator\` tinyint(1) DEFAULT '0',
       \`hasStorage\` tinyint(1) DEFAULT '0',
+      \`hasShelter\` tinyint(1) DEFAULT '0',
       \`availableDate\` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`agentName\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`agentContact\` varchar(200) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -603,6 +604,10 @@ async function main() {
   await run(
     `ALTER TABLE \`apartmentCandidates\` ADD COLUMN \`gardenSize\` int DEFAULT NULL`,
     "apartmentCandidates.gardenSize"
+  );
+  await run(
+    `ALTER TABLE \`apartmentCandidates\` ADD COLUMN \`hasShelter\` tinyint(1) DEFAULT '0'`,
+    "apartmentCandidates.hasShelter"
   );
 
   // ── Phase 3: convergence — bring v2+ installs up to current schema ───────────
@@ -646,6 +651,10 @@ async function main() {
   await run(
     `ALTER TABLE \`properties\` ADD COLUMN \`hasElevator\` tinyint(1) DEFAULT '0'`,
     "properties.hasElevator"
+  );
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`hasShelter\` tinyint(1) DEFAULT '0'`,
+    "properties.hasShelter"
   );
 
   // ── expenses ──────────────────────────────────────────────────────────────────

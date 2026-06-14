@@ -179,6 +179,7 @@ export function buildWizardInputFromCandidate(
     | "parkingSpots"
     | "hasElevator"
     | "hasStorage"
+    | "hasShelter"
     | "price"
     | "deposit"
     | "agentName"
@@ -198,6 +199,7 @@ export function buildWizardInputFromCandidate(
     parkingSpots: candidate.parkingSpots ?? undefined,
     hasElevator: candidate.hasElevator ?? undefined,
     hasStorage: candidate.hasStorage ?? undefined,
+    hasShelter: candidate.hasShelter ?? undefined,
   };
 
   if (search.searchType === "rent") {

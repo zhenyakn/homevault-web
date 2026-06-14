@@ -13,6 +13,7 @@ const candidate = (over: Record<string, unknown> = {}) =>
     parkingSpots: 1,
     hasElevator: true,
     hasStorage: false,
+    hasShelter: true,
     price: 850000,
     deposit: 170000,
     agentName: "Dana Levi",
@@ -62,6 +63,7 @@ describe("buildWizardInputFromCandidate", () => {
     expect(input.parkingSpots).toBe(1);
     expect(input.hasElevator).toBe(true);
     expect(input.hasStorage).toBe(false);
+    expect(input.hasShelter).toBe(true);
   });
 
   it("carries over the new technical details (type, floors, garden)", () => {
