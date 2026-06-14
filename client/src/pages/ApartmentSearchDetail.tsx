@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useParams, useLocation } from "wouter";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { formatCurrency, cn } from "@/lib/utils";
+import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
+import { MetricCard } from "@/components/homevault";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DetailHeader } from "@/components/DetailPage";
@@ -135,6 +137,7 @@ export default function ApartmentSearchDetail() {
   const params = useParams<{ searchId: string }>();
   const searchId = params.searchId;
   const { t } = useTranslation();
+  const { enabled: hv } = useHomeVaultUI();
   const [, navigate] = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -185,28 +188,51 @@ export default function ApartmentSearchDetail() {
         onEdit={() => setDialogOpen(true)}
       />
 
-      <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border">
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("apartmentSearch.totalCandidates")}
-          </p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">
-            {candidates.length}
-          </p>
+      {hv ? (
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+          <MetricCard
+            label={t("apartmentSearch.totalCandidates")}
+            value={candidates.length}
+          />
+          <MetricCard
+            label={t("apartmentSearch.favorites")}
+            value={favorites}
+            tone={favorites > 0 ? "gold" : "neutral"}
+          />
+          <MetricCard
+            label={t("apartmentSearch.accepted")}
+            value={accepted}
+            tone={accepted > 0 ? "green" : "neutral"}
+          />
         </div>
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("apartmentSearch.favorites")}
-          </p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{favorites}</p>
+      ) : (
+        <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border">
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("apartmentSearch.totalCandidates")}
+            </p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">
+              {candidates.length}
+            </p>
+          </div>
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("apartmentSearch.favorites")}
+            </p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">
+              {favorites}
+            </p>
+          </div>
+          <div className="px-4 py-3.5">
+            <p className="text-xs text-muted-foreground">
+              {t("apartmentSearch.accepted")}
+            </p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">
+              {accepted}
+            </p>
+          </div>
         </div>
-        <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">
-            {t("apartmentSearch.accepted")}
-          </p>
-          <p className="mt-1 text-xl font-semibold tabular-nums">{accepted}</p>
-        </div>
-      </div>
+      )}
 
       <CandidateDialog
         searchId={searchId}

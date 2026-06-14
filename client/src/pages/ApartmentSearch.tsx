@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
+import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
+import { HVPageHeader } from "@/components/homevault";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -205,6 +207,7 @@ function SearchCard({
 
 export default function ApartmentSearch() {
   const { t } = useTranslation();
+  const { enabled: hv } = useHomeVaultUI();
   const [dialogOpen, setDialogOpen] = useState(false);
   const { data: searches = [], isLoading } =
     trpc.apartmentSearch.list.useQuery();
@@ -224,20 +227,37 @@ export default function ApartmentSearch() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">
-            {t("apartmentSearch.title")}
-          </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {t("apartmentSearch.subtitle")}
-          </p>
+      {hv ? (
+        <HVPageHeader
+          title={t("apartmentSearch.title")}
+          subtitle={t("apartmentSearch.subtitle")}
+          hideQuickAdd
+          actions={
+            <Button
+              onClick={() => setDialogOpen(true)}
+              className="h-11 rounded-full px-[18px]"
+            >
+              <Plus className="me-1.5 h-4 w-4" />
+              {t("apartmentSearch.newSearch")}
+            </Button>
+          }
+        />
+      ) : (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold">
+              {t("apartmentSearch.title")}
+            </h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {t("apartmentSearch.subtitle")}
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-3.5 w-3.5 me-1.5" />
+            {t("apartmentSearch.newSearch")}
+          </Button>
         </div>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
-          <Plus className="h-3.5 w-3.5 me-1.5" />
-          {t("apartmentSearch.newSearch")}
-        </Button>
-      </div>
+      )}
 
       <NewSearchDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
 
