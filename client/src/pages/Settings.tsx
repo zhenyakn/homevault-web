@@ -309,7 +309,7 @@ function CollapsibleCategory({
   icon,
   title,
   description,
-  defaultOpen = true,
+  defaultOpen = false,
   children,
 }: {
   icon?: ReactNode;
@@ -325,7 +325,7 @@ function CollapsibleCategory({
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded -mx-1 px-1 py-0.5 hover:bg-muted/40 transition-colors"
+        className="flex w-full items-center gap-2 rounded -mx-1 px-1 py-0.5 text-left hover:bg-muted/40 transition-colors"
       >
         <div className="flex-1 min-w-0">
           <CategoryHeader icon={icon} title={title} description={description} />
