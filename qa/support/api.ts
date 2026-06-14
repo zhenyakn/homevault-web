@@ -24,6 +24,7 @@ const ENTITIES: ReadonlyArray<{ proc: string }> = [
   { proc: "wishlist" },
   { proc: "purchaseCosts" },
   { proc: "calendar" },
+  { proc: "apartmentSearch" },
 ];
 
 /** Fields that may hold a human name we match the sandbox prefix against. */

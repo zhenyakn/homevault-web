@@ -19,6 +19,7 @@ import { DocumentsPage } from "./pages/DocumentsPage";
 import { PortfolioPage } from "./pages/PortfolioPage";
 import { SearchModal } from "./pages/SearchPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import { ApartmentSearchPage } from "./pages/ApartmentSearchPage";
 
 const DEFAULT_BASE = "http://127.0.0.1:5000";
 
@@ -63,6 +64,7 @@ type Fixtures = {
   portfolio: PortfolioPage;
   search: SearchModal;
   notifications: NotificationsPage;
+  apartmentSearch: ApartmentSearchPage;
 };
 
 export const test = base.extend<Fixtures>({
@@ -105,6 +107,7 @@ export const test = base.extend<Fixtures>({
   portfolio: async ({ app }, use) => use(new PortfolioPage(app)),
   search: async ({ app }, use) => use(new SearchModal(app)),
   notifications: async ({ app }, use) => use(new NotificationsPage(app)),
+  apartmentSearch: async ({ app }, use) => use(new ApartmentSearchPage(app)),
 });
 
 export { expect };
