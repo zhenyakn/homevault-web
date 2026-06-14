@@ -653,7 +653,7 @@ function DashboardLayoutContent({
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 p-4 pb-24 md:p-5 md:pb-5 outline-none"
+          className="flex-1 p-4 pb-[calc(6rem_+_env(safe-area-inset-bottom))] md:p-5 md:pb-5 outline-none"
         >
           {children}
         </main>
