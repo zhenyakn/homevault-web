@@ -176,6 +176,7 @@ const HV_NAV: HVNavItem[] = [
   { icon: ShoppingCart, key: "nav.purchaseCosts", path: "/purchase-costs" },
   { icon: Package, key: "nav.inventory", path: "/inventory" },
   { icon: Heart, key: "nav.wishlist", path: "/wishlist" },
+  { icon: Building2, key: "nav.apartmentSearch", path: "/apartment-search" },
 ];
 
 const AVATAR_COLORS = [

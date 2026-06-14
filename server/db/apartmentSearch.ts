@@ -169,9 +169,12 @@ export function buildWizardInputFromCandidate(
     ApartmentCandidate,
     | "title"
     | "address"
+    | "propertyType"
     | "squareMeters"
     | "rooms"
     | "floor"
+    | "floors"
+    | "gardenSize"
     | "yearBuilt"
     | "parkingSpots"
     | "hasElevator"
@@ -184,12 +187,14 @@ export function buildWizardInputFromCandidate(
   const base: PropertyWizardInput = {
     mode: search.searchType === "rent" ? "rented" : "owned_personal",
     houseName: candidate.title,
-    propertyType: "Apartment",
+    propertyType: candidate.propertyType ?? "Apartment",
     address: candidate.address ?? undefined,
     squareMeters: posOrUndef(candidate.squareMeters),
     rooms: posOrUndef(candidate.rooms),
-    yearBuilt: candidate.yearBuilt ?? undefined,
     floor: candidate.floor ?? undefined,
+    floors: posOrUndef(candidate.floors),
+    gardenSize: candidate.gardenSize ?? undefined,
+    yearBuilt: candidate.yearBuilt ?? undefined,
     parkingSpots: candidate.parkingSpots ?? undefined,
     hasElevator: candidate.hasElevator ?? undefined,
     hasStorage: candidate.hasStorage ?? undefined,

@@ -862,9 +862,17 @@ export const apartmentCandidates = mysqlTable(
     // Monthly rent (rent searches) OR asking price (buy searches), minor units.
     price: int("price"),
     deposit: int("deposit"),
+    // Technical details — mirror the `properties` table so a candidate can be
+    // converted into a real property without losing information. Which of these
+    // are relevant is driven by `propertyType` (see client/src/lib/propertySpecs).
+    propertyType: varchar("propertyType", { length: 50 }).default("Apartment"),
     squareMeters: int("squareMeters"),
     rooms: int("rooms"),
     floor: int("floor"),
+    // Number of floors the dwelling itself has (houses/villas/townhouses).
+    floors: int("floors"),
+    // Garden / yard size in m² — relevant for ground-level dwellings.
+    gardenSize: int("gardenSize"),
     yearBuilt: int("yearBuilt"),
     parkingSpots: int("parkingSpots"),
     hasElevator: boolean("hasElevator").default(false),
@@ -872,7 +880,7 @@ export const apartmentCandidates = mysqlTable(
     availableDate: varchar("availableDate", { length: 20 }),
     agentName: varchar("agentName", { length: 200 }),
     agentContact: varchar("agentContact", { length: 200 }),
-    // Subjective rating 1–5.
+    // Subjective numeric score, 1–10.
     rating: int("rating"),
     // Pipeline stage. `accepted`/`rejected` are terminal decisions.
     stage: mysqlEnum("stage", [

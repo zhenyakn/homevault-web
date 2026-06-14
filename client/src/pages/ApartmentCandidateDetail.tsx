@@ -14,7 +14,8 @@ import {
   NotesCard,
 } from "@/components/DetailPage";
 import { CandidateDialog } from "@/components/apartmentSearch/CandidateDialog";
-import { StarRating } from "@/components/apartmentSearch/StarRating";
+import { ScoreBadge } from "@/components/apartmentSearch/ScoreBadge";
+import { AttachmentsCard } from "@/components/apartmentSearch/AttachmentsCard";
 import { STAGE_STEPS, stageColor } from "@/components/apartmentSearch/stages";
 import {
   Loader2,
@@ -175,10 +176,6 @@ export default function ApartmentCandidateDetail() {
     },
     onError: e => toast.error(e.message),
   });
-  const ratingMut = trpc.apartmentSearch.candidates.update.useMutation({
-    onSuccess: () => u.apartmentSearch.candidates.get.invalidate({ id }),
-    onError: e => toast.error(e.message),
-  });
   const deleteMut = trpc.apartmentSearch.candidates.delete.useMutation({
     onSuccess: () => {
       u.apartmentSearch.candidates.list.invalidate({ searchId });
@@ -299,18 +296,41 @@ export default function ApartmentCandidateDetail() {
             />
           ) : null}
           <Fact
-            label={t("apartmentSearch.size")}
+            label={t("apartmentSearch.propertyType")}
+            value={
+              candidate.propertyType
+                ? t(`propertyType.${candidate.propertyType}`)
+                : null
+            }
+          />
+          <Fact
+            label={t("wizard.sizeM2")}
             value={
               candidate.squareMeters ? `${candidate.squareMeters} m²` : null
             }
           />
+          <Fact label={t("wizard.rooms")} value={candidate.rooms ?? null} />
+          <Fact label={t("wizard.floor")} value={candidate.floor ?? null} />
+          <Fact label={t("wizard.floors")} value={candidate.floors ?? null} />
           <Fact
-            label={t("apartmentSearch.rooms")}
-            value={candidate.rooms ?? null}
+            label={t("wizard.gardenSize")}
+            value={candidate.gardenSize ? `${candidate.gardenSize} m²` : null}
           />
           <Fact
-            label={t("apartmentSearch.floor")}
-            value={candidate.floor ?? null}
+            label={t("wizard.parking")}
+            value={candidate.parkingSpots ?? null}
+          />
+          <Fact
+            label={t("wizard.yearBuilt")}
+            value={candidate.yearBuilt ?? null}
+          />
+          <Fact
+            label={t("wizard.elevator")}
+            value={candidate.hasElevator ? t("apartmentSearch.yes") : null}
+          />
+          <Fact
+            label={t("wizard.storage")}
+            value={candidate.hasStorage ? t("apartmentSearch.yes") : null}
           />
           <Fact
             label={t("apartmentSearch.availableFrom")}
@@ -328,15 +348,9 @@ export default function ApartmentCandidateDetail() {
         <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-border pt-3">
           <div className="flex items-center gap-2">
             <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              {t("apartmentSearch.rating")}
+              {t("apartmentSearch.scoreLabel")}
             </span>
-            <StarRating
-              value={candidate.rating ?? 0}
-              onChange={r =>
-                ratingMut.mutate({ id, data: { rating: r || undefined } })
-              }
-              size="sm"
-            />
+            <ScoreBadge value={candidate.rating} />
           </div>
           {candidate.listingUrl && (
             <a
@@ -359,6 +373,11 @@ export default function ApartmentCandidateDetail() {
       </div>
 
       <NotesCard label={t("common.notes")} notes={candidate.notes} />
+
+      <AttachmentsCard
+        candidateId={candidate.id}
+        attachments={candidate.attachments}
+      />
 
       {/* Decision actions */}
       <div className="flex flex-wrap items-center gap-2">

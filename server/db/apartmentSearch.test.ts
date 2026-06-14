@@ -64,6 +64,24 @@ describe("buildWizardInputFromCandidate", () => {
     expect(input.hasStorage).toBe(false);
   });
 
+  it("carries over the new technical details (type, floors, garden)", () => {
+    const input = buildWizardInputFromCandidate(
+      { searchType: "buy" },
+      candidate({ propertyType: "House", floors: 2, gardenSize: 120 })
+    );
+    expect(input.propertyType).toBe("House");
+    expect(input.floors).toBe(2);
+    expect(input.gardenSize).toBe(120);
+  });
+
+  it("falls back to Apartment when propertyType is missing", () => {
+    const input = buildWizardInputFromCandidate(
+      { searchType: "buy" },
+      candidate({ propertyType: null })
+    );
+    expect(input.propertyType).toBe("Apartment");
+  });
+
   it("drops non-positive or missing numeric fields rather than sending zeros", () => {
     const input = buildWizardInputFromCandidate(
       { searchType: "buy" },

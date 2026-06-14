@@ -1193,6 +1193,14 @@
     "reconsider": "Reconsider",
     "deleteCandidateConfirm": "Delete this candidate?",
     "convertedToast": "Property created from this apartment",
-    "alreadyConverted": "This candidate has been added to your properties."
+    "alreadyConverted": "This candidate has been added to your properties.",
+    "technicalDetails": "Technical details",
+    "propertyType": "Property type",
+    "scoreLabel": "Score (1–10)",
+    "scorePlaceholder": "1–10",
+    "yes": "Yes",
+    "rate": "Rate",
+    "clearScore": "Clear score",
+    "attachmentsHint": "Photos, floor plans, a draft contract, listing PDFs…"
   }
 }
