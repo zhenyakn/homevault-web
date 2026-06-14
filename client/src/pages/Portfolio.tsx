@@ -21,11 +21,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import PropertyEditor from "@/components/property/PropertyEditor";
+import PortfolioMap from "@/components/property/PortfolioMap";
 import {
   Building2,
   Home,
   KeyRound,
   MapPin,
+  Map as MapIcon,
   Plus,
   ArrowRight,
   ArrowLeft,
@@ -73,6 +75,7 @@ export default function Portfolio() {
   const { enabled: hv } = useHomeVaultUI();
   const [addOpen, setAddOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [showMap, setShowMap] = useState(true);
   // On mobile the list and the editor are two distinct screens; this tracks
   // whether the user has drilled into a property's detail screen.
   const [mobileDetail, setMobileDetail] = useState(false);
@@ -86,6 +89,9 @@ export default function Portfolio() {
       setMobileDetail(false);
     },
   });
+  // Persist coordinates the map resolves by geocoding an address, so the next
+  // visit pins the property instantly. Fire-and-forget — no refetch needed.
+  const geocodeMutation = trpc.property.update.useMutation();
 
   if (isLoading) {
     return (
@@ -128,6 +134,46 @@ export default function Portfolio() {
     setSelectedId(id);
     setMobileDetail(true);
   };
+
+  // ── All-properties map ───────────────────────────────────────────────────
+  // Shown when at least one property carries a location (an address we can
+  // geocode, or stored coordinates). Clicking a pin selects that property.
+  const mappable = properties.some(
+    p => p.address || (p.latitude && p.longitude)
+  );
+  const mapSection = mappable && (
+    <Card className="overflow-hidden p-0">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <MapIcon className="h-4 w-4 text-muted-foreground" />
+          {t("portfolio.mapTitle")}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => setShowMap(s => !s)}
+        >
+          {showMap ? t("portfolio.hideMap") : t("portfolio.showMap")}
+        </Button>
+      </div>
+      {showMap && (
+        <PortfolioMap
+          properties={properties}
+          selectedId={selected.id}
+          className="h-[340px] sm:h-[400px]"
+          onSelect={id => (isMobile ? openDetail(id) : setSelectedId(id))}
+          onGeocoded={(id, latitude, longitude) =>
+            geocodeMutation.mutate({
+              propertyId: id,
+              latitude,
+              longitude,
+            } as any)
+          }
+        />
+      )}
+    </Card>
+  );
 
   // ── A single property row in the master list ─────────────────────────────
   const renderCard = (prop: (typeof properties)[number]) => {
@@ -339,6 +385,7 @@ export default function Portfolio() {
             {t("portfolio.count", { count: properties.length })}
           </p>
         </div>
+        {mapSection}
         <div className="space-y-3">
           {properties.map(renderCard)}
           {addButton}
@@ -366,6 +413,8 @@ export default function Portfolio() {
           </p>
         </div>
       )}
+
+      {mapSection}
 
       <div className="grid gap-5 md:grid-cols-[300px_1fr] items-start">
         <div className="space-y-3">

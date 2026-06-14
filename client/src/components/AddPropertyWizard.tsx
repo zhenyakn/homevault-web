@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getSpecFields, SPEC_META } from "@/lib/propertySpecs";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 type Mode = "owned_rented" | "owned_personal" | "rented";
 
@@ -52,6 +53,8 @@ type FormValues = {
   houseNickname: string;
   propertyType: string;
   address: string;
+  latitude: string;
+  longitude: string;
   squareMeters: string;
   rooms: string;
   floor: string;
@@ -84,6 +87,8 @@ const DEFAULTS: FormValues = {
   houseNickname: "",
   propertyType: "Apartment",
   address: "",
+  latitude: "",
+  longitude: "",
   squareMeters: "",
   rooms: "",
   floor: "",
@@ -186,6 +191,8 @@ export default function AddPropertyWizard({
       houseNickname: clean(v.houseNickname),
       propertyType: v.propertyType,
       address: clean(v.address),
+      latitude: clean(v.latitude),
+      longitude: clean(v.longitude),
       squareMeters: toInt(v.squareMeters),
       rooms: toInt(v.rooms),
       floor: toInt(v.floor),
@@ -298,8 +305,22 @@ export default function AddPropertyWizard({
                   </Select>
                 </Field>
               </div>
-              <Field label={t("wizard.address")}>
-                <Input {...register("address")} />
+              <Field label={t("wizard.address")} hint={t("wizard.addressHint")}>
+                <AddressAutocomplete
+                  value={watch("address")}
+                  placeholder={t("wizard.addressPlaceholder")}
+                  onChange={text => {
+                    setValue("address", text);
+                    // Typing freely invalidates a previously picked location.
+                    setValue("latitude", "");
+                    setValue("longitude", "");
+                  }}
+                  onSelect={sel => {
+                    setValue("address", sel.address);
+                    setValue("latitude", sel.latitude);
+                    setValue("longitude", sel.longitude);
+                  }}
+                />
               </Field>
               <SpecsFields form={form} />
             </div>
@@ -496,10 +517,12 @@ export default function AddPropertyWizard({
 function Field({
   label,
   required,
+  hint,
   children,
 }: {
   label: string;
   required?: boolean;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -509,6 +532,7 @@ function Field({
         {required && <span className="text-destructive"> *</span>}
       </Label>
       {children}
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }

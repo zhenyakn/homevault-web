@@ -92,21 +92,36 @@ const FORGE_BASE_URL =
   "https://forge.butterfly-effect.dev";
 const MAPS_PROXY_URL = `${FORGE_BASE_URL}/v1/maps/proxy`;
 
-function loadMapScript() {
-  return new Promise(resolve => {
+// Single shared loader: the Google Maps script is heavy and may only be
+// injected once per page. Both <MapView> and the address autocomplete await
+// this same promise so the API is loaded exactly once and reused everywhere.
+let mapsPromise: Promise<typeof google | null> | null = null;
+
+/**
+ * Load the Google Maps JS API (once) and resolve with the `google` namespace,
+ * or `null` if loading failed. Safe to call from many components concurrently.
+ */
+export function ensureGoogleMaps(): Promise<typeof google | null> {
+  if (window.google?.maps) return Promise.resolve(window.google);
+  if (mapsPromise) return mapsPromise;
+
+  mapsPromise = new Promise(resolve => {
     const script = document.createElement("script");
     script.src = `${MAPS_PROXY_URL}/maps/api/js?key=${API_KEY}&v=weekly&libraries=marker,places,geocoding,geometry`;
     script.async = true;
     script.crossOrigin = "anonymous";
     script.onload = () => {
-      resolve(null);
+      resolve(window.google ?? null);
       script.remove(); // Clean up immediately
     };
     script.onerror = () => {
       console.error("Failed to load Google Maps script");
+      mapsPromise = null; // allow a later retry
+      resolve(null);
     };
     document.head.appendChild(script);
   });
+  return mapsPromise;
 }
 
 interface MapViewProps {
@@ -126,12 +141,12 @@ export function MapView({
   const map = useRef<google.maps.Map | null>(null);
 
   const init = usePersistFn(async () => {
-    await loadMapScript();
-    if (!mapContainer.current) {
-      console.error("Map container not found");
+    const google = await ensureGoogleMaps();
+    if (!google || !mapContainer.current) {
+      if (!google) console.error("Google Maps unavailable");
       return;
     }
-    map.current = new window.google.maps.Map(mapContainer.current, {
+    map.current = new google.maps.Map(mapContainer.current, {
       zoom: initialZoom,
       center: initialCenter,
       mapTypeControl: true,

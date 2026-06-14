@@ -16,6 +16,8 @@ export type PropertyWizardInput = {
   houseNickname?: string;
   propertyType?: string;
   address?: string;
+  latitude?: string;
+  longitude?: string;
   squareMeters?: number;
   rooms?: number;
   yearBuilt?: number;
@@ -125,6 +127,8 @@ export async function createPropertyWithWizard(
       houseNickname: input.houseNickname,
       propertyType: input.propertyType,
       address: input.address,
+      latitude: input.latitude,
+      longitude: input.longitude,
       squareMeters: input.squareMeters,
       rooms: input.rooms,
       yearBuilt: input.yearBuilt,
