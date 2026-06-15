@@ -1,6 +1,6 @@
 ---
 name: responsive-audit
-description: Audit and fix mobile/responsive layout problems in the HomeVault UI — misaligned, clipped, overflowing, uneven, or cramped elements on pages, dialogs, and sub-pages. Drives the real app with Playwright at a phone viewport in BOTH UIs (default + new HomeVault UI), measures the DOM for actual overflow instead of eyeballing, applies known fix patterns, and re-verifies. Use when asked to review/fix how pages "look" on mobile, fix alignment/responsiveness, make something "look professional", or clean up dialogs/forms on small screens.
+description: Audit and fix responsive/layout problems on ANY HomeVault page, dialog, or sub-page — misaligned, clipped, overflowing, uneven, cramped, or theme/RTL-broken UI. Drives the real app with Playwright across a matrix of viewport widths (mobile/tablet/desktop) × both UIs (default + new HomeVault UI) × locales (English LTR + Hebrew RTL) × themes (light + dark), measures the DOM for actual overflow instead of eyeballing, applies known fix patterns, and re-verifies. Use when asked to review/fix how pages "look", fix alignment/responsiveness/RTL/dark-mode, make something "look professional", or clean up dialogs/forms on small screens.
 ---
 
 # Responsive / mobile-layout audit & fix
@@ -16,15 +16,24 @@ screenshots alone hide, and the fix patterns below resolve ~90% of cases.
 
 ## 0. Decide scope
 The user names a page/area ("apartment search and portfolio", "the expenses
-dialog"). Translate that into:
+dialog"). Translate that into **routes** and the **dimensions** to sweep. The
+bundled scripts are matrix-driven, so "any page in any combination" is cheap.
+
 - **Routes** to audit (hash routes, e.g. `/#/portfolio`, `/#/apartment-search`).
 - **Dialogs / sub-screens** reached by interaction (Add candidate, the
   Add-Property wizard, mobile drill-in detail screens).
-- **Both UIs.** Most feature pages are shared by the *default* UI and the
-  *new "HomeVault" UI*. The page component is the same; only the layout
-  wrapper differs (`DashboardLayout` vs `HomeVaultLayout`, chosen by
-  `useHomeVaultUI`). **A fix to a shared page must be checked in both.** Toggle
-  the new UI with `localStorage["homevault-ui"] = "true"` (see scripts).
+- **Dimensions** (the scripts cross-product these; override via env lists):
+  - **Width:** `375` mobile, `768` tablet, `1280` desktop. Most bugs are mobile,
+    but tablet catches breakpoint-boundary issues.
+  - **UI:** `def` (default) **and** `hv` (new HomeVault UI). Most feature pages
+    are shared — same component, different layout wrapper (`DashboardLayout` vs
+    `HomeVaultLayout`, chosen by `useHomeVaultUI`). **A fix to a shared page
+    must be checked in both.** Toggle: `localStorage["homevault-ui"]="true"`.
+  - **Locale / direction:** `en` (LTR) **and** `he` (Hebrew **RTL**). RTL is
+    where mirrored-padding / `rtl:` / text-alignment bugs live — never skip it
+    in a bilingual app. (`ru` also exists.) Direction follows the **server**
+    profile, not just localStorage — the scripts switch it for you (see §2).
+  - **Theme:** `light` and `dark` (catches contrast/border-only issues).
 
 ## 1. Bring up the app (delegate to `run-app`)
 Do **not** re-derive the stack here. Run the **`run-app`** skill's steps 0–3:
@@ -41,32 +50,41 @@ Seed any feature-specific data the audited page needs so rows aren't empty
 
 ## 2. Probe for real overflow FIRST (the high-value step)
 Eyeballing misses horizontal overflow because centered/translated containers
-clip *symmetrically* — content shifts off the **left** edge and looks like a
-"misalignment" when it's actually `scrollWidth > clientWidth`. Measure it:
+clip *symmetrically* — content shifts off an edge and looks like a
+"misalignment" when it's actually `scrollWidth > clientWidth`. Measure it
+across the whole width × locale × UI matrix (cheap, text-only):
 
 ```bash
 node .claude/skills/responsive-audit/scripts/probe-overflow.mjs \
   "/#/portfolio" "/#/apartment-search/SEARCH_ID"
 ```
-It opens each route at 375px in **both** UIs, opens any auto-detected dialog,
-and prints every element whose `scrollWidth > clientWidth` (ignoring
-`sr-only`). **An empty list per route = no overflow.** Anything listed is a
-real bug — note its classes; that's your fix target.
+Defaults: widths `375,768,1280` × locales `en,he` × UIs `def,hv`, auto-opening
+any detected dialog. It prints one line per combo; **"OK (no overflow)" = clean**,
+anything else is a real bug — note its classes; that's your fix target. The
+probe reports **only genuine layout-breaking overflow** (`overflow-x:visible`,
+`>4px`); it deliberately ignores `truncate`/scroll containers that clip by
+design. Narrow with env lists, e.g. `WIDTHS=375 LOCALES=he`.
 
-For a dialog the probe can't reach by itself, use the inline snippet in
-`scripts/probe-snippet.md` after navigating/opening it by hand in a custom
-script.
+It switches the UI language the *real* way (server profile — see Gotchas) and
+restores `en` when done. For a dialog the probe can't reach by itself, use the
+inline snippet in `scripts/probe-snippet.md` after opening it by hand.
 
-## 3. Screenshot both UIs at phone width
+## 3. Screenshot the matrix (for human-judgement issues)
 ```bash
 node .claude/skills/responsive-audit/scripts/shoot.mjs \
   "list:/#/apartment-search" "detail:/#/apartment-search/SEARCH_ID"
 ```
-Writes `/tmp/shots/{def,hv}-<label>.png` at 375×760 (`deviceScaleFactor:2`).
-Read them back with the Read tool. **fullPage screenshots of fixed-position
-dialogs can look odd — trust the §2 probe for overflow; use screenshots for
-cramping/alignment/spacing judgement.** To capture a dialog, copy `shoot.mjs`
-and add the click that opens it (see its header comment).
+Defaults: widths `375,1280` × locales `en,he` × themes `light,dark` × UIs
+`def,hv`. Output: `/tmp/shots/<ui>-<locale>-<theme>-<width>w-<label>.png` (e.g.
+`hv-he-dark-375w-list.png`). Env lists narrow/expand (`WIDTHS`, `LOCALES`,
+`THEMES`, `UIS`); add `768` for tablet.
+
+A full matrix is many images. **The §2 probe already found overflow across all
+widths/locales — use screenshots to judge cramping/alignment/contrast, and Read
+back a representative cross-section (always at least one RTL and one dark shot,
+plus any combo the probe flagged) rather than all of them.** fullPage shots of
+fixed-position dialogs can look odd — trust the probe for overflow. To capture a
+dialog, copy `shoot.mjs` and add the click that opens it (see its header).
 
 ## 4. The defect catalogue → fix patterns
 Match what you see to these. They cover almost everything found in this app.
@@ -105,14 +123,37 @@ Match what you see to these. They cover almost everything found in this app.
    its own line). Acceptable when it reads intentionally; if not, make the bar
    `flex flex-col sm:flex-row` or give buttons `flex-1` on mobile.
 
+6. **RTL (Hebrew) breakage.** → Use **logical** utilities, not physical ones:
+   `ms-/me-/ps-/pe-/start-/end-` instead of `ml-/mr-/pl-/pr-/left-/right-`, and
+   `text-start/end` instead of `text-left/right`. Directional icons/chevrons
+   need `rtl:rotate-180`. Absolute-positioned adornments (e.g. a currency
+   prefix at `left-3`) must mirror (`start-3`, or `ltr:left-3 rtl:right-3`).
+   Note: English text inside an RTL page (addresses, URLs) combined with
+   `truncate` clips at the *start* — usually pre-existing and cosmetic; the
+   probe correctly ignores it (it's an intentional `truncate`). Don't chase it
+   unless asked.
+
+7. **Dark-mode only issues** (invisible borders, low-contrast text/badges that
+   look fine in light). → Pair every color with a `dark:` variant and prefer
+   semantic tokens (`border-border`, `text-muted-foreground`, `bg-card`) over
+   raw palette colors so both themes are covered automatically.
+
 General rules: prefer **mobile-first responsive utilities** (`base` = mobile,
-`sm:` = ≥640px) so desktop stays byte-identical; reach for `min-w-0`,
-`truncate`, `flex-wrap`, `shrink-0` deliberately; never introduce a fixed
-width that can exceed 375px − padding.
+`sm:` = ≥640px) so desktop stays byte-identical; use **logical** spacing/
+alignment utilities so RTL works for free; lean on **semantic color tokens**
+so dark mode works for free; reach for `min-w-0`, `truncate`, `flex-wrap`,
+`shrink-0` deliberately; never introduce a fixed width that can exceed
+375px − padding.
 
 ## 5. Re-verify, then clean up
 - Re-run §2 probe (expect empty lists) and §3 screenshots; Read them back.
 - `npx tsc --noEmit` must be clean.
+- The scripts reset the server language to `en` when they finish. If a run was
+  interrupted mid-matrix, reset it yourself so the app isn't stuck in Hebrew:
+  ```bash
+  curl -sS -X POST "http://127.0.0.1:5000/api/trpc/profiles.setLanguage?batch=1" \
+    -H "Content-Type: application/json" -d '{"0":{"json":{"language":"en"}}}'
+  ```
 - Revert verification-only churn and remove scratch scripts you copied into
   the repo root:
   ```bash
@@ -125,11 +166,17 @@ width that can exceed 375px − padding.
 ## Gotchas (learned the hard way)
 - **Playwright resolves from the project dir** — run scripts from
   `/home/user/homevault-web`, or Node throws `ERR_MODULE_NOT_FOUND`.
-- **Set `homevault-ui` and `hv_active_property_id` in `addInitScript`** (before
-  the app loads), not after navigation.
+- **Set `homevault-ui` / `app-language` / `homevault-theme` /
+  `hv_active_property_id` in `addInitScript`** (before the app loads).
+- **Language follows the SERVER profile, not localStorage.** Once
+  authenticated the app reconciles with the stored profile language and that
+  *wins*, so setting only `localStorage["app-language"]` does **not** flip RTL.
+  The scripts POST `profiles.setLanguage` first (works because `NO_AUTH` makes
+  every request the admin) and verify `documentElement.dir` flipped, warning if
+  not. Pass `colorScheme` on the context for dark mode (covers theme `system`).
 - **Generic `button` selectors hit the sidebar/hamburger.** Click by visible
   text or role+name (`getByText("Allenby investment")`,
   `getByRole("button", { name: /add candidate/i })`).
 - **An empty page proves nothing** — seed data first.
 - The overflow probe is the source of truth for clipping; screenshots are for
-  human-judgement issues (cramping, rhythm, alignment).
+  human-judgement issues (cramping, rhythm, alignment, contrast).
