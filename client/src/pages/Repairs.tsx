@@ -212,7 +212,7 @@ function RepairRow({
   return (
     <div
       className={cn(
-        "flex items-start gap-4 ltr:pl-3 ltr:pr-4 rtl:pr-3 rtl:pl-4 py-2.5 ltr:border-l-2 rtl:border-r-2 hover:bg-muted/30 transition-colors cursor-pointer md:py-3.5",
+        "flex items-start gap-3 ltr:pl-3 ltr:pr-4 rtl:pr-3 rtl:pl-4 py-2.5 ltr:border-l-2 rtl:border-r-2 hover:bg-muted/30 transition-colors cursor-pointer md:py-3.5",
         priorityAccentClass(priority),
         isDone && "bg-muted/40"
       )}
@@ -470,7 +470,7 @@ export default function Repairs() {
 
       {/* Stats strip */}
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <div className="px-4 py-3.5">
+        <div className="px-3 py-2.5 md:px-4 md:py-3.5">
           <p className="text-xs text-muted-foreground">
             {t("repairs.statOpen")}
           </p>
@@ -483,7 +483,7 @@ export default function Repairs() {
             </p>
           )}
         </div>
-        <div className="px-4 py-3.5">
+        <div className="px-3 py-2.5 md:px-4 md:py-3.5">
           <p className="text-xs text-muted-foreground">
             {t("repairs.statInProgress")}
           </p>
@@ -491,7 +491,7 @@ export default function Repairs() {
             {activeCount}
           </p>
         </div>
-        <div className="px-4 py-3.5">
+        <div className="px-3 py-2.5 md:px-4 md:py-3.5">
           <p className="text-xs text-muted-foreground">
             {t("repairs.statResolved")}
           </p>

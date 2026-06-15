@@ -60,7 +60,7 @@ export function ExpenseRow({
     <div
       onClick={onClick}
       className={cn(
-        "flex flex-col gap-2 border-b border-hv-border p-3 last:border-b-0 sm:grid sm:grid-cols-[1.6fr_1fr_1fr_auto] sm:items-center sm:gap-3",
+        "flex flex-col gap-2 border-b border-hv-border p-2.5 last:border-b-0 sm:grid sm:grid-cols-[1.6fr_1fr_1fr_auto] sm:items-center sm:gap-3 sm:p-3",
         onClick && "cursor-pointer transition-colors hover:bg-hv-surface-muted"
       )}
     >

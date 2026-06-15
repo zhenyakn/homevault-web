@@ -431,7 +431,7 @@ export default function Upgrades() {
 
       {/* Stats strip */}
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-        <div className="px-4 py-3.5">
+        <div className="px-3 py-2.5 md:px-4 md:py-3.5">
           <p className="text-xs text-muted-foreground">
             {t("upgrades.activeBudget")}
           </p>
@@ -444,7 +444,7 @@ export default function Upgrades() {
             </p>
           )}
         </div>
-        <div className="px-4 py-3.5">
+        <div className="px-3 py-2.5 md:px-4 md:py-3.5">
           <p className="text-xs text-muted-foreground">
             {t("upgrades.activeProjects")}
           </p>
@@ -457,7 +457,7 @@ export default function Upgrades() {
             </p>
           )}
         </div>
-        <div className="px-4 py-3.5">
+        <div className="px-3 py-2.5 md:px-4 md:py-3.5">
           <p className="text-xs text-muted-foreground">
             {t("upgrades.invested")}
           </p>

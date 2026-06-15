@@ -491,7 +491,7 @@ export default function HVExpenses() {
       />
 
       {/* KPI row */}
-      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-4 md:gap-3">
         <MetricCard
           label={t("homevault.thisMonth")}
           value={formatCurrency(kpis.thisMonth)}
@@ -514,7 +514,7 @@ export default function HVExpenses() {
       </div>
 
       {/* Filters */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-1.5 md:gap-2">
         {FILTERS.map(f => (
           <button
             key={f.key}

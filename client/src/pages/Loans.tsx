@@ -478,7 +478,7 @@ export default function Loans() {
         </div>
       ) : (
         <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
-          <div className="px-4 py-3.5">
+          <div className="px-3 py-2.5 md:px-4 md:py-3.5">
             <p className="text-xs text-muted-foreground">
               {t("loans.totalBorrowed")}
             </p>
@@ -486,7 +486,7 @@ export default function Loans() {
               {formatCurrency(totalBorrowed)}
             </p>
           </div>
-          <div className="px-4 py-3.5">
+          <div className="px-3 py-2.5 md:px-4 md:py-3.5">
             <p className="text-xs text-muted-foreground">
               {t("loans.totalRepaid")}
             </p>
@@ -494,7 +494,7 @@ export default function Loans() {
               {formatCurrency(totalRepaid)}
             </p>
           </div>
-          <div className="px-4 py-3.5">
+          <div className="px-3 py-2.5 md:px-4 md:py-3.5">
             <p className="text-xs text-muted-foreground">
               {t("loans.outstanding")}
             </p>
