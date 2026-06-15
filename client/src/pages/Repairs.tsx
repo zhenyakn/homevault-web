@@ -212,7 +212,7 @@ function RepairRow({
   return (
     <div
       className={cn(
-        "flex items-start gap-4 ltr:pl-3 ltr:pr-4 rtl:pr-3 rtl:pl-4 py-3.5 ltr:border-l-2 rtl:border-r-2 hover:bg-muted/30 transition-colors cursor-pointer",
+        "flex items-start gap-4 ltr:pl-3 ltr:pr-4 rtl:pr-3 rtl:pl-4 py-2.5 ltr:border-l-2 rtl:border-r-2 hover:bg-muted/30 transition-colors cursor-pointer md:py-3.5",
         priorityAccentClass(priority),
         isDone && "bg-muted/40"
       )}
@@ -422,7 +422,7 @@ export default function Repairs() {
           </Button>
         </div>
 
-        <div className="border border-dashed border-border rounded-xl p-10 text-center space-y-4">
+        <div className="border border-dashed border-border rounded-xl p-6 text-center space-y-3 md:p-10 md:space-y-4">
           <div className="flex justify-center text-muted-foreground">
             <Wrench className="h-10 w-10" />
           </div>

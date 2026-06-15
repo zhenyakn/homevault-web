@@ -335,7 +335,7 @@ export default function HVCalendar() {
       />
 
       {/* KPIs */}
-      <div className="mb-4 grid grid-cols-2 gap-3">
+      <div className="mb-4 grid grid-cols-2 gap-2 md:gap-3">
         <MetricCard label={t("calendar.thisMonth")} value={events.length} />
         <MetricCard
           label={t("calendar.upcoming30")}
@@ -348,7 +348,7 @@ export default function HVCalendar() {
         {/* Month grid */}
         <div className="lg:col-span-2">
           <HVCard flush>
-            <div className="flex items-center justify-between px-5 pt-4">
+            <div className="flex items-center justify-between px-3 pt-3 md:px-5 md:pt-4">
               <p className="text-[15px] font-bold tracking-tight text-hv-ink">
                 {currentDate.toLocaleString(i18n.language, { month: "long" })}{" "}
                 {year}
@@ -372,7 +372,7 @@ export default function HVCalendar() {
                 </Button>
               </div>
             </div>
-            <div className="p-3">
+            <div className="p-2 md:p-3">
               {isLoading ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-hv-muted-soft" />
@@ -400,7 +400,7 @@ export default function HVCalendar() {
                         key={day}
                         onClick={() => handleDayClick(day)}
                         className={cn(
-                          "flex min-h-[72px] flex-col rounded-[var(--hv-radius-sm)] border p-2 text-start transition-colors hover:bg-hv-surface-muted",
+                          "flex min-h-[60px] flex-col rounded-[var(--hv-radius-sm)] border p-1.5 text-start transition-colors hover:bg-hv-surface-muted md:min-h-[72px] md:p-2",
                           isToday
                             ? "border-hv-primary bg-hv-primary-soft"
                             : "border-hv-border"
@@ -445,7 +445,7 @@ export default function HVCalendar() {
         <div>
           <HVCard eyebrow={t("calendar.upcomingEvents")}>
             {upcomingEvents.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <div className="flex flex-col items-center gap-2 py-5 text-center md:py-8">
                 <CalendarDays className="h-6 w-6 text-hv-muted-soft" />
                 <p className="text-[12.5px] text-hv-muted">
                   {t("calendar.noUpcoming")}

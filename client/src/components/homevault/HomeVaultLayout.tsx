@@ -649,7 +649,7 @@ function DashboardLayoutContent({
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex-1 p-5 pb-[calc(6rem_+_env(safe-area-inset-bottom))] md:px-9 md:pb-9 md:pt-7 outline-none"
+          className="flex-1 p-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] md:p-5 md:px-9 md:pb-9 md:pt-7 outline-none"
         >
           <HVChromeProvider openSearch={handleSearchOpen}>
             {!isMobile && !HV_HEADER_ROUTES.includes(location) && (

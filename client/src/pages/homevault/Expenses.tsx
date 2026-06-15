@@ -543,7 +543,7 @@ export default function HVExpenses() {
       {/* List */}
       {filtered.length === 0 ? (
         <HVCard>
-          <p className="py-10 text-center text-[13px] text-hv-muted">
+          <p className="py-6 text-center text-[13px] text-hv-muted md:py-10">
             {search.trim() !== "" || view !== "all"
               ? t("expenses.noMatchingExpenses")
               : t("expenses.noExpenses")}

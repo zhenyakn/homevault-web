@@ -506,7 +506,7 @@ export default function Loans() {
       )}
 
       {loans?.length === 0 ? (
-        <div className="border border-border rounded-lg px-4 py-12 text-center">
+        <div className="border border-border rounded-lg px-4 py-8 text-center">
           <p className="text-sm text-muted-foreground">{t("loans.noLoans")}</p>
           <Button
             size="sm"
@@ -531,7 +531,7 @@ export default function Loans() {
             return (
               <div
                 key={loan.id}
-                className="px-4 py-4 hover:bg-muted/30 transition-colors"
+                className="px-4 py-3 hover:bg-muted/30 transition-colors md:py-4"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -607,7 +607,7 @@ export default function Loans() {
                   </div>
                 </div>
                 <RepaymentChips repayments={repayments} />
-                <div className="mt-auto pt-4 border-t mt-4">
+                <div className="mt-auto pt-4 border-t">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="font-medium text-sm">
                       {t("loans.repaymentHistory")}

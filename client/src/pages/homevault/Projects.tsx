@@ -409,7 +409,7 @@ export default function HVProjects() {
 
       {upgrades.length === 0 ? (
         <HVCard>
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
+          <div className="flex flex-col items-center gap-3 py-8 text-center md:py-12">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-hv-primary-soft text-hv-primary">
               <Hammer className="h-6 w-6" />
             </span>

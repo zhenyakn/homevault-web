@@ -160,7 +160,7 @@ function ThingsToHandle({
       }
     >
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center md:py-10">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hv-primary-soft">
             <CheckCircle2 className="h-5 w-5 text-hv-primary" />
           </span>
@@ -211,7 +211,7 @@ function UpcomingCard({ upcoming }: { upcoming: CalEvent[] }) {
       }
     >
       {upcoming.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+        <div className="flex flex-col items-center justify-center gap-2 py-5 text-center md:py-8">
           <CalendarDays className="h-6 w-6 text-hv-muted-soft" />
           <p className="text-[12.5px] text-hv-muted">
             {t("dashboard.nothingScheduled")}

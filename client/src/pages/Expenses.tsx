@@ -541,7 +541,7 @@ export default function Expenses() {
 
       {/* List */}
       {filtered.length === 0 ? (
-        <div className="border border-border rounded-lg px-4 py-12 text-center">
+        <div className="border border-border rounded-lg px-4 py-8 text-center">
           <p className="text-sm text-muted-foreground">
             {categoryFilter !== "all" ||
             monthFilter !== "all" ||
@@ -570,7 +570,7 @@ export default function Expenses() {
                 )}
                 <div
                   className={cn(
-                    "flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors border-s-2",
+                    "flex items-center gap-4 px-4 py-2.5 hover:bg-muted/30 transition-colors border-s-2 md:py-3.5",
                     isPaid
                       ? "border-s-transparent bg-muted/30"
                       : "border-s-amber-500 bg-amber-50/40 dark:bg-amber-950/10"
