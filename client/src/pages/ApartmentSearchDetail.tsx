@@ -46,21 +46,21 @@ function CandidateRow({
   });
 
   return (
-    <div className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/30">
+    <div className="group flex items-center gap-2 px-4 py-3.5 transition-colors hover:bg-muted/30 sm:gap-3">
       <button
         type="button"
         onClick={open}
-        className="flex min-w-0 flex-1 items-center gap-4 text-start"
+        className="flex min-w-0 flex-1 flex-col items-start gap-1 text-start sm:flex-row sm:items-center sm:gap-4"
       >
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="w-full min-w-0 sm:flex-1">
+          <div className="flex items-center gap-2">
             {candidate.isFavorite && (
               <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
             )}
             <p className="truncate text-sm font-medium">{candidate.title}</p>
             <Badge
               className={cn(
-                "h-5 border-0 text-xs",
+                "h-5 shrink-0 border-0 text-xs",
                 stageColor(candidate.stage)
               )}
             >
@@ -95,7 +95,7 @@ function CandidateRow({
             </p>
           )}
         </div>
-        <div className="shrink-0 text-end">
+        <div className="shrink-0 text-start sm:text-end">
           {candidate.price ? (
             <p className="text-sm font-semibold tabular-nums">
               {formatCurrency(candidate.price)}

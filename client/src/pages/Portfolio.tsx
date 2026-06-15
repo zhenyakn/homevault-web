@@ -259,7 +259,10 @@ export default function Portfolio() {
             {isRental && prop.monthlyRent ? (
               <span className="font-medium text-foreground">
                 {formatMoney(prop.monthlyRent, currencyCode)}
-                <span className="text-muted-foreground font-normal"> / mo</span>
+                <span className="text-muted-foreground font-normal">
+                  {" "}
+                  {t("portfolio.perMonth")}
+                </span>
               </span>
             ) : (
               m && (

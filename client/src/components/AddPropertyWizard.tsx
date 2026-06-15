@@ -471,11 +471,11 @@ export default function AddPropertyWizard({
 
           {step === 4 && <StepReview form={form} />}
 
-          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+          <div className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
             <span className="text-xs text-muted-foreground">
               {step === 4 ? t("wizard.switchNote") : t("wizard.changeLater")}
             </span>
-            <div className="flex gap-2">
+            <div className="flex justify-end gap-2">
               {step > 1 ? (
                 <Button
                   type="button"
