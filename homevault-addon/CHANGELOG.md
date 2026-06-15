@@ -1,12 +1,11 @@
 # Changelog
 
-## 0.6.2
-- Collapse the portfolio map by default (#105)
-- Apartment search: property tech details, numeric score, rate-from-list, attachments & premium-UI alignment (#103)
-- Align map components with the premium HomeVault UI (#104)
-- Fix CI: apply Prettier formatting to new map components (#102)
-- test(qa): tear down properties created by the apartment-search convert flow (#99)
-- Add Google Maps address search and portfolio map (#100)
-- ci: run e2e suite nightly only, not on every build
-- Add Apartment Search (hunting mode) for rent or purchase (#98)
-- Collapse integrations sections by default and left-align titles (#97)
+## 0.6.3
+- Fix CI: prettier-format the UI audit doc (#110)
+- UI space-efficiency audit + mobile density improvements (#109)
+- Fix mobile alignment & responsiveness on apartment search and portfolio (#108)
+- responsive-audit: open dialogs locale-independently (fix RTL gap)
+- responsive-audit: cover full width x UI x locale(RTL) x theme matrix
+- Add responsive-audit skill for on-demand mobile layout reviews
+- Add a "shelter" (safe room) toggle to properties and apartment candidates (#107)
+- Let admins set the Google Maps API key from the UI (#106)
