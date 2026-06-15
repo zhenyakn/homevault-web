@@ -294,7 +294,7 @@ export default function HVRepairs() {
 
       {repairs.length === 0 ? (
         <HVCard>
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
+          <div className="flex flex-col items-center gap-3 py-8 text-center md:py-12">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-hv-primary-soft text-hv-primary">
               <Wrench className="h-6 w-6" />
             </span>
@@ -311,13 +311,13 @@ export default function HVRepairs() {
           </div>
         </HVCard>
       ) : (
-        <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3 md:gap-3.5">
           {columns.map(col => (
             <div
               key={col.key}
-              className="rounded-[18px] border border-hv-border bg-hv-surface-muted p-3.5"
+              className="rounded-[18px] border border-hv-border bg-hv-surface-muted p-2.5 md:p-3.5"
             >
-              <div className="mb-3 flex items-center gap-2 px-0.5">
+              <div className="mb-2.5 flex items-center gap-2 px-0.5 md:mb-3">
                 <h2 className="text-[15px] font-bold tracking-tight text-hv-ink">
                   {col.label}
                 </h2>
@@ -325,7 +325,7 @@ export default function HVRepairs() {
                   {col.items.length}
                 </span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2 md:space-y-3">
                 {col.items.length === 0 ? (
                   <div className="rounded-[16px] border border-dashed border-hv-border px-3 py-6 text-center text-[12px] text-hv-muted-soft">
                     {t("homevault.repairBoard.empty")}

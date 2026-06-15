@@ -97,7 +97,7 @@ function Card({
   return (
     <div
       className={cn(
-        "h-full border border-border rounded-xl bg-card p-4 shadow-xs",
+        "h-full border border-border rounded-xl bg-card p-3.5 shadow-xs md:p-4",
         className
       )}
     >
@@ -108,7 +108,7 @@ function Card({
 
 function CardLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10.5px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+    <p className="text-[10.5px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5 md:mb-3">
       {children}
     </p>
   );
@@ -430,7 +430,7 @@ function AttentionCard({
             return (
               <div
                 key={e.id}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/50"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg border border-rose-200 bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/50 md:py-2.5"
               >
                 <div className="w-7 h-7 rounded-md bg-rose-500 flex items-center justify-center shrink-0">
                   <AlertCircle className="h-3.5 w-3.5 text-white" />
@@ -552,7 +552,7 @@ function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
       </div>
 
       {upcoming.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">
+        <p className="text-sm text-muted-foreground text-center py-4 md:py-6">
           {t("dashboard.nothingScheduled")}
         </p>
       ) : (

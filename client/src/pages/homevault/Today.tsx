@@ -160,7 +160,7 @@ function ThingsToHandle({
       }
     >
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+        <div className="flex flex-col items-center justify-center gap-2 py-6 text-center md:py-10">
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-hv-primary-soft">
             <CheckCircle2 className="h-5 w-5 text-hv-primary" />
           </span>
@@ -211,7 +211,7 @@ function UpcomingCard({ upcoming }: { upcoming: CalEvent[] }) {
       }
     >
       {upcoming.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+        <div className="flex flex-col items-center justify-center gap-2 py-5 text-center md:py-8">
           <CalendarDays className="h-6 w-6 text-hv-muted-soft" />
           <p className="text-[12.5px] text-hv-muted">
             {t("dashboard.nothingScheduled")}
@@ -357,7 +357,7 @@ function ProjectsCard({
           <button
             key={u.id}
             onClick={() => nav(`/upgrades/${u.id}`)}
-            className="rounded-[var(--hv-radius-md)] border border-hv-border bg-hv-surface-muted p-3.5 text-start transition-colors hover:border-hv-primary/30"
+            className="rounded-[var(--hv-radius-md)] border border-hv-border bg-hv-surface-muted p-2.5 text-start transition-colors hover:border-hv-primary/30 md:p-3.5"
           >
             <p className="truncate text-[13.5px] font-semibold text-hv-ink">
               {u.label}
@@ -487,7 +487,7 @@ export default function Today() {
       />
 
       {/* KPI row */}
-      <div className="mb-5 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-2.5 lg:grid-cols-4 md:gap-3.5">
         <MetricCard
           label={t("homevault.monthlySpend")}
           value={fmt(s.monthSpent)}
@@ -527,7 +527,7 @@ export default function Today() {
       </div>
 
       {/* Things to handle + Upcoming */}
-      <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 md:gap-[18px]">
         <div className="lg:col-span-2">
           <ThingsToHandle
             overdue={s.overdueExpenses ?? []}
@@ -548,7 +548,7 @@ export default function Today() {
       </div>
 
       {/* Monthly cost + projects */}
-      <div className="mt-[18px] grid grid-cols-1 gap-[18px] lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3 md:mt-[18px] md:gap-[18px]">
         <div className="lg:col-span-1">
           <SpendCard
             spent={s.monthSpent}

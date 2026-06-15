@@ -146,13 +146,13 @@ export function HVPageHeader({
   hideQuickAdd?: boolean;
 }) {
   return (
-    <div className="mb-7 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+    <div className="mb-5 flex flex-wrap items-start justify-between gap-x-4 gap-y-3 md:mb-7">
       <div className="min-w-0">
-        <h1 className="text-[32px] font-bold leading-tight tracking-[-0.03em] text-hv-ink">
+        <h1 className="text-2xl font-bold leading-tight tracking-[-0.03em] text-hv-ink md:text-[32px]">
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-2 text-[14px] text-hv-muted">{subtitle}</p>
+          <p className="mt-1 text-[14px] text-hv-muted md:mt-2">{subtitle}</p>
         )}
       </div>
       <div className="flex items-center gap-2.5">

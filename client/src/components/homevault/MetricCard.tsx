@@ -42,7 +42,7 @@ export function MetricCard({
     <Wrapper
       onClick={onClick}
       className={cn(
-        "flex h-full w-full flex-col rounded-[var(--hv-radius-xl)] border border-hv-border bg-hv-surface p-5 text-start shadow-[var(--hv-shadow-card)]",
+        "flex h-full w-full flex-col rounded-[var(--hv-radius-xl)] border border-hv-border bg-hv-surface p-3.5 text-start shadow-[var(--hv-shadow-card)] md:p-5",
         onClick && "transition-colors hover:border-hv-primary/30"
       )}
     >
@@ -51,14 +51,14 @@ export function MetricCard({
       </p>
       <p
         className={cn(
-          "mt-2 text-[30px] font-extrabold leading-none tracking-[-0.03em] tabular-nums",
+          "mt-1.5 text-2xl font-extrabold leading-none tracking-[-0.03em] tabular-nums md:mt-2 md:text-[30px]",
           TONE_VALUE[tone]
         )}
       >
         {value}
       </p>
       {helper && (
-        <p className="mt-1.5 text-[13px] leading-snug text-hv-muted">
+        <p className="mt-1 text-[13px] leading-snug text-hv-muted md:mt-1.5">
           {helper}
         </p>
       )}

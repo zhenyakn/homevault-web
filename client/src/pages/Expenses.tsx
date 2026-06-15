@@ -308,7 +308,7 @@ export default function Expenses() {
                     : t("expenses.addExpense")}
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-3 pt-1">
+              <div className="space-y-2.5 pt-1">
                 <div className="space-y-1.5">
                   <Label htmlFor="ex-label">{t("common.description")}</Label>
                   <Input
@@ -476,7 +476,7 @@ export default function Expenses() {
             value: `${paidCount} / ${filtered.length}`,
           },
         ].map(({ label, value }) => (
-          <div key={label} className="px-4 py-3.5">
+          <div key={label} className="px-3 py-2.5 md:px-4 md:py-3.5">
             <p className="text-xs text-muted-foreground">{label}</p>
             <p className="text-xl font-semibold tabular-nums mt-1">{value}</p>
           </div>
@@ -499,7 +499,7 @@ export default function Expenses() {
         </div>
         <Select value={monthFilter} onValueChange={setMonthFilter}>
           <SelectTrigger
-            className="h-8 w-44 text-sm"
+            className="h-8 flex-1 min-w-[140px] text-sm sm:w-44 sm:flex-none"
             aria-label={t("common.filterByMonth")}
           >
             <SelectValue />
@@ -515,7 +515,7 @@ export default function Expenses() {
         </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger
-            className="h-8 w-44 text-sm"
+            className="h-8 flex-1 min-w-[140px] text-sm sm:w-44 sm:flex-none"
             aria-label={t("common.filterByCategory")}
           >
             <SelectValue placeholder={t("expenses.allCategories")} />
@@ -541,7 +541,7 @@ export default function Expenses() {
 
       {/* List */}
       {filtered.length === 0 ? (
-        <div className="border border-border rounded-lg px-4 py-12 text-center">
+        <div className="border border-border rounded-lg px-4 py-8 text-center">
           <p className="text-sm text-muted-foreground">
             {categoryFilter !== "all" ||
             monthFilter !== "all" ||
@@ -570,7 +570,7 @@ export default function Expenses() {
                 )}
                 <div
                   className={cn(
-                    "flex items-center gap-4 px-4 py-3.5 hover:bg-muted/30 transition-colors border-s-2",
+                    "flex items-center gap-4 px-4 py-2.5 hover:bg-muted/30 transition-colors border-s-2 md:py-3.5",
                     isPaid
                       ? "border-s-transparent bg-muted/30"
                       : "border-s-amber-500 bg-amber-50/40 dark:bg-amber-950/10"

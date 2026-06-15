@@ -184,7 +184,7 @@ function ProjectCard({
     <div
       onClick={onClick}
       className={cn(
-        "group flex cursor-pointer flex-col gap-3 rounded-[var(--hv-radius-lg)] border border-hv-border bg-hv-surface p-4 shadow-[var(--hv-shadow-card)] transition-colors hover:border-hv-primary/30",
+        "group flex cursor-pointer flex-col gap-2.5 rounded-[var(--hv-radius-lg)] border border-hv-border bg-hv-surface p-3 shadow-[var(--hv-shadow-card)] transition-colors hover:border-hv-primary/30 md:gap-3 md:p-4",
         isDone && "opacity-80"
       )}
     >
@@ -288,8 +288,8 @@ function Section({
 }) {
   if (count === 0) return null;
   return (
-    <div className="mb-5">
-      <div className="mb-3 flex items-center gap-2 px-1">
+    <div className="mb-3 md:mb-5">
+      <div className="mb-2 flex items-center gap-2 px-1 md:mb-3">
         <h2 className="text-[15px] font-bold tracking-tight text-hv-ink">
           {title}
         </h2>
@@ -297,7 +297,7 @@ function Section({
           {count}
         </span>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 md:gap-3">
         {children}
       </div>
     </div>
@@ -409,7 +409,7 @@ export default function HVProjects() {
 
       {upgrades.length === 0 ? (
         <HVCard>
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
+          <div className="flex flex-col items-center gap-3 py-8 text-center md:py-12">
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-hv-primary-soft text-hv-primary">
               <Hammer className="h-6 w-6" />
             </span>
@@ -428,7 +428,7 @@ export default function HVProjects() {
       ) : (
         <>
           {/* KPI row */}
-          <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3 md:gap-3">
             <MetricCard
               label={t("upgrades.activeBudget")}
               value={formatCurrency(activeBudget)}

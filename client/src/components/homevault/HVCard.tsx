@@ -28,7 +28,7 @@ export function HVCard({
     <div
       className={cn(
         "h-full rounded-[var(--hv-radius-xl)] border border-hv-border bg-hv-surface shadow-[var(--hv-shadow-card)]",
-        flush ? "" : "p-5",
+        flush ? "" : "p-3.5 md:p-5",
         className
       )}
     >
@@ -36,8 +36,8 @@ export function HVCard({
         <div
           className={cn(
             "flex items-start justify-between gap-3",
-            flush ? "px-5 pt-5" : "",
-            children ? "mb-4" : ""
+            flush ? "px-3.5 pt-3.5 md:px-5 md:pt-5" : "",
+            children ? "mb-3 md:mb-4" : ""
           )}
         >
           <div className="min-w-0">
