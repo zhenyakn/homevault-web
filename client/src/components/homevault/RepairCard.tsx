@@ -44,7 +44,7 @@ export function RepairCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full flex-col gap-2.5 rounded-[16px] border border-hv-border bg-hv-item p-3.5 text-start shadow-[var(--hv-shadow-card)] transition-colors hover:border-hv-primary/30",
+        "flex w-full flex-col gap-2 rounded-[16px] border border-hv-border bg-hv-item p-2.5 text-start shadow-[var(--hv-shadow-card)] transition-colors hover:border-hv-primary/30 md:gap-2.5 md:p-3.5",
         status === "done" && "opacity-80"
       )}
     >
@@ -67,7 +67,7 @@ export function RepairCard({
       )}
 
       {(contractor || estimate) && (
-        <div className="flex items-center justify-between border-t border-hv-border pt-2.5">
+        <div className="flex items-center justify-between border-t border-hv-border pt-2 md:pt-2.5">
           {contractor ? (
             <span className="inline-flex items-center gap-1.5 truncate text-[12px] text-hv-muted">
               <User className="h-3 w-3 shrink-0" />
