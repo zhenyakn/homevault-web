@@ -21,9 +21,12 @@
 // least one RTL and one dark shot) rather than all of them.
 //
 // To capture a DIALOG: copy this file, and after page.goto add the click that
-// opens it, e.g. getByRole("button", { name: /add candidate/i }).first().click().
-// Click by ROLE+NAME or visible TEXT — a bare `button` selector hits the
-// sidebar/hamburger toggle.
+// opens it. Use a LOCALE-INDEPENDENT selector so it also works in Hebrew/RTL:
+//   await page.locator('main button:has(svg.lucide-plus)').first().click();
+//   // or :has(svg.lucide-pencil) for edit, or [data-slot="dialog-trigger"]
+//   await page.waitForTimeout(500);
+// (Matching by English TEXT/role-name breaks once the locale changes; a bare
+// `button` selector hits the sidebar/hamburger toggle.)
 
 import { chromium } from "playwright";
 import { mkdirSync } from "fs";

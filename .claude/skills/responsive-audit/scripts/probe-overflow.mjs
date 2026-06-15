@@ -17,6 +17,10 @@
 //   UIS     default "def,hv"         (default UI + new HomeVault UI)
 //   BASE    default http://127.0.0.1:5000
 //   PROP    default 2                (active property id)
+//   OPENERS optional "||"-separated list, index-aligned to the routes, giving
+//           an explicit Playwright selector to open each route's dialog (for
+//           the rare case the locale-independent heuristic can't find it),
+//           e.g. OPENERS='[data-testid=add-btn]||main button:has(svg.lucide-plus)'
 //
 // Output: one compact line per (ui, locale, width, route). "OK (no overflow)"
 // means clean; anything else is a real layout bug — note the element classes.
@@ -29,6 +33,7 @@ const PROP = process.env.PROP || "2";
 const WIDTHS = (process.env.WIDTHS || "375,768,1280").split(",").map(Number);
 const LOCALES = (process.env.LOCALES || "en,he").split(",");
 const UIS = (process.env.UIS || "def,hv").split(",");
+const OPENERS = (process.env.OPENERS || "").split("||");
 const routes = process.argv.slice(2);
 if (routes.length === 0) {
   console.error('Pass one or more hash routes, e.g. "/#/portfolio"');
@@ -69,6 +74,37 @@ async function setServerLanguage(ctx, lang) {
     .catch(() => {});
 }
 
+// Open a route's dialog without depending on button TEXT (which is localized).
+// Order: explicit override → Radix dialog-trigger → a content action-icon
+// button (add/edit), scoped to <main> so nav/sidebar icons are ignored and
+// only enabled buttons are clicked → English text as a last resort (works on
+// `en` runs). Returns true if a dialog actually opened.
+async function openDialog(page, explicit) {
+  const selectors = explicit
+    ? [explicit]
+    : [
+        'main [data-slot="dialog-trigger"]',
+        "main button:not([disabled]):has(svg.lucide-plus)",
+        "main button:not([disabled]):has(svg.lucide-pencil)",
+      ];
+  for (const sel of selectors) {
+    const loc = page.locator(sel).first();
+    if (!(await loc.count().catch(() => 0))) continue;
+    await loc.click({ timeout: 1500 }).catch(() => {});
+    await page.waitForTimeout(500);
+    if (await page.locator('[data-slot="dialog-content"]').count()) return true;
+    await page.keyboard.press("Escape").catch(() => {});
+  }
+  const byText = page.getByRole("button", { name: /add|new|edit|create/i }).first();
+  if (await byText.count().catch(() => 0)) {
+    await byText.click({ timeout: 1500 }).catch(() => {});
+    await page.waitForTimeout(500);
+    if (await page.locator('[data-slot="dialog-content"]').count()) return true;
+    await page.keyboard.press("Escape").catch(() => {});
+  }
+  return false;
+}
+
 async function probe(ui, locale, width) {
   const hvUi = ui === "hv";
   const ctx = await browser.newContext({ viewport: { width, height: 760 } });
@@ -84,7 +120,7 @@ async function probe(ui, locale, width) {
   );
   const page = await ctx.newPage();
   const tag = `${ui}/${locale}/${width}w`;
-  for (const route of routes) {
+  for (const [i, route] of routes.entries()) {
     await page.goto(BASE + route, { waitUntil: "networkidle" });
     await page.waitForTimeout(700);
     // Confirm RTL actually took (a server language pref can override local).
@@ -98,16 +134,11 @@ async function probe(ui, locale, width) {
     const base = await page.evaluate(overflowExpr());
     console.log(`[${tag}] ${route} →`, base.length ? JSON.stringify(base) : "OK (no overflow)");
 
-    // Best-effort: open the first obvious dialog and re-probe it.
-    const opener = page.getByRole("button", { name: /add|new|edit|create/i }).first();
-    if (await opener.count().catch(() => 0)) {
-      await opener.click({ timeout: 1500 }).catch(() => {});
-      await page.waitForTimeout(500);
-      if (await page.locator('[data-slot="dialog-content"]').count()) {
-        const inDlg = await page.evaluate(overflowExpr('[data-slot="dialog-content"]'));
-        console.log(`[${tag}] ${route} (dialog) →`, inDlg.length ? JSON.stringify(inDlg) : "OK (no overflow)");
-        await page.keyboard.press("Escape").catch(() => {});
-      }
+    // Open the route's dialog (locale-independent) and re-probe it.
+    if (await openDialog(page, OPENERS[i]?.trim() || null)) {
+      const inDlg = await page.evaluate(overflowExpr('[data-slot="dialog-content"]'));
+      console.log(`[${tag}] ${route} (dialog) →`, inDlg.length ? JSON.stringify(inDlg) : "OK (no overflow)");
+      await page.keyboard.press("Escape").catch(() => {});
     }
   }
   await ctx.close();

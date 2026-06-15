@@ -66,8 +66,17 @@ probe reports **only genuine layout-breaking overflow** (`overflow-x:visible`,
 design. Narrow with env lists, e.g. `WIDTHS=375 LOCALES=he`.
 
 It switches the UI language the *real* way (server profile — see Gotchas) and
-restores `en` when done. For a dialog the probe can't reach by itself, use the
-inline snippet in `scripts/probe-snippet.md` after opening it by hand.
+restores `en` when done.
+
+**Dialogs are opened locale-independently** (so RTL/Hebrew dialogs are probed
+too): the opener tries the Radix `[data-slot="dialog-trigger"]`, then a content
+action-icon button (`svg.lucide-plus` / `lucide-pencil`, scoped to `<main>` so
+nav/sidebar icons are ignored, enabled only), then English text as a last
+resort. If a route's dialog has an unusual trigger, pass an explicit selector
+per route via `OPENERS` (`||`-separated, index-aligned), e.g.
+`OPENERS='||main button:has(svg.lucide-download)'`. For a dialog that needs a
+multi-step interaction to reach, use the inline snippet in
+`scripts/probe-snippet.md` after opening it by hand.
 
 ## 3. Screenshot the matrix (for human-judgement issues)
 ```bash
