@@ -70,3 +70,98 @@ test("accessibility holds in Hebrew / RTL @rtl", async ({ app }) => {
   await app.settle();
   await assertNoA11yViolations(app.page);
 });
+
+// ── Behavioural RTL assertions ───────────────────────────────────────────────
+// The smoke test above only proves `dir=rtl` and "didn't crash" — it renders a
+// mirrored-the-wrong-way toggle or a left-pinned close button perfectly happily.
+// These assertions measure the geometry that actually broke, so a regression in
+// the logical-utility / icon-mirroring work fails CI instead of a screenshot.
+
+const centerX = async (loc: import("@playwright/test").Locator) => {
+  const box = await loc.boundingBox();
+  if (!box) throw new Error("element not visible");
+  return box.x + box.width / 2;
+};
+
+test("toggle thumb travels the correct way in RTL @rtl", async ({ app }) => {
+  await switchToHebrew(app);
+  // A reminder switch with a stable id (see settings-notifications-toggle flow).
+  await app.page.evaluate(() => {
+    window.location.hash = "#/settings/notifications";
+  });
+  await app.settle();
+
+  const sw = app.page.locator("#n-remindExpenses");
+  await expect(sw).toBeVisible();
+  const thumb = sw.locator('[data-slot="switch-thumb"]');
+
+  // In RTL the track is mirrored: ON pushes the thumb to the inline-end (LEFT),
+  // OFF rests it at the inline-start (RIGHT). (Before the fix the physical
+  // translate-x sent it the wrong way.)
+  const sideForState = async () =>
+    (await centerX(thumb)) < (await centerX(sw)) ? "left" : "right";
+  const expectedSide = (checked: boolean) => (checked ? "left" : "right");
+
+  const startChecked = (await sw.getAttribute("aria-checked")) === "true";
+  expect(await sideForState()).toBe(expectedSide(startChecked));
+
+  try {
+    await sw.click();
+    await app.settle(400);
+    const nowChecked = (await sw.getAttribute("aria-checked")) === "true";
+    expect(nowChecked).toBe(!startChecked);
+    expect(await sideForState()).toBe(expectedSide(nowChecked));
+  } finally {
+    // Restore shared state so re-runs and other specs stay deterministic.
+    if (((await sw.getAttribute("aria-checked")) === "true") !== startChecked) {
+      await sw.click();
+      await app.settle(400);
+    }
+  }
+});
+
+test("dialog close button sits on the inline-start side in RTL @rtl", async ({
+  app,
+}) => {
+  await switchToHebrew(app);
+  await app.page.evaluate(() => {
+    window.location.hash = "#/expenses";
+  });
+  await app.settle();
+
+  // Open the add-expense dialog via its (+) icon — text labels are translated,
+  // the lucide-plus glyph is not.
+  await app.page
+    .locator("#main-content button:has(svg.lucide-plus)")
+    .first()
+    .click();
+  const dialog = app.page.locator('[data-slot="dialog-content"]');
+  await expect(dialog).toBeVisible();
+
+  const close = app.page.locator('[data-slot="dialog-close"]').first();
+  // inline-start in RTL is the LEFT half — the X must mirror there, not stay
+  // pinned to top-right as the physical `right-4` did.
+  expect(await centerX(close)).toBeLessThan(await centerX(dialog));
+
+  await app.closeDialog();
+});
+
+test("directional chevrons mirror in RTL @rtl", async ({ app }) => {
+  await switchToHebrew(app);
+  // The calendar's prev/next month controls are always-present chevrons.
+  await app.page.evaluate(() => {
+    window.location.hash = "#/calendar";
+  });
+  await app.settle();
+
+  // `rtl:rotate-180` compiles to the CSS `rotate` property in Tailwind v4.
+  const rotations = await app.page.evaluate(() =>
+    Array.from(
+      document.querySelectorAll(
+        "#main-content svg.lucide-chevron-left, #main-content svg.lucide-chevron-right"
+      )
+    ).map(el => getComputedStyle(el).rotate)
+  );
+  expect(rotations.length).toBeGreaterThan(0);
+  for (const rotate of rotations) expect(rotate).toBe("180deg");
+});

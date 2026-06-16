@@ -78,6 +78,30 @@ per route via `OPENERS` (`||`-separated, index-aligned), e.g.
 multi-step interaction to reach, use the inline snippet in
 `scripts/probe-snippet.md` after opening it by hand.
 
+## 2.5 Static RTL sweep FIRST (the probe is blind to most RTL bugs)
+When the task is RTL (Hebrew), grep **before** you probe. The overflow probe
+and screenshots miss the highest-impact RTL bugs entirely, because they aren't
+overflow and they *render fine* — just mirrored the wrong way: a toggle thumb
+sliding the wrong direction, a dialog close `X` stuck top-right, a non-mirrored
+chevron, `text-left` on a value. The whole class is **statically detectable**:
+```bash
+grep -rEn "(?<![\w-])(?<!ltr:)(?<!rtl:)(text-(left|right)|(ml|mr|pl|pr)-(auto|[0-9])|(left|right)-[0-9])" \
+  client/src --include=*.tsx        # logical-utility offenders (ltr:/rtl: are OK)
+grep -rEn "(Chevron|Arrow)(Left|Right)" client/src --include=*.tsx   # icons to check for rtl:rotate-180
+```
+**Audit `client/src/components/ui/**` too, not just pages.** The biggest wins
+are in the shared shadcn primitives — one fix cascades app-wide: `switch` (thumb
+`translate-x` needs an `rtl:` counterpart), `dialog`/`sheet` close button
+(`right-4`→`end-4`), `select`/menu check indicators (`left-2`/`right-2` + their
+`pl-8`/`pr-8` reservation), menu `data-[inset]:pl-8`, submenu chevrons, toggle
+group corners. But **check the import graph first** — `carousel`, `table`,
+`accordion` paths, `navigation-menu`, `field`, `input-group`, `ui/calendar`,
+`resizable` are vendored-but-unused here; don't spend effort mirroring dead code.
+
+There are regression guards for this now (see §5): a vitest test that fails on
+physical utilities in app code, and behavioural `@rtl` Playwright assertions for
+the toggle thumb, dialog close side, and chevron rotation. Run them after fixing.
+
 ## 3. Screenshot the matrix (for human-judgement issues)
 ```bash
 node .claude/skills/responsive-audit/scripts/shoot.mjs \
@@ -141,6 +165,21 @@ Match what you see to these. They cover almost everything found in this app.
    `truncate` clips at the *start* — usually pre-existing and cosmetic; the
    probe correctly ignores it (it's an intentional `truncate`). Don't chase it
    unless asked.
+   Gotchas that cost real time here:
+   - **Toggles:** a `Switch` thumb moved by `data-[state=checked]:translate-x-…`
+     needs an `rtl:data-[state=checked]:-translate-x-…` counterpart, else it
+     slides the wrong way. Verify by **measuring the thumb's box vs the track
+     centre**, not the computed transform — **Tailwind v4 emits the `translate`
+     and `rotate` CSS properties, so `getComputedStyle(el).transform` is `"none"`
+     even when translated/rotated** (read `.translate` / `.rotate`; `rtl:rotate-180`
+     → `rotate: 180deg`).
+   - **Collapsible/expander chevrons:** use a single conditional class —
+     `open ? "rotate-90" : "rtl:rotate-180"` — never `rtl:rotate-180` *and* a
+     conditional `rotate-90` together (they both set the transform and fight over
+     specificity).
+   - **Moving an absolute indicator to `start/end` requires flipping its
+     sibling's reserved padding too** (the `pl-8`/`pr-8` that makes room for it),
+     or the icon mirrors but the gap doesn't.
 
 7. **Dark-mode only issues** (invisible borders, low-contrast text/badges that
    look fine in light). → Pair every color with a `dark:` variant and prefer
@@ -157,6 +196,17 @@ so dark mode works for free; reach for `min-w-0`, `truncate`, `flex-wrap`,
 ## 5. Re-verify, then clean up
 - Re-run §2 probe (expect empty lists) and §3 screenshots; Read them back.
 - `npx tsc --noEmit` must be clean.
+- **Run the RTL regression guards** (they encode this skill's findings, so
+  green ≈ the RTL work holds):
+  ```bash
+  npx vitest run client/src/__tests__/rtl-logical-utilities.test.ts   # static: no physical utilities in app code
+  node_modules/.bin/playwright test --project=rtl                     # behavioural: toggle thumb, dialog close side, chevron rotation
+  ```
+  If you intentionally need a physical value per-direction, use an `ltr:`/`rtl:`
+  variant (the static guard ignores those); only add to its small allowlist for
+  genuinely direction-neutral cases (symmetric pairs, an `isRTL ? …` ternary).
+  Note: the repo pins `@playwright/test` — run the bundled binary, not a freshly
+  `pnpm add`-ed `playwright`, or you'll hit a two-versions error.
 - The scripts reset the server language to `en` when they finish. If a run was
   interrupted mid-matrix, reset it yourself so the app isn't stuck in Hebrew:
   ```bash
@@ -167,8 +217,11 @@ so dark mode works for free; reach for `min-w-0`, `truncate`, `flex-wrap`,
   the repo root:
   ```bash
   git checkout -- package.json pnpm-lock.yaml   # playwright add is dev-only
-  rm -f /home/user/homevault-web/*.mjs           # any copied probe/shoot scripts
   ```
+  Delete scratch scripts **by name** — never `rm *.mjs`: the repo keeps
+  committed `apply-migration-*.mjs` at its root, so a glob nukes real files.
+  Remove only the ones you created (e.g. `rm -f rtl-shot.mjs probe-rtl.mjs`),
+  and confirm with `git status` that nothing tracked is staged for deletion.
   (The bundled scripts under `.claude/skills/responsive-audit/scripts/` stay.)
 - Commit only the source/locale changes.
 
