@@ -433,7 +433,7 @@ export default function AddPropertyWizard({
                         })
                       }
                     >
-                      <Plus className="w-3.5 h-3.5 mr-1" />
+                      <Plus className="w-3.5 h-3.5 me-1" />
                       {t("wizard.addCost")}
                     </Button>
                   </div>
@@ -483,7 +483,7 @@ export default function AddPropertyWizard({
                   size="sm"
                   onClick={back}
                 >
-                  <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+                  <ArrowLeft className="w-3.5 h-3.5 me-1 rtl:rotate-180" />
                   {t("common.back")}
                 </Button>
               ) : (
@@ -494,7 +494,7 @@ export default function AddPropertyWizard({
               {step < TOTAL_STEPS ? (
                 <Button type="button" size="sm" onClick={next}>
                   {t("wizard.next")}
-                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  <ArrowRight className="w-3.5 h-3.5 ms-1 rtl:rotate-180" />
                 </Button>
               ) : (
                 <Button
@@ -597,7 +597,7 @@ function StepMode({ mode, onPick }: { mode: Mode; onPick: (m: Mode) => void }) {
               type="button"
               onClick={() => onPick(o.id)}
               className={cn(
-                "text-left rounded-xl border p-4 transition-colors",
+                "text-start rounded-xl border p-4 transition-colors",
                 sel
                   ? "border-primary bg-primary/5 ring-2 ring-primary/25"
                   : "border-border hover:border-primary/40"

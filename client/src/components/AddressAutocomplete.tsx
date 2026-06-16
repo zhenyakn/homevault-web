@@ -157,7 +157,7 @@ export function AddressAutocomplete({
           value={value}
           placeholder={placeholder}
           autoComplete="off"
-          className={cn("pr-8", inputClassName)}
+          className={cn("pe-8", inputClassName)}
           onChange={e => handleInput(e.target.value)}
           onKeyDown={onKeyDown}
           onFocus={() => predictions.length > 0 && setOpen(true)}
@@ -170,7 +170,7 @@ export function AddressAutocomplete({
             }, 150);
           }}
         />
-        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
+        <span className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground">
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -192,7 +192,7 @@ export function AddressAutocomplete({
                 }}
                 onMouseEnter={() => setActiveIdx(i)}
                 className={cn(
-                  "flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                  "flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-start text-sm transition-colors",
                   i === activeIdx
                     ? "bg-accent text-accent-foreground"
                     : "hover:bg-accent/60"

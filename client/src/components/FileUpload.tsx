@@ -157,7 +157,7 @@ export function FileUpload({
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
           >
-            <Upload className="w-4 h-4 mr-2" />
+            <Upload className="w-4 h-4 me-2" />
             {uploading ? "Uploading..." : "Attach File"}
           </Button>
         </div>

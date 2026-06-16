@@ -183,7 +183,7 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-1.5 w-full px-1 py-1 rounded-md hover:bg-sidebar-accent transition-colors focus:outline-none text-left">
+          <button className="flex items-center gap-1.5 w-full px-1 py-1 rounded-md hover:bg-sidebar-accent transition-colors focus:outline-none text-start">
             <div className="flex-1 min-w-0">
               <p className="text-[13px] font-semibold truncate leading-tight text-sidebar-foreground">
                 {activeProperty?.houseName ?? "My Home"}
@@ -204,12 +204,12 @@ function PropertySwitcher({ isCollapsed }: { isCollapsed: boolean }) {
               onClick={() => p.id !== activePropertyId && switchProperty(p.id)}
               className="cursor-pointer"
             >
-              <div className="h-5 w-5 rounded bg-primary/10 flex items-center justify-center mr-2 shrink-0">
+              <div className="h-5 w-5 rounded bg-primary/10 flex items-center justify-center me-2 shrink-0">
                 <Home className="h-3 w-3 text-primary" />
               </div>
               <span className="flex-1 truncate">{p.houseName}</span>
               {p.id === activePropertyId && (
-                <Check className="h-3.5 w-3.5 ml-2 shrink-0" />
+                <Check className="h-3.5 w-3.5 ms-2 shrink-0" />
               )}
             </DropdownMenuItem>
           ))}
@@ -423,7 +423,7 @@ function DashboardLayoutContent({
           el?.scrollIntoView();
           el?.focus();
         }}
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:ring-2 focus:ring-primary"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:start-3 focus:z-[60] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:ring-2 focus:ring-primary"
       >
         {t("nav.skipToContent")}
       </a>
@@ -523,7 +523,7 @@ function DashboardLayoutContent({
                         {profile.name || "Unknown"}
                       </span>
                       {profile.id === user?.id && (
-                        <Check className="h-3 w-3 ml-auto shrink-0" />
+                        <Check className="h-3 w-3 ms-auto shrink-0" />
                       )}
                     </div>
                   ))}
@@ -568,7 +568,7 @@ function DashboardLayoutContent({
                         key={profile.id}
                         className="cursor-pointer"
                       >
-                        <Avatar className="h-5 w-5 mr-2">
+                        <Avatar className="h-5 w-5 me-2">
                           <AvatarFallback
                             className={`text-[9px] text-white ${getAvatarColor(index)}`}
                           >
@@ -579,7 +579,7 @@ function DashboardLayoutContent({
                           {profile.name || "Unknown"}
                         </span>
                         {profile.id === user?.id && (
-                          <Check className="h-3 w-3 ml-auto" />
+                          <Check className="h-3 w-3 ms-auto" />
                         )}
                       </DropdownMenuItem>
                     ))}
@@ -639,7 +639,7 @@ function DashboardLayoutContent({
               {pageMeta && (
                 <>
                   <span>{t(pageMeta.sectionKey)}</span>
-                  <ChevronRight className="h-3 w-3 opacity-50" />
+                  <ChevronRight className="h-3 w-3 opacity-50 rtl:rotate-180" />
                   <span className="text-foreground font-medium">
                     {t(pageMeta.pageKey)}
                   </span>

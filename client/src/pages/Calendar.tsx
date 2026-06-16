@@ -363,7 +363,7 @@ export default function Calendar() {
               aria-label={t("calendar.prevMonth")}
               onClick={prevMonth}
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" />
             </Button>
             <Button
               variant="outline"
@@ -372,7 +372,7 @@ export default function Calendar() {
               aria-label={t("calendar.nextMonth")}
               onClick={nextMonth}
             >
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
             </Button>
           </div>
         </div>

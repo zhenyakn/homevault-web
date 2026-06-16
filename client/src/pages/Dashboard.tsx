@@ -258,7 +258,7 @@ function SpendCard({
               style={{ width: `${Math.min(pct, 100)}%` }}
             />
           </div>
-          <p className="text-[11px] text-muted-foreground text-right mb-4">
+          <p className="text-[11px] text-muted-foreground text-end mb-4">
             {pct}
             {t("dashboard.ofBaseline")}
           </p>
@@ -289,7 +289,7 @@ function SpendCard({
                 }}
               />
             </div>
-            <span className="text-xs font-semibold tabular-nums w-16 text-right">
+            <span className="text-xs font-semibold tabular-nums w-16 text-end">
               {fmt(amount)}
             </span>
           </div>
@@ -333,7 +333,7 @@ function LoansCard({ loans, cur }: { loans: LoanSummaryItem[]; cur: string }) {
               return (
                 <div key={l.id}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[12.5px] font-medium text-foreground truncate flex-1 mr-2">
+                    <span className="text-[12.5px] font-medium text-foreground truncate flex-1 me-2">
                       {l.lender}
                     </span>
                     {l.paidOff ? (
@@ -370,7 +370,7 @@ function LoansCard({ loans, cur }: { loans: LoanSummaryItem[]; cur: string }) {
             className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity mt-4 font-medium"
             onClick={() => nav("/loans")}
           >
-            {t("loans.title")} <ArrowRight className="h-3 w-3" />
+            {t("loans.title")} <ArrowRight className="h-3 w-3 rtl:rotate-180" />
           </button>
         </>
       )}
@@ -547,7 +547,7 @@ function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
           className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity font-medium -mt-3"
           onClick={() => nav("/calendar")}
         >
-          {t("dashboard.fullCalendar")} <ArrowRight className="h-3 w-3" />
+          {t("dashboard.fullCalendar")} <ArrowRight className="h-3 w-3 rtl:rotate-180" />
         </button>
       </div>
 
@@ -581,7 +581,7 @@ function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
                     {e.category}
                   </p>
                 </div>
-                <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0 rtl:rotate-180" />
               </div>
             );
           })}
@@ -651,7 +651,7 @@ function UpgradesCard({
                   />
                 </div>
               </div>
-              <div className="text-right shrink-0">
+              <div className="text-end shrink-0">
                 <p
                   className={cn(
                     "text-sm font-bold tabular-nums",
@@ -676,7 +676,7 @@ function UpgradesCard({
         className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity mt-3 pt-3 border-t border-border font-medium"
         onClick={() => nav("/upgrades")}
       >
-        {t("nav.upgrades")} <ArrowRight className="h-3 w-3" />
+        {t("nav.upgrades")} <ArrowRight className="h-3 w-3 rtl:rotate-180" />
       </button>
     </Card>
   );

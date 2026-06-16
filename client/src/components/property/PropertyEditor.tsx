@@ -153,7 +153,7 @@ function MoneyField({
   const major = toMajor(value);
   return (
     <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+      <span className="absolute start-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
         {currency}
       </span>
       <Input
@@ -161,7 +161,7 @@ function MoneyField({
         defaultValue={major}
         type="number"
         min={0}
-        className={cn(INPUT_CLS, "pl-8 text-right")}
+        className={cn(INPUT_CLS, "ps-8 text-end")}
         onBlur={e => {
           if (e.target.value !== major) onSave(toMinor(e.target.value));
         }}
@@ -183,7 +183,7 @@ function NumField({
       key={s}
       defaultValue={s}
       type="number"
-      className={cn(INPUT_CLS, "text-right")}
+      className={cn(INPUT_CLS, "text-end")}
       onBlur={e => {
         if (e.target.value !== s) {
           const n = parseInt(e.target.value, 10);

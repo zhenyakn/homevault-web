@@ -53,7 +53,7 @@ export default function Login() {
                   window.location.href = getLoginUrl();
                 }}
               >
-                <LogIn className="w-4 h-4 mr-2" />
+                <LogIn className="w-4 h-4 me-2" />
                 Sign in
               </Button>
             </>
@@ -72,7 +72,7 @@ export default function Login() {
                   window.location.reload();
                 }}
               >
-                <LogIn className="w-4 h-4 mr-2" />
+                <LogIn className="w-4 h-4 me-2" />
                 Dev Login
               </Button>
               <p className="text-xs text-muted-foreground text-center">

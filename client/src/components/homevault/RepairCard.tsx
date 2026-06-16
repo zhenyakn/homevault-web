@@ -61,7 +61,7 @@ export function RepairCard({
 
       {nextStep && (
         <p className="flex items-center gap-1.5 text-[12px] text-hv-muted">
-          <ArrowRight className="h-3 w-3 shrink-0 text-hv-muted-soft" />
+          <ArrowRight className="h-3 w-3 shrink-0 text-hv-muted-soft rtl:rotate-180" />
           <span className="truncate">{nextStep}</span>
         </p>
       )}

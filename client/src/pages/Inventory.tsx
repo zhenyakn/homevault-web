@@ -753,25 +753,25 @@ export default function Inventory() {
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
+                <th className="text-start px-4 py-3 font-medium text-muted-foreground">
                   Name
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
+                <th className="text-start px-4 py-3 font-medium text-muted-foreground">
                   Category
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
+                <th className="text-start px-4 py-3 font-medium text-muted-foreground">
                   Room
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
+                <th className="text-start px-4 py-3 font-medium text-muted-foreground">
                   Qty
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
+                <th className="text-start px-4 py-3 font-medium text-muted-foreground">
                   Condition
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">
+                <th className="text-start px-4 py-3 font-medium text-muted-foreground">
                   Value
                 </th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">
+                <th className="text-end px-4 py-3 font-medium text-muted-foreground">
                   Actions
                 </th>
               </tr>
@@ -820,7 +820,7 @@ export default function Inventory() {
                         {item.quantity}
                       </span>
                       {item.unit && (
-                        <span className="text-muted-foreground ml-1">
+                        <span className="text-muted-foreground ms-1">
                           {item.unit}
                         </span>
                       )}
