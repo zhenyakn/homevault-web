@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { getLoginUrl } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { LogIn, Home, AlertTriangle } from "lucide-react";
+import { LogIn, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Login() {
@@ -29,9 +29,13 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 mb-4 shadow-lg">
-            <Home className="w-8 h-8 text-white" />
-          </div>
+          <img
+            src="/favicon.svg"
+            alt=""
+            width={64}
+            height={64}
+            className="inline-block w-16 h-16 rounded-2xl mb-4 shadow-lg"
+          />
           <h1 className="text-3xl font-bold tracking-tight">HomeVault</h1>
           <p className="text-muted-foreground mt-2">
             Your property, fully managed
