@@ -325,7 +325,7 @@ function CollapsibleCategory({
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded -mx-1 px-1 py-0.5 text-left hover:bg-muted/40 transition-colors"
+        className="flex w-full items-center gap-2 rounded -mx-1 px-1 py-0.5 text-start hover:bg-muted/40 transition-colors"
       >
         <div className="flex-1 min-w-0">
           <CategoryHeader icon={icon} title={title} description={description} />
@@ -333,7 +333,7 @@ function CollapsibleCategory({
         <ChevronRight
           className={cn(
             "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-            open && "rotate-90"
+            open ? "rotate-90" : "rtl:rotate-180"
           )}
         />
       </button>
@@ -480,7 +480,7 @@ function ConfirmDialog({
               onConfirm();
             }}
           >
-            {pending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            {pending && <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />}
             {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
@@ -574,7 +574,7 @@ function Combobox({
           className={cn("h-8 justify-between text-sm font-normal", width)}
         >
           <span className="truncate">{sel?.label ?? placeholder}</span>
-          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-40" />
+          <ChevronsUpDown className="ms-2 h-3.5 w-3.5 shrink-0 opacity-40" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className={cn("p-0", width)} align="end">
@@ -596,13 +596,13 @@ function Combobox({
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-3.5 w-3.5 shrink-0",
+                      "me-2 h-3.5 w-3.5 shrink-0",
                       value === o.value ? "opacity-100" : "opacity-0"
                     )}
                   />
                   <span>{o.label}</span>
                   {o.sub && (
-                    <span className="ml-2 text-xs text-muted-foreground">
+                    <span className="ms-2 text-xs text-muted-foreground">
                       {o.sub}
                     </span>
                   )}
@@ -1517,7 +1517,7 @@ function MapsKeyConfig({ isAdmin }: { isAdmin: boolean }) {
             onClick={remove}
             disabled={mutation.isPending}
           >
-            <Trash2 className="mr-1 h-3.5 w-3.5" />
+            <Trash2 className="me-1 h-3.5 w-3.5" />
             {t("settings.mapsKeyRemove")}
           </Button>
         )}
@@ -1532,7 +1532,7 @@ function MapsKeyConfig({ isAdmin }: { isAdmin: boolean }) {
               hasKey ? "••••••••••••••••" : t("settings.mapsKeyPlaceholder")
             }
             autoComplete="off"
-            className="h-9 pr-9 font-mono text-sm"
+            className="h-9 pe-9 font-mono text-sm"
             onChange={e => setValue(e.target.value)}
             onKeyDown={e => {
               if (e.key === "Enter" && value.trim()) save();
@@ -1542,7 +1542,7 @@ function MapsKeyConfig({ isAdmin }: { isAdmin: boolean }) {
             type="button"
             tabIndex={-1}
             onClick={() => setShow(s => !s)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
             {show ? (
               <EyeOff className="h-4 w-4" />
@@ -1573,14 +1573,14 @@ function MapsKeyConfig({ isAdmin }: { isAdmin: boolean }) {
         <ChevronRight
           className={cn(
             "h-3.5 w-3.5 transition-transform",
-            showHelp && "rotate-90"
+            showHelp ? "rotate-90" : "rtl:rotate-180"
           )}
         />
         {t("settings.mapsKeyHowto")}
       </button>
       {showHelp && (
         <div className="space-y-2 rounded-lg border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-          <ol className="list-decimal space-y-1.5 pl-4">
+          <ol className="list-decimal space-y-1.5 ps-4">
             {steps.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
@@ -2006,7 +2006,7 @@ function StorageBackendGroup({
                       onClick={() => void saveLocal()}
                     >
                       {busy && (
-                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
                       )}
                       {t("settings.storage.save")}
                     </Button>
@@ -2098,7 +2098,7 @@ function StorageBackendGroup({
                           ? t("settings.storage.s3.secretPlaceholder")
                           : ""
                       }
-                      className="h-8 text-xs font-mono pr-8"
+                      className="h-8 text-xs font-mono pe-8"
                     />
                     <button
                       type="button"
@@ -2106,7 +2106,7 @@ function StorageBackendGroup({
                       aria-label={t(
                         showS3Secret ? "common.hide" : "common.show"
                       )}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showS3Secret ? (
                         <EyeOff className="h-3.5 w-3.5" />
@@ -2142,7 +2142,7 @@ function StorageBackendGroup({
                       onClick={() => void saveS3()}
                     >
                       {busy && (
-                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
                       )}
                       {t("settings.storage.save")}
                     </Button>
@@ -2530,12 +2530,12 @@ function FileStorageGroup() {
                           ? t("settings.fileStorage.creds.secretPlaceholder")
                           : ""
                       }
-                      className="h-8 text-xs font-mono pr-8"
+                      className="h-8 text-xs font-mono pe-8"
                     />
                     <button
                       type="button"
                       onClick={() => setShowSecret(s => !s)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute end-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showSecret ? (
                         <EyeOff className="h-3.5 w-3.5" />
@@ -2591,7 +2591,7 @@ function FileStorageGroup() {
                       disabled={savingCreds}
                     >
                       {savingCreds && (
-                        <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                        <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
                       )}
                       {t("settings.fileStorage.creds.save")}
                     </Button>
@@ -2701,7 +2701,7 @@ function FileStorageGroup() {
                   onClick={handleDisconnect}
                   disabled={busy}
                 >
-                  {busy && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                  {busy && <Loader2 className="me-1.5 h-3 w-3 animate-spin" />}
                   {t("settings.fileStorage.disconnect")}
                 </Button>
               </div>
@@ -2748,7 +2748,7 @@ function FileStorageGroup() {
                   hint={t("settings.fileStorage.manualToken.hint")}
                 >
                   <div className="space-y-2">
-                    <ol className="text-xs text-muted-foreground list-decimal ml-4 space-y-1">
+                    <ol className="text-xs text-muted-foreground list-decimal ms-4 space-y-1">
                       <li>{t("settings.fileStorage.manualToken.step1")}</li>
                       <li>{t("settings.fileStorage.manualToken.step2")}</li>
                       <li>{t("settings.fileStorage.manualToken.step3")}</li>
@@ -2793,7 +2793,7 @@ function FileStorageGroup() {
                         disabled={savingToken}
                       >
                         {savingToken && (
-                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                          <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
                         )}
                         {t("settings.fileStorage.manualToken.save")}
                       </Button>
@@ -2965,9 +2965,9 @@ function DataSection({
             disabled={seed.isPending}
           >
             {seed.isPending ? (
-              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+              <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
             ) : (
-              <RefreshCw className="mr-1.5 h-3 w-3" />
+              <RefreshCw className="me-1.5 h-3 w-3" />
             )}
             {seed.isPending
               ? t("settings.restoringDemo")
@@ -2985,9 +2985,9 @@ function DataSection({
             disabled={isFetching}
           >
             {isFetching ? (
-              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+              <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
             ) : (
-              <Download className="mr-1.5 h-3 w-3" />
+              <Download className="me-1.5 h-3 w-3" />
             )}
             {isFetching ? t("settings.preparing") : t("settings.downloadJson")}
           </Button>
@@ -2998,7 +2998,7 @@ function DataSection({
         >
           <Button variant="outline" size="sm" asChild>
             <a href="/api/export/files.zip" download>
-              <Download className="mr-1.5 h-3 w-3" />
+              <Download className="me-1.5 h-3 w-3" />
               {t("settings.exportFilesZipBtn")}
             </a>
           </Button>
@@ -3033,7 +3033,7 @@ function DataSection({
               className="text-destructive border-destructive/25 hover:bg-destructive hover:text-destructive-foreground"
               onClick={() => setPropDanger(true)}
             >
-              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              <Trash2 className="h-3.5 w-3.5 me-1.5" />
               {t("settings.deletePropertyBtn")}
             </Button>
           </Row>
@@ -3213,7 +3213,7 @@ function StoredFilesGroup() {
                 disabled={reap.isPending}
               >
                 {reap.isPending && (
-                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                  <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
                 )}
                 {t("settings.storedFiles.cleanupOrphans")}
               </Button>
@@ -3282,7 +3282,7 @@ function StoredFilesGroup() {
                 disabled={list.isFetching}
               >
                 {list.isFetching && (
-                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                  <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
                 )}
                 {t("settings.storedFiles.loadMore")}
               </Button>

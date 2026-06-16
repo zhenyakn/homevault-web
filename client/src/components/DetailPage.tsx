@@ -298,7 +298,7 @@ export function CollapsibleCard({
         <button
           type="button"
           onClick={() => setExpanded(e => !e)}
-          className="flex-1 flex items-center gap-2.5 min-w-0 text-left"
+          className="flex-1 flex items-center gap-2.5 min-w-0 text-start"
         >
           {header}
         </button>

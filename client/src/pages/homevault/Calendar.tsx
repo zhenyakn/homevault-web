@@ -360,7 +360,7 @@ export default function HVCalendar() {
                   className="h-7 w-7"
                   onClick={prevMonth}
                 >
-                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <ChevronLeft className="h-3.5 w-3.5 rtl:rotate-180" />
                 </Button>
                 <Button
                   variant="outline"
@@ -368,7 +368,7 @@ export default function HVCalendar() {
                   className="h-7 w-7"
                   onClick={nextMonth}
                 >
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <ChevronRight className="h-3.5 w-3.5 rtl:rotate-180" />
                 </Button>
               </div>
             </div>

@@ -114,7 +114,7 @@ export default function Portfolio() {
           {t("portfolio.emptyDesc")}
         </p>
         <Button className="mt-2" onClick={() => setAddOpen(true)}>
-          <Plus className="w-4 h-4 mr-1.5" />
+          <Plus className="w-4 h-4 me-1.5" />
           {t("common.addProperty")}
         </Button>
         <AddPropertyWizard open={addOpen} onOpenChange={setAddOpen} />
@@ -211,7 +211,7 @@ export default function Portfolio() {
           isMobile ? openDetail(prop.id) : setSelectedId(prop.id)
         }
         className={cn(
-          "group w-full text-left rounded-2xl border p-4 transition-all bg-card",
+          "group w-full text-start rounded-2xl border p-4 transition-all bg-card",
           "active:scale-[0.99]",
           isSel
             ? "border-primary ring-2 ring-primary/25"
@@ -243,7 +243,7 @@ export default function Portfolio() {
               </div>
             )}
           </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 md:hidden" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 md:hidden rtl:rotate-180" />
         </div>
 
         <div className="mt-3 flex items-center justify-between gap-2">

@@ -316,7 +316,7 @@ function SpendCard({
             <span className="flex-1 text-[12px] text-hv-muted">
               {t(`categories.${cat}`, { defaultValue: cat })}
             </span>
-            <span className="w-16 text-right text-[12px] font-semibold tabular-nums text-hv-ink">
+            <span className="w-16 text-end text-[12px] font-semibold tabular-nums text-hv-ink">
               {fmt(amount)}
             </span>
           </div>
@@ -348,7 +348,7 @@ function ProjectsCard({
           className="flex items-center gap-1 text-[12px] font-medium text-hv-primary hover:opacity-75"
           onClick={() => nav("/upgrades")}
         >
-          {t("homevault.viewAll")} <ArrowRight className="h-3 w-3" />
+          {t("homevault.viewAll")} <ArrowRight className="h-3 w-3 rtl:rotate-180" />
         </button>
       }
     >
