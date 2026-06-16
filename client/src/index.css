@@ -66,6 +66,7 @@
   --color-hv-warning-bg: var(--hv-warning-bg);
   --color-hv-danger-bg: var(--hv-danger-bg);
   --color-hv-item: var(--hv-item);
+  --color-hv-gold-ink: var(--hv-gold-ink);
 }
 
 :root {
@@ -93,6 +94,11 @@
   --hv-red: #b84e4e;
   --hv-warning-bg: #f7eee2;
   --hv-danger-bg: #f8e9e7;
+  /* Gold used as *text* (e.g. metric values). The decorative `--hv-accent`
+     (#d6a85d) only reaches ~2:1 on the light surface, so values were washed
+     out; this deeper bronze clears WCAG AA on light. Dark mode keeps the bright
+     accent (see `.dark` below) since it has ample contrast on dark cards. */
+  --hv-gold-ink: #9a6d15;
   /* Inner row/ticket surface — pure white in light, a distinct dark surface in
      dark so item text stays legible on cards and board columns. */
   --hv-item: #ffffff;
@@ -195,6 +201,8 @@
   --hv-warning-bg: #2a2419;
   --hv-danger-bg: #2c1f1d;
   --hv-item: #2a332f;
+  /* Bright gold reads cleanly on the dark card surface. */
+  --hv-gold-ink: #d6a85d;
 }
 
 /* ── Opt-in HomeVault personal-premium theme ────────────────────────────────
@@ -214,7 +222,13 @@
   --secondary-foreground: var(--hv-primary-dark);
   --muted: var(--hv-surface-muted);
   --muted-foreground: var(--hv-muted);
-  --accent: var(--hv-primary-soft);
+  /* Selection / hover / active-state highlight. `--hv-primary-soft` (#eef5ef)
+     sits too close to the warm white surface to read as a highlight, so the
+     selected option in selects, dropdowns, command menus, calendars, etc. was
+     barely visible. Use a distinctly deeper sage so the highlight is obvious
+     while the dark-green foreground stays high-contrast. (Kept separate from
+     `--hv-primary-soft`, which pages reuse for soft badges/icon chips.) */
+  --accent: #d3e7dc;
   --accent-foreground: var(--hv-primary-dark);
   --border: var(--hv-border);
   --input: var(--hv-border);
@@ -242,7 +256,9 @@
   --secondary-foreground: #c7d2c9;
   --muted: var(--hv-surface-muted);
   --muted-foreground: var(--hv-muted);
-  --accent: var(--hv-primary-soft);
+  /* Dark selection highlight — lift clearly off the #1b2321 surface (the old
+     #1f2c26 was nearly invisible) so selected/hovered options read. */
+  --accent: #2c4136;
   --accent-foreground: #d7e3da;
   --border: var(--hv-border);
   --input: var(--hv-border);

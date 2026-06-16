@@ -22,7 +22,7 @@ const TONE_VALUE: Record<MetricTone, string> = {
   blue: "text-hv-blue",
   orange: "text-hv-orange",
   red: "text-hv-red",
-  gold: "text-hv-accent",
+  gold: "text-hv-gold-ink",
 };
 
 /**

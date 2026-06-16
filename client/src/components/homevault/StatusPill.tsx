@@ -20,7 +20,10 @@ const TONE_CLASS: Record<StatusTone, string> = {
   warning: "bg-hv-warning-bg text-hv-orange border-hv-orange/20",
   danger: "bg-hv-danger-bg text-hv-red border-hv-red/20",
   info: "bg-[#eaf1f8] text-hv-blue border-hv-blue/20",
-  gold: "bg-[#f7efdf] text-hv-accent border-hv-accent/30",
+  // `--hv-accent` (#d6a85d) on the cream pill is only ~1.9:1 — illegible. Use a
+  // deeper bronze gold for the text so the label clears WCAG AA, keeping the
+  // decorative accent token untouched for its other (icon/value) uses.
+  gold: "bg-[#f7efdf] text-[#8a6418] border-hv-accent/40",
 };
 
 /**
