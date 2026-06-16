@@ -217,8 +217,11 @@ so dark mode works for free; reach for `min-w-0`, `truncate`, `flex-wrap`,
   the repo root:
   ```bash
   git checkout -- package.json pnpm-lock.yaml   # playwright add is dev-only
-  rm -f /home/user/homevault-web/*.mjs           # any copied probe/shoot scripts
   ```
+  Delete scratch scripts **by name** — never `rm *.mjs`: the repo keeps
+  committed `apply-migration-*.mjs` at its root, so a glob nukes real files.
+  Remove only the ones you created (e.g. `rm -f rtl-shot.mjs probe-rtl.mjs`),
+  and confirm with `git status` that nothing tracked is staged for deletion.
   (The bundled scripts under `.claude/skills/responsive-audit/scripts/` stay.)
 - Commit only the source/locale changes.
 
