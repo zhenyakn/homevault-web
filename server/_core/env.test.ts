@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
+import { validateEnvConfig, type EnvConfigInput } from "./env";
 
-// We test the validation logic in isolation without importing the module
-// (which would call process.exit on failure). Instead we replicate the schema.
+// We test the per-field schema in isolation (without importing the module's
+// process.exit-on-failure parse) by replicating it.
 import { z } from "zod";
 
 const envSchema = z.object({
@@ -83,5 +84,72 @@ describe("ENV validation schema", () => {
       expect(result.data.SEED_MOCK_DATA).toBe("false");
       expect(result.data.OAUTH_SERVER_URL).toBe("");
     }
+  });
+});
+
+// ── Cross-field runtime validation (APP_MODE / session / email config) ─────────
+
+const cfgBase: EnvConfigInput = {
+  NODE_ENV: "production",
+  APP_MODE: "standalone",
+  NO_AUTH: "false",
+  VITE_APP_ID: "app-123",
+  PUBLIC_BASE_URL: "https://home.example.com",
+};
+const check = (over: Partial<EnvConfigInput>) =>
+  validateEnvConfig({ ...cfgBase, ...over });
+
+describe("validateEnvConfig", () => {
+  it("passes a valid standalone config", () => {
+    const { fatal, warn } = check({});
+    expect(fatal).toHaveLength(0);
+    expect(warn).toHaveLength(0);
+  });
+
+  it("passes a valid saas config", () => {
+    expect(check({ APP_MODE: "saas" }).fatal).toHaveLength(0);
+  });
+
+  it("forbids NO_AUTH in saas", () => {
+    expect(
+      check({ APP_MODE: "saas", NO_AUTH: "true" }).fatal.join(" ")
+    ).toMatch(/NO_AUTH/i);
+  });
+
+  it("requires VITE_APP_ID when sessions are enabled (fatal in production/saas)", () => {
+    expect(check({ VITE_APP_ID: "" }).fatal.join(" ")).toMatch(/VITE_APP_ID/);
+    expect(
+      check({ APP_MODE: "saas", VITE_APP_ID: "" }).fatal.join(" ")
+    ).toMatch(/VITE_APP_ID/);
+  });
+
+  it("only warns about a missing VITE_APP_ID in development", () => {
+    const { fatal, warn } = check({ NODE_ENV: "development", VITE_APP_ID: "" });
+    expect(fatal).toHaveLength(0);
+    expect(warn.join(" ")).toMatch(/VITE_APP_ID/);
+  });
+
+  it("does not require VITE_APP_ID when NO_AUTH bypasses sessions", () => {
+    const { fatal, warn } = check({ NO_AUTH: "true", VITE_APP_ID: "" });
+    expect(fatal).toHaveLength(0);
+    expect(warn).toHaveLength(0);
+  });
+
+  it("requires PUBLIC_BASE_URL in saas", () => {
+    expect(
+      check({ APP_MODE: "saas", PUBLIC_BASE_URL: "" }).fatal.join(" ")
+    ).toMatch(/PUBLIC_BASE_URL/);
+  });
+
+  it("skips all checks under NODE_ENV=test", () => {
+    const { fatal, warn } = check({
+      NODE_ENV: "test",
+      APP_MODE: "saas",
+      NO_AUTH: "true",
+      VITE_APP_ID: "",
+      PUBLIC_BASE_URL: "",
+    });
+    expect(fatal).toHaveLength(0);
+    expect(warn).toHaveLength(0);
   });
 });

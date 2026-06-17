@@ -366,6 +366,12 @@ gating rather than another data refactor.
 - Introduce `APP_MODE = 'standalone' | 'saas'` (env, validated in `env.ts`; mirrored to the
   client via `systemRouter` like `noAuth` is today; also stored/overridable in `app_settings`
   for the admin console).
+  - ✅ **Done early (foundation):** `APP_MODE` env var (default `standalone`) + a boot-time
+    `validateEnvConfig` guard now exist. It refuses to start when `APP_MODE=saas && NO_AUTH`,
+    requires `VITE_APP_ID` whenever sessions are enabled (non-`NO_AUTH`) — fatal in
+    production/saas, a warning in dev — and requires `PUBLIC_BASE_URL` in saas (email links).
+    This closes the "blank login screen" failure mode found during the Phase 6 smoke-test.
+    Client mirroring + `app_settings` override remain for the full Stage 2 switch.
 - **Standalone** (default; preserves today's behaviour):
   - `NO_AUTH` and OAuth continue to work.
   - Self-registration is **off** by default; effectively one tenant (the install). The tenant
