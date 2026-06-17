@@ -3,6 +3,7 @@ import { getLoginUrl } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LogIn, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { HomeVaultLogo } from "@/components/HomeVaultLogo";
 
 export default function Login() {
   const { isAuthenticated, loading } = useAuth();
@@ -29,11 +30,8 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img
-            src="/favicon.svg"
-            alt=""
-            width={64}
-            height={64}
+          <HomeVaultLogo
+            size={64}
             className="inline-block w-16 h-16 rounded-2xl mb-4 shadow-lg"
           />
           <h1 className="text-3xl font-bold tracking-tight">HomeVault</h1>

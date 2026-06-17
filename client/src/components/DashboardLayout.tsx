@@ -59,6 +59,7 @@ import {
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
+import { HomeVaultLogo } from "@/components/HomeVaultLogo";
 
 type LucideIcon = React.ComponentType<
   React.SVGProps<SVGSVGElement> & { className?: string }
@@ -447,11 +448,8 @@ function DashboardLayoutContent({
                 </button>
               ) : (
                 <>
-                  <img
-                    src="/favicon.svg"
-                    alt="HomeVault"
-                    width={32}
-                    height={32}
+                  <HomeVaultLogo
+                    size={32}
                     className="w-8 h-8 rounded-lg shrink-0"
                   />
                   <div className="flex-1 min-w-0">
