@@ -448,7 +448,10 @@ function DashboardLayoutContent({
                 </button>
               ) : (
                 <>
-                  <HomeVaultLogo size={32} className="w-8 h-8 rounded-lg shrink-0" />
+                  <HomeVaultLogo
+                    size={32}
+                    className="w-8 h-8 rounded-lg shrink-0"
+                  />
                   <div className="flex-1 min-w-0">
                     <PropertySwitcher isCollapsed={false} />
                   </div>
