@@ -31,7 +31,7 @@ async function attachRepayments(
 }
 
 export async function getLoans(
-  userId: number,
+  tenantId: number,
   propertyId: number,
   limit = 500,
   offset = 0
@@ -40,7 +40,7 @@ export async function getLoans(
   const rows = await db
     .select()
     .from(loans)
-    .where(and(eq(loans.ownerId, userId), eq(loans.propertyId, propertyId)))
+    .where(and(eq(loans.tenantId, tenantId), eq(loans.propertyId, propertyId)))
     .orderBy(desc(loans.createdAt))
     .limit(limit)
     .offset(offset);
@@ -48,10 +48,19 @@ export async function getLoans(
 }
 
 export async function getLoanById(
-  id: string
+  id: string,
+  tenantId?: number
 ): Promise<LoanWithRepayments | null> {
   const db = await getDb();
-  const result = await db.select().from(loans).where(eq(loans.id, id)).limit(1);
+  const result = await db
+    .select()
+    .from(loans)
+    .where(
+      tenantId == null
+        ? eq(loans.id, id)
+        : and(eq(loans.id, id), eq(loans.tenantId, tenantId))
+    )
+    .limit(1);
   if (!result[0]) return null;
   const [withRep] = await attachRepayments([result[0]]);
   return withRep;
@@ -68,7 +77,7 @@ export async function createLoan(data: typeof loans.$inferInsert) {
 
 export async function updateLoan(
   id: string,
-  ownerId: number,
+  tenantId: number,
   data: Partial<Loan>
 ) {
   const db = await getDb();
@@ -78,11 +87,11 @@ export async function updateLoan(
   await db
     .update(loans)
     .set(normalized)
-    .where(and(eq(loans.id, id), eq(loans.ownerId, ownerId)));
+    .where(and(eq(loans.id, id), eq(loans.tenantId, tenantId)));
   return data;
 }
 
-export async function deleteLoan(id: string, ownerId: number) {
+export async function deleteLoan(id: string, tenantId: number) {
   const db = await getDb();
   // Clear dangling links so paid "Loan" expenses don't later try to reconcile
   // against a loan that no longer exists. Repayments cascade-delete via FK.
@@ -92,7 +101,7 @@ export async function deleteLoan(id: string, ownerId: number) {
     .where(eq(expenses.loanId, id));
   await db
     .delete(loans)
-    .where(and(eq(loans.id, id), eq(loans.ownerId, ownerId)));
+    .where(and(eq(loans.id, id), eq(loans.tenantId, tenantId)));
   return true;
 }
 

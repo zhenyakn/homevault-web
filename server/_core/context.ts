@@ -76,10 +76,9 @@ export async function createContext(
     }
   }
 
-  // Resolve propertyId from the request header, then validate ownership.
-  // This prevents a logged-in user from spoofing another user's propertyId.
-  // NOTE: ownership is still validated by userId here; Phase 3 switches this to
-  // validate the property belongs to the active tenant.
+  // Resolve propertyId from the request header, then validate it belongs to the
+  // active tenant. This prevents a member of one tenant from operating on a
+  // property in another tenant by spoofing the x-property-id header.
   const rawPropertyId = opts.req.headers["x-property-id"];
   const requestedId = rawPropertyId
     ? parseInt(rawPropertyId as string, 10) || 1
@@ -87,14 +86,14 @@ export async function createContext(
 
   let propertyId = requestedId;
 
-  if (user) {
-    const isOwned = await db.checkPropertyOwnership(user.id, requestedId);
+  if (user && tenantId != null) {
+    const inTenant = await db.checkPropertyInTenant(tenantId, requestedId);
 
-    if (!isOwned) {
-      // Fall back to the first owned property rather than silently
-      // serving data from an unrelated property.
-      const ownedProperties = await db.getPropertiesByUser(user.id);
-      propertyId = ownedProperties[0]?.id ?? requestedId;
+    if (!inTenant) {
+      // Fall back to the tenant's first property rather than silently serving
+      // data from a property outside the active tenant.
+      const tenantProperties = await db.getPropertiesByTenant(tenantId);
+      propertyId = tenantProperties[0]?.id ?? requestedId;
     }
   }
 

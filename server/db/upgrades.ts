@@ -16,7 +16,7 @@ export type UpgradeOptionWithPayments = UpgradeOption & {
 };
 
 export async function getUpgrades(
-  userId: number,
+  tenantId: number,
   propertyId: number,
   limit = 500,
   offset = 0
@@ -26,33 +26,37 @@ export async function getUpgrades(
     .select()
     .from(upgrades)
     .where(
-      and(eq(upgrades.ownerId, userId), eq(upgrades.propertyId, propertyId))
+      and(eq(upgrades.tenantId, tenantId), eq(upgrades.propertyId, propertyId))
     )
     .orderBy(desc(upgrades.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getUpgradeById(id: string) {
+export async function getUpgradeById(id: string, tenantId?: number) {
   const db = await getDb();
   const result = await db
     .select()
     .from(upgrades)
-    .where(eq(upgrades.id, id))
+    .where(
+      tenantId == null
+        ? eq(upgrades.id, id)
+        : and(eq(upgrades.id, id), eq(upgrades.tenantId, tenantId))
+    )
     .limit(1);
   return result[0] ?? null;
 }
 
-export async function filterOwnedUpgradeIds(
+export async function filterTenantUpgradeIds(
   ids: string[],
-  ownerId: number
+  tenantId: number
 ): Promise<string[]> {
   if (ids.length === 0) return [];
   const db = await getDb();
   const rows = await db
     .select({ id: upgrades.id })
     .from(upgrades)
-    .where(and(inArray(upgrades.id, ids), eq(upgrades.ownerId, ownerId)));
+    .where(and(inArray(upgrades.id, ids), eq(upgrades.tenantId, tenantId)));
   return rows.map(r => r.id);
 }
 
@@ -66,7 +70,7 @@ export async function createUpgrade(data: typeof upgrades.$inferInsert) {
 
 export async function updateUpgrade(
   id: string,
-  ownerId: number,
+  tenantId: number,
   data: Partial<Upgrade>
 ) {
   const db = await getDb();
@@ -76,15 +80,15 @@ export async function updateUpgrade(
   await db
     .update(upgrades)
     .set(normalized)
-    .where(and(eq(upgrades.id, id), eq(upgrades.ownerId, ownerId)));
+    .where(and(eq(upgrades.id, id), eq(upgrades.tenantId, tenantId)));
   return data;
 }
 
-export async function deleteUpgrade(id: string, ownerId: number) {
+export async function deleteUpgrade(id: string, tenantId: number) {
   const db = await getDb();
   await db
     .delete(upgrades)
-    .where(and(eq(upgrades.id, id), eq(upgrades.ownerId, ownerId)));
+    .where(and(eq(upgrades.id, id), eq(upgrades.tenantId, tenantId)));
   return true;
 }
 

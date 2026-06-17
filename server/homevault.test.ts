@@ -17,6 +17,9 @@ function createTestContext(): TrpcContext {
 
   return {
     user,
+    propertyId: 1,
+    tenantId: 1,
+    tenantRole: "owner",
     req: {
       protocol: "https",
       headers: {},

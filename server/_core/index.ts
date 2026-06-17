@@ -125,7 +125,9 @@ if (process.argv.includes("--seed-mock-only")) {
       });
       const user = await db.getUserByOpenId(openId);
       if (!user) throw new Error("Could not find or create owner user");
-      const propertyId = await db.seedMockProperty(user.id);
+      // Ensure the owner has a tenant, then seed the demo data into it.
+      const { tenantId } = await db.ensurePersonalTenant(user.id, user.name);
+      const propertyId = await db.seedMockProperty(user.id, tenantId);
       logger.info(
         { propertyId },
         "[Seed] Demo property created/updated. Exiting."

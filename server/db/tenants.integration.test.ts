@@ -17,6 +17,7 @@ describe.skipIf(!TEST_DB)("tenant helpers (real MySQL)", () => {
   let schema: typeof import("../../drizzle/schema");
   let alice: number;
   let bob: number;
+  let carol: number;
 
   const mkUser = async (label: string): Promise<number> => {
     const db = await getDb();
@@ -38,6 +39,7 @@ describe.skipIf(!TEST_DB)("tenant helpers (real MySQL)", () => {
 
     alice = await mkUser("Alice");
     bob = await mkUser("Bob");
+    carol = await mkUser("Carol");
   });
 
   it("creates a tenant with the creator as owner", async () => {
@@ -198,6 +200,89 @@ describe.skipIf(!TEST_DB)("tenant helpers (real MySQL)", () => {
       };
       const caller = appRouter.createCaller(noTenantCtx);
       await expect(caller.tenant.current()).rejects.toThrow();
+    });
+  });
+
+  describe("cross-tenant data isolation", () => {
+    let appRouter: typeof import("../routers").appRouter;
+
+    const callerFor = async (userId: number) => {
+      // Resolve the user's tenant the same way the request context does, then
+      // build a caller scoped to it (propertyId resolves server-side per call).
+      const active = await tenantsDb.resolveActiveTenant(userId, {});
+      const props = await (
+        await import("./properties")
+      ).getPropertiesByTenant(active.tenantId);
+      return appRouter.createCaller({
+        user: { id: userId, role: "user", globalRole: "user" },
+        propertyId: props[0]?.id ?? 1,
+        tenantId: active.tenantId,
+        tenantRole: active.role,
+        req: { headers: {} },
+        res: {},
+      } as any);
+    };
+
+    beforeAll(async () => {
+      ({ appRouter } = await import("../routers"));
+    });
+
+    it("a member shares access; an outsider cannot read or mutate", async () => {
+      // Alice owns a tenant with a property + an expense; Bob is added as a
+      // member and must see/edit it. Carol (separate tenant) must not.
+      const aliceCaller = await callerFor(alice);
+      await aliceCaller.property.createWithWizard({
+        mode: "owned_personal",
+        houseName: "Shared House",
+      });
+
+      // Re-resolve Alice's caller so the active property is the new one.
+      const tenantId = (await tenantsDb.resolveActiveTenant(alice, {}))
+        .tenantId;
+      const aliceProps = await (
+        await import("./properties")
+      ).getPropertiesByTenant(tenantId);
+      const sharedProp = aliceProps.find(p => p.houseName === "Shared House")!;
+      const mkCaller = (userId: number) =>
+        appRouter.createCaller({
+          user: { id: userId, role: "user", globalRole: "user" },
+          propertyId: sharedProp.id,
+          tenantId,
+          tenantRole: "owner",
+          req: { headers: {} },
+          res: {},
+        } as any);
+
+      const expense = await mkCaller(alice).expenses.create({
+        name: "Shared bill",
+        amount: 1000,
+        date: "2026-02-01",
+        category: "Utilities",
+      });
+
+      // Bob joins Alice's tenant → sees the shared expense and can edit it.
+      await tenantsDb.addMember({ tenantId, userId: bob, role: "member" });
+      const bobList = await mkCaller(bob).expenses.list();
+      expect(bobList.map(e => e.id)).toContain(expense.id);
+      await mkCaller(bob).expenses.update({
+        id: expense.id,
+        data: { amount: 2000 },
+      });
+
+      // Carol (her own tenant) cannot see Alice's tenant's data, and updating
+      // the shared expense from her tenant is a no-op (wrong tenant scope).
+      const carolCaller = await callerFor(carol);
+      const carolList = await carolCaller.expenses.list();
+      expect(carolList.map(e => e.id)).not.toContain(expense.id);
+
+      await carolCaller.expenses.update({
+        id: expense.id,
+        data: { amount: 999999 },
+      });
+      const afterCarol = await (
+        await import("./expenses")
+      ).getExpenseById(expense.id);
+      expect(afterCarol?.amount).toBe(2000); // unchanged by Carol
     });
   });
 });

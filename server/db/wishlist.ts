@@ -3,7 +3,7 @@ import { wishlistItems, type WishlistItem } from "../../drizzle/schema";
 import { getDb } from "./client";
 
 export async function getWishlistItems(
-  userId: number,
+  tenantId: number,
   propertyId: number,
   limit = 500,
   offset = 0
@@ -14,7 +14,7 @@ export async function getWishlistItems(
     .from(wishlistItems)
     .where(
       and(
-        eq(wishlistItems.ownerId, userId),
+        eq(wishlistItems.tenantId, tenantId),
         eq(wishlistItems.propertyId, propertyId)
       )
     )
@@ -23,12 +23,16 @@ export async function getWishlistItems(
     .offset(offset);
 }
 
-export async function getWishlistItemById(id: string) {
+export async function getWishlistItemById(id: string, tenantId?: number) {
   const db = await getDb();
   const result = await db
     .select()
     .from(wishlistItems)
-    .where(eq(wishlistItems.id, id))
+    .where(
+      tenantId == null
+        ? eq(wishlistItems.id, id)
+        : and(eq(wishlistItems.id, id), eq(wishlistItems.tenantId, tenantId))
+    )
     .limit(1);
   return result[0] ?? null;
 }
@@ -45,7 +49,7 @@ export async function createWishlistItem(
 
 export async function updateWishlistItem(
   id: string,
-  ownerId: number,
+  tenantId: number,
   data: Partial<WishlistItem>
 ) {
   const db = await getDb();
@@ -55,14 +59,14 @@ export async function updateWishlistItem(
   await db
     .update(wishlistItems)
     .set(normalized)
-    .where(and(eq(wishlistItems.id, id), eq(wishlistItems.ownerId, ownerId)));
+    .where(and(eq(wishlistItems.id, id), eq(wishlistItems.tenantId, tenantId)));
   return data;
 }
 
-export async function deleteWishlistItem(id: string, ownerId: number) {
+export async function deleteWishlistItem(id: string, tenantId: number) {
   const db = await getDb();
   await db
     .delete(wishlistItems)
-    .where(and(eq(wishlistItems.id, id), eq(wishlistItems.ownerId, ownerId)));
+    .where(and(eq(wishlistItems.id, id), eq(wishlistItems.tenantId, tenantId)));
   return true;
 }

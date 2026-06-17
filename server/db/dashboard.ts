@@ -10,7 +10,7 @@ import {
   users,
 } from "../../drizzle/schema";
 import { getDb } from "./client";
-import { getProperty, getPropertiesByUser } from "./properties";
+import { getProperty, getPropertiesByTenant } from "./properties";
 import { computeLoanProgress } from "../../shared/loanProgress";
 
 // ── Pure helpers (exported for unit tests) ────────────────────────────────────
@@ -111,7 +111,7 @@ export async function getRecentActivity(propertyId: number) {
  * getDashboardStats so the header can poll it cheaply on every route without
  * dragging the full dashboard aggregate (expenses/loans/upgrades/portfolio).
  */
-export async function getAttentionItems(userId: number, propertyId: number) {
+export async function getAttentionItems(tenantId: number, propertyId: number) {
   const db = await getDb();
   const now = new Date();
   const today = now.toISOString().split("T")[0];
@@ -127,7 +127,7 @@ export async function getAttentionItems(userId: number, propertyId: number) {
       .from(expenses)
       .where(
         and(
-          eq(expenses.ownerId, userId),
+          eq(expenses.tenantId, tenantId),
           eq(expenses.propertyId, propertyId),
           eq(expenses.isRecurring, true),
           eq(expenses.isPaid, false),
@@ -139,7 +139,7 @@ export async function getAttentionItems(userId: number, propertyId: number) {
       .from(repairs)
       .where(
         and(
-          eq(repairs.ownerId, userId),
+          eq(repairs.tenantId, tenantId),
           eq(repairs.propertyId, propertyId),
           notInArray(repairs.status, ["completed", "cancelled"]),
           inArray(repairs.priority, ["urgent", "high"]),
@@ -151,7 +151,7 @@ export async function getAttentionItems(userId: number, propertyId: number) {
   return { overdueExpenses, staleRepairs };
 }
 
-export async function getDashboardStats(userId: number, propertyId: number) {
+export async function getDashboardStats(tenantId: number, propertyId: number) {
   const db = await getDb();
 
   const now = new Date();
@@ -166,19 +166,19 @@ export async function getDashboardStats(userId: number, propertyId: number) {
   const staleCutoffDate = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
 
   const expFilter = and(
-    eq(expenses.ownerId, userId),
+    eq(expenses.tenantId, tenantId),
     eq(expenses.propertyId, propertyId)
   );
   const repFilter = and(
-    eq(repairs.ownerId, userId),
+    eq(repairs.tenantId, tenantId),
     eq(repairs.propertyId, propertyId)
   );
   const upgFilter = and(
-    eq(upgrades.ownerId, userId),
+    eq(upgrades.tenantId, tenantId),
     eq(upgrades.propertyId, propertyId)
   );
   const loanFilter = and(
-    eq(loans.ownerId, userId),
+    eq(loans.tenantId, tenantId),
     eq(loans.propertyId, propertyId)
   );
 
@@ -411,8 +411,8 @@ export async function getDashboardStats(userId: number, propertyId: number) {
 
 // ── Portfolio summary ─────────────────────────────────────────────────────────
 
-export async function getPortfolioSummary(userId: number) {
-  const props = await getPropertiesByUser(userId);
+export async function getPortfolioSummary(tenantId: number) {
+  const props = await getPropertiesByTenant(tenantId);
   if (props.length === 0) return [];
 
   const db = await getDb();
@@ -426,14 +426,17 @@ export async function getPortfolioSummary(userId: number) {
     props.map(async prop => {
       const pid = prop.id;
       const expF = and(
-        eq(expenses.ownerId, userId),
+        eq(expenses.tenantId, tenantId),
         eq(expenses.propertyId, pid)
       );
       const repF = and(
-        eq(repairs.ownerId, userId),
+        eq(repairs.tenantId, tenantId),
         eq(repairs.propertyId, pid)
       );
-      const loanF = and(eq(loans.ownerId, userId), eq(loans.propertyId, pid));
+      const loanF = and(
+        eq(loans.tenantId, tenantId),
+        eq(loans.propertyId, pid)
+      );
 
       const [monthSpentRows, openRepairsCountRows, loanRows] =
         await Promise.all([

@@ -19,6 +19,7 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
   let getDb: typeof import("./client").getDb;
   let schema: typeof import("../../drizzle/schema");
   let userId: number;
+  let tenantId: number;
 
   beforeAll(async () => {
     process.env.DATABASE_URL = TEST_DB!;
@@ -36,6 +37,8 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
       name: "APS",
     });
     userId = (res as any).insertId as number;
+    const tenantsDb = await import("./tenants");
+    tenantId = (await tenantsDb.ensurePersonalTenant(userId, "APS")).tenantId;
   });
 
   it("creates a search with candidates and lists them user-scoped", async () => {
@@ -43,6 +46,7 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
     await aps.createSearch({
       id: searchId,
       userId,
+      tenantId,
       name: "Rental hunt",
       searchType: "rent",
       targetBudget: 700000,
@@ -52,6 +56,7 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
       id: nanoid(),
       searchId,
       userId,
+      tenantId,
       title: "Sea view 2BR",
       price: 650000,
       deposit: 130000,
@@ -62,13 +67,14 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
       id: nanoid(),
       searchId,
       userId,
+      tenantId,
       title: "Quiet 3BR",
       price: 600000,
       rooms: 3,
       stage: "saved",
     });
 
-    const searches = await aps.getSearches(userId);
+    const searches = await aps.getSearches(tenantId);
     expect(searches.find(s => s.id === searchId)).toBeTruthy();
 
     const candidates = await aps.getCandidates(searchId);
@@ -83,6 +89,7 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
     await aps.createSearch({
       id: searchId,
       userId,
+      tenantId,
       name: "Convert me",
       searchType: "rent",
     });
@@ -91,6 +98,7 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
       id: candidateId,
       searchId,
       userId,
+      tenantId,
       title: "The one",
       address: "Allenby 1",
       price: 680000,
@@ -103,6 +111,7 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
 
     const { propertyId } = await aps.convertCandidateToProperty(
       userId,
+      tenantId,
       candidateId
     );
     expect(propertyId).toBeGreaterThan(0);
@@ -133,11 +142,16 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
       name: "Other",
     });
     const otherUserId = (other as any).insertId as number;
+    const tenantsDb = await import("./tenants");
+    const otherTenantId = (
+      await tenantsDb.ensurePersonalTenant(otherUserId, "Other")
+    ).tenantId;
 
     const searchId = nanoid();
     await aps.createSearch({
       id: searchId,
       userId: otherUserId,
+      tenantId: otherTenantId,
       name: "Not yours",
       searchType: "buy",
     });
@@ -146,13 +160,15 @@ describe.skipIf(!TEST_DB)("apartment search flow (real MySQL)", () => {
       id: candidateId,
       searchId,
       userId: otherUserId,
+      tenantId: otherTenantId,
       title: "Off limits",
       price: 1000000,
       stage: "saved",
     });
 
+    // Converting from our tenant must fail — the candidate is in another tenant.
     await expect(
-      aps.convertCandidateToProperty(userId, candidateId)
+      aps.convertCandidateToProperty(userId, tenantId, candidateId)
     ).rejects.toThrow(/not found/i);
   });
 });
