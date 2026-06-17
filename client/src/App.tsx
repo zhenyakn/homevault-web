@@ -40,6 +40,7 @@ import Calendar from "./pages/Calendar";
 import Inventory from "./pages/Inventory";
 import Settings from "./pages/Settings";
 import Members from "./pages/Members";
+import Admin from "./pages/Admin";
 import Portfolio from "./pages/Portfolio";
 import UpgradeDetail from "./pages/UpgradeDetail";
 import RepairDetail from "./pages/RepairDetail";
@@ -178,6 +179,7 @@ function AppRouter() {
             <Route path="/accept-invite" component={AuthedAcceptInvite} />
             <Route path="/verify-email" component={VerifyEmailPage} />
             <Route path="/members" component={Members} />
+            <Route path="/admin" component={Admin} />
             <Route path="/settings" component={Settings} />
             <Route path="/settings/:section" component={Settings} />
             <Route path="/property-settings">

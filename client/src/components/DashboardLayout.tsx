@@ -51,6 +51,7 @@ import {
   Receipt,
   Search,
   Settings,
+  Shield,
   ShoppingCart,
   Sun,
   TrendingUp,
@@ -132,6 +133,7 @@ const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
     pageKey: "nav.apartmentSearch",
   },
   "/members": { sectionKey: "nav.group.account", pageKey: "nav.members" },
+  "/admin": { sectionKey: "nav.group.account", pageKey: "nav.admin" },
   "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
 };
 
@@ -364,18 +366,29 @@ function DashboardLayoutContent({
     onSearchOpen?.();
   };
 
+  // Server-wide admins get an extra Admin console entry in the Account group.
+  const isSuperAdmin =
+    user?.globalRole === "superadmin" || user?.role === "admin";
+
   // Portfolio is the home for all property settings, so it's always in the nav.
-  const navGroups: NavGroup[] = NAV_GROUPS.map(g =>
-    g.labelKey === "nav.group.overview"
-      ? {
-          ...g,
-          items: [
-            ...g.items,
-            { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
-          ],
-        }
-      : g
-  );
+  const navGroups: NavGroup[] = NAV_GROUPS.map(g => {
+    if (g.labelKey === "nav.group.overview") {
+      return {
+        ...g,
+        items: [
+          ...g.items,
+          { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
+        ],
+      };
+    }
+    if (g.labelKey === "nav.group.account" && isSuperAdmin) {
+      return {
+        ...g,
+        items: [{ icon: Shield, key: "nav.admin", path: "/admin" }, ...g.items],
+      };
+    }
+    return g;
+  });
 
   // Breadcrumb lookup
   const pathKey =

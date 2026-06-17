@@ -37,6 +37,7 @@ import {
 import { logger } from "./_core/logger";
 import { searchRouter } from "./searchRouter";
 import { tenantRouter } from "./tenantRouter";
+import { adminRouter } from "./adminRouter";
 import {
   expenses,
   repairs,
@@ -436,6 +437,7 @@ export const appRouter = router({
   search: searchRouter,
   notification: notificationRouter,
   tenant: tenantRouter,
+  admin: adminRouter,
   auth: router({
     // In NO_AUTH mode (HA addon) ctx.user may be null on the very first
     // request if ingress strips/delays the session cookie. Fall back to
@@ -488,6 +490,15 @@ export const appRouter = router({
           throw new TRPCError({
             code: "CONFLICT",
             message: EMAIL_TAKEN_ERR_MSG,
+          });
+        }
+
+        // Open self-registration can be turned off from the admin console;
+        // invited users may always register (the invite is the authorization).
+        if (!input.inviteToken && !(await db.getSignupsEnabled())) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Registration is currently disabled",
           });
         }
 

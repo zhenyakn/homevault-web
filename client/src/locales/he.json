@@ -58,7 +58,8 @@
       "account": "חשבון",
       "search": "חיפוש"
     },
-    "apartmentSearch": "חיפוש דירה"
+    "apartmentSearch": "חיפוש דירה",
+    "admin": "ניהול"
   },
   "common": {
     "add": "הוסף",

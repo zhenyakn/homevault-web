@@ -58,7 +58,8 @@
       "account": "Аккаунт",
       "search": "Поиск"
     },
-    "apartmentSearch": "Поиск квартиры"
+    "apartmentSearch": "Поиск квартиры",
+    "admin": "Админ"
   },
   "common": {
     "add": "Добавить",

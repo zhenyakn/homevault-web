@@ -58,7 +58,8 @@
       "account": "Account",
       "search": "Search"
     },
-    "apartmentSearch": "Apartment Search"
+    "apartmentSearch": "Apartment Search",
+    "admin": "Admin"
   },
   "common": {
     "add": "Add",
