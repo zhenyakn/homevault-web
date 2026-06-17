@@ -79,6 +79,7 @@ const HV_HEADER_ROUTES = [
   "/wishlist",
 ];
 import { HomeFileCompleteness } from "@/components/homevault/HomeFileCompleteness";
+import { HomeVaultLogo } from "@/components/HomeVaultLogo";
 import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "@/components/DashboardLayoutSkeleton";
@@ -474,11 +475,8 @@ function DashboardLayoutContent({
           {/* ── Brand ─────────────────────────────────────────────────── */}
           <SidebarHeader className="px-[22px] pb-0 pt-7">
             <div className="mb-9 flex items-center gap-3">
-              <img
-                src="/favicon.svg"
-                alt=""
-                width={38}
-                height={38}
+              <HomeVaultLogo
+                size={38}
                 className="h-[38px] w-[38px] shrink-0 rounded-[13px]"
               />
               <span className="text-[22px] font-extrabold tracking-[-0.02em] text-white">
