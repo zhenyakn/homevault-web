@@ -249,7 +249,9 @@ cookie, so downstream code is unchanged).
      `user_credentials` (argon2id hash).
   3. Tenant choice (see §3.5).
   4. Send verification email (`email_tokens` type `verify_email`).
-  5. Issue session (optionally gated until email verified — configurable).
+  5. Issue session immediately. **In Stage 1 email verification is _not_ enforced** — the
+     verification email is sent and the screen exists, but unverified users can still sign in.
+     Making verification a hard gate before first login is **deferred to Stage 2** (§4.3).
 - **Login** (`auth.loginLocal`): verify hash, issue session token via existing
   `sdk.createSessionToken`.
 - **Email verification** (`auth.verifyEmail`) and **password reset**
@@ -329,8 +331,11 @@ suspended, global config changed. Surfaced in the admin console.
 - **Auth pages:** registration, login (email/password + existing OAuth button), forgot/reset
   password, email-verification screen, accept-invite screen. (Extends the current `SignIn`.)
 - **Tenant context:** a `TenantProvider` (mirroring the property context) holding the active
-  tenant; send `x-tenant-id` on every tRPC request (alongside `x-property-id`); a tenant
-  switcher in the header for multi-tenant users.
+  tenant; send `x-tenant-id` on every tRPC request (alongside `x-property-id`). **Stage 1
+  assumes a single active tenant per user** — the active tenant is resolved from
+  `defaultTenantId` / first membership. The in-header **tenant switcher UI for users who belong
+  to multiple tenants is deferred to Stage 2** (§4.3). The schema and context already support
+  many memberships, so this is purely additive UI later.
 - **Tenant settings (in-app, for owners/admins):** a "Tenant / Members" section in Settings —
   invite members, list members, change roles, remove members, rename tenant. Gated by
   `tenantRole`.
@@ -342,8 +347,8 @@ suspended, global config changed. Surfaced in the admin console.
 - **Unit:** tenant-scoping in each `server/db/*.ts` module; role guards; password hashing;
   token lifecycle.
 - **Integration (real MySQL, existing harness):** cross-tenant isolation (user A cannot read/
-  write tenant B), invite→accept flow, register→verify→login, role enforcement on mutations,
-  backfill migration idempotency.
+  write tenant B), invite→accept flow, register→login (+ verify-token lifecycle, not gated in
+  Stage 1), role enforcement on mutations, backfill migration idempotency.
 - **E2E (Playwright, existing `pnpm qa`):** register-new-tenant, invite-and-join,
   admin-console user/tenant management, across desktop/mobile/RTL.
 - **Migration test:** snapshot a single-user DB, run backfill, assert every record gets the
@@ -386,6 +391,19 @@ gating rather than another data refactor.
 - **Scaling:** connection pooling, read replicas, background-job isolation (the reminder
   scheduler must iterate tenants safely).
 - **Observability:** per-tenant metrics, error tagging, admin dashboards.
+
+### 4.3 Carried over from Stage 1 (explicitly deferred)
+
+These two items were raised during Stage 1 design and are intentionally **part of Stage 2**:
+
+- **Enforced email verification before first login.** Stage 1 sends the verification email and
+  ships the verification screen but does not block unverified sign-in. Stage 2 makes
+  verification a hard gate (with a grace-period / resend policy), enabled by default in SAAS
+  mode and configurable from the admin console.
+- **Multi-tenant switcher UI.** Stage 1 resolves a single active tenant per user. Stage 2 adds
+  the in-header tenant switcher for users who belong to multiple tenants. The schema, context,
+  and `x-tenant-id` plumbing already support this, so it is purely additive UI plus the
+  membership-management flows that let a user end up in more than one tenant.
 
 > Recommendation: ship Stage 1 in **standalone defaults** (registration off, single tenant) so
 > existing installs upgrade with zero behavioural change, then flip `APP_MODE=saas` for the
@@ -441,10 +459,18 @@ gating rather than another data refactor.
 
 ---
 
-## 8. Open Questions (for Stage 2 / refinement)
+## 8. Resolved & Open Questions
 
-- Should email verification be **required** before first login, or grace-period allowed?
-- Multi-tenant per user in the **UI** now, or assume one active tenant for Stage 1 and add the
-  switcher later? (Schema supports many; UI can lag.)
-- Request-to-join (self-service) vs. invite-only for Stage 1? (Plan defaults to invite-only.)
+**Resolved — moved to Stage 2 (§4.3):**
+
+- Enforced email verification before first login → **Stage 2** (Stage 1 sends the email but
+  does not gate sign-in).
+- Multi-tenant switcher UI → **Stage 2** (Stage 1 assumes one active tenant per user; schema
+  already supports many).
+
+**Open (for Stage 2 / refinement):**
+
+- Email-verification grace-period / resend policy specifics (Stage 2).
+- Request-to-join (self-service) vs. invite-only. Stage 1 defaults to **invite-only**;
+  request-to-join is a candidate follow-up.
 - Billing provider and plan tiers for SAAS (Stage 2).
