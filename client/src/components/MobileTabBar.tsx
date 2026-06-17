@@ -20,6 +20,17 @@ const TABS: { icon: LucideIcon; key: string; path: string }[] = [
  * that opens the full sidebar sheet for everything else. Rendered only on mobile
  * by DashboardLayout (inside the sidebar provider, so useSidebar is available).
  */
+/**
+ * Mark a tab active when the current location matches its path or sits within
+ * one of its sub-routes (e.g. /expenses/123 keeps the Expenses tab active),
+ * mirroring the desktop sidebar's matching logic. The root path matches exactly.
+ */
+function isTabActive(location: string, path: string) {
+  return path === "/"
+    ? location === "/"
+    : location === path || location.startsWith(path + "/");
+}
+
 export default function MobileTabBar() {
   const { t } = useTranslation();
   const [location, setLocation] = useLocation();
@@ -27,7 +38,7 @@ export default function MobileTabBar() {
 
   const itemClass = (active: boolean) =>
     cn(
-      "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors",
+      "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors",
       active ? "text-primary" : "text-muted-foreground hover:text-foreground"
     );
 
@@ -39,7 +50,7 @@ export default function MobileTabBar() {
     >
       {TABS.map(tab => {
         const Icon = tab.icon;
-        const active = location === tab.path;
+        const active = isTabActive(location, tab.path);
         return (
           <button
             key={tab.path}
@@ -48,7 +59,17 @@ export default function MobileTabBar() {
             aria-current={active ? "page" : undefined}
             className={itemClass(active)}
           >
-            <Icon className="h-5 w-5" />
+            {active && (
+              <span className="absolute inset-x-0 top-0 mx-auto h-0.5 w-8 rounded-full bg-primary" />
+            )}
+            <span
+              className={cn(
+                "flex h-7 w-12 items-center justify-center rounded-full transition-colors",
+                active && "bg-primary/10"
+              )}
+            >
+              <Icon className="h-5 w-5" />
+            </span>
             <span>{t(tab.key)}</span>
           </button>
         );
@@ -58,7 +79,9 @@ export default function MobileTabBar() {
         onClick={() => setOpenMobile(true)}
         className={itemClass(false)}
       >
-        <Menu className="h-5 w-5" />
+        <span className="flex h-7 w-12 items-center justify-center">
+          <Menu className="h-5 w-5" />
+        </span>
         <span>{t("nav.more")}</span>
       </button>
     </nav>
