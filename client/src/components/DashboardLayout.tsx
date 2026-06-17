@@ -447,9 +447,13 @@ function DashboardLayoutContent({
                 </button>
               ) : (
                 <>
-                  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary shrink-0">
-                    <Home className="h-4 w-4 text-primary-foreground" />
-                  </div>
+                  <img
+                    src="/favicon.svg"
+                    alt="HomeVault"
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 rounded-lg shrink-0"
+                  />
                   <div className="flex-1 min-w-0">
                     <PropertySwitcher isCollapsed={false} />
                   </div>
