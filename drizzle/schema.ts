@@ -111,9 +111,10 @@ export const properties = mysqlTable(
     deposit: int("deposit"),
     landlord: varchar("landlord", { length: 200 }),
     userId: int("userId").notNull().default(1),
-    // Owning tenant — the multi-tenant isolation boundary. Nullable during the
-    // additive Stage-1 migration; backfilled from `userId`'s tenant, then made
-    // NOT NULL in a later phase. Soft reference (no FK) for now.
+    // Owning tenant — the multi-tenant isolation boundary. Stays nullable: the
+    // add-on seeds a placeholder property (id=1) before any user/tenant exists,
+    // so a NULL here is legitimate for standalone installs. New properties are
+    // always created with a tenant. Soft reference (no FK).
     tenantId: int("tenantId"),
   },
   table => ({
@@ -163,7 +164,7 @@ export const expenses = mysqlTable(
     // a matching loanRepayment and decrements the loan's currentBalance.
     loanId: varchar("loanId", { length: 36 }),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -222,7 +223,7 @@ export const repairs = mysqlTable(
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -322,7 +323,7 @@ export const upgrades = mysqlTable(
     attachments: json("attachments").$type<string[]>(),
     roiEstimate: int("roiEstimate"),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -435,7 +436,7 @@ export const loans = mysqlTable(
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -505,7 +506,7 @@ export const wishlistItems = mysqlTable(
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -544,7 +545,7 @@ export const purchaseCosts = mysqlTable(
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -591,7 +592,7 @@ export const calendarEvents = mysqlTable(
     externalCalendarId: varchar("externalCalendarId", { length: 200 }),
     notes: text("notes"),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -649,7 +650,7 @@ export const inventoryItems = mysqlTable(
     photoUrl: text("photoUrl"),
     serialNumber: varchar("serialNumber", { length: 200 }),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -706,6 +707,8 @@ export const files = mysqlTable(
     // folders mirror this).
     propertyId: int("propertyId"),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    // Owning tenant — nullable: files stay owner-scoped until Stage 2 per-tenant
+    // storage. Backfilled for existing rows; new uploads don't set it yet.
     tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     deletedAt: timestamp("deletedAt"),
@@ -793,6 +796,8 @@ export const notificationLog = mysqlTable(
     reason: varchar("reason", { length: 300 }),
     readAt: timestamp("readAt"),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    // Owning tenant — nullable: notification writes don't stamp it yet
+    // (backfilled for existing rows).
     tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
@@ -887,7 +892,7 @@ export const apartmentSearches = mysqlTable(
     ),
     notes: text("notes"),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -962,7 +967,7 @@ export const apartmentCandidates = mysqlTable(
       () => properties.id
     ),
     // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
-    tenantId: int("tenantId"),
+    tenantId: int("tenantId").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -1124,6 +1129,7 @@ export const auditLog = mysqlTable(
   {
     id: int("id").primaryKey().autoincrement(),
     actorUserId: int("actorUserId"),
+    // Nullable: server-wide actions (admin console) have no tenant.
     tenantId: int("tenantId"),
     action: varchar("action", { length: 100 }).notNull(),
     targetType: varchar("targetType", { length: 64 }),

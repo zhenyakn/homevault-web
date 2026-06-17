@@ -291,6 +291,13 @@ The defining Stage-1 feature. Two paths after account creation:
 - Keep the legacy `role` column readable during the transition; switch all checks to
   `globalRole` (console) and `tenant_members.role` (in-tenant), then drop `role` in a later
   cleanup migration.
+  - ✅ **Done (Phase 8):** all authorization now reads `globalRole` (the admin console,
+    `superAdminProcedure`, and the inline storage/Drive/file-reaper guards) or
+    `tenant_members.role`; `upsertUser` auto-provisions the configured owner as `superadmin`.
+    The `role` column is retained and still written for back-compat; `superAdminProcedure`
+    accepts it as a fallback. The irreversible `ALTER TABLE users DROP COLUMN role` is the
+    remaining "later cleanup migration" — deliberately deferred so the globalRole-only code can
+    ship and soak first.
 
 ### 3.7 Admin console (global / super-admin)
 
@@ -429,7 +436,7 @@ These two items were raised during Stage 1 design and are intentionally **part o
 | **5. Registration flow** ✅ | New-tenant path + invite/accept join path | Done (backend) — `register` takes `tenantName` (create-new) or `inviteToken` (join); admin invite create/list/revoke; `tenant.invites.accept` for existing users; public `tenant.inviteInfo`; audit log entries. Verified by real-MySQL integration tests. **UI** (auth + accept-invite pages) lands in Phase 6. |
 | **6. Auth UI + member mgmt** ✅ | Auth pages (login/register/forgot/reset/verify/accept-invite); Members page | Done — signed-out auth routes wired into `App`; `register` exposes the new-tenant (`tenantName`) vs join (`inviteToken`) choice; Members page (invite/list/revoke + role change/remove) backed by new owner/admin mutations with a last-owner guard; nav entry + i18n. Tenant **switcher** stays Stage 2 (single active tenant). Verified: typecheck, production build, full suite (844). |
 | **7. Admin console** ✅ | `adminRouter` + `pages/Admin.tsx` (overview/users/tenants/audit) | Done — `superAdminProcedure`-gated stats, user role management (last-super-admin guard), tenant suspend/reactivate, global audit log, and a server-config toggle for open registration (enforced in `auth.register`; invites bypass). Superadmin-only nav entry + page. Verified by real-MySQL integration tests + full suite. |
-| **8. Harden & finalize** | Make `tenantId` NOT NULL; drop legacy `role`; i18n (en/he/ru); E2E across desktop/mobile/RTL | |
+| **8. Harden & finalize** ✅ (mostly) | `tenantId` → NOT NULL on the 10 fully-stamped entity tables (conditional, boot-safe); authorization moved off legacy `role` → `globalRole`; owner auto-provisioned as superadmin | Done — `properties`/`files`/`notification_log`/`audit_log` stay nullable by design; the **physical `DROP COLUMN role`** is deferred to a dedicated cleanup migration (§3.6) once globalRole-only auth has soaked; broader Playwright E2E left to the existing `qa-nightly` suite. Verified: typecheck, build, unit (852) + integration (20). |
 | **9. Stage 2 plan kickoff** | `APP_MODE` flag scaffolding + standalone-safe defaults | Bridges to SAAS |
 
 ---

@@ -781,10 +781,10 @@ function HouseholdSection() {
         </Row>
         <Row label={t("settings.role")}>
           <Badge
-            variant={me?.role === "admin" ? "default" : "secondary"}
+            variant={me?.globalRole === "superadmin" ? "default" : "secondary"}
             className="capitalize text-xs h-5"
           >
-            {me?.role ?? "user"}
+            {me?.globalRole === "superadmin" ? "admin" : "user"}
           </Badge>
         </Row>
         <Row label={t("settings.lastSignIn")}>
@@ -1604,7 +1604,7 @@ function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const { save, isPending } = usePropertyAutosave();
   const { data: me } = trpc.profiles.current.useQuery();
-  const isAdmin = me?.role === "admin";
+  const isAdmin = me?.globalRole === "superadmin" || me?.role === "admin";
   const mapsProvider = p?.mapsProvider ?? "google";
   // Selected storage backend is owned here so the Google Drive panel only
   // renders when Drive is the selected backend (not always, as before).

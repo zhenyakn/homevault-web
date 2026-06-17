@@ -56,6 +56,7 @@ const SERVER_FIELDS = {
   id: true,
   ownerId: true,
   propertyId: true,
+  tenantId: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -193,7 +194,13 @@ const apartmentSearchSchema = createInsertSchema(apartmentSearches, {
   name: z.string().min(1),
   searchType: z.enum(["rent", "buy"]),
   targetBudget: z.number().int().min(0).optional(),
-}).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
+}).omit({
+  id: true,
+  userId: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 const apartmentCandidateSchema = createInsertSchema(apartmentCandidates, {
   title: z.string().min(1),
@@ -213,6 +220,7 @@ const apartmentCandidateSchema = createInsertSchema(apartmentCandidates, {
 }).omit({
   id: true,
   userId: true,
+  tenantId: true,
   searchId: true,
   convertedPropertyId: true,
   latitude: true,
@@ -233,7 +241,13 @@ const candidateStageEnum = z.enum([
 const propertySchema = createInsertSchema(properties, {
   reminderDaysBefore: z.number().int().min(1).max(30).optional(),
   mapsProvider: z.enum(["google", "osm"]).optional(),
-}).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  userId: true,
+  tenantId: true,
+});
 
 const propertyModeEnum = z.enum(["owned_rented", "owned_personal", "rented"]);
 const wizardDate = z.preprocess(
@@ -1645,7 +1659,7 @@ export const appRouter = router({
         return { deleted: true, backendError: result.backendError ?? null };
       }),
     reapOrphans: tenantProcedure.mutation(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
+      if (ctx.user.globalRole !== "superadmin" && ctx.user.role !== "admin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Admin role required",

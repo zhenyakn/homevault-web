@@ -1505,6 +1505,50 @@ async function main() {
     "backfill: apartmentCandidates.tenantId"
   );
 
+  // ── Phase 6: tighten tenantId to NOT NULL (Stage-1 hardening) ────────────────
+  // Only the tables whose every write path stamps tenantId. Done conditionally:
+  // if any row still has a NULL tenantId (an un-backfillable orphan on a legacy
+  // install), the column is left nullable and a warning is logged rather than
+  // failing the boot migration. files + notification_log stay nullable (their
+  // writes don't stamp tenantId yet — Stage 2).
+  // properties is intentionally excluded: the add-on seeds a placeholder
+  // property (id=1) before any user/tenant exists, so a NULL tenantId there is
+  // legitimate for standalone installs.
+  const tightenTables = [
+    "expenses",
+    "repairs",
+    "upgrades",
+    "loans",
+    "wishlistItems",
+    "purchaseCosts",
+    "calendarEvents",
+    "inventoryItems",
+    "apartmentSearches",
+    "apartmentCandidates",
+  ];
+  for (const t of tightenTables) {
+    try {
+      const [rows] = await conn.query(
+        `SELECT COUNT(*) AS n FROM \`${t}\` WHERE \`tenantId\` IS NULL`
+      );
+      const nulls = Number(rows?.[0]?.n ?? 0);
+      if (nulls > 0) {
+        console.log(
+          `- ${t}.tenantId NOT NULL skipped — ${nulls} row(s) still NULL`
+        );
+        continue;
+      }
+      await conn.query(
+        `ALTER TABLE \`${t}\` MODIFY COLUMN \`tenantId\` int NOT NULL`
+      );
+      console.log(`✓ ${t}.tenantId NOT NULL`);
+    } catch (e) {
+      console.log(
+        `- ${t}.tenantId NOT NULL (skipped — ${e.code ?? e.message})`
+      );
+    }
+  }
+
   console.log("Unified HomeVault migration complete.");
   await conn.end();
 }
