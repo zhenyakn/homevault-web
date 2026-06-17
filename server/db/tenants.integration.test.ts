@@ -96,4 +96,108 @@ describe.skipIf(!TEST_DB)("tenant helpers (real MySQL)", () => {
       (await tenantsDb.getTenantsForUser(bob)).map(t => t.id)
     ).not.toContain(tenantId);
   });
+
+  describe("resolveActiveTenant", () => {
+    it("provisions a personal tenant for a user with no membership", async () => {
+      const fresh = await mkUser("Fresh");
+      const active = await tenantsDb.resolveActiveTenant(fresh, {
+        displayName: "Fresh",
+      });
+      expect(active.role).toBe("owner");
+
+      // The provisioned tenant is now their default and shows in their list.
+      const tenant = await tenantsDb.getTenantById(active.tenantId);
+      expect(tenant?.createdByUserId).toBe(fresh);
+      const mine = await tenantsDb.getTenantsForUser(fresh);
+      expect(mine.map(t => t.id)).toContain(active.tenantId);
+
+      // Idempotent: a second resolve reuses the same tenant.
+      const again = await tenantsDb.resolveActiveTenant(fresh, {});
+      expect(again.tenantId).toBe(active.tenantId);
+    });
+
+    it("honours requested tenant, then default, then first membership", async () => {
+      const u = await mkUser("Multi");
+      const a = await tenantsDb.createTenantWithOwner(u, "A");
+      const b = await tenantsDb.createTenantWithOwner(u, "B");
+
+      // Requested wins when the user is a member.
+      expect(
+        (await tenantsDb.resolveActiveTenant(u, { requestedTenantId: b }))
+          .tenantId
+      ).toBe(b);
+
+      // A tenant the user is NOT a member of is ignored; falls back to default.
+      const outsider = await tenantsDb.createTenantWithOwner(
+        await mkUser("Outsider"),
+        "Z"
+      );
+      expect(
+        (
+          await tenantsDb.resolveActiveTenant(u, {
+            requestedTenantId: outsider,
+            defaultTenantId: a,
+          })
+        ).tenantId
+      ).toBe(a);
+
+      // No hints → first membership.
+      const first = (await tenantsDb.getTenantsForUser(u))[0].id;
+      expect((await tenantsDb.resolveActiveTenant(u, {})).tenantId).toBe(first);
+    });
+  });
+
+  describe("tenant router procedure guards", () => {
+    let appRouter: typeof import("../routers").appRouter;
+
+    const mkCtx = (
+      userId: number,
+      tenantId: number,
+      role: "owner" | "admin" | "member" | "viewer"
+    ): any => ({
+      user: { id: userId, role: "user", globalRole: "user" },
+      propertyId: 1,
+      tenantId,
+      tenantRole: role,
+      req: { headers: {} },
+      res: {},
+    });
+
+    beforeAll(async () => {
+      ({ appRouter } = await import("../routers"));
+    });
+
+    it("tenant.current returns the active tenant with role", async () => {
+      const tid = await tenantsDb.createTenantWithOwner(alice, "Caller Home");
+      const caller = appRouter.createCaller(mkCtx(alice, tid, "owner"));
+      const current = await caller.tenant.current();
+      expect(current?.id).toBe(tid);
+      expect(current?.role).toBe("owner");
+    });
+
+    it("tenant.members allows owner/admin but rejects member/viewer", async () => {
+      const tid = await tenantsDb.createTenantWithOwner(alice, "Guard Home");
+      await tenantsDb.addMember({ tenantId: tid, userId: bob, role: "member" });
+
+      const ownerCaller = appRouter.createCaller(mkCtx(alice, tid, "owner"));
+      const members = await ownerCaller.tenant.members();
+      expect(members.length).toBeGreaterThanOrEqual(2);
+
+      const memberCaller = appRouter.createCaller(mkCtx(bob, tid, "member"));
+      await expect(memberCaller.tenant.members()).rejects.toThrow();
+    });
+
+    it("tenantProcedure rejects when no active tenant is resolved", async () => {
+      const noTenantCtx: any = {
+        user: { id: alice, role: "user", globalRole: "user" },
+        propertyId: 1,
+        tenantId: null,
+        tenantRole: null,
+        req: { headers: {} },
+        res: {},
+      };
+      const caller = appRouter.createCaller(noTenantCtx);
+      await expect(caller.tenant.current()).rejects.toThrow();
+    });
+  });
 });

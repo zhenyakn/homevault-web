@@ -23,6 +23,7 @@ import {
 } from "./files";
 import { logger } from "./_core/logger";
 import { searchRouter } from "./searchRouter";
+import { tenantRouter } from "./tenantRouter";
 import {
   expenses,
   repairs,
@@ -394,6 +395,7 @@ export const appRouter = router({
   system: systemRouter,
   search: searchRouter,
   notification: notificationRouter,
+  tenant: tenantRouter,
   auth: router({
     // In NO_AUTH mode (HA addon) ctx.user may be null on the very first
     // request if ingress strips/delays the session cookie. Fall back to

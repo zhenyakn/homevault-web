@@ -8,11 +8,15 @@ import {
   type TenantMember,
 } from "../../drizzle/schema";
 import { getDb } from "./client";
+import { setUserDefaultTenant } from "./users";
 
 export type TenantRole = TenantMember["role"];
 
 /** A tenant paired with the requesting user's role within it. */
 export type TenantWithRole = Tenant & { role: TenantRole };
+
+/** The active tenant for a request, with the user's role in it. */
+export type ActiveTenant = { tenantId: number; role: TenantRole };
 
 export async function getTenantById(
   tenantId: number
@@ -165,4 +169,56 @@ export async function removeMember(
         eq(tenantMembers.userId, userId)
       )
     );
+}
+
+/**
+ * Guarantee that a user belongs to at least one tenant. Users created before
+ * Stage 1, or via an auth path that doesn't yet run the registration flow
+ * (OAuth / NO_AUTH), may have no membership; this provisions a personal tenant
+ * (owner membership) and records it as their default. Returns the membership
+ * the user can act under right now. Idempotent: a no-op once a membership exists.
+ */
+export async function ensurePersonalTenant(
+  userId: number,
+  displayName?: string | null
+): Promise<ActiveTenant> {
+  const existing = await getTenantsForUser(userId);
+  if (existing.length > 0) {
+    return { tenantId: existing[0].id, role: existing[0].role };
+  }
+  const name = `${(displayName ?? "").trim() || "User"}'s Home`;
+  const tenantId = await createTenantWithOwner(userId, name);
+  await setUserDefaultTenant(userId, tenantId);
+  return { tenantId, role: "owner" };
+}
+
+/**
+ * Resolve the tenant a request should operate in. Preference order:
+ *   1. the requested tenant (x-tenant-id header) if the user is an active member
+ *   2. the user's recorded default tenant if still a member
+ *   3. the user's first active membership
+ * If the user has no membership at all, a personal tenant is provisioned.
+ */
+export async function resolveActiveTenant(
+  userId: number,
+  opts: {
+    requestedTenantId?: number | null;
+    defaultTenantId?: number | null;
+    displayName?: string | null;
+  } = {}
+): Promise<ActiveTenant> {
+  const memberships = await getTenantsForUser(userId);
+  if (memberships.length === 0) {
+    return ensurePersonalTenant(userId, opts.displayName);
+  }
+
+  const pick = (id: number | null | undefined) =>
+    id != null ? memberships.find(m => m.id === id) : undefined;
+
+  const chosen =
+    pick(opts.requestedTenantId) ??
+    pick(opts.defaultTenantId) ??
+    memberships[0];
+
+  return { tenantId: chosen.id, role: chosen.role };
 }

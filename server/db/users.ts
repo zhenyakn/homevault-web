@@ -51,6 +51,17 @@ export async function setUserLanguage(
   await db.update(users).set({ language }).where(eq(users.id, userId));
 }
 
+export async function setUserDefaultTenant(
+  userId: number,
+  tenantId: number
+): Promise<void> {
+  const db = await getDb();
+  await db
+    .update(users)
+    .set({ defaultTenantId: tenantId })
+    .where(eq(users.id, userId));
+}
+
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   const result = await db
