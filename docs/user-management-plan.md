@@ -381,7 +381,16 @@ gating rather than another data refactor.
     requires `VITE_APP_ID` whenever sessions are enabled (non-`NO_AUTH`) — fatal in
     production/saas, a warning in dev — and requires `PUBLIC_BASE_URL` in saas (email links).
     This closes the "blank login screen" failure mode found during the Phase 6 smoke-test.
-    Client mirroring + `app_settings` override remain for the full Stage 2 switch.
+  - ✅ **Done (Phase 9 — mode switch):** the mode is now resolvable + overridable at runtime.
+    `db.getAppMode()` reads an `app.mode` `app_settings` override and falls back to the env
+    default; `systemRouter.config` (public) mirrors `{ noAuth, appMode, signupsEnabled }` to the
+    signed-out client (like `noAuth`, since `VITE_*` is empty in the pre-built image). The admin
+    console (`Overview`) shows the live mode vs. its env default and offers a "Switch to …"
+    control, gated server-side by `admin.config.setAppMode` (refuses `saas` while `NO_AUTH`,
+    audit-logged). Open self-registration now **defaults from the mode** — closed in standalone,
+    open in saas — with the admin toggle still winning; the login/register screens honour the
+    flag (hide "Create account"; show a "registration closed" notice, while `/accept-invite`
+    keeps working). Verified: unit tests (mocked) + real-MySQL integration + build.
 - **Standalone** (default; preserves today's behaviour):
   - `NO_AUTH` and OAuth continue to work.
   - Self-registration is **off** by default; effectively one tenant (the install). The tenant
@@ -439,8 +448,9 @@ These two items were raised during Stage 1 design and are intentionally **part o
 | **5. Registration flow** ✅ | New-tenant path + invite/accept join path | Done (backend) — `register` takes `tenantName` (create-new) or `inviteToken` (join); admin invite create/list/revoke; `tenant.invites.accept` for existing users; public `tenant.inviteInfo`; audit log entries. Verified by real-MySQL integration tests. **UI** (auth + accept-invite pages) lands in Phase 6. |
 | **6. Auth UI + member mgmt** ✅ | Auth pages (login/register/forgot/reset/verify/accept-invite); Members page | Done — signed-out auth routes wired into `App`; `register` exposes the new-tenant (`tenantName`) vs join (`inviteToken`) choice; Members page (invite/list/revoke + role change/remove) backed by new owner/admin mutations with a last-owner guard; nav entry + i18n. Tenant **switcher** stays Stage 2 (single active tenant). Verified: typecheck, production build, full suite (844). |
 | **7. Admin console** ✅ | `adminRouter` + `pages/Admin.tsx` (overview/users/tenants/audit) | Done — `superAdminProcedure`-gated stats, user role management (last-super-admin guard), tenant suspend/reactivate, global audit log, and a server-config toggle for open registration (enforced in `auth.register`; invites bypass). Superadmin-only nav entry + page. Verified by real-MySQL integration tests + full suite. |
-| **8. Harden & finalize** ✅ (mostly) | `tenantId` → NOT NULL on the 10 fully-stamped entity tables (conditional, boot-safe); authorization moved off legacy `role` → `globalRole`; owner auto-provisioned as superadmin | Done — `properties`/`files`/`notification_log`/`audit_log` stay nullable by design; the **physical `DROP COLUMN role`** is deferred to a dedicated cleanup migration (§3.6) once globalRole-only auth has soaked; broader Playwright E2E left to the existing `qa-nightly` suite. Verified: typecheck, build, unit (852) + integration (20). |
-| **9. Stage 2 plan kickoff** | `APP_MODE` flag scaffolding + standalone-safe defaults | Bridges to SAAS |
+| **8. Harden & finalize** ✅ | `tenantId` → NOT NULL on the 10 fully-stamped entity tables (conditional, boot-safe); authorization moved off legacy `role` → `globalRole`; owner auto-provisioned as superadmin | Done — `properties`/`files`/`notification_log`/`audit_log` stay nullable by design; broader Playwright E2E left to the existing `qa-nightly` suite. The **physical `DROP COLUMN role`** has since landed as its own boot-safe cleanup migration (§3.6). Verified: typecheck, build, unit + integration. |
+| **role cleanup migration** ✅ | Retire the legacy `users.role` column (carry admins → `globalRole`, then `DROP COLUMN`) | Done — removed from schema/upsert/auth; migration is `columnExists`-guarded (no-op on fresh installs + post-drop boots); verified idempotent on fresh + legacy MariaDB. |
+| **9. Stage 2 — mode switch** ✅ | Runtime `APP_MODE` resolution + client mirroring + standalone-safe signup defaults | Done (§4.1) — `app.mode` override via `app_settings`, public `system.config` mirror, admin switch control (NO_AUTH-guarded), mode-driven open-registration default honoured in the auth UI. Verified: unit + real-MySQL integration + build. Remaining Stage 2: tenant **switcher UI** (§4.3), enforced email verification (§4.3), SAAS infra (§4.2). |
 
 ---
 

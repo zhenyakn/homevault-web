@@ -9,6 +9,7 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { getSetting, setSetting } from "./appSettings";
+import { ENV } from "../_core/env";
 
 // ── Server-wide stats ─────────────────────────────────────────────────────────
 
@@ -139,11 +140,36 @@ export async function getRecentAudit(limit = 100): Promise<AuditLogRow[]> {
 // ── Global server config (app_settings-backed) ────────────────────────────────
 
 const SIGNUPS_ENABLED_KEY = "auth.signupsEnabled";
+const APP_MODE_KEY = "app.mode";
 
-/** Whether open (un-invited) self-registration is allowed. Defaults to true. */
+export type AppMode = "standalone" | "saas";
+
+/**
+ * The effective deployment mode. An admin-set override in `app_settings` wins
+ * over the `APP_MODE` env default, so the cloud↔standalone switch can be flipped
+ * at runtime from the admin console without a redeploy. Falls back to the env
+ * value (itself defaulting to `standalone`) when no override is stored.
+ */
+export async function getAppMode(): Promise<AppMode> {
+  const v = await getSetting(APP_MODE_KEY);
+  if (v === "standalone" || v === "saas") return v;
+  return ENV.appMode;
+}
+
+/** Persist the deployment-mode override used by {@link getAppMode}. */
+export async function setAppMode(mode: AppMode): Promise<void> {
+  await setSetting(APP_MODE_KEY, mode);
+}
+
+/**
+ * Whether open (un-invited) self-registration is allowed. An explicit admin
+ * toggle wins; otherwise the default is mode-driven — open in SAAS (self-serve
+ * signup is the point) and closed in standalone (single-install, invite-only).
+ */
 export async function getSignupsEnabled(): Promise<boolean> {
   const v = await getSetting(SIGNUPS_ENABLED_KEY);
-  return v === null ? true : v === "true";
+  if (v !== null) return v === "true";
+  return (await getAppMode()) === "saas";
 }
 
 export async function setSignupsEnabled(enabled: boolean): Promise<void> {

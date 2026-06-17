@@ -65,6 +65,9 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
     ({ getDb } = await import("../db/client"));
     schema = await import("../../drizzle/schema");
     password = await import("./password");
+    // Standalone (the test default) keeps open signups off; these tests exercise
+    // the self-registration path, so opt in explicitly.
+    await (await import("../db/admin")).setSignupsEnabled(true);
   });
 
   it("registers a user, provisions a tenant, and sets a session cookie", async () => {

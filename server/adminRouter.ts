@@ -12,7 +12,7 @@ import * as db from "./db";
 export const adminRouter = router({
   stats: superAdminProcedure.query(async () => {
     const stats = await db.getServerStats();
-    return { ...stats, appMode: ENV.appMode };
+    return { ...stats, appMode: await db.getAppMode() };
   }),
 
   users: router({
@@ -123,11 +123,36 @@ export const adminRouter = router({
   config: router({
     get: superAdminProcedure.query(async () => {
       return {
-        appMode: ENV.appMode,
+        appMode: await db.getAppMode(),
+        // The compile-time env default, shown alongside the live (possibly
+        // overridden) mode so the admin can see what a restart would revert to.
+        appModeEnvDefault: ENV.appMode,
         noAuth: ENV.noAuth,
         signupsEnabled: await db.getSignupsEnabled(),
       };
     }),
+
+    // Switch deployment mode at runtime (app_settings override). SAAS requires
+    // authenticated, tenant-scoped requests, so it's incompatible with NO_AUTH —
+    // refuse the switch rather than boot into a broken state on next restart.
+    setAppMode: superAdminProcedure
+      .input(z.object({ mode: z.enum(["standalone", "saas"]) }))
+      .mutation(async ({ ctx, input }) => {
+        if (input.mode === "saas" && ENV.noAuth) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Cannot switch to SAAS while NO_AUTH is enabled — SAAS requires every request to be an authenticated, tenant-scoped user.",
+          });
+        }
+        await db.setAppMode(input.mode);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.config.app_mode",
+          metadata: { mode: input.mode },
+        });
+        return { success: true as const };
+      }),
 
     // Toggle open (un-invited) self-registration. Invited users can always join.
     setSignupsEnabled: superAdminProcedure

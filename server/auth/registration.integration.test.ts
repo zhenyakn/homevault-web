@@ -78,6 +78,9 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
     tenantsDb = await import("../db/tenants");
     creds = await import("../db/credentials");
     password = await import("./password");
+    // Standalone (the test default) keeps open signups off; these tests exercise
+    // the self-registration path, so opt in explicitly.
+    await (await import("../db/admin")).setSignupsEnabled(true);
   });
 
   it("register with a tenantName creates that named tenant (owner)", async () => {

@@ -83,10 +83,29 @@ const oauthConfigured = Boolean(
   import.meta.env.VITE_OAUTH_PORTAL_URL && import.meta.env.VITE_APP_ID
 );
 
+/**
+ * Public deployment flags the signed-out screens need before there's a user:
+ * whether open self-registration is offered (standalone defaults closed, SAAS
+ * open) and the deployment mode. Until the query resolves we assume signups are
+ * off so we never flash a "Create account" affordance that the server rejects.
+ */
+function usePublicConfig() {
+  const { data } = trpc.system.config.useQuery(undefined, {
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+  return {
+    loaded: data !== undefined,
+    signupsEnabled: data?.signupsEnabled ?? false,
+    appMode: data?.appMode ?? "standalone",
+  };
+}
+
 // ─── Login ─────────────────────────────────────────────────────────────────────
 
 export function LoginPage() {
   const goHome = useGoHome();
+  const { signupsEnabled } = usePublicConfig();
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -100,12 +119,14 @@ export function LoginPage() {
       title="Welcome back"
       subtitle="Sign in to your HomeVault account"
       footer={
-        <>
-          No account?{" "}
-          <Link href="/register" className="text-primary hover:underline">
-            Create one
-          </Link>
-        </>
+        signupsEnabled ? (
+          <>
+            No account?{" "}
+            <Link href="/register" className="text-primary hover:underline">
+              Create one
+            </Link>
+          </>
+        ) : undefined
       }
     >
       <form
@@ -203,6 +224,7 @@ export function LoginPage() {
 
 export function RegisterPage() {
   const goHome = useGoHome();
+  const { loaded, signupsEnabled } = usePublicConfig();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
@@ -212,6 +234,28 @@ export function RegisterPage() {
     onSuccess: goHome,
     onError: e => setError(errMessage(e)),
   });
+
+  // Open self-registration is gated server-side; mirror that here so the form
+  // isn't offered when it's closed. Invited users join via /accept-invite, which
+  // works regardless of this flag.
+  if (loaded && !signupsEnabled) {
+    return (
+      <AuthShell
+        title="Registration closed"
+        subtitle="New sign-ups aren't being accepted right now"
+        footer={
+          <Link href="/login" className="text-primary hover:underline">
+            Back to sign in
+          </Link>
+        }
+      >
+        <p className="text-sm text-center text-muted-foreground">
+          If you were invited to a workspace, open the link in your invitation
+          email to join.
+        </p>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell

@@ -91,6 +91,15 @@ function Overview() {
     onSuccess: () => utils.admin.config.get.invalidate(),
     onError: e => toast.error(errMessage(e)),
   });
+  const setAppMode = trpc.admin.config.setAppMode.useMutation({
+    onSuccess: () => {
+      utils.admin.config.get.invalidate();
+      utils.admin.stats.invalidate();
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
+  const mode = config.data?.appMode;
+  const nextMode = mode === "saas" ? "standalone" : "saas";
 
   return (
     <div className="space-y-6">
@@ -115,10 +124,37 @@ function Overview() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">
-              Deployment mode
-            </span>
-            <Badge variant="secondary">{config.data?.appMode ?? "—"}</Badge>
+            <div>
+              <p className="text-sm font-medium">Deployment mode</p>
+              <p className="text-xs text-muted-foreground">
+                {mode === "saas"
+                  ? "Cloud, multi-tenant: open registration and tenant isolation."
+                  : "Single install: invite-only, preserves standalone behaviour."}
+                {config.data &&
+                  config.data.appMode !== config.data.appModeEnvDefault &&
+                  ` Overrides the APP_MODE env default (${config.data.appModeEnvDefault}).`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{mode ?? "—"}</Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={
+                  setAppMode.isPending ||
+                  config.isLoading ||
+                  (nextMode === "saas" && config.data?.noAuth)
+                }
+                title={
+                  nextMode === "saas" && config.data?.noAuth
+                    ? "SAAS is incompatible with NO_AUTH mode."
+                    : undefined
+                }
+                onClick={() => setAppMode.mutate({ mode: nextMode })}
+              >
+                Switch to {nextMode}
+              </Button>
+            </div>
           </div>
           <div className="flex items-center justify-between">
             <div>

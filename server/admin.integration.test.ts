@@ -134,4 +134,24 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     });
     expect(out.success).toBe(true);
   });
+
+  it("switches deployment mode at runtime and mirrors it to the public config", async () => {
+    const sid = await mkUser("admin4", "superadmin");
+    const admin = appRouter.createCaller(ctxFor(sid, "superadmin"));
+    // Keep an explicit signups override in place so flipping the mode here can't
+    // change the mode-driven signups default other test files rely on (the
+    // settings row is global to the shared test DB).
+    await admin.admin.config.setSignupsEnabled({ enabled: true });
+
+    await admin.admin.config.setAppMode({ mode: "saas" });
+    expect((await admin.admin.config.get()).appMode).toBe("saas");
+    // The public bootstrap query (consumed by signed-out screens) reflects it.
+    expect(
+      (await appRouter.createCaller(anonCtx()).system.config()).appMode
+    ).toBe("saas");
+
+    // Restore so we don't leave the shared DB in SAAS for sibling files.
+    await admin.admin.config.setAppMode({ mode: "standalone" });
+    expect((await admin.admin.config.get()).appMode).toBe("standalone");
+  });
 });
