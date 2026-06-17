@@ -348,7 +348,8 @@ function ProjectsCard({
           className="flex items-center gap-1 text-[12px] font-medium text-hv-primary hover:opacity-75"
           onClick={() => nav("/upgrades")}
         >
-          {t("homevault.viewAll")} <ArrowRight className="h-3 w-3 rtl:rotate-180" />
+          {t("homevault.viewAll")}{" "}
+          <ArrowRight className="h-3 w-3 rtl:rotate-180" />
         </button>
       }
     >
