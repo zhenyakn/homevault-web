@@ -54,6 +54,7 @@ import {
   ShoppingCart,
   Sun,
   TrendingUp,
+  Users,
   Wrench,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
@@ -104,7 +105,10 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     labelKey: "nav.group.account",
-    items: [{ icon: Settings, key: "nav.settings", path: "/settings" }],
+    items: [
+      { icon: Users, key: "nav.members", path: "/members" },
+      { icon: Settings, key: "nav.settings", path: "/settings" },
+    ],
   },
 ];
 
@@ -127,6 +131,7 @@ const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
     sectionKey: "nav.group.search",
     pageKey: "nav.apartmentSearch",
   },
+  "/members": { sectionKey: "nav.group.account", pageKey: "nav.members" },
   "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
 };
 

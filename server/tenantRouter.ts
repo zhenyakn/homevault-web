@@ -150,4 +150,70 @@ export const tenantRouter = router({
         };
       }),
   }),
+
+  // ── Member management (owner/admin) ──────────────────────────────────────────
+  // Change a member's role. Guards against demoting the last remaining owner so
+  // a tenant can never be left without one.
+  setMemberRole: tenantAdminProcedure
+    .input(
+      z.object({
+        userId: z.number().int(),
+        role: z.enum(["owner", "admin", "member", "viewer"]),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const members = await db.getMembersOfTenant(ctx.tenantId);
+      const target = members.find(m => m.userId === input.userId);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Member not found" });
+      }
+      const owners = members.filter(m => m.role === "owner");
+      if (
+        target.role === "owner" &&
+        input.role !== "owner" &&
+        owners.length <= 1
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A workspace must keep at least one owner",
+        });
+      }
+      await db.setMemberRole(ctx.tenantId, input.userId, input.role);
+      await db.logAudit({
+        actorUserId: ctx.user.id,
+        tenantId: ctx.tenantId,
+        action: "member.role_changed",
+        targetType: "user",
+        targetId: String(input.userId),
+        metadata: { role: input.role },
+      });
+      return { success: true as const };
+    }),
+
+  // Remove a member from the tenant. Cannot remove the last owner.
+  removeMember: tenantAdminProcedure
+    .input(z.object({ userId: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const members = await db.getMembersOfTenant(ctx.tenantId);
+      const target = members.find(m => m.userId === input.userId);
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Member not found" });
+      }
+      const owners = members.filter(m => m.role === "owner");
+      if (target.role === "owner" && owners.length <= 1) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "A workspace must keep at least one owner",
+        });
+      }
+      await db.removeMember(ctx.tenantId, input.userId);
+      await db.logAudit({
+        actorUserId: ctx.user.id,
+        tenantId: ctx.tenantId,
+        action: "member.removed",
+        targetType: "user",
+        targetId: String(input.userId),
+      });
+      return { success: true as const };
+    }),
 });
