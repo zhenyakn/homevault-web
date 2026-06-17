@@ -547,7 +547,8 @@ function CalendarCard({ upcoming }: { upcoming: CalEvent[] }) {
           className="flex items-center gap-1 text-xs text-primary hover:opacity-75 transition-opacity font-medium -mt-3"
           onClick={() => nav("/calendar")}
         >
-          {t("dashboard.fullCalendar")} <ArrowRight className="h-3 w-3 rtl:rotate-180" />
+          {t("dashboard.fullCalendar")}{" "}
+          <ArrowRight className="h-3 w-3 rtl:rotate-180" />
         </button>
       </div>
 

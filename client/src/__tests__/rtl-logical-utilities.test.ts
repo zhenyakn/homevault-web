@@ -26,7 +26,10 @@ import path from "node:path";
  * symmetrically (dividers, single-side borders) and low-signal here.
  */
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../.."
+);
 const SCAN_DIRS = ["client/src/pages", "client/src/components"];
 const EXCLUDE_DIR = path.join("client", "src", "components", "ui");
 
