@@ -476,6 +476,10 @@ export const appRouter = router({
           email: emailField,
           password: passwordField,
           name: z.string().trim().min(1).max(100).optional(),
+          // Path A — create a new tenant with this name.
+          tenantName: z.string().trim().min(1).max(200).optional(),
+          // Path B — join an existing tenant via an invite link's token.
+          inviteToken: z.string().min(1).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -484,6 +488,18 @@ export const appRouter = router({
           throw new TRPCError({
             code: "CONFLICT",
             message: EMAIL_TAKEN_ERR_MSG,
+          });
+        }
+
+        // When joining via an invite, validate it before creating anything so a
+        // bad/expired token doesn't leave a tenantless account behind.
+        const invite = input.inviteToken
+          ? await db.getLiveInviteByTokenHash(hashToken(input.inviteToken))
+          : undefined;
+        if (input.inviteToken && !invite) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This invitation is invalid or has expired",
           });
         }
 
@@ -507,8 +523,34 @@ export const appRouter = router({
           passwordHash: await hashPassword(input.password),
         });
 
-        // Provision the personal tenant up front so the first request is scoped.
-        await db.ensurePersonalTenant(user.id, name);
+        // Tenant choice: join the invited tenant, create a named tenant, or
+        // fall back to a personal tenant. Either way the first request is scoped.
+        if (invite) {
+          await db.addMember({
+            tenantId: invite.tenantId,
+            userId: user.id,
+            role: invite.role,
+            invitedByUserId: invite.invitedByUserId ?? undefined,
+          });
+          await db.setUserDefaultTenant(user.id, invite.tenantId);
+          await db.markInviteAccepted(invite.id);
+          await db.logAudit({
+            actorUserId: user.id,
+            tenantId: invite.tenantId,
+            action: "invite.accepted",
+            targetType: "user",
+            targetId: String(user.id),
+            metadata: { role: invite.role, via: "register" },
+          });
+        } else if (input.tenantName) {
+          const tenantId = await db.createTenantWithOwner(
+            user.id,
+            input.tenantName
+          );
+          await db.setUserDefaultTenant(user.id, tenantId);
+        } else {
+          await db.ensurePersonalTenant(user.id, name);
+        }
 
         // Verification email (best-effort; sign-in is not gated on it).
         const verify = generateToken();

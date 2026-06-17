@@ -74,6 +74,22 @@ export async function sendVerificationEmail(
   );
 }
 
+export async function sendInviteEmail(
+  to: string,
+  rawToken: string,
+  tenantName: string
+): Promise<void> {
+  const link = appUrl(`/#/accept-invite?token=${encodeURIComponent(rawToken)}`);
+  await send(
+    to,
+    `You've been invited to ${tenantName} on HomeVault`,
+    `You've been invited to join "${tenantName}" on HomeVault.\n\nAccept the invitation:\n\n${link}\n\nIf you weren't expecting this, you can ignore this message.`,
+    `<p>You've been invited to join <strong>${tenantName}</strong> on HomeVault.</p>
+     <p><a href="${link}">Accept the invitation</a></p>
+     <p>If you weren't expecting this, you can ignore this message.</p>`
+  );
+}
+
 export async function sendPasswordResetEmail(
   to: string,
   rawToken: string

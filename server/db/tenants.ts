@@ -1,14 +1,18 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, isNull, desc } from "drizzle-orm";
 import {
   tenants,
   tenantMembers,
+  tenantInvites,
   users,
   type InsertTenant,
   type Tenant,
   type TenantMember,
+  type TenantInvite,
 } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { setUserDefaultTenant } from "./users";
+
+export type InviteRole = TenantInvite["role"];
 
 export type TenantRole = TenantMember["role"];
 
@@ -221,4 +225,82 @@ export async function resolveActiveTenant(
     memberships[0];
 
   return { tenantId: chosen.id, role: chosen.role };
+}
+
+// ── Invites ───────────────────────────────────────────────────────────────────
+
+export async function createInvite(params: {
+  tenantId: number;
+  email: string;
+  role: InviteRole;
+  tokenHash: string;
+  invitedByUserId: number;
+  expiresAt: Date;
+}): Promise<void> {
+  const db = await getDb();
+  await db.insert(tenantInvites).values({
+    tenantId: params.tenantId,
+    email: params.email,
+    role: params.role,
+    tokenHash: params.tokenHash,
+    invitedByUserId: params.invitedByUserId,
+    expiresAt: params.expiresAt,
+  });
+}
+
+/** Pending (not yet accepted) invites for a tenant, newest first. */
+export async function listPendingInvites(
+  tenantId: number
+): Promise<TenantInvite[]> {
+  const db = await getDb();
+  return db
+    .select()
+    .from(tenantInvites)
+    .where(
+      and(
+        eq(tenantInvites.tenantId, tenantId),
+        isNull(tenantInvites.acceptedAt)
+      )
+    )
+    .orderBy(desc(tenantInvites.id));
+}
+
+/** A live invite by token hash: not yet accepted and not expired. */
+export async function getLiveInviteByTokenHash(
+  tokenHash: string
+): Promise<TenantInvite | undefined> {
+  const db = await getDb();
+  const rows = await db
+    .select()
+    .from(tenantInvites)
+    .where(
+      and(
+        eq(tenantInvites.tokenHash, tokenHash),
+        isNull(tenantInvites.acceptedAt),
+        gt(tenantInvites.expiresAt, new Date())
+      )
+    )
+    .limit(1);
+  return rows[0];
+}
+
+export async function markInviteAccepted(inviteId: number): Promise<void> {
+  const db = await getDb();
+  await db
+    .update(tenantInvites)
+    .set({ acceptedAt: new Date() })
+    .where(eq(tenantInvites.id, inviteId));
+}
+
+/** Revoke a pending invite (scoped to the tenant so admins can't touch others). */
+export async function revokeInvite(
+  inviteId: number,
+  tenantId: number
+): Promise<void> {
+  const db = await getDb();
+  await db
+    .delete(tenantInvites)
+    .where(
+      and(eq(tenantInvites.id, inviteId), eq(tenantInvites.tenantId, tenantId))
+    );
 }
