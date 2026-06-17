@@ -3,8 +3,21 @@ import { z } from "zod";
 import type { inferRouterOutputs, inferRouterInputs } from "@trpc/server";
 import { createInsertSchema } from "drizzle-zod";
 import { TRPCError } from "@trpc/server";
-import { COOKIE_NAME } from "@shared/const";
+import {
+  COOKIE_NAME,
+  ONE_YEAR_MS,
+  INVALID_CREDENTIALS_ERR_MSG,
+  EMAIL_TAKEN_ERR_MSG,
+} from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { sdk } from "./_core/sdk";
+import {
+  hashPassword,
+  verifyPassword,
+  generateToken,
+  hashToken,
+} from "./auth/password";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./auth/email";
 import { clearNoAuthUserCache } from "./_core/context";
 import { systemRouter } from "./_core/systemRouter";
 import { notificationRouter } from "./notificationRouter";
@@ -63,6 +76,30 @@ async function assertLoanLinkOwned(
     });
   }
 }
+
+// Issue a session: sign a JWT for the openId and set the httpOnly cookie. Used
+// by the native email/password login & register flows (OAuth has its own
+// callback that does the same). Mirrors server/_core/oauth.ts.
+async function issueSession(
+  ctx: { req: any; res: any },
+  openId: string,
+  name: string
+): Promise<void> {
+  const token = await sdk.createSessionToken(openId, {
+    name,
+    expiresInMs: ONE_YEAR_MS,
+  });
+  const cookieOptions = getSessionCookieOptions(ctx.req);
+  ctx.res.cookie(COOKIE_NAME, token, {
+    ...cookieOptions,
+    maxAge: ONE_YEAR_MS,
+  });
+}
+
+// Email/password validation shared by the auth endpoints. Password policy is
+// deliberately simple (length floor) — strength UX can layer on later.
+const emailField = z.string().trim().toLowerCase().email().max(320);
+const passwordField = z.string().min(8).max(200);
 
 const calendarCatMap: Record<string, string> = {
   Expense: "Payment",
@@ -426,6 +463,147 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+
+    // ── Native email/password auth (SAAS) ─────────────────────────────────────
+    // Register a new account. Creates a local-identity user, a hashed
+    // credential, and a personal tenant (the new-tenant / join-tenant choice
+    // arrives in the next phase), sends a verification email (best-effort), and
+    // signs the user in immediately. Email verification is NOT enforced in
+    // Stage 1 (see docs/user-management-plan.md §4.3).
+    register: publicProcedure
+      .input(
+        z.object({
+          email: emailField,
+          password: passwordField,
+          name: z.string().trim().min(1).max(100).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const existing = await db.getCredentialByEmail(input.email);
+        if (existing) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: EMAIL_TAKEN_ERR_MSG,
+          });
+        }
+
+        const openId = `local:${nanoid()}`;
+        const name = input.name ?? input.email.split("@")[0];
+        await db.upsertUser({
+          openId,
+          name,
+          email: input.email,
+          loginMethod: "email",
+          lastSignedIn: new Date(),
+        });
+        const user = await db.getUserByOpenId(openId);
+        if (!user) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        }
+
+        await db.createCredential({
+          userId: user.id,
+          email: input.email,
+          passwordHash: await hashPassword(input.password),
+        });
+
+        // Provision the personal tenant up front so the first request is scoped.
+        await db.ensurePersonalTenant(user.id, name);
+
+        // Verification email (best-effort; sign-in is not gated on it).
+        const verify = generateToken();
+        await db.createEmailToken({
+          userId: user.id,
+          type: "verify_email",
+          tokenHash: verify.hash,
+          expiresAt: new Date(Date.now() + ONE_YEAR_MS / 365), // 24h
+        });
+        await sendVerificationEmail(input.email, verify.raw);
+
+        await issueSession(ctx, openId, name);
+        return { success: true as const };
+      }),
+
+    // Authenticate with email + password and start a session. Returns a generic
+    // error on any failure so accounts can't be enumerated.
+    login: publicProcedure
+      .input(z.object({ email: emailField, password: passwordField }))
+      .mutation(async ({ ctx, input }) => {
+        const cred = await db.getCredentialByEmail(input.email);
+        const ok =
+          !!cred && (await verifyPassword(input.password, cred.passwordHash));
+        if (!cred || !ok) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: INVALID_CREDENTIALS_ERR_MSG,
+          });
+        }
+        const user = await db.getUserById(cred.userId);
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: INVALID_CREDENTIALS_ERR_MSG,
+          });
+        }
+        await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
+        await issueSession(ctx, user.openId, user.name ?? "");
+        return { success: true as const };
+      }),
+
+    // Confirm an email address from the verification link.
+    verifyEmail: publicProcedure
+      .input(z.object({ token: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const userId = await db.consumeEmailToken(
+          hashToken(input.token),
+          "verify_email"
+        );
+        if (!userId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This verification link is invalid or has expired",
+          });
+        }
+        await db.markEmailVerified(userId);
+        return { success: true as const };
+      }),
+
+    // Begin a password reset. Always reports success (no account enumeration);
+    // an email is only sent when the address actually has an account.
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: emailField }))
+      .mutation(async ({ input }) => {
+        const cred = await db.getCredentialByEmail(input.email);
+        if (cred) {
+          const reset = generateToken();
+          await db.createEmailToken({
+            userId: cred.userId,
+            type: "reset_password",
+            tokenHash: reset.hash,
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1h
+          });
+          await sendPasswordResetEmail(input.email, reset.raw);
+        }
+        return { success: true as const };
+      }),
+
+    // Complete a password reset using the emailed token.
+    resetPassword: publicProcedure
+      .input(z.object({ token: z.string().min(1), password: passwordField }))
+      .mutation(async ({ input }) => {
+        const userId = await db.consumeEmailToken(
+          hashToken(input.token),
+          "reset_password"
+        );
+        if (!userId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This reset link is invalid or has expired",
+          });
+        }
+        await db.setPasswordHash(userId, await hashPassword(input.password));
+        return { success: true as const };
+      }),
   }),
 
   profiles: router({

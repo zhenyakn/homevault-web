@@ -2,6 +2,7 @@ export { getDb, parseJsonArray } from "./client";
 export * from "./appSettings";
 export * from "./users";
 export * from "./tenants";
+export * from "./credentials";
 export * from "./properties";
 export * from "./expenses";
 export * from "./repairs";

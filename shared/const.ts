@@ -10,3 +10,9 @@ export const NO_TENANT_ERR_MSG = "No active workspace (10003)";
 // to manage it.
 export const NOT_TENANT_ADMIN_ERR_MSG =
   "You do not have required permission for this workspace (10004)";
+// Generic credential failure — deliberately the same for "no such email" and
+// "wrong password" so the endpoint can't be used to enumerate accounts.
+export const INVALID_CREDENTIALS_ERR_MSG = "Invalid email or password (10005)";
+// Registration with an email that already has an account.
+export const EMAIL_TAKEN_ERR_MSG =
+  "An account with this email already exists (10006)";
