@@ -5,7 +5,7 @@ import http from "http";
 import type { AddressInfo } from "net";
 
 const hoisted = vi.hoisted(() => ({
-  ctxState: { user: { id: 1, role: "admin" } as any },
+  ctxState: { user: { id: 1, globalRole: "superadmin" } as any },
   envState: { noAuth: false, adminSetupToken: "" },
   gdriveMock: {
     buildConnectAuthUrl: null as any,
@@ -102,7 +102,7 @@ const hashState = (s: string) =>
   crypto.createHash("sha256").update(s).digest("base64url");
 
 beforeEach(() => {
-  hoisted.ctxState.user = { id: 1, role: "admin" };
+  hoisted.ctxState.user = { id: 1, globalRole: "superadmin" };
   hoisted.envState.noAuth = false;
   hoisted.envState.adminSetupToken = "";
   Object.values(gdriveMock).forEach(fn => (fn as any).mockReset?.());
@@ -186,7 +186,7 @@ describe("GET /api/google-drive/status", () => {
   });
 
   it("403 when caller is not an admin", async () => {
-    hoisted.ctxState.user = { id: 1, role: "user" };
+    hoisted.ctxState.user = { id: 1, globalRole: "user" };
     expect((await fetchUrl(`${app.url}/api/google-drive/status`)).status).toBe(
       403
     );
@@ -369,7 +369,7 @@ describe("GET /api/google-drive/callback", () => {
   });
 
   it("403 when caller is not an admin", async () => {
-    hoisted.ctxState.user = { id: 1, role: "user" };
+    hoisted.ctxState.user = { id: 1, globalRole: "user" };
     const res = await fetchUrl(
       `${app.url}/api/google-drive/callback?code=abc&state=${STATE}`,
       {
@@ -413,7 +413,7 @@ describe("POST /api/google-drive/disconnect", () => {
   });
 
   it("403 for non-admin callers", async () => {
-    hoisted.ctxState.user = { id: 1, role: "user" };
+    hoisted.ctxState.user = { id: 1, globalRole: "user" };
     const res = await fetchUrl(`${app.url}/api/google-drive/disconnect`, {
       method: "POST",
     });

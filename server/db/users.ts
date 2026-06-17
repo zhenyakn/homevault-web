@@ -26,18 +26,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     values.lastSignedIn = user.lastSignedIn;
     updateSet.lastSignedIn = user.lastSignedIn;
   }
-  if (user.role !== undefined) {
-    values.role = user.role;
-    updateSet.role = user.role;
-  } else if (user.openId === ENV.ownerOpenId) {
-    values.role = "admin";
-    updateSet.role = "admin";
-  }
-
-  // Server-wide admin is now driven by globalRole (the legacy `role` above is
-  // kept in sync during the transition). Honour an explicit globalRole, and
-  // always promote the configured owner so the NO_AUTH / dev owner can reach
-  // the admin console.
+  // Server-wide admin is driven by globalRole. Honour an explicit globalRole,
+  // and always promote the configured owner so the NO_AUTH / dev owner can
+  // reach the admin console.
   if (user.globalRole !== undefined) {
     values.globalRole = user.globalRole;
     updateSet.globalRole = user.globalRole;

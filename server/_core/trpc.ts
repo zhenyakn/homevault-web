@@ -34,11 +34,11 @@ export const protectedProcedure = t.procedure.use(requireUser);
 
 /**
  * A logged-in user is a server-wide super-admin when their `globalRole` is
- * `superadmin`. The legacy `role === 'admin'` is accepted during the
- * transition (e.g. the NO_AUTH owner, whose globalRole isn't set explicitly).
+ * `superadmin`. (The owner — incl. NO_AUTH/dev — is auto-provisioned with this
+ * role by `upsertUser`.)
  */
 function isSuperAdmin(user: NonNullable<TrpcContext["user"]>): boolean {
-  return user.globalRole === "superadmin" || user.role === "admin";
+  return user.globalRole === "superadmin";
 }
 
 const requireSuperAdmin = t.middleware(async opts => {

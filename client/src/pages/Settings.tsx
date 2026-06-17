@@ -1604,7 +1604,7 @@ function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const { save, isPending } = usePropertyAutosave();
   const { data: me } = trpc.profiles.current.useQuery();
-  const isAdmin = me?.globalRole === "superadmin" || me?.role === "admin";
+  const isAdmin = me?.globalRole === "superadmin";
   const mapsProvider = p?.mapsProvider ?? "google";
   // Selected storage backend is owned here so the Google Drive panel only
   // renders when Drive is the selected backend (not always, as before).
@@ -1727,7 +1727,7 @@ function StorageBackendGroup({
 }) {
   const { t } = useTranslation();
   const { data: me } = trpc.profiles.current.useQuery();
-  const isAdmin = me?.role === "admin";
+  const isAdmin = me?.globalRole === "superadmin";
 
   const [status, setStatus] = useState<StorageStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2243,7 +2243,7 @@ type GDriveStatus = {
 function FileStorageGroup() {
   const { t } = useTranslation();
   const { data: me } = trpc.profiles.current.useQuery();
-  const isAdmin = me?.role === "admin";
+  const isAdmin = me?.globalRole === "superadmin";
   const [status, setStatus] = useState<GDriveStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -3141,7 +3141,7 @@ function StoredFilesGroup() {
   });
 
   if (!me) return null;
-  const isAdmin = me.role === "admin";
+  const isAdmin = me.globalRole === "superadmin";
 
   const totalCount = list.data?.totalCount ?? 0;
   const totalBytes = list.data?.totalBytes ?? 0;

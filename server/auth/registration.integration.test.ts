@@ -34,7 +34,7 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
 
   const userCtx = (userId: number, tenantId: number, role: string) =>
     ({
-      user: { id: userId, role: "user", globalRole: "user" },
+      user: { id: userId, globalRole: "user" },
       propertyId: 1,
       tenantId,
       tenantRole: role,

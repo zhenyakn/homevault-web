@@ -466,7 +466,7 @@ export const appRouter = router({
           openId,
           name: "HomeVault Admin",
           email: "admin@local",
-          role: "admin",
+          globalRole: "superadmin",
           lastSignedIn: new Date(),
         });
         return await db.getUserByOpenId(openId);
@@ -1659,7 +1659,7 @@ export const appRouter = router({
         return { deleted: true, backendError: result.backendError ?? null };
       }),
     reapOrphans: tenantProcedure.mutation(async ({ ctx }) => {
-      if (ctx.user.globalRole !== "superadmin" && ctx.user.role !== "admin") {
+      if (ctx.user.globalRole !== "superadmin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Admin role required",

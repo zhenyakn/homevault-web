@@ -4,7 +4,7 @@ import http from "http";
 import type { AddressInfo } from "net";
 
 const hoisted = vi.hoisted(() => ({
-  ctxState: { user: { id: 1, role: "admin" } as any },
+  ctxState: { user: { id: 1, globalRole: "superadmin" } as any },
   envState: { noAuth: false, adminSetupToken: "" },
   storageMock: {
     getStorageStatus: null as any,
@@ -87,7 +87,7 @@ const DEFAULT_STATUS = {
 let app: { url: string; close: () => Promise<void> };
 
 beforeEach(async () => {
-  hoisted.ctxState.user = { id: 1, role: "admin" };
+  hoisted.ctxState.user = { id: 1, globalRole: "superadmin" };
   hoisted.envState.noAuth = false;
   hoisted.envState.adminSetupToken = "";
   storageMock.getStorageStatus = vi.fn(async () => DEFAULT_STATUS);
@@ -125,7 +125,7 @@ describe("GET /api/storage/status", () => {
   });
 
   it("403 for non-admins", async () => {
-    hoisted.ctxState.user = { id: 2, role: "user" };
+    hoisted.ctxState.user = { id: 2, globalRole: "user" };
     const res = await fetch(`${app.url}/api/storage/status`);
     expect(res.status).toBe(403);
   });
@@ -281,7 +281,7 @@ describe("POST /api/storage/local", () => {
   });
 
   it("403 for non-admin callers", async () => {
-    hoisted.ctxState.user = { id: 2, role: "user" };
+    hoisted.ctxState.user = { id: 2, globalRole: "user" };
     const res = await post("/api/storage/local", { dir: "/data/uploads" });
     expect(res.status).toBe(403);
   });

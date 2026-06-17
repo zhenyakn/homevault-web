@@ -91,6 +91,21 @@ async function dropIfLegacyV1(table, canaryColumn) {
   }
 }
 
+/**
+ * True when `column` currently exists on `table` in the active database.
+ * Used to make legacy-only steps (e.g. dropping the retired `users.role`
+ * column) idempotent: they run once on an upgrade and are skipped forever
+ * after, and never fire at all on a fresh install that never had the column.
+ */
+async function columnExists(table, column) {
+  const [rows] = await conn.execute(
+    `SELECT 1 FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column]
+  );
+  return rows.length > 0;
+}
+
 async function main() {
   console.log("Running unified HomeVault migration for add-on…");
 
@@ -118,7 +133,6 @@ async function main() {
       \`name\` text COLLATE utf8mb4_unicode_ci,
       \`email\` varchar(320) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`loginMethod\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-      \`role\` enum('user','admin') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user',
       \`createdAt\` timestamp NOT NULL DEFAULT (now()),
       \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
       \`lastSignedIn\` timestamp NOT NULL DEFAULT (now()),
@@ -1417,11 +1431,18 @@ async function main() {
        WHERE u.defaultTenantId IS NULL`,
     "backfill: users.defaultTenantId"
   );
-  await backfill(
-    `UPDATE \`users\` SET \`globalRole\` = 'superadmin'
-       WHERE \`role\` = 'admin' AND \`globalRole\` = 'user'`,
-    "backfill: legacy admin → superadmin"
-  );
+  // Legacy `users.role` ('user'|'admin') has been retired in favour of
+  // `globalRole`. Carry forward any legacy admins, then drop the column. Both
+  // steps are guarded on the column still existing so this is a no-op on fresh
+  // installs (which never had it) and on subsequent boots (after the drop).
+  if (await columnExists("users", "role")) {
+    await backfill(
+      `UPDATE \`users\` SET \`globalRole\` = 'superadmin'
+         WHERE \`role\` = 'admin' AND \`globalRole\` = 'user'`,
+      "backfill: legacy admin → superadmin"
+    );
+    await run(`ALTER TABLE \`users\` DROP COLUMN \`role\``, "drop users.role");
+  }
 
   // 3) properties.tenantId from the owning user's tenant.
   await backfill(

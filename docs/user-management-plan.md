@@ -294,10 +294,13 @@ The defining Stage-1 feature. Two paths after account creation:
   - ✅ **Done (Phase 8):** all authorization now reads `globalRole` (the admin console,
     `superAdminProcedure`, and the inline storage/Drive/file-reaper guards) or
     `tenant_members.role`; `upsertUser` auto-provisions the configured owner as `superadmin`.
-    The `role` column is retained and still written for back-compat; `superAdminProcedure`
-    accepts it as a fallback. The irreversible `ALTER TABLE users DROP COLUMN role` is the
-    remaining "later cleanup migration" — deliberately deferred so the globalRole-only code can
-    ship and soak first.
+  - ✅ **Done (role cleanup migration):** the legacy `role` column has been fully retired —
+    removed from `drizzle/schema.ts`, dropped from `upsertUser`, and the `superAdminProcedure`
+    fallback removed (it is now `globalRole === "superadmin"` only). The boot migration carries
+    any surviving `role = 'admin'` rows forward to `globalRole = 'superadmin'` and then runs
+    `ALTER TABLE users DROP COLUMN role`, both guarded by a `columnExists("users","role")` check
+    so the steps are no-ops on fresh installs and on every boot after the drop. Verified
+    idempotent against fresh + legacy MariaDB databases.
 
 ### 3.7 Admin console (global / super-admin)
 

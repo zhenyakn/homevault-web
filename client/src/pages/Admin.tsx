@@ -33,7 +33,7 @@ export default function Admin() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
   const isSuperAdmin =
-    user?.globalRole === "superadmin" || user?.role === "admin";
+    user?.globalRole === "superadmin";
 
   if (!isSuperAdmin) {
     return (

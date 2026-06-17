@@ -24,7 +24,7 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
 
   const ctxFor = (userId: number, globalRole: "user" | "superadmin") =>
     ({
-      user: { id: userId, role: "user", globalRole },
+      user: { id: userId, globalRole },
       propertyId: 1,
       tenantId: null,
       tenantRole: null,

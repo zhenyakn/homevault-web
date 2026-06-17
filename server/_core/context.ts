@@ -34,7 +34,7 @@ export async function createContext(
         openId,
         name: "HomeVault Admin",
         email: "admin@local",
-        role: "admin",
+        globalRole: "superadmin",
         lastSignedIn: new Date(),
       });
       _noAuthUserCache = (await db.getUserByOpenId(openId)) ?? null;

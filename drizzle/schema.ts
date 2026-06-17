@@ -24,12 +24,9 @@ export const users = mysqlTable(
     name: text("name"),
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
-    // Legacy global role kept for backwards-compat during the multi-tenant
-    // transition. New authorization uses `globalRole` (server-wide admin
-    // console) and `tenant_members.role` (authority within a tenant).
-    role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
     // Server-wide role for the admin console. Distinct from a user's per-tenant
     // role: a `superadmin` manages all users/tenants and global server config.
+    // (The legacy `role` column was dropped after authorization moved here.)
     globalRole: mysqlEnum("globalRole", ["user", "superadmin"])
       .default("user")
       .notNull(),

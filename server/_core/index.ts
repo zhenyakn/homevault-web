@@ -120,7 +120,7 @@ if (process.argv.includes("--seed-mock-only")) {
         openId,
         name: "HomeVault Admin",
         email: "admin@local",
-        role: "admin",
+        globalRole: "superadmin",
         lastSignedIn: new Date(),
       });
       const user = await db.getUserByOpenId(openId);
@@ -308,7 +308,7 @@ async function startServer() {
           openId,
           name: "Dev Admin",
           email: "dev@localhost",
-          role: "admin",
+          globalRole: "superadmin",
           lastSignedIn: new Date(),
         });
         const token = await sdk.createSessionToken(openId, {
@@ -339,7 +339,7 @@ async function startServer() {
             openId,
             name: "HomeVault Admin",
             email: "admin@local",
-            role: "admin",
+            globalRole: "superadmin",
             lastSignedIn: new Date(),
           });
 
