@@ -47,6 +47,27 @@ const run = async (sql, label) => {
 };
 
 /**
+ * Run a data statement (multi-table UPDATE / INSERT … SELECT) via the text
+ * protocol. `run()` uses the prepared-statement protocol which rejects some
+ * multi-table UPDATEs and correlated subqueries, so backfills go through here.
+ * Backfills are written to be idempotent (guarded by WHERE … IS NULL /
+ * NOT EXISTS), so re-running is a no-op.
+ */
+const backfill = async (sql, label) => {
+  try {
+    const [res] = await conn.query(sql);
+    const affected =
+      res && typeof res.affectedRows === "number"
+        ? ` (${res.affectedRows} rows)`
+        : "";
+    console.log(`✓ ${label}${affected}`);
+  } catch (e) {
+    console.error(`✗ ${label} → ${e.code}: ${e.message}`);
+    throw e;
+  }
+};
+
+/**
  * If a table still carries a legacy v1 NOT NULL column (no default), it was
  * created before the v2 schema alignment ran and will reject new INSERTs that
  * omit that column.  Dropping the table lets the CREATE TABLE IF NOT EXISTS
@@ -1129,6 +1150,359 @@ async function main() {
   await run(
     `CREATE INDEX \`bot_link_code_idx\` ON \`bot_link_codes\` (\`code\`)`,
     "index bot_link_code_idx"
+  );
+
+  // ── Phase 5: user management & multi-tenancy (Stage 1) ───────────────────────
+  // Introduces tenants + memberships as the data-isolation boundary, native
+  // email/password credential storage, invite/email tokens, and an audit log.
+  // Adds a nullable `tenantId` to every directly-queried entity table and
+  // backfills it from each user's auto-created tenant. All steps are idempotent.
+
+  // New tables.
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`tenants\` (
+      \`id\` int NOT NULL AUTO_INCREMENT,
+      \`name\` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`slug\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`status\` enum('active','suspended') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+      \`createdByUserId\` int DEFAULT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      UNIQUE KEY \`tenant_slug_idx\` (\`slug\`),
+      KEY \`tenant_created_by_idx\` (\`createdByUserId\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "tenants"
+  );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`tenant_members\` (
+      \`id\` int NOT NULL AUTO_INCREMENT,
+      \`tenantId\` int NOT NULL,
+      \`userId\` int NOT NULL,
+      \`role\` enum('owner','admin','member','viewer') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'member',
+      \`status\` enum('active','invited','removed') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+      \`invitedByUserId\` int DEFAULT NULL,
+      \`joinedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      UNIQUE KEY \`tenant_member_unique_idx\` (\`tenantId\`, \`userId\`),
+      KEY \`tenant_member_user_idx\` (\`userId\`),
+      KEY \`tenant_member_tenant_idx\` (\`tenantId\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "tenant_members"
+  );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`tenant_invites\` (
+      \`id\` int NOT NULL AUTO_INCREMENT,
+      \`tenantId\` int NOT NULL,
+      \`email\` varchar(320) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`role\` enum('admin','member','viewer') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'member',
+      \`tokenHash\` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`invitedByUserId\` int DEFAULT NULL,
+      \`expiresAt\` timestamp NOT NULL,
+      \`acceptedAt\` timestamp NULL DEFAULT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      UNIQUE KEY \`tenant_invite_token_idx\` (\`tokenHash\`),
+      KEY \`tenant_invite_tenant_idx\` (\`tenantId\`),
+      KEY \`tenant_invite_email_idx\` (\`email\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "tenant_invites"
+  );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`user_credentials\` (
+      \`id\` int NOT NULL AUTO_INCREMENT,
+      \`userId\` int NOT NULL,
+      \`email\` varchar(320) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`passwordHash\` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`emailVerifiedAt\` timestamp NULL DEFAULT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      UNIQUE KEY \`user_credentials_userId_unique\` (\`userId\`),
+      UNIQUE KEY \`user_credentials_email_unique\` (\`email\`),
+      KEY \`user_cred_email_idx\` (\`email\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "user_credentials"
+  );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`email_tokens\` (
+      \`id\` int NOT NULL AUTO_INCREMENT,
+      \`userId\` int NOT NULL,
+      \`type\` enum('verify_email','reset_password') COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`tokenHash\` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`expiresAt\` timestamp NOT NULL,
+      \`consumedAt\` timestamp NULL DEFAULT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      KEY \`email_token_token_idx\` (\`tokenHash\`),
+      KEY \`email_token_user_type_idx\` (\`userId\`, \`type\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "email_tokens"
+  );
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`audit_log\` (
+      \`id\` int NOT NULL AUTO_INCREMENT,
+      \`actorUserId\` int DEFAULT NULL,
+      \`tenantId\` int DEFAULT NULL,
+      \`action\` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`targetType\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`targetId\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`metadata\` json DEFAULT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      KEY \`audit_actor_idx\` (\`actorUserId\`),
+      KEY \`audit_tenant_idx\` (\`tenantId\`),
+      KEY \`audit_created_idx\` (\`createdAt\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "audit_log"
+  );
+
+  // New columns on users.
+  await run(
+    `ALTER TABLE \`users\` ADD COLUMN \`globalRole\` enum('user','superadmin') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'user'`,
+    "users.globalRole"
+  );
+  await run(
+    `ALTER TABLE \`users\` ADD COLUMN \`defaultTenantId\` int DEFAULT NULL`,
+    "users.defaultTenantId"
+  );
+
+  // Nullable `tenantId` on every directly-queried entity table, each with an
+  // index. Statements are written out explicitly (one per table) so the
+  // schema/migration parity guard in server/addon.test.ts can see them.
+  // Deep child tables (repairQuotes, repairQuotePayments, upgradeOptions,
+  // upgradeOptionPayments, upgradeItems, loanRepayments) are reached only via a
+  // tenant-scoped parent, so they get their tenantId in a later phase.
+  await run(
+    `ALTER TABLE \`properties\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "properties.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`property_tenant_idx\` ON \`properties\` (\`tenantId\`)`,
+    "property_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`expenses\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "expenses.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`expense_tenant_idx\` ON \`expenses\` (\`tenantId\`)`,
+    "expense_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`repairs\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "repairs.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`repair_tenant_idx\` ON \`repairs\` (\`tenantId\`)`,
+    "repair_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`upgrades\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "upgrades.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`upgrade_tenant_idx\` ON \`upgrades\` (\`tenantId\`)`,
+    "upgrade_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`loans\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "loans.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`loan_tenant_idx\` ON \`loans\` (\`tenantId\`)`,
+    "loan_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`wishlistItems\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "wishlistItems.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`wishlist_tenant_idx\` ON \`wishlistItems\` (\`tenantId\`)`,
+    "wishlist_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`purchaseCosts\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "purchaseCosts.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`purchaseCost_tenant_idx\` ON \`purchaseCosts\` (\`tenantId\`)`,
+    "purchaseCost_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`calendarEvents\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "calendarEvents.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`calendar_tenant_idx\` ON \`calendarEvents\` (\`tenantId\`)`,
+    "calendar_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`inventoryItems\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "inventoryItems.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`inventoryItem_tenant_idx\` ON \`inventoryItems\` (\`tenantId\`)`,
+    "inventoryItem_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`files\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "files.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`files_tenant_idx\` ON \`files\` (\`tenantId\`)`,
+    "files_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`notification_log\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "notification_log.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`notif_log_tenant_idx\` ON \`notification_log\` (\`tenantId\`)`,
+    "notif_log_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`apartmentSearches\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "apartmentSearches.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`aptsearch_tenant_idx\` ON \`apartmentSearches\` (\`tenantId\`)`,
+    "aptsearch_tenant_idx"
+  );
+  await run(
+    `ALTER TABLE \`apartmentCandidates\` ADD COLUMN \`tenantId\` int DEFAULT NULL`,
+    "apartmentCandidates.tenantId"
+  );
+  await run(
+    `CREATE INDEX \`aptcand_tenant_idx\` ON \`apartmentCandidates\` (\`tenantId\`)`,
+    "aptcand_tenant_idx"
+  );
+
+  // ── Backfill ────────────────────────────────────────────────────────────────
+  // 1) One tenant + owner membership per existing user that has neither yet.
+  await backfill(
+    `INSERT INTO \`tenants\` (\`name\`, \`createdByUserId\`, \`status\`)
+       SELECT CONCAT(COALESCE(NULLIF(TRIM(u.name), ''), 'User'), '''s Home'), u.id, 'active'
+       FROM \`users\` u
+       WHERE NOT EXISTS (SELECT 1 FROM \`tenant_members\` tm WHERE tm.userId = u.id)
+         AND NOT EXISTS (SELECT 1 FROM \`tenants\` t WHERE t.createdByUserId = u.id)`,
+    "backfill: create per-user tenants"
+  );
+  await backfill(
+    `INSERT INTO \`tenant_members\` (\`tenantId\`, \`userId\`, \`role\`, \`status\`)
+       SELECT t.id, t.createdByUserId, 'owner', 'active'
+       FROM \`tenants\` t
+       WHERE t.createdByUserId IS NOT NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM \`tenant_members\` tm
+           WHERE tm.tenantId = t.id AND tm.userId = t.createdByUserId
+         )`,
+    "backfill: owner memberships"
+  );
+
+  // 2) Default tenant + global role on users.
+  await backfill(
+    `UPDATE \`users\` u
+       SET u.defaultTenantId = (
+         SELECT MIN(tm.tenantId) FROM \`tenant_members\` tm
+         WHERE tm.userId = u.id AND tm.status = 'active'
+       )
+       WHERE u.defaultTenantId IS NULL`,
+    "backfill: users.defaultTenantId"
+  );
+  await backfill(
+    `UPDATE \`users\` SET \`globalRole\` = 'superadmin'
+       WHERE \`role\` = 'admin' AND \`globalRole\` = 'user'`,
+    "backfill: legacy admin → superadmin"
+  );
+
+  // 3) properties.tenantId from the owning user's tenant.
+  await backfill(
+    `UPDATE \`properties\` p
+       SET p.tenantId = (
+         SELECT MIN(tm.tenantId) FROM \`tenant_members\` tm WHERE tm.userId = p.userId
+       )
+       WHERE p.tenantId IS NULL`,
+    "backfill: properties.tenantId"
+  );
+
+  // 4) Property-scoped entities inherit tenantId from their property.
+  for (const t of [
+    "expenses",
+    "repairs",
+    "upgrades",
+    "loans",
+    "wishlistItems",
+    "purchaseCosts",
+    "calendarEvents",
+    "inventoryItems",
+  ]) {
+    await backfill(
+      `UPDATE \`${t}\` e
+         JOIN \`properties\` p ON p.id = e.propertyId
+         SET e.tenantId = p.tenantId
+         WHERE e.tenantId IS NULL AND p.tenantId IS NOT NULL`,
+      `backfill: ${t}.tenantId`
+    );
+  }
+
+  // 5) files: by property when set, else by owning user.
+  await backfill(
+    `UPDATE \`files\` f
+       JOIN \`properties\` p ON p.id = f.propertyId
+       SET f.tenantId = p.tenantId
+       WHERE f.tenantId IS NULL AND f.propertyId IS NOT NULL AND p.tenantId IS NOT NULL`,
+    "backfill: files.tenantId (by property)"
+  );
+  await backfill(
+    `UPDATE \`files\` f
+       SET f.tenantId = (
+         SELECT MIN(tm.tenantId) FROM \`tenant_members\` tm WHERE tm.userId = f.ownerUserId
+       )
+       WHERE f.tenantId IS NULL`,
+    "backfill: files.tenantId (by owner)"
+  );
+
+  // 6) notification_log: by property when set, else by user.
+  await backfill(
+    `UPDATE \`notification_log\` n
+       JOIN \`properties\` p ON p.id = n.propertyId
+       SET n.tenantId = p.tenantId
+       WHERE n.tenantId IS NULL AND n.propertyId IS NOT NULL AND p.tenantId IS NOT NULL`,
+    "backfill: notification_log.tenantId (by property)"
+  );
+  await backfill(
+    `UPDATE \`notification_log\` n
+       SET n.tenantId = (
+         SELECT MIN(tm.tenantId) FROM \`tenant_members\` tm WHERE tm.userId = n.userId
+       )
+       WHERE n.tenantId IS NULL`,
+    "backfill: notification_log.tenantId (by user)"
+  );
+
+  // 7) Apartment search/candidates: user-scoped → user's tenant.
+  await backfill(
+    `UPDATE \`apartmentSearches\` s
+       SET s.tenantId = (
+         SELECT MIN(tm.tenantId) FROM \`tenant_members\` tm WHERE tm.userId = s.userId
+       )
+       WHERE s.tenantId IS NULL`,
+    "backfill: apartmentSearches.tenantId"
+  );
+  await backfill(
+    `UPDATE \`apartmentCandidates\` c
+       SET c.tenantId = (
+         SELECT MIN(tm.tenantId) FROM \`tenant_members\` tm WHERE tm.userId = c.userId
+       )
+       WHERE c.tenantId IS NULL`,
+    "backfill: apartmentCandidates.tenantId"
   );
 
   console.log("Unified HomeVault migration complete.");

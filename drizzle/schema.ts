@@ -9,6 +9,7 @@ import {
   boolean,
   json,
   index,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
 /**
@@ -23,7 +24,18 @@ export const users = mysqlTable(
     name: text("name"),
     email: varchar("email", { length: 320 }),
     loginMethod: varchar("loginMethod", { length: 64 }),
+    // Legacy global role kept for backwards-compat during the multi-tenant
+    // transition. New authorization uses `globalRole` (server-wide admin
+    // console) and `tenant_members.role` (authority within a tenant).
     role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+    // Server-wide role for the admin console. Distinct from a user's per-tenant
+    // role: a `superadmin` manages all users/tenants and global server config.
+    globalRole: mysqlEnum("globalRole", ["user", "superadmin"])
+      .default("user")
+      .notNull(),
+    // The tenant selected at login when a user belongs to more than one. Soft
+    // reference (no FK) to avoid a users<->tenants circular constraint.
+    defaultTenantId: int("defaultTenantId"),
     // Notification channel destinations (email already lives above).
     telegramChatId: varchar("telegramChatId", { length: 64 }),
     whatsappPhone: varchar("whatsappPhone", { length: 32 }),
@@ -41,63 +53,74 @@ export const users = mysqlTable(
 export type InsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
-export const properties = mysqlTable("properties", {
-  id: int("id").primaryKey().autoincrement(),
-  houseName: varchar("houseName", { length: 200 }).default("My Home"),
-  houseNickname: varchar("houseNickname", { length: 200 }),
-  address: text("address"),
-  latitude: decimal("latitude", { precision: 10, scale: 8 }),
-  longitude: decimal("longitude", { precision: 11, scale: 8 }),
-  purchaseDate: varchar("purchaseDate", { length: 20 }),
-  purchasePrice: int("purchasePrice"),
-  squareMeters: int("squareMeters"),
-  rooms: int("rooms"),
-  yearBuilt: int("yearBuilt"),
-  floor: int("floor"),
-  // Number of floors the dwelling itself has (houses/villas/townhouses), as
-  // opposed to `floor` which is the storey an apartment sits on.
-  floors: int("floors"),
-  // Garden / yard size in m² — relevant for ground-level dwellings.
-  gardenSize: int("gardenSize"),
-  parkingSpots: int("parkingSpots"),
-  hasStorage: boolean("hasStorage").default(false),
-  // Building has an elevator — relevant for apartments / penthouses / studios.
-  hasElevator: boolean("hasElevator").default(false),
-  // Has a protected space / safe room (ממ״ד) — relevant across dwelling types.
-  hasShelter: boolean("hasShelter").default(false),
-  currency: varchar("currency", { length: 10 }).default("₪"),
-  currencyCode: varchar("currencyCode", { length: 10 }).default("ILS"),
-  timezone: varchar("timezone", { length: 50 }).default("Asia/Jerusalem"),
-  startOfWeek: varchar("startOfWeek", { length: 20 }).default("Sunday"),
-  reminderDaysBefore: int("reminderDaysBefore").default(3),
-  calendarSyncEnabled: boolean("calendarSyncEnabled").default(false),
-  mapsProvider: varchar("mapsProvider", { length: 20 }).default("google"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  propertyType: varchar("propertyType", { length: 50 }).default("Apartment"),
-  remindExpenses: boolean("remindExpenses").default(true),
-  remindLoans: boolean("remindLoans").default(true),
-  remindRepairs: boolean("remindRepairs").default(true),
-  remindCalendar: boolean("remindCalendar").default(true),
-  // How the user holds this property. Drives which financial fields and
-  // reminders apply: owned_rented = bought & rented out (landlord),
-  // owned_personal = bought, owner-occupied, not rented, rented = the user is
-  // the tenant. Defaults so every pre-existing row stays valid.
-  propertyMode: mysqlEnum("propertyMode", [
-    "owned_rented",
-    "owned_personal",
-    "rented",
-  ]).default("owned_personal"),
-  // Rental terms. For `rented` these describe the lease the user pays; for
-  // `owned_rented` `monthlyRent` is the (informational) income received. All
-  // nullable — only populated for rental modes.
-  monthlyRent: int("monthlyRent"),
-  leaseStart: varchar("leaseStart", { length: 20 }),
-  leaseEnd: varchar("leaseEnd", { length: 20 }),
-  deposit: int("deposit"),
-  landlord: varchar("landlord", { length: 200 }),
-  userId: int("userId").notNull().default(1),
-});
+export const properties = mysqlTable(
+  "properties",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    houseName: varchar("houseName", { length: 200 }).default("My Home"),
+    houseNickname: varchar("houseNickname", { length: 200 }),
+    address: text("address"),
+    latitude: decimal("latitude", { precision: 10, scale: 8 }),
+    longitude: decimal("longitude", { precision: 11, scale: 8 }),
+    purchaseDate: varchar("purchaseDate", { length: 20 }),
+    purchasePrice: int("purchasePrice"),
+    squareMeters: int("squareMeters"),
+    rooms: int("rooms"),
+    yearBuilt: int("yearBuilt"),
+    floor: int("floor"),
+    // Number of floors the dwelling itself has (houses/villas/townhouses), as
+    // opposed to `floor` which is the storey an apartment sits on.
+    floors: int("floors"),
+    // Garden / yard size in m² — relevant for ground-level dwellings.
+    gardenSize: int("gardenSize"),
+    parkingSpots: int("parkingSpots"),
+    hasStorage: boolean("hasStorage").default(false),
+    // Building has an elevator — relevant for apartments / penthouses / studios.
+    hasElevator: boolean("hasElevator").default(false),
+    // Has a protected space / safe room (ממ״ד) — relevant across dwelling types.
+    hasShelter: boolean("hasShelter").default(false),
+    currency: varchar("currency", { length: 10 }).default("₪"),
+    currencyCode: varchar("currencyCode", { length: 10 }).default("ILS"),
+    timezone: varchar("timezone", { length: 50 }).default("Asia/Jerusalem"),
+    startOfWeek: varchar("startOfWeek", { length: 20 }).default("Sunday"),
+    reminderDaysBefore: int("reminderDaysBefore").default(3),
+    calendarSyncEnabled: boolean("calendarSyncEnabled").default(false),
+    mapsProvider: varchar("mapsProvider", { length: 20 }).default("google"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    propertyType: varchar("propertyType", { length: 50 }).default("Apartment"),
+    remindExpenses: boolean("remindExpenses").default(true),
+    remindLoans: boolean("remindLoans").default(true),
+    remindRepairs: boolean("remindRepairs").default(true),
+    remindCalendar: boolean("remindCalendar").default(true),
+    // How the user holds this property. Drives which financial fields and
+    // reminders apply: owned_rented = bought & rented out (landlord),
+    // owned_personal = bought, owner-occupied, not rented, rented = the user is
+    // the tenant. Defaults so every pre-existing row stays valid.
+    propertyMode: mysqlEnum("propertyMode", [
+      "owned_rented",
+      "owned_personal",
+      "rented",
+    ]).default("owned_personal"),
+    // Rental terms. For `rented` these describe the lease the user pays; for
+    // `owned_rented` `monthlyRent` is the (informational) income received. All
+    // nullable — only populated for rental modes.
+    monthlyRent: int("monthlyRent"),
+    leaseStart: varchar("leaseStart", { length: 20 }),
+    leaseEnd: varchar("leaseEnd", { length: 20 }),
+    deposit: int("deposit"),
+    landlord: varchar("landlord", { length: 200 }),
+    userId: int("userId").notNull().default(1),
+    // Owning tenant — the multi-tenant isolation boundary. Nullable during the
+    // additive Stage-1 migration; backfilled from `userId`'s tenant, then made
+    // NOT NULL in a later phase. Soft reference (no FK) for now.
+    tenantId: int("tenantId"),
+  },
+  table => ({
+    tenantIdx: index("property_tenant_idx").on(table.tenantId),
+    userIdx: index("property_user_idx").on(table.userId),
+  })
+);
 
 export type Property = typeof properties.$inferSelect;
 export type InsertProperty = typeof properties.$inferInsert;
@@ -139,6 +162,8 @@ export const expenses = mysqlTable(
     // Optional link to a loan: when a "Loan" category expense is paid, it feeds
     // a matching loanRepayment and decrements the loan's currentBalance.
     loanId: varchar("loanId", { length: 36 }),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -146,6 +171,7 @@ export const expenses = mysqlTable(
     propertyIdx: index("expense_property_idx").on(table.propertyId),
     ownerIdx: index("expense_owner_idx").on(table.ownerId),
     loanIdx: index("expense_loan_idx").on(table.loanId),
+    tenantIdx: index("expense_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -195,12 +221,15 @@ export const repairs = mysqlTable(
     contractor: varchar("contractor", { length: 200 }),
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     propertyIdx: index("repair_property_idx").on(table.propertyId),
     ownerIdx: index("repair_owner_idx").on(table.ownerId),
+    tenantIdx: index("repair_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -292,12 +321,15 @@ export const upgrades = mysqlTable(
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
     roiEstimate: int("roiEstimate"),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     propertyIdx: index("upgrade_property_idx").on(table.propertyId),
     ownerIdx: index("upgrade_owner_idx").on(table.ownerId),
+    tenantIdx: index("upgrade_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -402,12 +434,15 @@ export const loans = mysqlTable(
     ]).default("mortgage"),
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     propertyIdx: index("loan_property_idx").on(table.propertyId),
     ownerIdx: index("loan_owner_idx").on(table.ownerId),
+    tenantIdx: index("loan_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -469,12 +504,15 @@ export const wishlistItems = mysqlTable(
     url: text("url"),
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     propertyIdx: index("wishlist_property_idx").on(table.propertyId),
     ownerIdx: index("wishlist_owner_idx").on(table.ownerId),
+    tenantIdx: index("wishlist_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -505,12 +543,15 @@ export const purchaseCosts = mysqlTable(
     date: varchar("date", { length: 20 }),
     notes: text("notes"),
     attachments: json("attachments").$type<string[]>(),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     propertyIdx: index("purchaseCost_property_idx").on(table.propertyId),
     ownerIdx: index("purchaseCost_owner_idx").on(table.ownerId),
+    tenantIdx: index("purchaseCost_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -549,12 +590,15 @@ export const calendarEvents = mysqlTable(
     reminderDaysBefore: int("reminderDaysBefore"),
     externalCalendarId: varchar("externalCalendarId", { length: 200 }),
     notes: text("notes"),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     propertyIdx: index("calendar_property_idx").on(table.propertyId),
     ownerIdx: index("calendar_owner_idx").on(table.ownerId),
+    tenantIdx: index("calendar_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -604,6 +648,8 @@ export const inventoryItems = mysqlTable(
     tags: json("tags").$type<string[]>(),
     photoUrl: text("photoUrl"),
     serialNumber: varchar("serialNumber", { length: 200 }),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -612,6 +658,7 @@ export const inventoryItems = mysqlTable(
     ownerIdx: index("inventoryItem_owner_idx").on(table.ownerId),
     categoryIdx: index("inventoryItem_category_idx").on(table.category),
     roomIdx: index("inventoryItem_room_idx").on(table.room),
+    tenantIdx: index("inventoryItem_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -658,6 +705,8 @@ export const files = mysqlTable(
     // property cheaply (also lets `HomeVault/property-<id>/<userId>/` Drive
     // folders mirror this).
     propertyId: int("propertyId"),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     deletedAt: timestamp("deletedAt"),
   },
@@ -665,6 +714,7 @@ export const files = mysqlTable(
     ownerIdx: index("files_owner_idx").on(table.ownerUserId),
     backendIdx: index("files_backend_idx").on(table.backend),
     propertyIdx: index("files_property_idx").on(table.propertyId),
+    tenantIdx: index("files_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -742,10 +792,13 @@ export const notificationLog = mysqlTable(
     status: mysqlEnum("status", ["sent", "failed", "skipped"]).notNull(),
     reason: varchar("reason", { length: 300 }),
     readAt: timestamp("readAt"),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({
     userIdx: index("notif_log_user_idx").on(table.userId),
+    tenantIdx: index("notif_log_tenant_idx").on(table.tenantId),
     // Feed reads filter on (user, property); index the pair to keep them fast.
     propertyIdx: index("notif_log_property_idx").on(
       table.userId,
@@ -833,11 +886,14 @@ export const apartmentSearches = mysqlTable(
       "active"
     ),
     notes: text("notes"),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     userIdx: index("aptsearch_user_idx").on(table.userId),
+    tenantIdx: index("aptsearch_tenant_idx").on(table.tenantId),
   })
 );
 
@@ -905,14 +961,182 @@ export const apartmentCandidates = mysqlTable(
     convertedPropertyId: int("convertedPropertyId").references(
       () => properties.id
     ),
+    // Owning tenant (multi-tenant isolation). Nullable during Stage-1 backfill.
+    tenantId: int("tenantId"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => ({
     searchIdx: index("aptcand_search_idx").on(table.searchId),
     userIdx: index("aptcand_user_idx").on(table.userId),
+    tenantIdx: index("aptcand_tenant_idx").on(table.tenantId),
   })
 );
 
 export type ApartmentCandidate = typeof apartmentCandidates.$inferSelect;
 export type InsertApartmentCandidate = typeof apartmentCandidates.$inferInsert;
+
+// ─── User management & multi-tenancy (Stage 1) ────────────────────────────────
+// A `tenant` is the unit of data ownership and isolation: properties (and all
+// their child records) belong to a tenant, and users access them via a
+// `tenant_members` row that grants a per-tenant role. A user can belong to
+// multiple tenants. `ownerId`/`userId` on existing tables are retained for
+// attribution ("created by"), NOT for access control — that moves to `tenantId`.
+
+/** The isolation boundary. Owns properties and all property-scoped data. */
+export const tenants = mysqlTable(
+  "tenants",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    name: varchar("name", { length: 200 }).notNull(),
+    // Optional URL-friendly handle, used later for SAAS routing / join codes.
+    slug: varchar("slug", { length: 64 }),
+    status: mysqlEnum("status", ["active", "suspended"])
+      .default("active")
+      .notNull(),
+    // The user who created the tenant. Soft reference (no FK) to avoid a
+    // users<->tenants circular constraint.
+    createdByUserId: int("createdByUserId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    slugIdx: uniqueIndex("tenant_slug_idx").on(table.slug),
+    createdByIdx: index("tenant_created_by_idx").on(table.createdByUserId),
+  })
+);
+
+export type Tenant = typeof tenants.$inferSelect;
+export type InsertTenant = typeof tenants.$inferInsert;
+
+/** Membership of a user in a tenant, with the role that governs access. */
+export const tenantMembers = mysqlTable(
+  "tenant_members",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    tenantId: int("tenantId").notNull(),
+    userId: int("userId").notNull(),
+    // owner: full control incl. delete tenant / transfer; admin: manage members
+    // & settings; member: read/write data; viewer: read-only.
+    role: mysqlEnum("role", ["owner", "admin", "member", "viewer"])
+      .default("member")
+      .notNull(),
+    status: mysqlEnum("status", ["active", "invited", "removed"])
+      .default("active")
+      .notNull(),
+    invitedByUserId: int("invitedByUserId"),
+    joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    // One membership row per (tenant, user).
+    tenantUserIdx: uniqueIndex("tenant_member_unique_idx").on(
+      table.tenantId,
+      table.userId
+    ),
+    userIdx: index("tenant_member_user_idx").on(table.userId),
+    tenantIdx: index("tenant_member_tenant_idx").on(table.tenantId),
+  })
+);
+
+export type TenantMember = typeof tenantMembers.$inferSelect;
+export type InsertTenantMember = typeof tenantMembers.$inferInsert;
+
+/** Pending email invitations to join a tenant. Token is stored hashed. */
+export const tenantInvites = mysqlTable(
+  "tenant_invites",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    tenantId: int("tenantId").notNull(),
+    email: varchar("email", { length: 320 }).notNull(),
+    role: mysqlEnum("role", ["admin", "member", "viewer"])
+      .default("member")
+      .notNull(),
+    // SHA-256 of the invite token; the raw token only ever lives in the link.
+    tokenHash: varchar("tokenHash", { length: 128 }).notNull(),
+    invitedByUserId: int("invitedByUserId"),
+    expiresAt: timestamp("expiresAt").notNull(),
+    acceptedAt: timestamp("acceptedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    tokenIdx: uniqueIndex("tenant_invite_token_idx").on(table.tokenHash),
+    tenantIdx: index("tenant_invite_tenant_idx").on(table.tenantId),
+    emailIdx: index("tenant_invite_email_idx").on(table.email),
+  })
+);
+
+export type TenantInvite = typeof tenantInvites.$inferSelect;
+export type InsertTenantInvite = typeof tenantInvites.$inferInsert;
+
+/** Native email/password identities (SAAS self-signup). OAuth/NO_AUTH users
+ *  have no row here — their identity lives entirely on `users.openId`. */
+export const userCredentials = mysqlTable(
+  "user_credentials",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("userId").notNull().unique(),
+    email: varchar("email", { length: 320 }).notNull().unique(),
+    // argon2id / bcrypt hash — never the raw password.
+    passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+    emailVerifiedAt: timestamp("emailVerifiedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    emailIdx: index("user_cred_email_idx").on(table.email),
+  })
+);
+
+export type UserCredential = typeof userCredentials.$inferSelect;
+export type InsertUserCredential = typeof userCredentials.$inferInsert;
+
+/** Short-lived, single-use tokens for email verification & password reset.
+ *  Stored hashed; the raw token only travels in the emailed link. */
+export const emailTokens = mysqlTable(
+  "email_tokens",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("userId").notNull(),
+    type: mysqlEnum("type", ["verify_email", "reset_password"]).notNull(),
+    tokenHash: varchar("tokenHash", { length: 128 }).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    consumedAt: timestamp("consumedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    tokenIdx: index("email_token_token_idx").on(table.tokenHash),
+    userTypeIdx: index("email_token_user_type_idx").on(
+      table.userId,
+      table.type
+    ),
+  })
+);
+
+export type EmailToken = typeof emailTokens.$inferSelect;
+export type InsertEmailToken = typeof emailTokens.$inferInsert;
+
+/** Append-only audit trail for security-relevant actions (member changes,
+ *  invites, password resets, tenant suspension, global config changes). */
+export const auditLog = mysqlTable(
+  "audit_log",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    actorUserId: int("actorUserId"),
+    tenantId: int("tenantId"),
+    action: varchar("action", { length: 100 }).notNull(),
+    targetType: varchar("targetType", { length: 64 }),
+    targetId: varchar("targetId", { length: 64 }),
+    metadata: json("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => ({
+    actorIdx: index("audit_actor_idx").on(table.actorUserId),
+    tenantIdx: index("audit_tenant_idx").on(table.tenantId),
+    createdIdx: index("audit_created_idx").on(table.createdAt),
+  })
+);
+
+export type AuditLogRow = typeof auditLog.$inferSelect;
+export type InsertAuditLogRow = typeof auditLog.$inferInsert;

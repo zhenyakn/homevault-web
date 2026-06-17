@@ -8,6 +8,8 @@ import {
   wishlistItems,
   purchaseCosts,
   calendarEvents,
+  tenants,
+  tenantMembers,
 } from "./schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -55,5 +57,20 @@ export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
     fields: [calendarEvents.createdById],
     references: [users.id],
     relationName: "createdBy",
+  }),
+}));
+
+export const tenantsRelations = relations(tenants, ({ many }) => ({
+  members: many(tenantMembers),
+}));
+
+export const tenantMembersRelations = relations(tenantMembers, ({ one }) => ({
+  tenant: one(tenants, {
+    fields: [tenantMembers.tenantId],
+    references: [tenants.id],
+  }),
+  user: one(users, {
+    fields: [tenantMembers.userId],
+    references: [users.id],
   }),
 }));

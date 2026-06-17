@@ -84,6 +84,9 @@ export async function createFileRecord(input: {
     size: input.size,
     ownerUserId: input.ownerUserId,
     propertyId: input.propertyId ?? null,
+    // tenantId is populated by the Stage-1 backfill / Phase-3 write scoping;
+    // synthetic return mirrors the not-yet-scoped insert above.
+    tenantId: null,
     createdAt: new Date(),
     deletedAt: null,
   };

@@ -416,7 +416,7 @@ These two items were raised during Stage 1 design and are intentionally **part o
 | Phase | Deliverable | Notes |
 |-------|-------------|-------|
 | **0. Prep** | Tests around current per-user scoping; document invariants | Safety net before refactor |
-| **1. Schema** | `tenants`, `tenant_members`, `tenant_invites`, `user_credentials`, `email_tokens`, `audit_log`; nullable `tenantId` columns; backfill script | Additive, idempotent |
+| **1. Schema** ✅ | `tenants`, `tenant_members`, `tenant_invites`, `user_credentials`, `email_tokens`, `audit_log`; nullable `tenantId` columns; backfill script | Done — additive & idempotent; verified on MySQL (backfill + 3× re-run = 0 drift); `server/db/tenants.ts` helpers + integration test |
 | **2. Context & guards** | `tenantId` in context; `tenantProcedure` / `tenantAdminProcedure` / `superAdminProcedure`; tenant switcher plumbing (`x-tenant-id`) | Highest risk |
 | **3. DB scoping refactor** | Rewrite `server/db/*.ts` to scope by `tenantId`; remove single-user guards; cross-tenant isolation tests | Module-by-module |
 | **4. Native auth** | Email/password register/login/verify/reset; transactional emails | Reuses SMTP |
