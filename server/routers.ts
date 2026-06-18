@@ -49,7 +49,6 @@ import { logger } from "./_core/logger";
 import { searchRouter } from "./searchRouter";
 import { tenantRouter } from "./tenantRouter";
 import { adminRouter } from "./adminRouter";
-import { getPlan } from "./billing/plans";
 import {
   expenses,
   repairs,
@@ -793,18 +792,23 @@ export const appRouter = router({
     // member so they understand the workspace's limits; changing plans is a
     // superadmin action (adminRouter.billing.assignPlan).
     current: tenantProcedure.query(async ({ ctx }) => {
-      const [planId, sub, tenant, propertyCount, memberCount] =
+      const [planKey, sub, tenant, propertyCount, memberCount, available] =
         await Promise.all([
-          db.getEffectivePlanId(ctx.tenantId),
+          db.getEffectivePlanKey(ctx.tenantId),
           db.getSubscription(ctx.tenantId),
           db.getTenantById(ctx.tenantId),
           db.countPropertiesForTenant(ctx.tenantId),
           db.countActiveMembers(ctx.tenantId),
+          db.listActivePlans(),
         ]);
+      const plan = (await db.getPlanByKey(planKey)) ?? null;
       return {
-        plan: getPlan(planId) ?? null,
+        plan,
         status: sub?.status ?? null,
         currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+        // Other active plans the tenant can move up to (each may carry a
+        // checkoutUrl the Upgrade button forwards to).
+        availablePlans: available.filter(p => p.key !== planKey),
         usage: {
           properties: propertyCount,
           members: memberCount,

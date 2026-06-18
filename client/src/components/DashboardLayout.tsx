@@ -58,6 +58,7 @@ import {
   TrendingUp,
   Users,
   Wrench,
+  CreditCard,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -109,6 +110,7 @@ const NAV_GROUPS: NavGroup[] = [
     labelKey: "nav.group.account",
     items: [
       { icon: Users, key: "nav.members", path: "/members" },
+      { icon: CreditCard, key: "nav.plan", path: "/plan" },
       { icon: Settings, key: "nav.settings", path: "/settings" },
     ],
   },
@@ -134,6 +136,7 @@ const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
     pageKey: "nav.apartmentSearch",
   },
   "/members": { sectionKey: "nav.group.account", pageKey: "nav.members" },
+  "/plan": { sectionKey: "nav.group.account", pageKey: "nav.plan" },
   "/admin": { sectionKey: "nav.group.account", pageKey: "nav.admin" },
   "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
 };

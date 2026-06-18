@@ -250,7 +250,7 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
 
     const owner = appRouter.createCaller(ownerCtx(sid, tid));
     const current = await owner.billing.current();
-    expect(current.plan?.id).toBe("pro");
+    expect(current.plan?.key).toBe("pro");
     expect(current.usage.maxMembers).toBe(20);
 
     // Unknown plans are rejected.
@@ -303,5 +303,84 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
       .from(schema.users)
       .where(eq(schema.users.id, sid));
     expect(stillUser).toHaveLength(1);
+  });
+
+  it("manages the plan catalog (create / update / delete with in-use guard)", async () => {
+    const sid = await mkUser("plan-admin", "superadmin");
+    const tenantsDb = await import("./db/tenants");
+    const admin = appRouter.createCaller(ctxFor(sid, "superadmin"));
+    const key = `team-${Date.now()}`;
+
+    await admin.admin.plans.create({
+      key,
+      name: "Team",
+      isPaid: true,
+      priceCents: 4900,
+      currency: "ils",
+      interval: "month",
+      maxProperties: 5,
+      maxMembers: 7,
+      capabilities: ["files.upload"],
+      checkoutUrl: "https://buy.example.com/team",
+      sortOrder: 5,
+      active: true,
+    });
+    let list = (await admin.admin.plans.list()).plans;
+    expect(list.find(p => p.key === key)?.maxMembers).toBe(7);
+
+    await admin.admin.plans.update({
+      key,
+      name: "Team Plus",
+      isPaid: true,
+      priceCents: 5900,
+      currency: "ils",
+      interval: "month",
+      maxProperties: 5,
+      maxMembers: 9,
+      capabilities: ["files.upload"],
+      checkoutUrl: null,
+      sortOrder: 5,
+      active: true,
+    });
+    list = (await admin.admin.plans.list()).plans;
+    expect(list.find(p => p.key === key)?.name).toBe("Team Plus");
+    expect(list.find(p => p.key === key)?.maxMembers).toBe(9);
+
+    // In-use guard: assign to a tenant, deletion must be refused.
+    const tid = await tenantsDb.createTenantWithOwner(sid, "OnTeam");
+    await admin.admin.billing.assignPlan({ tenantId: tid, planId: key });
+    await expect(admin.admin.plans.delete({ key })).rejects.toThrow(
+      /workspace\(s\) are on this plan/i
+    );
+
+    // Reassign off it, then delete succeeds.
+    await admin.admin.billing.assignPlan({ tenantId: tid, planId: "free" });
+    await admin.admin.plans.delete({ key });
+    expect(
+      (await admin.admin.plans.list()).plans.find(p => p.key === key)
+    ).toBeUndefined();
+  });
+
+  it("gates capabilities by plan in SAAS and includes all in standalone", async () => {
+    const sid = await mkUser("cap-owner", "superadmin");
+    const tenantsDb = await import("./db/tenants");
+    const entitlements = await import("./db/entitlements");
+    const tid = await tenantsDb.createTenantWithOwner(sid, "CapWs");
+    const admin = appRouter.createCaller(ctxFor(sid, "superadmin"));
+
+    // Standalone (the test default): everything is included regardless of plan.
+    expect(await entitlements.hasCapability(tid, "files.upload")).toBe(true);
+
+    await admin.admin.config.setAppMode({ mode: "saas" });
+    try {
+      // Free plan omits files.upload → gated off in SAAS.
+      await admin.admin.billing.assignPlan({ tenantId: tid, planId: "free" });
+      expect(await entitlements.hasCapability(tid, "files.upload")).toBe(false);
+      // Pro includes it → allowed.
+      await admin.admin.billing.assignPlan({ tenantId: tid, planId: "pro" });
+      expect(await entitlements.hasCapability(tid, "files.upload")).toBe(true);
+    } finally {
+      await admin.admin.config.setAppMode({ mode: "standalone" });
+    }
   });
 });

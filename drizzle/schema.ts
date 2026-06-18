@@ -1111,6 +1111,44 @@ export type TenantSubscription = typeof tenantSubscriptions.$inferSelect;
 export type InsertTenantSubscription =
   typeof tenantSubscriptions.$inferInsert;
 
+/** Admin-managed subscription plans. The capability *keys* are code-defined
+ *  (server/billing/capabilities.ts); a plan stores which of them it includes
+ *  plus its limits, price, and an optional checkout/payment-link URL that the
+ *  tenant "Upgrade" button redirects to. Seeded with sane defaults by the boot
+ *  migration; fully editable from the admin console. */
+export const plans = mysqlTable(
+  "plans",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    // Stable key referenced by tenant_subscriptions.planId.
+    key: varchar("key", { length: 64 }).notNull().unique(),
+    name: varchar("name", { length: 100 }).notNull(),
+    isPaid: boolean("isPaid").default(false).notNull(),
+    priceCents: int("priceCents").default(0).notNull(),
+    currency: varchar("currency", { length: 3 }).default("ils").notNull(),
+    interval: mysqlEnum("interval", ["month", "year", "none"])
+      .default("none")
+      .notNull(),
+    // NULL = unlimited.
+    maxProperties: int("maxProperties"),
+    maxMembers: int("maxMembers"),
+    // Enabled capability keys (subset of the code registry).
+    capabilities: json("capabilities").$type<string[]>(),
+    // Payment-link the "Upgrade" button forwards to (paid plans).
+    checkoutUrl: varchar("checkoutUrl", { length: 1024 }),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    keyIdx: uniqueIndex("plan_key_idx").on(table.key),
+  })
+);
+
+export type Plan = typeof plans.$inferSelect;
+export type InsertPlan = typeof plans.$inferInsert;
+
 /** Native email/password identities (SAAS self-signup). OAuth/NO_AUTH users
  *  have no row here — their identity lives entirely on `users.openId`. */
 export const userCredentials = mysqlTable(

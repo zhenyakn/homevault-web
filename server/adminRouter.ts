@@ -3,8 +3,22 @@ import { TRPCError } from "@trpc/server";
 import { router, superAdminProcedure } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import * as db from "./db";
-import { PLANS, isPlanId } from "./billing/plans";
+import { CAPABILITIES, sanitizeCapabilities } from "./billing/capabilities";
 import { purgeTenantFileObjects } from "./files";
+
+const planInputSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+  isPaid: z.boolean(),
+  priceCents: z.number().int().min(0).max(100_000_00),
+  currency: z.string().trim().length(3),
+  interval: z.enum(["month", "year", "none"]),
+  maxProperties: z.number().int().min(0).max(100000).nullable(),
+  maxMembers: z.number().int().min(1).max(100000).nullable(),
+  capabilities: z.array(z.string()),
+  checkoutUrl: z.string().trim().max(1024).url().nullable(),
+  sortOrder: z.number().int().min(0).max(10000),
+  active: z.boolean(),
+});
 
 /**
  * Server-wide admin console. Every procedure is gated by superAdminProcedure
@@ -181,11 +195,85 @@ export const adminRouter = router({
       }),
   }),
 
-  billing: router({
-    // The static plan catalog (code-defined) + the active provider id.
-    plans: superAdminProcedure.query(() => ({
+  // ── Plan management (admin-defined catalog) ──────────────────────────────────
+  plans: router({
+    // The full plan catalog + the code-defined capability registry (so the UI
+    // can render capability checkboxes) + the active billing provider.
+    list: superAdminProcedure.query(async () => ({
       provider: ENV.billingProvider,
-      plans: PLANS,
+      capabilities: CAPABILITIES,
+      plans: await db.listPlans(),
+    })),
+
+    create: superAdminProcedure
+      .input(planInputSchema.extend({ key: z.string().trim().min(1).max(64) }))
+      .mutation(async ({ ctx, input }) => {
+        if (await db.getPlanByKey(input.key)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "A plan with this key already exists",
+          });
+        }
+        await db.createPlan({
+          ...input,
+          capabilities: sanitizeCapabilities(input.capabilities),
+        });
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.plan.created",
+          targetType: "plan",
+          targetId: input.key,
+        });
+        return { success: true as const };
+      }),
+
+    update: superAdminProcedure
+      .input(planInputSchema.extend({ key: z.string().trim().min(1).max(64) }))
+      .mutation(async ({ ctx, input }) => {
+        const { key, ...rest } = input;
+        if (!(await db.getPlanByKey(key))) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Plan not found" });
+        }
+        await db.updatePlan(key, {
+          ...rest,
+          capabilities: sanitizeCapabilities(input.capabilities),
+        });
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.plan.updated",
+          targetType: "plan",
+          targetId: key,
+        });
+        return { success: true as const };
+      }),
+
+    delete: superAdminProcedure
+      .input(z.object({ key: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const inUse = await db.countSubscribersOfPlan(input.key);
+        if (inUse > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Cannot delete: ${inUse} workspace(s) are on this plan. Reassign them first.`,
+          });
+        }
+        await db.deletePlan(input.key);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.plan.deleted",
+          targetType: "plan",
+          targetId: input.key,
+        });
+        return { success: true as const };
+      }),
+  }),
+
+  billing: router({
+    // The plan catalog + the active provider id (kept for the Tenants tab's
+    // plan selector).
+    plans: superAdminProcedure.query(async () => ({
+      provider: ENV.billingProvider,
+      plans: await db.listPlans(),
     })),
 
     // Assign a plan to a tenant. Applies the plan's limits to the tenant's
@@ -200,7 +288,7 @@ export const adminRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        if (!isPlanId(input.planId)) {
+        if (!(await db.getPlanByKey(input.planId))) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown plan" });
         }
         await db.applyPlan(input.tenantId, input.planId, {

@@ -5,7 +5,8 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { setTenantLimits } from "./tenants";
-import { getPlan, DEFAULT_PLAN_ID, type PlanId } from "../billing/plans";
+import { getPlanByKey } from "./plans";
+import { DEFAULT_PLAN_KEY } from "../billing/plans";
 import type { SubscriptionStatus } from "../billing/provider";
 
 export async function getSubscription(
@@ -23,7 +24,7 @@ export async function getSubscription(
 /** Insert or update the single subscription row for a tenant. */
 export async function upsertSubscription(params: {
   tenantId: number;
-  planId: PlanId;
+  planId: string;
   status?: SubscriptionStatus;
   provider?: string | null;
   providerCustomerId?: string | null;
@@ -60,7 +61,7 @@ export async function upsertSubscription(params: {
  */
 export async function applyPlan(
   tenantId: number,
-  planId: PlanId,
+  planKey: string,
   opts: {
     status?: SubscriptionStatus;
     provider?: string | null;
@@ -69,9 +70,9 @@ export async function applyPlan(
     currentPeriodEnd?: Date | null;
   } = {}
 ): Promise<void> {
-  const plan = getPlan(planId);
-  if (!plan) throw new Error(`Unknown plan: ${planId}`);
-  await upsertSubscription({ tenantId, planId, ...opts });
+  const plan = await getPlanByKey(planKey);
+  if (!plan) throw new Error(`Unknown plan: ${planKey}`);
+  await upsertSubscription({ tenantId, planId: planKey, ...opts });
   await setTenantLimits(tenantId, {
     maxProperties: plan.maxProperties,
     maxMembers: plan.maxMembers,
@@ -79,11 +80,11 @@ export async function applyPlan(
 }
 
 /**
- * The plan a tenant is effectively on — its subscription's plan, or the default
- * (free) plan when it has none yet.
+ * The plan key a tenant is effectively on — its subscription's plan, or the
+ * default (free) when it has none yet / references a deleted plan.
  */
-export async function getEffectivePlanId(tenantId: number): Promise<PlanId> {
+export async function getEffectivePlanKey(tenantId: number): Promise<string> {
   const sub = await getSubscription(tenantId);
-  const id = sub?.planId;
-  return id && getPlan(id) ? (id as PlanId) : DEFAULT_PLAN_ID;
+  if (sub?.planId && (await getPlanByKey(sub.planId))) return sub.planId;
+  return DEFAULT_PLAN_KEY;
 }

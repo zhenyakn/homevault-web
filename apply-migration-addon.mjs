@@ -1257,6 +1257,41 @@ async function main() {
   );
 
   await run(
+    `CREATE TABLE IF NOT EXISTS \`plans\` (
+      \`id\` int NOT NULL AUTO_INCREMENT,
+      \`key\` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`name\` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`isPaid\` tinyint(1) NOT NULL DEFAULT 0,
+      \`priceCents\` int NOT NULL DEFAULT 0,
+      \`currency\` varchar(3) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ils',
+      \`interval\` enum('month','year','none') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'none',
+      \`maxProperties\` int DEFAULT NULL,
+      \`maxMembers\` int DEFAULT NULL,
+      \`capabilities\` json DEFAULT NULL,
+      \`checkoutUrl\` varchar(1024) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`sortOrder\` int NOT NULL DEFAULT 0,
+      \`active\` tinyint(1) NOT NULL DEFAULT 1,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      UNIQUE KEY \`plan_key_idx\` (\`key\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "plans"
+  );
+  // Seed default plans (idempotent via the unique key). Paid plans include the
+  // files.upload capability; the free tier does not (gated only in SAAS).
+  await backfill(
+    `INSERT IGNORE INTO \`plans\`
+       (\`key\`, \`name\`, \`isPaid\`, \`priceCents\`, \`currency\`, \`interval\`, \`maxProperties\`, \`maxMembers\`, \`capabilities\`, \`sortOrder\`, \`active\`)
+     VALUES
+       ('free',      'Free',      false, 0,    'ils', 'none',  1,    2,    '[]',               0, true),
+       ('starter',   'Starter',   true,  2900, 'ils', 'month', 3,    5,    '["files.upload"]', 1, true),
+       ('pro',       'Pro',       true,  7900, 'ils', 'month', 10,   20,   '["files.upload"]', 2, true),
+       ('unlimited', 'Unlimited', true,  19900,'ils', 'month', NULL, NULL, '["files.upload"]', 3, true)`,
+    "seed default plans"
+  );
+
+  await run(
     `CREATE TABLE IF NOT EXISTS \`user_credentials\` (
       \`id\` int NOT NULL AUTO_INCREMENT,
       \`userId\` int NOT NULL,

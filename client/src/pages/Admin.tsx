@@ -21,11 +21,12 @@ function errMessage(e: unknown): string {
     : "Something went wrong";
 }
 
-type Tab = "overview" | "users" | "tenants" | "audit";
+type Tab = "overview" | "users" | "tenants" | "plans" | "audit";
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "users", label: "Users" },
   { key: "tenants", label: "Tenants" },
+  { key: "plans", label: "Plans" },
   { key: "audit", label: "Audit log" },
 ];
 
@@ -78,6 +79,7 @@ export default function Admin() {
       {tab === "overview" && <Overview />}
       {tab === "users" && <UsersTab />}
       {tab === "tenants" && <TenantsTab />}
+      {tab === "plans" && <PlansTab />}
       {tab === "audit" && <AuditTab />}
     </div>
   );
@@ -337,7 +339,7 @@ function TenantsTab() {
                     {t.planId ? t.planId : "No plan"}
                   </option>
                   {plans.data?.plans.map(p => (
-                    <option key={p.id} value={p.id}>
+                    <option key={p.key} value={p.key}>
                       {p.name}
                     </option>
                   ))}
@@ -484,6 +486,381 @@ function TenantLimitsEditor({
       >
         Delete
       </Button>
+    </div>
+  );
+}
+
+type PlanRow = {
+  key: string;
+  name: string;
+  isPaid: boolean;
+  priceCents: number;
+  currency: string;
+  interval: "month" | "year" | "none";
+  maxProperties: number | null;
+  maxMembers: number | null;
+  capabilities: string[] | null;
+  checkoutUrl: string | null;
+  sortOrder: number;
+  active: boolean;
+};
+
+const BLANK_PLAN: PlanRow = {
+  key: "",
+  name: "",
+  isPaid: false,
+  priceCents: 0,
+  currency: "ils",
+  interval: "none",
+  maxProperties: null,
+  maxMembers: null,
+  capabilities: [],
+  checkoutUrl: null,
+  sortOrder: 0,
+  active: true,
+};
+
+function PlansTab() {
+  const data = trpc.admin.plans.list.useQuery();
+  const [editing, setEditing] = useState<PlanRow | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base">Plans</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Billing provider: {data.data?.provider ?? "—"}. Capabilities are
+            gated by plan in SAAS mode; everything is included in standalone.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            setEditing({ ...BLANK_PLAN });
+            setCreating(true);
+          }}
+        >
+          New plan
+        </Button>
+      </CardHeader>
+      <CardContent className="divide-y">
+        {data.isLoading && (
+          <div className="py-6 flex justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+        {data.data?.plans.map(p => (
+          <div
+            key={p.key}
+            className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">
+                {p.name}{" "}
+                <span className="text-xs text-muted-foreground">({p.key})</span>
+                {!p.active && (
+                  <Badge variant="outline" className="ms-1">
+                    hidden
+                  </Badge>
+                )}
+                {p.isPaid ? (
+                  <Badge variant="secondary" className="ms-1">
+                    {(p.priceCents / 100).toLocaleString(undefined, {
+                      style: "currency",
+                      currency: (p.currency || "ils").toUpperCase(),
+                    })}
+                    /{p.interval}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="ms-1">
+                    free
+                  </Badge>
+                )}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {p.maxProperties ?? "∞"} properties · {p.maxMembers ?? "∞"}{" "}
+                members · caps: {(p.capabilities ?? []).join(", ") || "none"}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setEditing({ ...(p as PlanRow) });
+                setCreating(false);
+              }}
+            >
+              Edit
+            </Button>
+          </div>
+        ))}
+      </CardContent>
+
+      {editing && (
+        <PlanEditor
+          plan={editing}
+          isNew={creating}
+          capabilities={data.data?.capabilities ?? []}
+          onClose={() => setEditing(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
+function PlanEditor({
+  plan,
+  isNew,
+  capabilities,
+  onClose,
+}: {
+  plan: PlanRow;
+  isNew: boolean;
+  capabilities: readonly { key: string; label: string; description: string }[];
+  onClose: () => void;
+}) {
+  const utils = trpc.useUtils();
+  const [draft, setDraft] = useState<PlanRow>(plan);
+  const refresh = () => {
+    utils.admin.plans.list.invalidate();
+    utils.admin.tenants.list.invalidate();
+  };
+  const create = trpc.admin.plans.create.useMutation({
+    onSuccess: () => {
+      refresh();
+      toast.success("Plan created");
+      onClose();
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
+  const update = trpc.admin.plans.update.useMutation({
+    onSuccess: () => {
+      refresh();
+      toast.success("Plan saved");
+      onClose();
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
+  const del = trpc.admin.plans.delete.useMutation({
+    onSuccess: () => {
+      refresh();
+      toast.success("Plan deleted");
+      onClose();
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
+
+  const num = (s: string): number | null => {
+    const n = parseInt(s, 10);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  };
+  const toggleCap = (key: string) =>
+    setDraft(d => {
+      const set = new Set(d.capabilities ?? []);
+      if (set.has(key)) set.delete(key);
+      else set.add(key);
+      return { ...d, capabilities: Array.from(set) };
+    });
+
+  const submit = () => {
+    const payload = {
+      key: draft.key.trim(),
+      name: draft.name.trim(),
+      isPaid: draft.isPaid,
+      priceCents: draft.priceCents,
+      currency: (draft.currency || "ils").toLowerCase(),
+      interval: draft.interval,
+      maxProperties: draft.maxProperties,
+      maxMembers: draft.maxMembers,
+      capabilities: draft.capabilities ?? [],
+      checkoutUrl: draft.checkoutUrl?.trim() ? draft.checkoutUrl.trim() : null,
+      sortOrder: draft.sortOrder,
+      active: draft.active,
+    };
+    if (isNew) create.mutate(payload);
+    else update.mutate(payload);
+  };
+
+  const busy = create.isPending || update.isPending || del.isPending;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-card w-full max-w-lg rounded-xl border shadow-lg p-5 space-y-4 max-h-[90vh] overflow-auto">
+        <h3 className="text-base font-semibold">
+          {isNew ? "New plan" : `Edit ${plan.name}`}
+        </h3>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Key</span>
+            <Input
+              value={draft.key}
+              disabled={!isNew}
+              placeholder="pro"
+              onChange={e => setDraft({ ...draft, key: e.target.value })}
+            />
+          </label>
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Name</span>
+            <Input
+              value={draft.name}
+              placeholder="Pro"
+              onChange={e => setDraft({ ...draft, name: e.target.value })}
+            />
+          </label>
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Price (cents)</span>
+            <Input
+              type="number"
+              min={0}
+              value={String(draft.priceCents)}
+              onChange={e =>
+                setDraft({ ...draft, priceCents: num(e.target.value) ?? 0 })
+              }
+            />
+          </label>
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Currency</span>
+            <Input
+              value={draft.currency}
+              maxLength={3}
+              onChange={e => setDraft({ ...draft, currency: e.target.value })}
+            />
+          </label>
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Interval</span>
+            <select
+              className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              value={draft.interval}
+              onChange={e =>
+                setDraft({
+                  ...draft,
+                  interval: e.target.value as PlanRow["interval"],
+                })
+              }
+            >
+              <option value="none">none</option>
+              <option value="month">month</option>
+              <option value="year">year</option>
+            </select>
+          </label>
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Sort order</span>
+            <Input
+              type="number"
+              min={0}
+              value={String(draft.sortOrder)}
+              onChange={e =>
+                setDraft({ ...draft, sortOrder: num(e.target.value) ?? 0 })
+              }
+            />
+          </label>
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Max properties (∞ = blank)</span>
+            <Input
+              type="number"
+              min={0}
+              value={draft.maxProperties?.toString() ?? ""}
+              onChange={e =>
+                setDraft({ ...draft, maxProperties: num(e.target.value) })
+              }
+            />
+          </label>
+          <label className="text-xs space-y-1">
+            <span className="text-muted-foreground">Max members (∞ = blank)</span>
+            <Input
+              type="number"
+              min={1}
+              value={draft.maxMembers?.toString() ?? ""}
+              onChange={e =>
+                setDraft({ ...draft, maxMembers: num(e.target.value) })
+              }
+            />
+          </label>
+        </div>
+
+        <label className="text-xs space-y-1 block">
+          <span className="text-muted-foreground">
+            Checkout / payment-link URL (paid plans)
+          </span>
+          <Input
+            value={draft.checkoutUrl ?? ""}
+            placeholder="https://buy.stripe.com/…"
+            onChange={e => setDraft({ ...draft, checkoutUrl: e.target.value })}
+          />
+        </label>
+
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">Included capabilities</p>
+          <div className="space-y-1">
+            {capabilities.map(c => (
+              <label key={c.key} className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={(draft.capabilities ?? []).includes(c.key)}
+                  onChange={() => toggleCap(c.key)}
+                />
+                <span>
+                  {c.label}
+                  <span className="block text-xs text-muted-foreground">
+                    {c.description}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-sm">
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={draft.isPaid}
+              onChange={e => setDraft({ ...draft, isPaid: e.target.checked })}
+            />
+            Paid plan
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={draft.active}
+              onChange={e => setDraft({ ...draft, active: e.target.checked })}
+            />
+            Active (offered)
+          </label>
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          {!isNew ? (
+            <Button
+              variant="ghost"
+              className="text-destructive hover:text-destructive"
+              disabled={busy}
+              onClick={() => {
+                if (window.confirm(`Delete plan "${plan.name}"?`)) {
+                  del.mutate({ key: plan.key });
+                }
+              }}
+            >
+              Delete
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} disabled={busy}>
+              Cancel
+            </Button>
+            <Button onClick={submit} disabled={busy}>
+              {busy && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
+              {isNew ? "Create" : "Save"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

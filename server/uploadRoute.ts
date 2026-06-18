@@ -5,6 +5,7 @@ import { createContext } from "./_core/context";
 import { logger } from "./_core/logger";
 import { csrfRequireMiddleware } from "./_core/csrf";
 import { uploadAndRegister } from "./files";
+import { hasCapability } from "./db/entitlements";
 import {
   StorageNotConfiguredError,
   StorageOperationError,
@@ -150,6 +151,20 @@ router.post(
         const ctx = await createContext({ req, res } as any);
         if (!ctx.user) {
           res.status(401).json({ error: "Unauthorized" });
+          return;
+        }
+
+        // Feature gating: file uploads may be a paid capability (SAAS). In
+        // standalone everything is included, so this is a no-op there.
+        if (
+          ctx.tenantId != null &&
+          !(await hasCapability(ctx.tenantId, "files.upload"))
+        ) {
+          res.status(403).json({
+            error: "Your plan does not include file uploads.",
+            code: "CAPABILITY_REQUIRED",
+            capability: "files.upload",
+          });
           return;
         }
 

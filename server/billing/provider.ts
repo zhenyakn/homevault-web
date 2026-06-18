@@ -1,5 +1,4 @@
 import { ENV } from "../_core/env";
-import type { PlanId } from "./plans";
 
 /** Lifecycle states mirrored from a billing provider's subscription object. */
 export type SubscriptionStatus =
@@ -31,7 +30,7 @@ export interface BillingProvider {
   /** Begin a subscription/checkout for a tenant. */
   createCheckout(params: {
     tenantId: number;
-    planId: PlanId;
+    planId: string;
   }): Promise<CheckoutResult>;
   /** Cancel a tenant's subscription at the provider. */
   cancel(params: { tenantId: number }): Promise<void>;
