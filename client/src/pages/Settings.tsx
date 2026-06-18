@@ -1625,6 +1625,450 @@ function MapsKeyConfig({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+/** Configured / not-set-up + env-managed badges for a delivery-setup section. */
+function DeliveryStatusRow({
+  configured,
+  fromEnv,
+}: {
+  configured: boolean;
+  fromEnv: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center gap-1.5">
+      <StatusBadge
+        tone={configured ? "on" : "off"}
+        label={
+          configured
+            ? t("settings.delivery.configured")
+            : t("settings.delivery.notConfigured")
+        }
+      />
+      {fromEnv && (
+        <StatusBadge tone="muted" label={t("settings.delivery.fromEnv")} />
+      )}
+    </div>
+  );
+}
+
+/** Labelled input row used by the delivery-setup forms. */
+function DeliveryField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label className="block space-y-1">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <Input
+        type={type}
+        value={value}
+        placeholder={placeholder}
+        autoComplete="off"
+        disabled={disabled}
+        className="h-8 text-sm"
+        onChange={e => onChange(e.target.value)}
+      />
+    </label>
+  );
+}
+
+function SaveDeliveryButton({
+  onClick,
+  pending,
+}: {
+  onClick: () => void;
+  pending: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Button
+      size="sm"
+      className="h-8 self-start text-xs"
+      onClick={onClick}
+      disabled={pending}
+    >
+      {pending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        t("settings.delivery.save")
+      )}
+    </Button>
+  );
+}
+
+/**
+ * Admin-only server-side notification credential setup. Mirrors the storage
+ * (S3) admin pattern: each channel's credentials resolve env-first, then the
+ * values saved here (stored encrypted in app_settings). When a channel is
+ * supplied by the environment its form is read-only.
+ */
+function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
+  const { t } = useTranslation();
+  const u = trpc.useUtils();
+  const { data: cfg, isLoading } = trpc.notification.getChannelConfig.useQuery(
+    undefined,
+    { enabled: isAdmin }
+  );
+
+  const invalidate = () =>
+    Promise.all([
+      u.notification.getChannelConfig.invalidate(),
+      u.notification.getStatus.invalidate(),
+      u.notification.getVapidPublicKey.invalidate(),
+    ]);
+
+  const save = trpc.notification.saveChannelConfig.useMutation({
+    onSuccess: async () => {
+      await invalidate();
+      toast.success(t("settings.delivery.saved"));
+    },
+    onError: e => toast.error(e.message),
+  });
+  const genVapid = trpc.notification.generateVapidKeys.useMutation({
+    onSuccess: async () => {
+      await invalidate();
+      toast.success(t("settings.delivery.webpush.generated"));
+    },
+    onError: e => toast.error(e.message),
+  });
+
+  if (!isAdmin) return null;
+
+  return (
+    <CollapsibleCategory
+      icon={<Bell className="h-4 w-4" />}
+      title={t("settings.delivery.title")}
+      description={t("settings.delivery.desc")}
+    >
+      {isLoading || !cfg ? (
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-6 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          {t("settings.ch.loading")}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <EmailDeliveryForm
+            status={cfg.email}
+            pending={save.isPending}
+            onSave={v => save.mutate({ email: v })}
+          />
+          <TelegramDeliveryForm
+            status={cfg.telegram}
+            pending={save.isPending}
+            onSave={v => save.mutate({ telegram: v })}
+          />
+          <WebPushDeliveryForm
+            status={cfg.webpush}
+            pending={save.isPending}
+            onSave={v => save.mutate({ webpush: v })}
+            onGenerate={() => genVapid.mutate()}
+            generating={genVapid.isPending}
+          />
+          <WhatsAppDeliveryForm
+            status={cfg.whatsapp}
+            pending={save.isPending}
+            onSave={v => save.mutate({ whatsapp: v })}
+          />
+        </div>
+      )}
+    </CollapsibleCategory>
+  );
+}
+
+function EmailDeliveryForm({
+  status,
+  onSave,
+  pending,
+}: {
+  status: any;
+  onSave: (v: any) => void;
+  pending: boolean;
+}) {
+  const { t } = useTranslation();
+  const ro = Boolean(status.fromEnv);
+  const [host, setHost] = useState(status.host ?? "");
+  const [port, setPort] = useState(status.port ?? "");
+  const [user, setUser] = useState(status.user ?? "");
+  const [from, setFrom] = useState(status.from ?? "");
+  const [pass, setPass] = useState("");
+  return (
+    <IntegrationCard
+      icon={<Mail className="h-4 w-4" />}
+      name={t("settings.delivery.email.title")}
+      description={t("settings.delivery.email.desc")}
+      badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
+      footer={
+        ro ? (
+          <p className="text-xs text-muted-foreground">
+            {t("settings.delivery.fromEnv")}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <DeliveryField
+              label={t("settings.delivery.email.host")}
+              value={host}
+              onChange={setHost}
+              placeholder="smtp.example.com"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <DeliveryField
+                label={t("settings.delivery.email.port")}
+                value={port}
+                onChange={setPort}
+                placeholder="587"
+              />
+              <DeliveryField
+                label={t("settings.delivery.email.user")}
+                value={user}
+                onChange={setUser}
+              />
+            </div>
+            <DeliveryField
+              label={t("settings.delivery.email.pass")}
+              value={pass}
+              onChange={setPass}
+              type="password"
+              placeholder={
+                status.passSet
+                  ? t("settings.delivery.secretPlaceholder")
+                  : undefined
+              }
+            />
+            <DeliveryField
+              label={t("settings.delivery.email.from")}
+              value={from}
+              onChange={setFrom}
+              placeholder="HomeVault <noreply@example.com>"
+            />
+            <SaveDeliveryButton
+              pending={pending}
+              onClick={() =>
+                onSave({
+                  smtpHost: host,
+                  smtpPort: port,
+                  smtpUser: user,
+                  smtpFrom: from,
+                  smtpPass: pass,
+                })
+              }
+            />
+          </div>
+        )
+      }
+    />
+  );
+}
+
+function TelegramDeliveryForm({
+  status,
+  onSave,
+  pending,
+}: {
+  status: any;
+  onSave: (v: any) => void;
+  pending: boolean;
+}) {
+  const { t } = useTranslation();
+  const ro = Boolean(status.fromEnv);
+  const [token, setToken] = useState("");
+  return (
+    <IntegrationCard
+      icon={<Send className="h-4 w-4" />}
+      name={t("settings.delivery.telegram.title")}
+      description={t("settings.delivery.telegram.desc")}
+      badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
+      footer={
+        ro ? (
+          <p className="text-xs text-muted-foreground">
+            {t("settings.delivery.fromEnv")}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <DeliveryField
+              label={t("settings.delivery.telegram.token")}
+              value={token}
+              onChange={setToken}
+              type="password"
+              placeholder={
+                status.tokenSet
+                  ? t("settings.delivery.secretPlaceholder")
+                  : "123456:ABC-DEF…"
+              }
+            />
+            <SaveDeliveryButton
+              pending={pending}
+              onClick={() => onSave({ telegramBotToken: token })}
+            />
+          </div>
+        )
+      }
+    />
+  );
+}
+
+function WebPushDeliveryForm({
+  status,
+  onSave,
+  pending,
+  onGenerate,
+  generating,
+}: {
+  status: any;
+  onSave: (v: any) => void;
+  pending: boolean;
+  onGenerate: () => void;
+  generating: boolean;
+}) {
+  const { t } = useTranslation();
+  const ro = Boolean(status.fromEnv);
+  const [publicKey, setPublicKey] = useState(status.publicKey ?? "");
+  const [privateKey, setPrivateKey] = useState("");
+  const [subject, setSubject] = useState(status.subject ?? "");
+  useEffect(() => setPublicKey(status.publicKey ?? ""), [status.publicKey]);
+  return (
+    <IntegrationCard
+      icon={<Globe className="h-4 w-4" />}
+      name={t("settings.delivery.webpush.title")}
+      description={t("settings.delivery.webpush.desc")}
+      badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
+      footer={
+        ro ? (
+          <p className="text-xs text-muted-foreground">
+            {t("settings.delivery.fromEnv")}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <DeliveryField
+              label={t("settings.delivery.webpush.publicKey")}
+              value={publicKey}
+              onChange={setPublicKey}
+            />
+            <DeliveryField
+              label={t("settings.delivery.webpush.privateKey")}
+              value={privateKey}
+              onChange={setPrivateKey}
+              type="password"
+              placeholder={
+                status.privateKeySet
+                  ? t("settings.delivery.secretPlaceholder")
+                  : undefined
+              }
+            />
+            <DeliveryField
+              label={t("settings.delivery.webpush.subject")}
+              value={subject}
+              onChange={setSubject}
+              placeholder="mailto:admin@example.com"
+            />
+            <div className="flex items-center gap-2">
+              <SaveDeliveryButton
+                pending={pending}
+                onClick={() =>
+                  onSave({
+                    vapidPublicKey: publicKey,
+                    vapidPrivateKey: privateKey,
+                    vapidSubject: subject,
+                  })
+                }
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={onGenerate}
+                disabled={generating}
+              >
+                {generating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  t("settings.delivery.webpush.generate")
+                )}
+              </Button>
+            </div>
+          </div>
+        )
+      }
+    />
+  );
+}
+
+function WhatsAppDeliveryForm({
+  status,
+  onSave,
+  pending,
+}: {
+  status: any;
+  onSave: (v: any) => void;
+  pending: boolean;
+}) {
+  const { t } = useTranslation();
+  const ro = Boolean(status.fromEnv);
+  const [phoneId, setPhoneId] = useState(status.phoneNumberId ?? "");
+  const [token, setToken] = useState("");
+  const [apiVersion, setApiVersion] = useState(status.apiVersion ?? "");
+  return (
+    <IntegrationCard
+      icon={<MessageCircle className="h-4 w-4" />}
+      name={t("settings.delivery.whatsapp.title")}
+      description={t("settings.delivery.whatsapp.desc")}
+      badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
+      footer={
+        ro ? (
+          <p className="text-xs text-muted-foreground">
+            {t("settings.delivery.fromEnv")}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <DeliveryField
+              label={t("settings.delivery.whatsapp.phoneId")}
+              value={phoneId}
+              onChange={setPhoneId}
+            />
+            <DeliveryField
+              label={t("settings.delivery.whatsapp.token")}
+              value={token}
+              onChange={setToken}
+              type="password"
+              placeholder={
+                status.tokenSet
+                  ? t("settings.delivery.secretPlaceholder")
+                  : undefined
+              }
+            />
+            <DeliveryField
+              label={t("settings.delivery.whatsapp.apiVersion")}
+              value={apiVersion}
+              onChange={setApiVersion}
+              placeholder="v21.0"
+            />
+            <SaveDeliveryButton
+              pending={pending}
+              onClick={() =>
+                onSave({
+                  whatsappPhoneNumberId: phoneId,
+                  whatsappAccessToken: token,
+                  whatsappApiVersion: apiVersion,
+                })
+              }
+            />
+          </div>
+        )
+      }
+    />
+  );
+}
+
 function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const { save, isPending } = usePropertyAutosave();
@@ -1647,6 +2091,9 @@ function IntegrationsSection({ p }: { p: any }) {
 
       {/* Notification channels — relevant to every user, so it leads. */}
       <NotificationChannelsIntegration />
+
+      {/* Server-side delivery credentials (admin only; self-gates). */}
+      <NotificationServerSetup isAdmin={isAdmin} />
 
       {/* Connected services — live integrations first, roadmap clearly apart. */}
       <CollapsibleCategory
