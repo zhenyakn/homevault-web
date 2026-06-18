@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useCapabilities } from "@/hooks/useCapabilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,8 +34,11 @@ const TABS: { key: Tab; label: string }[] = [
 export default function Admin() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
+  const { isSaas } = useCapabilities();
   const isSuperAdmin =
     user?.globalRole === "superadmin";
+  // Plans are a hosted (SAAS) concept; hide the tab on standalone installs.
+  const tabs = isSaas ? TABS : TABS.filter(t => t.key !== "plans");
 
   if (!isSuperAdmin) {
     return (
@@ -61,7 +65,7 @@ export default function Admin() {
       </div>
 
       <div className="flex gap-1 border-b">
-        {TABS.map(t => (
+        {tabs.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
@@ -79,7 +83,7 @@ export default function Admin() {
       {tab === "overview" && <Overview />}
       {tab === "users" && <UsersTab />}
       {tab === "tenants" && <TenantsTab />}
-      {tab === "plans" && <PlansTab />}
+      {tab === "plans" && isSaas && <PlansTab />}
       {tab === "audit" && <AuditTab />}
     </div>
   );

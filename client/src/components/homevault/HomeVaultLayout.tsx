@@ -28,6 +28,7 @@ import MobileTabBar from "@/components/homevault/HomeVaultMobileNav";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useCapabilities } from "@/hooks/useCapabilities";
 import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -398,12 +399,16 @@ function DashboardLayoutContent({
 
   const { data: profiles } = trpc.profiles.list.useQuery();
   const { data: docSummary } = trpc.documents.summary.useQuery();
+  const { isSaas } = useCapabilities();
 
   // Portfolio is the home for all property settings, so it's always in the nav.
+  // The Plan entry is hosted-only — hidden on standalone (e.g. HA add-on).
   const navItems: HVNavItem[] = [
     ...HV_NAV,
     { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
-    { icon: CreditCard, key: "nav.plan", path: "/plan" },
+    ...(isSaas
+      ? [{ icon: CreditCard, key: "nav.plan", path: "/plan" }]
+      : []),
     { icon: Settings, key: "nav.settings", path: "/settings" },
   ];
 

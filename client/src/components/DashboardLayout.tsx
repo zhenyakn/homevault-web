@@ -29,6 +29,7 @@ import { useProperty } from "@/contexts/PropertyContext";
 import { TenantSwitcherSection } from "@/components/TenantSwitcher";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
+import { useCapabilities } from "@/hooks/useCapabilities";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTranslation } from "react-i18next";
@@ -365,6 +366,8 @@ function DashboardLayoutContent({
   const isMobile = useIsMobile();
 
   const { data: profiles } = trpc.profiles.list.useQuery();
+  // Billing/plan UI is hosted-only — hidden on standalone (e.g. HA add-on).
+  const { isSaas } = useCapabilities();
 
   const handleSearchOpen = () => {
     onSearchOpen?.();
@@ -385,11 +388,12 @@ function DashboardLayoutContent({
         ],
       };
     }
-    if (g.labelKey === "nav.group.account" && isSuperAdmin) {
-      return {
-        ...g,
-        items: [{ icon: Shield, key: "nav.admin", path: "/admin" }, ...g.items],
-      };
+    if (g.labelKey === "nav.group.account") {
+      let items = isSaas ? g.items : g.items.filter(i => i.path !== "/plan");
+      if (isSuperAdmin) {
+        items = [{ icon: Shield, key: "nav.admin", path: "/admin" }, ...items];
+      }
+      return { ...g, items };
     }
     return g;
   });

@@ -382,14 +382,16 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     expect(new Set(await entitlements.getEffectiveCapabilities(tid))).toEqual(
       new Set(CAPABILITIES.map(c => c.key))
     );
-    // The tenant-facing query mirrors the resolver.
+    // The tenant-facing query mirrors the resolver and reports the mode so the
+    // client can hide billing UI on standalone (e.g. the HA add-on).
     const tenantCaller = appRouter.createCaller(ownerCtx(sid, tid));
-    expect((await tenantCaller.billing.capabilities()).capabilities).toContain(
-      "data.export"
-    );
+    const standaloneCaps = await tenantCaller.billing.capabilities();
+    expect(standaloneCaps.capabilities).toContain("data.export");
+    expect(standaloneCaps.isSaas).toBe(false);
 
     await admin.admin.config.setAppMode({ mode: "saas" });
     try {
+      expect((await tenantCaller.billing.capabilities()).isSaas).toBe(true);
       // Free plan omits files.upload → gated off in SAAS.
       await admin.admin.billing.assignPlan({ tenantId: tid, planId: "free" });
       expect(await entitlements.hasCapability(tid, "files.upload")).toBe(false);

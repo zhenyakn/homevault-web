@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCapabilities } from "@/hooks/useCapabilities";
 
 function price(cents: number, currency: string, interval: string): string {
   if (cents === 0) return "Free";
@@ -27,11 +28,33 @@ function Usage({ label, used, max }: { label: string; used: number; max: number 
 
 export default function Plan() {
   const billing = trpc.billing.current.useQuery();
+  const { isSaas, loaded } = useCapabilities();
 
-  if (billing.isLoading) {
+  if (billing.isLoading || !loaded) {
     return (
       <div className="flex justify-center py-16">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // Standalone (single-install, e.g. the Home Assistant add-on): there's no
+  // billing — every feature is included. Show that instead of upgrade plans.
+  if (!isSaas) {
+    return (
+      <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Plan &amp; usage</h1>
+        </div>
+        <Card>
+          <CardContent className="flex items-center gap-3 py-8 text-muted-foreground">
+            <Check className="w-5 h-5 shrink-0 text-primary" />
+            <p className="text-sm">
+              This is a self-hosted install — all features are included and there
+              are no plan limits.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

@@ -25,7 +25,10 @@ export function useCapabilities() {
   const caps = q.data?.capabilities as CapabilityKey[] | undefined;
   const has = (cap: CapabilityKey): boolean =>
     caps == null ? true : caps.includes(cap);
-  return { has, loaded: caps != null, isLoading: q.isLoading };
+  // Billing/plan surfaces only make sense in hosted (SAAS) mode. Default false
+  // until loaded so single-install (standalone) deployments never flash them.
+  const isSaas = q.data?.isSaas === true;
+  return { has, isSaas, loaded: caps != null, isLoading: q.isLoading };
 }
 
 /**
