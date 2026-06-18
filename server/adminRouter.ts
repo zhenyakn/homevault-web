@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, superAdminProcedure } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import * as db from "./db";
+import { PLANS, isPlanId } from "./billing/plans";
 
 /**
  * Server-wide admin console. Every procedure is gated by superAdminProcedure
@@ -131,6 +132,43 @@ export const adminRouter = router({
             maxProperties: input.maxProperties,
             maxMembers: input.maxMembers,
           },
+        });
+        return { success: true as const };
+      }),
+  }),
+
+  billing: router({
+    // The static plan catalog (code-defined) + the active provider id.
+    plans: superAdminProcedure.query(() => ({
+      provider: ENV.billingProvider,
+      plans: PLANS,
+    })),
+
+    // Assign a plan to a tenant. Applies the plan's limits to the tenant's
+    // quotas (the enforcement source of truth). With the stub provider this is
+    // the primary way plans are set; real providers also funnel through
+    // db.applyPlan from their webhooks.
+    assignPlan: superAdminProcedure
+      .input(
+        z.object({
+          tenantId: z.number().int(),
+          planId: z.string(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (!isPlanId(input.planId)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Unknown plan" });
+        }
+        await db.applyPlan(input.tenantId, input.planId, {
+          provider: ENV.billingProvider,
+        });
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          tenantId: input.tenantId,
+          action: "admin.tenant.plan_assigned",
+          targetType: "tenant",
+          targetId: String(input.tenantId),
+          metadata: { planId: input.planId },
         });
         return { success: true as const };
       }),

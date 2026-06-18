@@ -10,6 +10,9 @@ const envSchema = z.object({
   // NO_AUTH). `saas` = cloud, multi-tenant, native email/password registration;
   // NO_AUTH is forbidden and session/email config is enforced (see below).
   APP_MODE: z.enum(["standalone", "saas"]).default("standalone"),
+  // Billing provider for SAAS. "stub" records plan state locally without an
+  // external account; real providers (stripe, …) are wired in billing/provider.
+  BILLING_PROVIDER: z.string().default("stub"),
   VITE_APP_ID: z.string().default(""),
   OAUTH_SERVER_URL: z.string().default(""),
   OWNER_OPEN_ID: z.string().default(""),
@@ -146,6 +149,7 @@ export function validateEnvConfig(cfg: EnvConfigInput): {
 export const ENV = {
   appMode: raw.APP_MODE,
   isSaas: raw.APP_MODE === "saas",
+  billingProvider: raw.BILLING_PROVIDER,
   appId: raw.VITE_APP_ID,
   cookieSecret: raw.JWT_SECRET,
   databaseUrl: raw.DATABASE_URL,

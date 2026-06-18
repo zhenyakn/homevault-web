@@ -1076,6 +1076,41 @@ export const tenantInvites = mysqlTable(
 export type TenantInvite = typeof tenantInvites.$inferSelect;
 export type InsertTenantInvite = typeof tenantInvites.$inferInsert;
 
+/** One billing subscription per tenant. The plan catalog itself lives in code
+ *  (server/billing/plans.ts); this row records which plan a tenant is on plus
+ *  the provider linkage so webhooks can reconcile status → tenants.status. */
+export const tenantSubscriptions = mysqlTable(
+  "tenant_subscriptions",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    tenantId: int("tenantId").notNull().unique(),
+    planId: varchar("planId", { length: 64 }).notNull(),
+    status: mysqlEnum("status", [
+      "active",
+      "trialing",
+      "past_due",
+      "canceled",
+      "incomplete",
+    ])
+      .default("active")
+      .notNull(),
+    // Provider linkage (null for the stub / admin-assigned plans).
+    provider: varchar("provider", { length: 32 }),
+    providerCustomerId: varchar("providerCustomerId", { length: 128 }),
+    providerSubscriptionId: varchar("providerSubscriptionId", { length: 128 }),
+    currentPeriodEnd: timestamp("currentPeriodEnd"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => ({
+    tenantIdx: uniqueIndex("tenant_sub_tenant_idx").on(table.tenantId),
+  })
+);
+
+export type TenantSubscription = typeof tenantSubscriptions.$inferSelect;
+export type InsertTenantSubscription =
+  typeof tenantSubscriptions.$inferInsert;
+
 /** Native email/password identities (SAAS self-signup). OAuth/NO_AUTH users
  *  have no row here — their identity lives entirely on `users.openId`. */
 export const userCredentials = mysqlTable(

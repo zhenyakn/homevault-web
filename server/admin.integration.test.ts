@@ -226,4 +226,35 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
       })
     ).rejects.toThrow(/limit of 1 member/i);
   });
+
+  it("assigns a billing plan and binds its limits to the tenant quotas", async () => {
+    const sid = await mkUser("plan-owner", "superadmin");
+    const tenantsDb = await import("./db/tenants");
+    const tid = await tenantsDb.createTenantWithOwner(sid, "Planned");
+    const admin = appRouter.createCaller(ctxFor(sid, "superadmin"));
+
+    const { plans } = await admin.admin.billing.plans();
+    expect(plans.length).toBeGreaterThan(0);
+
+    await admin.admin.billing.assignPlan({ tenantId: tid, planId: "pro" });
+
+    // The Pro plan's limits (10 / 20) are copied onto the tenant quotas.
+    const tenant = await tenantsDb.getTenantById(tid);
+    expect(tenant?.maxProperties).toBe(10);
+    expect(tenant?.maxMembers).toBe(20);
+
+    // Surfaced in the admin tenant list and the tenant-facing billing.current.
+    const list = await admin.admin.tenants.list();
+    expect(list.find(t => t.id === tid)?.planId).toBe("pro");
+
+    const owner = appRouter.createCaller(ownerCtx(sid, tid));
+    const current = await owner.billing.current();
+    expect(current.plan?.id).toBe("pro");
+    expect(current.usage.maxMembers).toBe(20);
+
+    // Unknown plans are rejected.
+    await expect(
+      admin.admin.billing.assignPlan({ tenantId: tid, planId: "enterprise" })
+    ).rejects.toThrow(/unknown plan/i);
+  });
 });

@@ -1239,6 +1239,24 @@ async function main() {
   );
 
   await run(
+    `CREATE TABLE IF NOT EXISTS \`tenant_subscriptions\` (
+      \`id\` int NOT NULL AUTO_INCREMENT,
+      \`tenantId\` int NOT NULL,
+      \`planId\` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+      \`status\` enum('active','trialing','past_due','canceled','incomplete') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
+      \`provider\` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`providerCustomerId\` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`providerSubscriptionId\` varchar(128) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`currentPeriodEnd\` timestamp NULL DEFAULT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      PRIMARY KEY (\`id\`),
+      UNIQUE KEY \`tenant_sub_tenant_idx\` (\`tenantId\`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    "tenant_subscriptions"
+  );
+
+  await run(
     `CREATE TABLE IF NOT EXISTS \`user_credentials\` (
       \`id\` int NOT NULL AUTO_INCREMENT,
       \`userId\` int NOT NULL,

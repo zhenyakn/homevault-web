@@ -3,6 +3,7 @@ import {
   users,
   tenants,
   tenantMembers,
+  tenantSubscriptions,
   properties,
   auditLog,
   type AuditLogRow,
@@ -109,12 +110,24 @@ export async function listTenantsForAdmin(opts: {
     .where(inArray(properties.tenantId, ids))
     .groupBy(properties.tenantId);
 
+  const subs = await db
+    .select({
+      tenantId: tenantSubscriptions.tenantId,
+      planId: tenantSubscriptions.planId,
+      status: tenantSubscriptions.status,
+    })
+    .from(tenantSubscriptions)
+    .where(inArray(tenantSubscriptions.tenantId, ids));
+
   const memberMap = new Map(memberCounts.map(r => [r.tenantId, Number(r.n)]));
   const propMap = new Map(propCounts.map(r => [r.tenantId, Number(r.n)]));
+  const subMap = new Map(subs.map(s => [s.tenantId, s]));
   return rows.map(t => ({
     ...t,
     memberCount: memberMap.get(t.id) ?? 0,
     propertyCount: propMap.get(t.id) ?? 0,
+    planId: subMap.get(t.id)?.planId ?? null,
+    subscriptionStatus: subMap.get(t.id)?.status ?? null,
   }));
 }
 

@@ -39,6 +39,7 @@ import { logger } from "./_core/logger";
 import { searchRouter } from "./searchRouter";
 import { tenantRouter } from "./tenantRouter";
 import { adminRouter } from "./adminRouter";
+import { getPlan } from "./billing/plans";
 import {
   expenses,
   repairs,
@@ -739,6 +740,33 @@ export const appRouter = router({
         await db.setPasswordHash(userId, await hashPassword(input.password));
         return { success: true as const };
       }),
+  }),
+
+  billing: router({
+    // The active tenant's plan + live usage against its quotas. Visible to any
+    // member so they understand the workspace's limits; changing plans is a
+    // superadmin action (adminRouter.billing.assignPlan).
+    current: tenantProcedure.query(async ({ ctx }) => {
+      const [planId, sub, tenant, propertyCount, memberCount] =
+        await Promise.all([
+          db.getEffectivePlanId(ctx.tenantId),
+          db.getSubscription(ctx.tenantId),
+          db.getTenantById(ctx.tenantId),
+          db.countPropertiesForTenant(ctx.tenantId),
+          db.countActiveMembers(ctx.tenantId),
+        ]);
+      return {
+        plan: getPlan(planId) ?? null,
+        status: sub?.status ?? null,
+        currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+        usage: {
+          properties: propertyCount,
+          members: memberCount,
+          maxProperties: tenant?.maxProperties ?? null,
+          maxMembers: tenant?.maxMembers ?? null,
+        },
+      };
+    }),
   }),
 
   profiles: router({

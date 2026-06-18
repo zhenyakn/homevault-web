@@ -280,8 +280,16 @@ function UsersTab() {
 function TenantsTab() {
   const utils = trpc.useUtils();
   const tenants = trpc.admin.tenants.list.useQuery();
+  const plans = trpc.admin.billing.plans.useQuery();
   const setStatus = trpc.admin.tenants.setStatus.useMutation({
     onSuccess: () => utils.admin.tenants.list.invalidate(),
+    onError: e => toast.error(errMessage(e)),
+  });
+  const assignPlan = trpc.admin.billing.assignPlan.useMutation({
+    onSuccess: () => {
+      utils.admin.tenants.list.invalidate();
+      toast.success("Plan updated");
+    },
     onError: e => toast.error(errMessage(e)),
   });
 
@@ -316,19 +324,38 @@ function TenantsTab() {
                   {t.propertyCount === 1 ? "y" : "ies"}
                 </p>
               </div>
-              <Button
-                variant={t.status === "active" ? "outline" : "default"}
-                size="sm"
-                disabled={setStatus.isPending}
-                onClick={() =>
-                  setStatus.mutate({
-                    tenantId: t.id,
-                    status: t.status === "active" ? "suspended" : "active",
-                  })
-                }
-              >
-                {t.status === "active" ? "Suspend" : "Reactivate"}
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <select
+                  className="h-8 rounded-md border bg-background px-2 text-xs"
+                  value={t.planId ?? ""}
+                  disabled={assignPlan.isPending || plans.isLoading}
+                  onChange={e =>
+                    assignPlan.mutate({ tenantId: t.id, planId: e.target.value })
+                  }
+                >
+                  <option value="" disabled>
+                    {t.planId ? t.planId : "No plan"}
+                  </option>
+                  {plans.data?.plans.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  variant={t.status === "active" ? "outline" : "default"}
+                  size="sm"
+                  disabled={setStatus.isPending}
+                  onClick={() =>
+                    setStatus.mutate({
+                      tenantId: t.id,
+                      status: t.status === "active" ? "suspended" : "active",
+                    })
+                  }
+                >
+                  {t.status === "active" ? "Suspend" : "Reactivate"}
+                </Button>
+              </div>
             </div>
             <TenantLimitsEditor
               tenantId={t.id}
