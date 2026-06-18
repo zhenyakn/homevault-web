@@ -39,7 +39,9 @@ export default function MobileTabBar() {
   const itemClass = (active: boolean) =>
     cn(
       "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors",
-      active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+      active
+        ? "text-primary dark:text-hv-primary-bright"
+        : "text-muted-foreground hover:text-foreground"
     );
 
   return (
@@ -60,12 +62,12 @@ export default function MobileTabBar() {
             className={itemClass(active)}
           >
             {active && (
-              <span className="absolute inset-x-0 top-0 mx-auto h-0.5 w-8 rounded-full bg-primary" />
+              <span className="absolute inset-x-0 top-0 mx-auto h-0.5 w-8 rounded-full bg-primary dark:bg-hv-primary-bright" />
             )}
             <span
               className={cn(
                 "flex h-7 w-12 items-center justify-center rounded-full transition-colors",
-                active && "bg-primary/10"
+                active && "bg-primary/10 dark:bg-hv-primary-bright/15"
               )}
             >
               <Icon className="h-5 w-5" />
