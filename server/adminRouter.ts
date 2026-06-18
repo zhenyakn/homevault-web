@@ -106,6 +106,34 @@ export const adminRouter = router({
       .query(async ({ input }) => {
         return db.getMembersOfTenant(input.tenantId);
       }),
+
+    // Set per-tenant quotas. null clears a limit (unlimited).
+    setLimits: superAdminProcedure
+      .input(
+        z.object({
+          tenantId: z.number().int(),
+          maxProperties: z.number().int().min(0).max(100000).nullable(),
+          maxMembers: z.number().int().min(1).max(100000).nullable(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await db.setTenantLimits(input.tenantId, {
+          maxProperties: input.maxProperties,
+          maxMembers: input.maxMembers,
+        });
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          tenantId: input.tenantId,
+          action: "admin.tenant.limits_changed",
+          targetType: "tenant",
+          targetId: String(input.tenantId),
+          metadata: {
+            maxProperties: input.maxProperties,
+            maxMembers: input.maxMembers,
+          },
+        });
+        return { success: true as const };
+      }),
   }),
 
   audit: router({

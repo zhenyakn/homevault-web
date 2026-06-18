@@ -52,6 +52,37 @@ import {
   apartmentCandidates,
 } from "../drizzle/schema";
 
+/**
+ * Enforce a tenant's per-quota limit before adding a property/member. NULL
+ * limit = unlimited (the standalone default), so these are no-ops unless a
+ * superadmin set a cap. Throws FORBIDDEN at the boundary.
+ */
+async function assertPropertyQuota(tenantId: number): Promise<void> {
+  const tenant = await db.getTenantById(tenantId);
+  if (tenant?.maxProperties != null) {
+    const count = await db.countPropertiesForTenant(tenantId);
+    if (count >= tenant.maxProperties) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `This workspace has reached its limit of ${tenant.maxProperties} propert${tenant.maxProperties === 1 ? "y" : "ies"}.`,
+      });
+    }
+  }
+}
+
+async function assertMemberQuota(tenantId: number): Promise<void> {
+  const tenant = await db.getTenantById(tenantId);
+  if (tenant?.maxMembers != null) {
+    const count = await db.countActiveMembers(tenantId);
+    if (count >= tenant.maxMembers) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `This workspace has reached its limit of ${tenant.maxMembers} member${tenant.maxMembers === 1 ? "" : "s"}.`,
+      });
+    }
+  }
+}
+
 // Fields always assigned by the server — never accepted from the client
 const SERVER_FIELDS = {
   id: true,
@@ -552,6 +583,7 @@ export const appRouter = router({
         // Tenant choice: join the invited tenant, create a named tenant, or
         // fall back to a personal tenant. Either way the first request is scoped.
         if (invite) {
+          await assertMemberQuota(invite.tenantId);
           await db.addMember({
             tenantId: invite.tenantId,
             userId: user.id,
@@ -1577,6 +1609,7 @@ export const appRouter = router({
     create: tenantProcedure
       .input(z.object({ houseName: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
+        await assertPropertyQuota(ctx.tenantId);
         return await db.createProperty(ctx.user.id, ctx.tenantId, input);
       }),
     // Create a property and its optional linked records (mortgage, purchase
@@ -1586,6 +1619,7 @@ export const appRouter = router({
     createWithWizard: tenantProcedure
       .input(wizardSchema)
       .mutation(async ({ ctx, input }) => {
+        await assertPropertyQuota(ctx.tenantId);
         return await db.createPropertyWithWizard(
           ctx.user.id,
           ctx.tenantId,

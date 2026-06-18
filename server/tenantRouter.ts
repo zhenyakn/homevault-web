@@ -128,6 +128,17 @@ export const tenantRouter = router({
             message: "This invitation is invalid or has expired",
           });
         }
+        // Per-tenant member quota (NULL = unlimited).
+        const quotaTenant = await db.getTenantById(invite.tenantId);
+        if (quotaTenant?.maxMembers != null) {
+          const count = await db.countActiveMembers(invite.tenantId);
+          if (count >= quotaTenant.maxMembers) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: `This workspace has reached its limit of ${quotaTenant.maxMembers} member${quotaTenant.maxMembers === 1 ? "" : "s"}.`,
+            });
+          }
+        }
         await db.addMember({
           tenantId: invite.tenantId,
           userId: ctx.user.id,

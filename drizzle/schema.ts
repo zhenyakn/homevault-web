@@ -999,6 +999,10 @@ export const tenants = mysqlTable(
     // The user who created the tenant. Soft reference (no FK) to avoid a
     // users<->tenants circular constraint.
     createdByUserId: int("createdByUserId"),
+    // Per-tenant quotas for SAAS plans. NULL = unlimited (the standalone /
+    // un-metered default). Enforced centrally at the create/join paths.
+    maxProperties: int("maxProperties"),
+    maxMembers: int("maxMembers"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },

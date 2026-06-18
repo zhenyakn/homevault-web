@@ -1180,6 +1180,8 @@ async function main() {
       \`slug\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`status\` enum('active','suspended') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active',
       \`createdByUserId\` int DEFAULT NULL,
+      \`maxProperties\` int DEFAULT NULL,
+      \`maxMembers\` int DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
@@ -1187,6 +1189,15 @@ async function main() {
       KEY \`tenant_created_by_idx\` (\`createdByUserId\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "tenants"
+  );
+  // Per-tenant quota columns (added for installs created before SAAS quotas).
+  await run(
+    `ALTER TABLE \`tenants\` ADD COLUMN \`maxProperties\` int DEFAULT NULL`,
+    "tenants.maxProperties"
+  );
+  await run(
+    `ALTER TABLE \`tenants\` ADD COLUMN \`maxMembers\` int DEFAULT NULL`,
+    "tenants.maxMembers"
   );
 
   await run(

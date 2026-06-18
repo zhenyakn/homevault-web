@@ -407,6 +407,9 @@ gating rather than another data refactor.
 - **Onboarding & limits:** plan tiers / quotas per tenant (properties, storage, members),
   enforced centrally.
 - **Billing:** Stripe (or similar) — subscriptions per tenant; webhook → `tenants.status`.
+- **Onboarding & limits:** ✅ a generic per-tenant quota substrate now exists
+  (`tenants.maxProperties` / `maxMembers`, NULL = unlimited, enforced at the create/join paths,
+  superadmin-settable). Binding these to named plan tiers is the remaining billing-coupled work.
 - **Isolation hardening:** per-tenant storage prefixes (S3/Drive), per-tenant rate limiting,
   defense-in-depth tenant checks at the DB layer (consider a query wrapper that *requires* a
   `tenantId`).
@@ -459,7 +462,8 @@ These two items were raised during Stage 1 design and are intentionally **part o
 | **9. Stage 2 — mode switch** ✅ | Runtime `APP_MODE` resolution + client mirroring + standalone-safe signup defaults | Done (§4.1) — `app.mode` override via `app_settings`, public `system.config` mirror, admin switch control (NO_AUTH-guarded), mode-driven open-registration default honoured in the auth UI. Verified: unit + real-MySQL integration + build. |
 | **10. Tenant switcher UI** ✅ | In-app workspace switcher for multi-tenant users | Done (§4.3) — `TenantSwitcherSection` in both layouts' account menus (shown only when >1 tenant); clears the foreign property + reloads on switch. Verified: typecheck + build + suite. |
 | **11. Enforced email verification** ✅ | Hard sign-in gate with grace window + resend, admin-configurable | Done (§4.3) — `auth.login` gate (mode-driven default), `auth.resendVerification`, login-screen resend action, admin toggle. Verified: unit + real-MySQL integration. |
-| **Stage 2 — SAAS infra (§4.2)** ◻︎ | Billing/quotas, per-tenant storage prefixes, custom domains, observability | Deferred — needs product decisions (billing provider, plan tiers — see §8 open questions) and external services; tracked, not yet built. |
+| **12. Per-tenant quotas** ✅ | Admin-configurable property/member limits, enforced centrally | Done (§4.2) — nullable `tenants.maxProperties` / `maxMembers` (NULL = unlimited); enforced at `property.create`/`createWithWizard` and every member-join path; superadmin sets limits from the Tenants tab. Boot-safe ALTER (idempotent on fresh + legacy). Verified: unit/parity + real-MySQL integration + build. Decision-light — no billing dependency. |
+| **Stage 2 — remaining SAAS infra (§4.2)** ◻︎ | Billing (Stripe), plan tiers, per-tenant storage prefixes, custom domains, scaling, observability | Deferred — needs product decisions (billing provider, plan tiers — see §8) and external services; tracked, not yet built. Quotas (above) provide the enforcement substrate plans will hang off. |
 
 ---
 

@@ -297,41 +297,109 @@ function TenantsTab() {
           </div>
         )}
         {tenants.data?.map(t => (
-          <div
-            key={t.id}
-            className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">
-                {t.name}{" "}
-                {t.status === "suspended" && (
-                  <Badge variant="destructive" className="ms-1">
-                    suspended
-                  </Badge>
-                )}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t.memberCount} member(s) · {t.propertyCount} propert
-                {t.propertyCount === 1 ? "y" : "ies"}
-              </p>
+          <div key={t.id} className="py-3 first:pt-0 last:pb-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {t.name}{" "}
+                  {t.status === "suspended" && (
+                    <Badge variant="destructive" className="ms-1">
+                      suspended
+                    </Badge>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t.memberCount}
+                  {t.maxMembers != null ? `/${t.maxMembers}` : ""} member(s) ·{" "}
+                  {t.propertyCount}
+                  {t.maxProperties != null ? `/${t.maxProperties}` : ""} propert
+                  {t.propertyCount === 1 ? "y" : "ies"}
+                </p>
+              </div>
+              <Button
+                variant={t.status === "active" ? "outline" : "default"}
+                size="sm"
+                disabled={setStatus.isPending}
+                onClick={() =>
+                  setStatus.mutate({
+                    tenantId: t.id,
+                    status: t.status === "active" ? "suspended" : "active",
+                  })
+                }
+              >
+                {t.status === "active" ? "Suspend" : "Reactivate"}
+              </Button>
             </div>
-            <Button
-              variant={t.status === "active" ? "outline" : "default"}
-              size="sm"
-              disabled={setStatus.isPending}
-              onClick={() =>
-                setStatus.mutate({
-                  tenantId: t.id,
-                  status: t.status === "active" ? "suspended" : "active",
-                })
-              }
-            >
-              {t.status === "active" ? "Suspend" : "Reactivate"}
-            </Button>
+            <TenantLimitsEditor
+              tenantId={t.id}
+              maxProperties={t.maxProperties}
+              maxMembers={t.maxMembers}
+            />
           </div>
         ))}
       </CardContent>
     </Card>
+  );
+}
+
+/** Inline editor for a tenant's quotas. Empty input = unlimited (null). */
+function TenantLimitsEditor({
+  tenantId,
+  maxProperties,
+  maxMembers,
+}: {
+  tenantId: number;
+  maxProperties: number | null;
+  maxMembers: number | null;
+}) {
+  const utils = trpc.useUtils();
+  const [props, setProps] = useState(maxProperties?.toString() ?? "");
+  const [members, setMembers] = useState(maxMembers?.toString() ?? "");
+  const save = trpc.admin.tenants.setLimits.useMutation({
+    onSuccess: () => {
+      utils.admin.tenants.list.invalidate();
+      toast.success("Limits updated");
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
+  const parse = (s: string) => {
+    const n = parseInt(s, 10);
+    return Number.isFinite(n) && n >= 0 ? n : null;
+  };
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <span className="text-xs text-muted-foreground">Limits</span>
+      <Input
+        type="number"
+        min={0}
+        className="h-7 w-24 text-xs"
+        placeholder="∞ props"
+        value={props}
+        onChange={e => setProps(e.target.value)}
+      />
+      <Input
+        type="number"
+        min={1}
+        className="h-7 w-24 text-xs"
+        placeholder="∞ members"
+        value={members}
+        onChange={e => setMembers(e.target.value)}
+      />
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={save.isPending}
+        onClick={() =>
+          save.mutate({
+            tenantId,
+            maxProperties: parse(props),
+            maxMembers: parse(members),
+          })
+        }
+      >
+        Save
+      </Button>
+    </div>
   );
 }
 

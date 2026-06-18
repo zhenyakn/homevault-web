@@ -32,6 +32,17 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
       res: { cookie: () => {}, clearCookie: () => {} },
     }) as any;
 
+  // A tenant-scoped owner context (passes tenantProcedure / tenantAdminProcedure).
+  const ownerCtx = (userId: number, tenantId: number) =>
+    ({
+      user: { id: userId, globalRole: "user" },
+      propertyId: 1,
+      tenantId,
+      tenantRole: "owner",
+      req: { headers: {}, protocol: "https" },
+      res: { cookie: () => {}, clearCookie: () => {} },
+    }) as any;
+
   const mkUser = async (label: string, globalRole: "user" | "superadmin") => {
     const db = await getDb();
     const [res] = await db.insert(schema.users).values({
@@ -153,5 +164,66 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     // Restore so we don't leave the shared DB in SAAS for sibling files.
     await admin.admin.config.setAppMode({ mode: "standalone" });
     expect((await admin.admin.config.get()).appMode).toBe("standalone");
+  });
+
+  it("enforces the per-tenant property quota", async () => {
+    const sid = await mkUser("quota-owner", "superadmin");
+    const tenantsDb = await import("./db/tenants");
+    const tid = await tenantsDb.createTenantWithOwner(sid, "Capped");
+    const admin = appRouter.createCaller(ctxFor(sid, "superadmin"));
+
+    await admin.admin.tenants.setLimits({
+      tenantId: tid,
+      maxProperties: 1,
+      maxMembers: null,
+    });
+
+    const owner = appRouter.createCaller(ownerCtx(sid, tid));
+    await owner.property.create({ houseName: "First" });
+    await expect(
+      owner.property.create({ houseName: "Second" })
+    ).rejects.toThrow(/limit of 1 propert/i);
+
+    // Raising the cap lets the next one through.
+    await admin.admin.tenants.setLimits({
+      tenantId: tid,
+      maxProperties: 2,
+      maxMembers: null,
+    });
+    const ok = await owner.property.create({ houseName: "Second" });
+    expect(ok).toBeTruthy();
+  });
+
+  it("enforces the per-tenant member quota on invited registration", async () => {
+    const sid = await mkUser("mquota-owner", "superadmin");
+    const tenantsDb = await import("./db/tenants");
+    const { generateToken } = await import("./auth/password");
+    const tid = await tenantsDb.createTenantWithOwner(sid, "OneSeat");
+    const admin = appRouter.createCaller(ctxFor(sid, "superadmin"));
+
+    // Cap at the single existing owner.
+    await admin.admin.tenants.setLimits({
+      tenantId: tid,
+      maxProperties: null,
+      maxMembers: 1,
+    });
+
+    const known = generateToken();
+    await tenantsDb.createInvite({
+      tenantId: tid,
+      email: `seat-${Date.now()}@example.com`,
+      role: "member",
+      tokenHash: known.hash,
+      invitedByUserId: sid,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    await expect(
+      appRouter.createCaller(anonCtx()).auth.register({
+        email: `joiner-${Date.now()}@example.com`,
+        password: "supersecret",
+        inviteToken: known.raw,
+      })
+    ).rejects.toThrow(/limit of 1 member/i);
   });
 });

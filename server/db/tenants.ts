@@ -1,8 +1,9 @@
-import { and, eq, gt, isNull, desc } from "drizzle-orm";
+import { and, eq, gt, isNull, desc, sql } from "drizzle-orm";
 import {
   tenants,
   tenantMembers,
   tenantInvites,
+  properties,
   users,
   type InsertTenant,
   type Tenant,
@@ -303,4 +304,48 @@ export async function revokeInvite(
     .where(
       and(eq(tenantInvites.id, inviteId), eq(tenantInvites.tenantId, tenantId))
     );
+}
+
+// ── Quotas ────────────────────────────────────────────────────────────────────
+
+/** Count active members in a tenant (for member-quota enforcement). */
+export async function countActiveMembers(tenantId: number): Promise<number> {
+  const db = await getDb();
+  const [row] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(tenantMembers)
+    .where(
+      and(
+        eq(tenantMembers.tenantId, tenantId),
+        eq(tenantMembers.status, "active")
+      )
+    );
+  return Number(row?.n ?? 0);
+}
+
+/** Count properties in a tenant (for property-quota enforcement). */
+export async function countPropertiesForTenant(
+  tenantId: number
+): Promise<number> {
+  const db = await getDb();
+  const [row] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(properties)
+    .where(eq(properties.tenantId, tenantId));
+  return Number(row?.n ?? 0);
+}
+
+/** Set (or clear, with null) a tenant's quotas. Superadmin-only via adminRouter. */
+export async function setTenantLimits(
+  tenantId: number,
+  limits: { maxProperties: number | null; maxMembers: number | null }
+): Promise<void> {
+  const db = await getDb();
+  await db
+    .update(tenants)
+    .set({
+      maxProperties: limits.maxProperties,
+      maxMembers: limits.maxMembers,
+    })
+    .where(eq(tenants.id, tenantId));
 }
