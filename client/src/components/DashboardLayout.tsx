@@ -374,8 +374,7 @@ function DashboardLayoutContent({
   };
 
   // Server-wide admins get an extra Admin console entry in the Account group.
-  const isSuperAdmin =
-    user?.globalRole === "superadmin";
+  const isSuperAdmin = user?.globalRole === "superadmin";
 
   // Portfolio is the home for all property settings, so it's always in the nav.
   const navGroups: NavGroup[] = NAV_GROUPS.map(g => {

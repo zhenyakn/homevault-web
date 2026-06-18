@@ -14,7 +14,15 @@ function price(cents: number, currency: string, interval: string): string {
   return interval === "none" ? amount : `${amount}/${interval}`;
 }
 
-function Usage({ label, used, max }: { label: string; used: number; max: number | null }) {
+function Usage({
+  label,
+  used,
+  max,
+}: {
+  label: string;
+  used: number;
+  max: number | null;
+}) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
@@ -44,14 +52,16 @@ export default function Plan() {
     return (
       <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Plan &amp; usage</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Plan &amp; usage
+          </h1>
         </div>
         <Card>
           <CardContent className="flex items-center gap-3 py-8 text-muted-foreground">
             <Check className="w-5 h-5 shrink-0 text-primary" />
             <p className="text-sm">
-              This is a self-hosted install — all features are included and there
-              are no plan limits.
+              This is a self-hosted install — all features are included and
+              there are no plan limits.
             </p>
           </CardContent>
         </Card>

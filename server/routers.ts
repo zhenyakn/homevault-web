@@ -63,7 +63,10 @@ import {
 } from "../drizzle/schema";
 
 /** Best-effort client IP for per-IP auth rate limiting (honours a proxy hop). */
-function clientIp(req: { headers: Record<string, unknown>; socket?: unknown }): string {
+function clientIp(req: {
+  headers: Record<string, unknown>;
+  socket?: unknown;
+}): string {
   const fwd = req.headers["x-forwarded-for"];
   if (typeof fwd === "string" && fwd.length > 0) {
     return fwd.split(",")[0]!.trim();

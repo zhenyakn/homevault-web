@@ -161,8 +161,16 @@ export async function deleteTenantCascade(tenantId: number): Promise<void> {
       return rows.map((r: any) => r.id);
     };
 
-    const repairIds = await ids(repairs, repairs.id, eq(repairs.tenantId, tenantId));
-    const upgradeIds = await ids(upgrades, upgrades.id, eq(upgrades.tenantId, tenantId));
+    const repairIds = await ids(
+      repairs,
+      repairs.id,
+      eq(repairs.tenantId, tenantId)
+    );
+    const upgradeIds = await ids(
+      upgrades,
+      upgrades.id,
+      eq(upgrades.tenantId, tenantId)
+    );
     const loanIds = await ids(loans, loans.id, eq(loans.tenantId, tenantId));
 
     // Repair quote payments → quotes → repairs.

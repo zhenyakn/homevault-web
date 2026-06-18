@@ -281,7 +281,9 @@ export async function uploadAndRegister(opts: {
  * per-object so one unreachable object can't block tenant deletion. Returns how
  * many objects were successfully deleted.
  */
-export async function purgeTenantFileObjects(tenantId: number): Promise<number> {
+export async function purgeTenantFileObjects(
+  tenantId: number
+): Promise<number> {
   const db = await getDb();
   const rows = await db
     .select({ backend: files.backend, externalId: files.externalId })

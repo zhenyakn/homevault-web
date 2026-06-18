@@ -2,7 +2,10 @@ import { asc, eq } from "drizzle-orm";
 import { plans, tenantSubscriptions, type Plan } from "../../drizzle/schema";
 import { getDb } from "./client";
 import { SEED_PLANS } from "../billing/plans";
-import { sanitizeCapabilities, type CapabilityKey } from "../billing/capabilities";
+import {
+  sanitizeCapabilities,
+  type CapabilityKey,
+} from "../billing/capabilities";
 
 export type PlanInput = {
   key: string;

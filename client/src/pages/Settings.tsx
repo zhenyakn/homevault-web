@@ -108,10 +108,7 @@ import {
 } from "lucide-react";
 import { csrfHeaders } from "@/lib/csrf";
 import BotPreview from "@/components/BotPreview";
-import {
-  useCapabilities,
-  type CapabilityKey,
-} from "@/hooks/useCapabilities";
+import { useCapabilities, type CapabilityKey } from "@/hooks/useCapabilities";
 import { UpgradeNotice } from "@/components/UpgradeGate";
 import { subscribeToWebPush, webPushSupported } from "@/lib/webpush";
 

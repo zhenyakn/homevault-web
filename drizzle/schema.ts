@@ -1108,8 +1108,7 @@ export const tenantSubscriptions = mysqlTable(
 );
 
 export type TenantSubscription = typeof tenantSubscriptions.$inferSelect;
-export type InsertTenantSubscription =
-  typeof tenantSubscriptions.$inferInsert;
+export type InsertTenantSubscription = typeof tenantSubscriptions.$inferInsert;
 
 /** Admin-managed subscription plans. The capability *keys* are code-defined
  *  (server/billing/capabilities.ts); a plan stores which of them it includes
