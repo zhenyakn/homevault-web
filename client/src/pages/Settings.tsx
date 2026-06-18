@@ -26,6 +26,9 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
+import { useSidebarPrefs } from "@/contexts/SidebarPrefsContext";
+import { isNavKeyLocked } from "@/lib/sidebarPrefs";
+import { NAV_GROUPS as SIDEBAR_NAV_GROUPS } from "@/components/DashboardLayout";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -3285,6 +3288,7 @@ function AppearanceSection() {
   const { theme, setTheme } = useTheme();
   const { language, setLanguage } = useLanguage();
   const { enabled: hvUi, setEnabled: setHvUi } = useHomeVaultUI();
+  const { isVisible, setVisible } = useSidebarPrefs();
   const { t } = useTranslation();
 
   const THEMES = [
@@ -3308,6 +3312,37 @@ function AppearanceSection() {
           <Switch checked={hvUi} onCheckedChange={setHvUi} />
         </Row>
       </Group>
+
+      <div className="space-y-1.5">
+        <p className="px-1 text-xs font-medium text-muted-foreground">
+          {t("settings.sidebarSections")}
+        </p>
+        <p className="px-1 text-xs text-muted-foreground">
+          {t("settings.sidebarSectionsHint")}
+        </p>
+        <div className="space-y-3 pt-1">
+          {SIDEBAR_NAV_GROUPS.map(group => (
+            <Group key={group.labelKey} label={t(group.labelKey)}>
+              {group.items.map(item => {
+                const locked = isNavKeyLocked(item.key);
+                return (
+                  <Row
+                    key={item.key}
+                    label={t(item.key)}
+                    hint={locked ? t("settings.sidebarAlwaysOn") : undefined}
+                  >
+                    <Switch
+                      checked={isVisible(item.key)}
+                      disabled={locked}
+                      onCheckedChange={v => setVisible(item.key, v)}
+                    />
+                  </Row>
+                );
+              })}
+            </Group>
+          ))}
+        </div>
+      </div>
 
       <Group label={t("settings.theme")}>
         <FullRow label={t("settings.theme")} hint={t("settings.themeHint")}>

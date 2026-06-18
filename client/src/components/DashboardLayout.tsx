@@ -27,6 +27,8 @@ import MobileTabBar from "@/components/MobileTabBar";
 import MobilePropertySwitcher from "@/components/MobilePropertySwitcher";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useSidebarPrefs } from "@/contexts/SidebarPrefsContext";
+import { filterNavGroups } from "@/lib/sidebarPrefs";
 import { TenantSwitcherSection } from "@/components/TenantSwitcher";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -70,10 +72,10 @@ import { HomeVaultLogo } from "@/components/HomeVaultLogo";
 type LucideIcon = React.ComponentType<
   React.SVGProps<SVGSVGElement> & { className?: string }
 >;
-type NavItem = { icon: LucideIcon; key: string; path: string };
-type NavGroup = { labelKey: string; items: NavItem[] };
+export type NavItem = { icon: LucideIcon; key: string; path: string };
+export type NavGroup = { labelKey: string; items: NavItem[] };
 
-const NAV_GROUPS: NavGroup[] = [
+export const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: "nav.group.overview",
     items: [
@@ -369,6 +371,8 @@ function DashboardLayoutContent({
   const { data: profiles } = trpc.profiles.list.useQuery();
   // Billing/plan UI is hosted-only — hidden on standalone (e.g. HA add-on).
   const { isSaas } = useCapabilities();
+  // User-controlled per-item sidebar visibility (Settings → Appearance).
+  const { isVisible } = useSidebarPrefs();
 
   const handleSearchOpen = () => {
     onSearchOpen?.();
@@ -397,6 +401,9 @@ function DashboardLayoutContent({
     }
     return g;
   });
+
+  // Apply the user's per-item visibility prefs, then drop now-empty groups.
+  const visibleNavGroups = filterNavGroups(navGroups, isVisible);
 
   // Breadcrumb lookup
   const pathKey =
@@ -499,7 +506,7 @@ function DashboardLayoutContent({
 
           {/* ── Nav groups ───────────────────────────────────────────── */}
           <SidebarContent className="gap-0">
-            {navGroups.map(group => (
+            {visibleNavGroups.map(group => (
               <div key={group.labelKey} className="mb-1">
                 {!isCollapsed && (
                   <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
