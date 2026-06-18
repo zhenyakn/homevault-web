@@ -336,7 +336,9 @@
     "openSettings": "פתח הגדרות",
     "quotaTitle": "ה-Google Drive שלך מלא",
     "quotaDesc": "פנה מקום ב-one.google.com/storage.",
-    "uploadFailed": "ההעלאה נכשלה"
+    "uploadFailed": "ההעלאה נכשלה",
+    "attach": "צרף קובץ",
+    "upgradeToAttach": "שדרגו כדי לצרף"
   },
   "settings": {
     "title": "הגדרות",
@@ -504,7 +506,8 @@
       "webpushNeedsKeys": "התראות דפדפן דורשות מפתחות VAPID בשרת. הריצו `npx web-push generate-vapid-keys` והגדירו VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY.",
       "generateCode": "צור קוד קישור",
       "testFailed": "הבדיקה ל-{{channel}} נכשלה: {{reason}}",
-      "loading": "טוען ערוצים…"
+      "loading": "טוען ערוצים…",
+      "upgrade": "שדרוג"
     },
     "syncEvents": "סנכרן אירועים",
     "syncEventsHint": "שלח אירועי HomeVault ל-Google Calendar",
@@ -675,7 +678,9 @@
     "noResults": "אין תוצאות.",
     "placeholderMyHome": "הבית שלי",
     "placeholderHome": "בית",
-    "perModuleList": "הוצאות · תיקונים · הלוואות …"
+    "perModuleList": "הוצאות · תיקונים · הלוואות …",
+    "exportLockedTitle": "ייצוא נתונים הוא תכונת פרימיום",
+    "exportLockedBody": "שדרגו את התוכנית כדי לייצא את הנתונים שלכם."
   },
   "repairs": {
     "title": "תיקונים",
@@ -1212,6 +1217,8 @@
     "yes": "כן",
     "rate": "דרגו",
     "clearScore": "נקה ציון",
-    "attachmentsHint": "תמונות, תוכניות, טיוטת חוזה, מסמכים…"
+    "attachmentsHint": "תמונות, תוכניות, טיוטת חוזה, מסמכים…",
+    "lockedTitle": "חיפוש דירות הוא תכונת פרימיום",
+    "lockedBody": "שדרגו את התוכנית כדי לשמור ולעקוב אחר חיפושי דירות."
   }
 }

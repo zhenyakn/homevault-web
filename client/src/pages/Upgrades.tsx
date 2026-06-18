@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { useFeatureGuard } from "@/hooks/useCapabilities";
 
 type Upgrade = RouterOutputs["upgrades"]["list"][number];
 import { formatCurrency } from "@/lib/utils";
@@ -317,7 +318,9 @@ export default function Upgrades() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  const exportGuard = useFeatureGuard();
   const handleExportCSV = () => {
+    if (exportGuard("data.export", t("common.exportCsv"))) return;
     if (!upgrades.length) {
       toast.error(t("upgrades.nothingToExport"));
       return;

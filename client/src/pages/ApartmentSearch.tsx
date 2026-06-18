@@ -5,6 +5,8 @@ import { trpc, type RouterOutputs } from "@/lib/trpc";
 import { formatCurrency } from "@/lib/utils";
 import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
 import { HVPageHeader } from "@/components/homevault";
+import { useCapabilities } from "@/hooks/useCapabilities";
+import { UpgradeEmpty, UpgradeNotice } from "@/components/UpgradeGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -207,8 +209,20 @@ function SearchCard({
 
 export default function ApartmentSearch() {
   const { t } = useTranslation();
+  const [, navigate] = useLocation();
   const { enabled: hv } = useHomeVaultUI();
+  const { has } = useCapabilities();
+  const locked = !has("apartment.search");
   const [dialogOpen, setDialogOpen] = useState(false);
+  // When the plan doesn't include apartment search, the create action routes to
+  // the Plan page instead of opening the dialog.
+  const openCreate = () => {
+    if (locked) {
+      navigate("/plan");
+      return;
+    }
+    setDialogOpen(true);
+  };
   const { data: searches = [], isLoading } =
     trpc.apartmentSearch.list.useQuery();
   const { data: counts = [] } = trpc.apartmentSearch.counts.useQuery(
@@ -234,7 +248,7 @@ export default function ApartmentSearch() {
           hideQuickAdd
           actions={
             <Button
-              onClick={() => setDialogOpen(true)}
+              onClick={openCreate}
               className="h-11 rounded-full px-[18px]"
             >
               <Plus className="me-1.5 h-4 w-4" />
@@ -252,7 +266,7 @@ export default function ApartmentSearch() {
               {t("apartmentSearch.subtitle")}
             </p>
           </div>
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
+          <Button size="sm" onClick={openCreate}>
             <Plus className="h-3.5 w-3.5 me-1.5" />
             {t("apartmentSearch.newSearch")}
           </Button>
@@ -261,24 +275,34 @@ export default function ApartmentSearch() {
 
       <NewSearchDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
 
+      {locked && searches.length > 0 && (
+        <UpgradeNotice
+          title={t("apartmentSearch.lockedTitle")}
+          description={t("apartmentSearch.lockedBody")}
+        />
+      )}
+
       {searches.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-16 text-center">
-          <Building2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-          <p className="text-sm font-medium">
-            {t("apartmentSearch.emptyTitle")}
-          </p>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
-            {t("apartmentSearch.emptyBody")}
-          </p>
-          <Button
-            size="sm"
-            className="mt-4"
-            onClick={() => setDialogOpen(true)}
-          >
-            <Plus className="h-3.5 w-3.5 me-1.5" />
-            {t("apartmentSearch.newSearch")}
-          </Button>
-        </div>
+        locked ? (
+          <UpgradeEmpty
+            title={t("apartmentSearch.lockedTitle")}
+            description={t("apartmentSearch.lockedBody")}
+          />
+        ) : (
+          <div className="rounded-lg border border-dashed border-border px-4 py-16 text-center">
+            <Building2 className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+            <p className="text-sm font-medium">
+              {t("apartmentSearch.emptyTitle")}
+            </p>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+              {t("apartmentSearch.emptyBody")}
+            </p>
+            <Button size="sm" className="mt-4" onClick={openCreate}>
+              <Plus className="h-3.5 w-3.5 me-1.5" />
+              {t("apartmentSearch.newSearch")}
+            </Button>
+          </div>
+        )
       ) : (
         <div className="space-y-2.5">
           {searches.map(s => (

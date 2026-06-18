@@ -788,6 +788,13 @@ export const appRouter = router({
   }),
 
   billing: router({
+    // The capability keys the active tenant is entitled to (standalone → all).
+    // The client caches this to gracefully gate gated features before the user
+    // hits a 403; server-side checks remain the real enforcement.
+    capabilities: tenantProcedure.query(async ({ ctx }) => ({
+      capabilities: await db.getEffectiveCapabilities(ctx.tenantId),
+    })),
+
     // The active tenant's plan + live usage against its quotas. Visible to any
     // member so they understand the workspace's limits; changing plans is a
     // superadmin action (adminRouter.billing.assignPlan).

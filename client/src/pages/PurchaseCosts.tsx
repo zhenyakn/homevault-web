@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
+import { useFeatureGuard } from "@/hooks/useCapabilities";
 import { asArray, formatCurrency, formatDate } from "@/lib/utils";
 import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
 import { MetricCard, HVPageHeader } from "@/components/homevault";
@@ -151,7 +152,9 @@ export default function PurchaseCosts() {
     }
   };
 
+  const exportGuard = useFeatureGuard();
   const handleExportCSV = () => {
+    if (exportGuard("data.export", t("common.exportCsv"))) return;
     if (!costs || costs.length === 0) {
       toast.error(t("purchaseCosts.nothingToExport"));
       return;

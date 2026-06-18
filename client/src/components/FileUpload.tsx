@@ -1,9 +1,11 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Upload, X, FileText, Image } from "lucide-react";
+import { Upload, X, FileText, Image, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { csrfHeaders } from "@/lib/csrf";
+import { useCapabilities } from "@/hooks/useCapabilities";
 
 interface UploadedFile {
   url: string;
@@ -28,6 +30,9 @@ export function FileUpload({
   maxFiles = 5,
 }: FileUploadProps) {
   const { t } = useTranslation();
+  const [, navigate] = useLocation();
+  const { has } = useCapabilities();
+  const canUpload = has("files.upload");
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -141,27 +146,39 @@ export function FileUpload({
           ))}
         </div>
       )}
-      {existingFiles.length < maxFiles && (
-        <div>
-          <input
-            ref={inputRef}
-            type="file"
-            accept={accept}
-            onChange={handleUpload}
-            className="hidden"
-          />
+      {existingFiles.length < maxFiles &&
+        (canUpload ? (
+          <div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept={accept}
+              onChange={handleUpload}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+            >
+              <Upload className="w-4 h-4 me-2" />
+              {uploading ? "Uploading..." : t("fileUpload.attach")}
+            </Button>
+          </div>
+        ) : (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
+            className="text-muted-foreground"
+            onClick={() => navigate("/plan")}
           >
-            <Upload className="w-4 h-4 me-2" />
-            {uploading ? "Uploading..." : "Attach File"}
+            <Lock className="w-4 h-4 me-2" />
+            {t("fileUpload.upgradeToAttach")}
           </Button>
-        </div>
-      )}
+        ))}
     </div>
   );
 }

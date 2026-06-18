@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
+import { useFeatureGuard } from "@/hooks/useCapabilities";
 import { formatCurrency } from "@/lib/utils";
 import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
 import { MetricCard, HVPageHeader } from "@/components/homevault";
@@ -216,7 +217,9 @@ export default function Wishlist() {
     }
   };
 
+  const exportGuard = useFeatureGuard();
   const handleExportCSV = () => {
+    if (exportGuard("data.export", t("common.exportCsv"))) return;
     if (!items || items.length === 0) {
       toast.error(t("wishlist.nothingToExport"));
       return;

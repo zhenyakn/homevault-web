@@ -378,6 +378,15 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
 
     // Standalone (the test default): everything is included regardless of plan.
     expect(await entitlements.hasCapability(tid, "files.upload")).toBe(true);
+    const { CAPABILITIES } = await import("./billing/capabilities");
+    expect(new Set(await entitlements.getEffectiveCapabilities(tid))).toEqual(
+      new Set(CAPABILITIES.map(c => c.key))
+    );
+    // The tenant-facing query mirrors the resolver.
+    const tenantCaller = appRouter.createCaller(ownerCtx(sid, tid));
+    expect((await tenantCaller.billing.capabilities()).capabilities).toContain(
+      "data.export"
+    );
 
     await admin.admin.config.setAppMode({ mode: "saas" });
     try {
