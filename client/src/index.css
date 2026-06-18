@@ -56,6 +56,7 @@
   --color-hv-sidebar-soft: var(--hv-sidebar-soft);
   --color-hv-sidebar-border: var(--hv-sidebar-border);
   --color-hv-primary: var(--hv-primary);
+  --color-hv-primary-bright: var(--hv-primary-bright);
   --color-hv-primary-dark: var(--hv-primary-dark);
   --color-hv-primary-soft: var(--hv-primary-soft);
   --color-hv-accent: var(--hv-accent);
@@ -85,6 +86,10 @@
   --hv-sidebar-soft: #223126;
   --hv-sidebar-border: #34483b;
   --hv-primary: #2f6f55;
+  /* Active-state brand green for the mobile bottom nav. Matches the primary in
+     light mode; brightened in dark mode (see .dark) so the current-page
+     indicator reads clearly instead of looking dimmer than inactive tabs. */
+  --hv-primary-bright: var(--hv-primary);
   --hv-primary-dark: #214e3d;
   --hv-primary-soft: #eef5ef;
   --hv-accent: #d6a85d;
@@ -196,6 +201,9 @@
   --hv-muted-soft: #7c847f;
   --hv-border: #2c3531;
   --hv-primary: #4f9f7e;
+  /* Brighter than --hv-primary so the active bottom-nav tab stands out against
+     the dark surface (the base green read darker than the inactive labels). */
+  --hv-primary-bright: #63c79c;
   --hv-primary-dark: #3c8064;
   --hv-primary-soft: #1f2c26;
   --hv-warning-bg: #2a2419;
