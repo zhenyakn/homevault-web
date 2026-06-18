@@ -8,6 +8,7 @@ import {
   ONE_YEAR_MS,
   INVALID_CREDENTIALS_ERR_MSG,
   EMAIL_TAKEN_ERR_MSG,
+  EMAIL_NOT_VERIFIED_ERR_MSG,
 } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { sdk } from "./_core/sdk";
@@ -612,6 +613,22 @@ export const appRouter = router({
             message: INVALID_CREDENTIALS_ERR_MSG,
           });
         }
+
+        // Email-verification gate. When enforced (SAAS default; admin-toggle),
+        // an unverified account is blocked once its grace window has elapsed.
+        // The grace window is measured from account creation; 0 = strict.
+        if (!cred.emailVerifiedAt && (await db.getRequireEmailVerification())) {
+          const graceHours = await db.getEmailVerificationGraceHours();
+          const graceEndsAt =
+            cred.createdAt.getTime() + graceHours * 60 * 60 * 1000;
+          if (graceHours <= 0 || Date.now() > graceEndsAt) {
+            throw new TRPCError({
+              code: "UNAUTHORIZED",
+              message: EMAIL_NOT_VERIFIED_ERR_MSG,
+            });
+          }
+        }
+
         await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
         await issueSession(ctx, user.openId, user.name ?? "");
         return { success: true as const };
@@ -632,6 +649,25 @@ export const appRouter = router({
           });
         }
         await db.markEmailVerified(userId);
+        return { success: true as const };
+      }),
+
+    // Re-send the verification email. Always reports success (no enumeration);
+    // an email is only sent when the address has an unverified account.
+    resendVerification: publicProcedure
+      .input(z.object({ email: emailField }))
+      .mutation(async ({ input }) => {
+        const cred = await db.getCredentialByEmail(input.email);
+        if (cred && !cred.emailVerifiedAt) {
+          const verify = generateToken();
+          await db.createEmailToken({
+            userId: cred.userId,
+            type: "verify_email",
+            tokenHash: verify.hash,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+          });
+          await sendVerificationEmail(input.email, verify.raw);
+        }
         return { success: true as const };
       }),
 

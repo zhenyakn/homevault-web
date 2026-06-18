@@ -129,6 +129,8 @@ export const adminRouter = router({
         appModeEnvDefault: ENV.appMode,
         noAuth: ENV.noAuth,
         signupsEnabled: await db.getSignupsEnabled(),
+        requireEmailVerification: await db.getRequireEmailVerification(),
+        emailVerificationGraceHours: await db.getEmailVerificationGraceHours(),
       };
     }),
 
@@ -163,6 +165,29 @@ export const adminRouter = router({
           actorUserId: ctx.user.id,
           action: "admin.config.signups",
           metadata: { enabled: input.enabled },
+        });
+        return { success: true as const };
+      }),
+
+    // Require email verification before sign-in, with an optional grace window
+    // (hours from account creation) during which unverified users may still log
+    // in. Grace is clamped to >= 0.
+    setEmailVerification: superAdminProcedure
+      .input(
+        z.object({
+          required: z.boolean(),
+          graceHours: z.number().int().min(0).max(8760).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await db.setRequireEmailVerification(input.required);
+        if (input.graceHours !== undefined) {
+          await db.setEmailVerificationGraceHours(input.graceHours);
+        }
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.config.email_verification",
+          metadata: { required: input.required, graceHours: input.graceHours },
         });
         return { success: true as const };
       }),

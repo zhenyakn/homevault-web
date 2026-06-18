@@ -98,6 +98,12 @@ function Overview() {
     },
     onError: e => toast.error(errMessage(e)),
   });
+  const setEmailVerification = trpc.admin.config.setEmailVerification.useMutation(
+    {
+      onSuccess: () => utils.admin.config.get.invalidate(),
+      onError: e => toast.error(errMessage(e)),
+    }
+  );
   const mode = config.data?.appMode;
   const nextMode = mode === "saas" ? "standalone" : "saas";
 
@@ -173,6 +179,33 @@ function Overview() {
               }
             >
               {config.data?.signupsEnabled ? "Enabled" : "Disabled"}
+            </Button>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">Require email verification</p>
+              <p className="text-xs text-muted-foreground">
+                Block sign-in until the address is confirmed
+                {config.data?.requireEmailVerification &&
+                config.data.emailVerificationGraceHours > 0
+                  ? `, after a ${config.data.emailVerificationGraceHours}h grace period.`
+                  : "."}
+              </p>
+            </div>
+            <Button
+              variant={
+                config.data?.requireEmailVerification ? "default" : "outline"
+              }
+              size="sm"
+              disabled={setEmailVerification.isPending || config.isLoading}
+              onClick={() =>
+                setEmailVerification.mutate({
+                  required: !config.data?.requireEmailVerification,
+                  graceHours: config.data?.emailVerificationGraceHours ?? 0,
+                })
+              }
+            >
+              {config.data?.requireEmailVerification ? "Required" : "Optional"}
             </Button>
           </div>
         </CardContent>

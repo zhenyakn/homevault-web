@@ -175,3 +175,41 @@ export async function getSignupsEnabled(): Promise<boolean> {
 export async function setSignupsEnabled(enabled: boolean): Promise<void> {
   await setSetting(SIGNUPS_ENABLED_KEY, enabled ? "true" : "false");
 }
+
+const REQUIRE_EMAIL_VERIFICATION_KEY = "auth.requireEmailVerification";
+const EMAIL_VERIFICATION_GRACE_HOURS_KEY = "auth.emailVerificationGraceHours";
+
+/**
+ * Whether unverified accounts are blocked from signing in (after any grace
+ * window). An explicit admin toggle wins; otherwise the default is mode-driven —
+ * enforced in SAAS, relaxed in standalone.
+ */
+export async function getRequireEmailVerification(): Promise<boolean> {
+  const v = await getSetting(REQUIRE_EMAIL_VERIFICATION_KEY);
+  if (v !== null) return v === "true";
+  return (await getAppMode()) === "saas";
+}
+
+export async function setRequireEmailVerification(
+  enabled: boolean
+): Promise<void> {
+  await setSetting(REQUIRE_EMAIL_VERIFICATION_KEY, enabled ? "true" : "false");
+}
+
+/**
+ * Hours after account creation during which an unverified user may still sign in
+ * even when verification is required. 0 (the default) means strict — block from
+ * the first login attempt.
+ */
+export async function getEmailVerificationGraceHours(): Promise<number> {
+  const v = await getSetting(EMAIL_VERIFICATION_GRACE_HOURS_KEY);
+  const n = v === null ? 0 : parseInt(v, 10);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
+export async function setEmailVerificationGraceHours(
+  hours: number
+): Promise<void> {
+  const n = Math.max(0, Math.floor(hours));
+  await setSetting(EMAIL_VERIFICATION_GRACE_HOURS_KEY, String(n));
+}

@@ -27,6 +27,9 @@ import {
   getAppMode,
   setAppMode,
   getSignupsEnabled,
+  getRequireEmailVerification,
+  getEmailVerificationGraceHours,
+  setEmailVerificationGraceHours,
 } from "./admin";
 
 beforeEach(() => {
@@ -85,5 +88,55 @@ describe("getSignupsEnabled", () => {
       key === "app.mode" ? "saas" : null
     );
     expect(await getSignupsEnabled()).toBe(true);
+  });
+});
+
+describe("getRequireEmailVerification", () => {
+  it("defaults from the mode (saas enforces, standalone relaxes) when unset", async () => {
+    ENV.appMode = "standalone";
+    getSetting.mockResolvedValue(null);
+    expect(await getRequireEmailVerification()).toBe(false);
+
+    getSetting.mockImplementation(async key =>
+      key === "app.mode" ? "saas" : null
+    );
+    expect(await getRequireEmailVerification()).toBe(true);
+  });
+
+  it("honours an explicit override", async () => {
+    ENV.appMode = "saas";
+    getSetting.mockImplementation(async key =>
+      key === "auth.requireEmailVerification" ? "false" : null
+    );
+    expect(await getRequireEmailVerification()).toBe(false);
+  });
+});
+
+describe("email verification grace hours", () => {
+  it("defaults to 0 (strict) and clamps malformed / negative values", async () => {
+    getSetting.mockResolvedValue(null);
+    expect(await getEmailVerificationGraceHours()).toBe(0);
+
+    getSetting.mockResolvedValue("nonsense");
+    expect(await getEmailVerificationGraceHours()).toBe(0);
+
+    getSetting.mockResolvedValue("-5");
+    expect(await getEmailVerificationGraceHours()).toBe(0);
+
+    getSetting.mockResolvedValue("48");
+    expect(await getEmailVerificationGraceHours()).toBe(48);
+  });
+
+  it("floors and clamps on write", async () => {
+    await setEmailVerificationGraceHours(12.9);
+    expect(setSetting).toHaveBeenCalledWith(
+      "auth.emailVerificationGraceHours",
+      "12"
+    );
+    await setEmailVerificationGraceHours(-3);
+    expect(setSetting).toHaveBeenCalledWith(
+      "auth.emailVerificationGraceHours",
+      "0"
+    );
   });
 });

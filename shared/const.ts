@@ -16,3 +16,7 @@ export const INVALID_CREDENTIALS_ERR_MSG = "Invalid email or password (10005)";
 // Registration with an email that already has an account.
 export const EMAIL_TAKEN_ERR_MSG =
   "An account with this email already exists (10006)";
+// Login refused because the account's email isn't verified and the grace
+// period (if any) has lapsed. The client matches this to offer a resend link.
+export const EMAIL_NOT_VERIFIED_ERR_MSG =
+  "Please verify your email address before signing in (10007)";

@@ -221,4 +221,41 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
       .auth.login({ email, password: "newpassword" });
     expect(ok.success).toBe(true);
   });
+
+  it("blocks unverified sign-in when verification is required (strict), then allows it after verifying", async () => {
+    const adminDb = await import("../db/admin");
+    const creds = await import("../db/credentials");
+    const email = `gate-${Date.now()}@example.com`;
+    await appRouter
+      .createCaller(anonCtx().ctx)
+      .auth.register({ email, password: "supersecret" });
+
+    // Enforce verification with no grace window. Restore afterwards so sibling
+    // tests (and re-runs) see the relaxed standalone default again.
+    await adminDb.setRequireEmailVerification(true);
+    await adminDb.setEmailVerificationGraceHours(0);
+    try {
+      await expect(
+        appRouter
+          .createCaller(anonCtx().ctx)
+          .auth.login({ email, password: "supersecret" })
+      ).rejects.toThrow(/verify your email/i);
+
+      // resendVerification reports success regardless (no enumeration).
+      const resent = await appRouter
+        .createCaller(anonCtx().ctx)
+        .auth.resendVerification({ email });
+      expect(resent.success).toBe(true);
+
+      // Mark verified, then login succeeds.
+      const cred = await creds.getCredentialByEmail(email);
+      await creds.markEmailVerified(cred!.userId);
+      const ok = await appRouter
+        .createCaller(anonCtx().ctx)
+        .auth.login({ email, password: "supersecret" });
+      expect(ok.success).toBe(true);
+    } finally {
+      await adminDb.setRequireEmailVerification(false);
+    }
+  });
 });

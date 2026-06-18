@@ -421,14 +421,20 @@ gating rather than another data refactor.
 
 These two items were raised during Stage 1 design and are intentionally **part of Stage 2**:
 
-- **Enforced email verification before first login.** Stage 1 sends the verification email and
-  ships the verification screen but does not block unverified sign-in. Stage 2 makes
-  verification a hard gate (with a grace-period / resend policy), enabled by default in SAAS
-  mode and configurable from the admin console.
-- **Multi-tenant switcher UI.** Stage 1 resolves a single active tenant per user. Stage 2 adds
-  the in-header tenant switcher for users who belong to multiple tenants. The schema, context,
-  and `x-tenant-id` plumbing already support this, so it is purely additive UI plus the
-  membership-management flows that let a user end up in more than one tenant.
+- **Enforced email verification before first login.**
+  - ✅ **Done (Phase 11):** `auth.login` now blocks unverified accounts when verification is
+    required, after an optional grace window measured from account creation (`0` = strict).
+    Both the requirement and the grace hours live in `app_settings` (`getRequireEmailVerification`
+    / `getEmailVerificationGraceHours`), defaulting from the deployment mode (enforced in SAAS,
+    relaxed in standalone) with an admin override. A dedicated `EMAIL_NOT_VERIFIED_ERR_MSG` lets
+    the login screen surface a **Resend verification email** action (`auth.resendVerification`,
+    no-enumeration), and the admin console exposes a "Require email verification" toggle.
+    Verified: unit (config resolution) + real-MySQL integration (strict gate → verify → allow).
+- **Multi-tenant switcher UI.**
+  - ✅ **Done (Phase 10):** an in-app workspace switcher (`TenantSwitcherSection`) is rendered in
+    both layouts' account menus, shown only when the user belongs to >1 tenant; switching sets
+    `x-tenant-id` (read fresh per request), clears the now-foreign active property, and reloads.
+    The invite/accept flows already let a user join more than one tenant.
 
 > Recommendation: ship Stage 1 in **standalone defaults** (registration off, single tenant) so
 > existing installs upgrade with zero behavioural change, then flip `APP_MODE=saas` for the
@@ -450,7 +456,10 @@ These two items were raised during Stage 1 design and are intentionally **part o
 | **7. Admin console** ✅ | `adminRouter` + `pages/Admin.tsx` (overview/users/tenants/audit) | Done — `superAdminProcedure`-gated stats, user role management (last-super-admin guard), tenant suspend/reactivate, global audit log, and a server-config toggle for open registration (enforced in `auth.register`; invites bypass). Superadmin-only nav entry + page. Verified by real-MySQL integration tests + full suite. |
 | **8. Harden & finalize** ✅ | `tenantId` → NOT NULL on the 10 fully-stamped entity tables (conditional, boot-safe); authorization moved off legacy `role` → `globalRole`; owner auto-provisioned as superadmin | Done — `properties`/`files`/`notification_log`/`audit_log` stay nullable by design; broader Playwright E2E left to the existing `qa-nightly` suite. The **physical `DROP COLUMN role`** has since landed as its own boot-safe cleanup migration (§3.6). Verified: typecheck, build, unit + integration. |
 | **role cleanup migration** ✅ | Retire the legacy `users.role` column (carry admins → `globalRole`, then `DROP COLUMN`) | Done — removed from schema/upsert/auth; migration is `columnExists`-guarded (no-op on fresh installs + post-drop boots); verified idempotent on fresh + legacy MariaDB. |
-| **9. Stage 2 — mode switch** ✅ | Runtime `APP_MODE` resolution + client mirroring + standalone-safe signup defaults | Done (§4.1) — `app.mode` override via `app_settings`, public `system.config` mirror, admin switch control (NO_AUTH-guarded), mode-driven open-registration default honoured in the auth UI. Verified: unit + real-MySQL integration + build. Remaining Stage 2: tenant **switcher UI** (§4.3), enforced email verification (§4.3), SAAS infra (§4.2). |
+| **9. Stage 2 — mode switch** ✅ | Runtime `APP_MODE` resolution + client mirroring + standalone-safe signup defaults | Done (§4.1) — `app.mode` override via `app_settings`, public `system.config` mirror, admin switch control (NO_AUTH-guarded), mode-driven open-registration default honoured in the auth UI. Verified: unit + real-MySQL integration + build. |
+| **10. Tenant switcher UI** ✅ | In-app workspace switcher for multi-tenant users | Done (§4.3) — `TenantSwitcherSection` in both layouts' account menus (shown only when >1 tenant); clears the foreign property + reloads on switch. Verified: typecheck + build + suite. |
+| **11. Enforced email verification** ✅ | Hard sign-in gate with grace window + resend, admin-configurable | Done (§4.3) — `auth.login` gate (mode-driven default), `auth.resendVerification`, login-screen resend action, admin toggle. Verified: unit + real-MySQL integration. |
+| **Stage 2 — SAAS infra (§4.2)** ◻︎ | Billing/quotas, per-tenant storage prefixes, custom domains, observability | Deferred — needs product decisions (billing provider, plan tiers — see §8 open questions) and external services; tracked, not yet built. |
 
 ---
 

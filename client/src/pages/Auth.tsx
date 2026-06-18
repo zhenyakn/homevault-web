@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
+import { EMAIL_NOT_VERIFIED_ERR_MSG } from "@shared/const";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -109,10 +110,16 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [needsVerify, setNeedsVerify] = useState(false);
   const login = trpc.auth.login.useMutation({
     onSuccess: goHome,
-    onError: e => setError(errMessage(e)),
+    onError: e => {
+      const msg = errMessage(e);
+      setError(msg);
+      setNeedsVerify(msg.includes(EMAIL_NOT_VERIFIED_ERR_MSG));
+    },
   });
+  const resend = trpc.auth.resendVerification.useMutation();
 
   return (
     <AuthShell
@@ -134,6 +141,7 @@ export function LoginPage() {
         onSubmit={e => {
           e.preventDefault();
           setError(null);
+          setNeedsVerify(false);
           login.mutate({ email, password: pw });
         }}
       >
@@ -168,6 +176,25 @@ export function LoginPage() {
           />
         </div>
         <FieldError message={error} />
+        {needsVerify &&
+          (resend.isSuccess ? (
+            <p className="text-sm text-muted-foreground">
+              Verification email sent. Check your inbox.
+            </p>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={resend.isPending || !email}
+              onClick={() => resend.mutate({ email })}
+            >
+              {resend.isPending && (
+                <Loader2 className="w-4 h-4 me-2 animate-spin" />
+              )}
+              Resend verification email
+            </Button>
+          ))}
         <Button
           type="submit"
           className="w-full h-11"
