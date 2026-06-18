@@ -7,8 +7,8 @@
 
 import { Bot, InlineKeyboard } from "grammy";
 import { nanoid } from "nanoid";
-import { ENV } from "../_core/env";
 import { logger } from "../_core/logger";
+import { getNotificationConfig } from "../notifications/config";
 import { parseCommand } from "./commands";
 import { t, normalizeLanguage } from "./i18n";
 import { todayInTz } from "../notifications/time";
@@ -44,11 +44,17 @@ async function resolveLang(chatId: string): Promise<string> {
 
 let bot: Bot | null = null;
 
-/** Lazily construct the bot. Returns null when no token is configured. */
+/**
+ * Lazily construct the bot. Returns null when no token is configured. The token
+ * is resolved from the runtime notification config (env-first, then the
+ * admin-set override loaded at boot), so a token pasted into Settings is honoured
+ * after the next restart — the same lifecycle as the webhook registration.
+ */
 export function getBot(): Bot | null {
   if (bot) return bot;
-  if (!ENV.telegramBotToken) return null;
-  bot = new Bot(ENV.telegramBotToken);
+  const { telegramBotToken } = getNotificationConfig();
+  if (!telegramBotToken) return null;
+  bot = new Bot(telegramBotToken);
   registerHandlers(bot);
   return bot;
 }

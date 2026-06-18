@@ -1,21 +1,23 @@
 import webpush from "web-push";
-import { ENV } from "../../_core/env";
 import {
   getWebPushSubscriptions,
   removeWebPushSubscription,
 } from "../../db/notifications";
+import { getNotificationConfig, isSectionConfigured } from "../config";
 import type { NotificationChannel } from "../types";
 
-let vapidReady = false;
-function ensureVapid() {
-  if (!vapidReady && ENV.vapidPublicKey && ENV.vapidPrivateKey) {
-    webpush.setVapidDetails(
-      ENV.vapidSubject,
-      ENV.vapidPublicKey,
-      ENV.vapidPrivateKey
-    );
-    vapidReady = true;
-  }
+// Remember the VAPID details we last handed to web-push so a runtime change
+// (admin pastes new keys / rotates them) is picked up instead of being pinned to
+// whatever was set on first send.
+let vapidKey = "";
+function ensureVapid(): void {
+  const { vapidPublicKey, vapidPrivateKey, vapidSubject } =
+    getNotificationConfig();
+  if (!vapidPublicKey || !vapidPrivateKey) return;
+  const key = `${vapidSubject}|${vapidPublicKey}|${vapidPrivateKey}`;
+  if (key === vapidKey) return;
+  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+  vapidKey = key;
 }
 
 /**
@@ -24,7 +26,7 @@ function ensureVapid() {
  */
 export const webPushChannel: NotificationChannel = {
   key: "webpush",
-  isConfigured: () => Boolean(ENV.vapidPublicKey && ENV.vapidPrivateKey),
+  isConfigured: () => isSectionConfigured("webpush"),
   canDeliverTo: () => true, // subscription presence is checked in send()
   async send(recipient, payload) {
     ensureVapid();

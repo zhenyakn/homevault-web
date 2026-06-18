@@ -64,6 +64,11 @@ const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().default(""),
   VAPID_PRIVATE_KEY: z.string().default(""),
   VAPID_SUBJECT: z.string().default("mailto:admin@homevault.local"),
+  // WhatsApp Cloud API (Meta). The channel is active when both the phone number
+  // id and a permanent access token are set. API version is rarely changed.
+  WHATSAPP_PHONE_NUMBER_ID: z.string().default(""),
+  WHATSAPP_ACCESS_TOKEN: z.string().default(""),
+  WHATSAPP_API_VERSION: z.string().default("v21.0"),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -183,4 +188,7 @@ export const ENV = {
   vapidPublicKey: raw.VAPID_PUBLIC_KEY,
   vapidPrivateKey: raw.VAPID_PRIVATE_KEY,
   vapidSubject: raw.VAPID_SUBJECT,
+  whatsappPhoneNumberId: raw.WHATSAPP_PHONE_NUMBER_ID,
+  whatsappAccessToken: raw.WHATSAPP_ACCESS_TOKEN,
+  whatsappApiVersion: raw.WHATSAPP_API_VERSION,
 };
