@@ -24,6 +24,11 @@ import { systemRouter } from "./_core/systemRouter";
 import { notificationRouter } from "./notificationRouter";
 import { publicProcedure, tenantProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
+import {
+  rateLimitHit,
+  AUTH_MAX_ATTEMPTS,
+  AUTH_WINDOW_MS,
+} from "./_core/rateLimit";
 import * as db from "./db";
 import { parseJsonArray } from "./db/client";
 import {
@@ -52,6 +57,38 @@ import {
   apartmentSearches,
   apartmentCandidates,
 } from "../drizzle/schema";
+
+/** Best-effort client IP for per-IP auth rate limiting (honours a proxy hop). */
+function clientIp(req: { headers: Record<string, unknown>; socket?: unknown }): string {
+  const fwd = req.headers["x-forwarded-for"];
+  if (typeof fwd === "string" && fwd.length > 0) {
+    return fwd.split(",")[0]!.trim();
+  }
+  const sock = req.socket as { remoteAddress?: string } | undefined;
+  return sock?.remoteAddress ?? "unknown";
+}
+
+/**
+ * Throttle sensitive unauthenticated auth endpoints per IP (brute-force / abuse
+ * protection). No-ops when rate limiting is disabled (e.g. tests).
+ */
+function assertAuthRateLimit(
+  req: { headers: Record<string, unknown>; socket?: unknown },
+  bucket: string
+): void {
+  if (!ENV.rateLimitEnabled) return;
+  const { allowed } = rateLimitHit(
+    `auth:${bucket}:${clientIp(req)}`,
+    AUTH_MAX_ATTEMPTS,
+    AUTH_WINDOW_MS
+  );
+  if (!allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Too many attempts. Please try again in a minute.",
+    });
+  }
+}
 
 /**
  * Enforce a tenant's per-quota limit before adding a property/member. NULL
@@ -532,6 +569,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "register");
         const existing = await db.getCredentialByEmail(input.email);
         if (existing) {
           throw new TRPCError({
@@ -630,6 +668,7 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ email: emailField, password: passwordField }))
       .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "login");
         const cred = await db.getCredentialByEmail(input.email);
         const ok =
           !!cred && (await verifyPassword(input.password, cred.passwordHash));
@@ -689,7 +728,8 @@ export const appRouter = router({
     // an email is only sent when the address has an unverified account.
     resendVerification: publicProcedure
       .input(z.object({ email: emailField }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "resend");
         const cred = await db.getCredentialByEmail(input.email);
         if (cred && !cred.emailVerifiedAt) {
           const verify = generateToken();
@@ -708,7 +748,8 @@ export const appRouter = router({
     // an email is only sent when the address actually has an account.
     requestPasswordReset: publicProcedure
       .input(z.object({ email: emailField }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "reset");
         const cred = await db.getCredentialByEmail(input.email);
         if (cred) {
           const reset = generateToken();

@@ -13,6 +13,9 @@ const envSchema = z.object({
   // Billing provider for SAAS. "stub" records plan state locally without an
   // external account; real providers (stripe, …) are wired in billing/provider.
   BILLING_PROVIDER: z.string().default("stub"),
+  // Per-tenant + per-IP request rate limiting. On by default; auto-off under
+  // tests so integration callers can hammer a single tenant freely.
+  RATE_LIMIT_ENABLED: z.string().default("true"),
   VITE_APP_ID: z.string().default(""),
   OAUTH_SERVER_URL: z.string().default(""),
   OWNER_OPEN_ID: z.string().default(""),
@@ -150,6 +153,8 @@ export const ENV = {
   appMode: raw.APP_MODE,
   isSaas: raw.APP_MODE === "saas",
   billingProvider: raw.BILLING_PROVIDER,
+  rateLimitEnabled:
+    raw.RATE_LIMIT_ENABLED !== "false" && raw.NODE_ENV !== "test",
   appId: raw.VITE_APP_ID,
   cookieSecret: raw.JWT_SECRET,
   databaseUrl: raw.DATABASE_URL,

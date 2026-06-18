@@ -7,6 +7,12 @@ import {
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { ENV } from "./env";
+import {
+  rateLimitHit,
+  TENANT_MAX_REQUESTS,
+  TENANT_WINDOW_MS,
+} from "./rateLimit";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -70,6 +76,21 @@ export const tenantProcedure = protectedProcedure.use(async opts => {
 
   if (ctx.tenantId == null || ctx.tenantRole == null) {
     throw new TRPCError({ code: "FORBIDDEN", message: NO_TENANT_ERR_MSG });
+  }
+
+  // Per-tenant rate limit: a single workspace can't monopolise the instance.
+  if (ENV.rateLimitEnabled) {
+    const { allowed } = rateLimitHit(
+      `tenant:${ctx.tenantId}`,
+      TENANT_MAX_REQUESTS,
+      TENANT_WINDOW_MS
+    );
+    if (!allowed) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "This workspace is making too many requests. Please slow down.",
+      });
+    }
   }
 
   return next({
