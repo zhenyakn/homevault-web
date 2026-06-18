@@ -61,6 +61,9 @@
     "apartmentSearch": "חיפוש דירה",
     "admin": "ניהול"
   },
+  "tenant": {
+    "workspace": "סביבת עבודה"
+  },
   "common": {
     "add": "הוסף",
     "edit": "ערוך",

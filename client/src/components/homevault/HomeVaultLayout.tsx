@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { TenantSwitcherSection } from "@/components/TenantSwitcher";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -569,6 +570,7 @@ function DashboardLayoutContent({
                   ))}
                 </div>
                 <DropdownMenuSeparator />
+                <TenantSwitcherSection />
                 {profiles && profiles.length > 1 && (
                   <>
                     {profiles.map((profile: any, index: number) => (

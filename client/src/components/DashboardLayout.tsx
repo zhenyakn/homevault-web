@@ -26,6 +26,7 @@ import NotificationCenter from "@/components/NotificationCenter";
 import MobileTabBar from "@/components/MobileTabBar";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
+import { TenantSwitcherSection } from "@/components/TenantSwitcher";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -576,6 +577,7 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <TenantSwitcherSection />
                 {profiles && profiles.length > 1 && (
                   <>
                     <div className="px-2 py-1.5">
