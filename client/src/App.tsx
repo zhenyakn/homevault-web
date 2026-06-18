@@ -11,6 +11,7 @@ import {
   HomeVaultUIProvider,
   useHomeVaultUI,
 } from "./contexts/HomeVaultUIContext";
+import { SidebarPrefsProvider } from "./contexts/SidebarPrefsContext";
 import { useAuth } from "./_core/hooks/useAuth";
 import { trpc } from "./lib/trpc";
 import {
@@ -210,12 +211,14 @@ function App() {
       <ThemeProvider defaultTheme="system">
         <LanguageProvider>
           <HomeVaultUIProvider>
-            <TooltipProvider>
-              <Toaster />
-              <WouterRouter hook={useHashLocation}>
-                <AppRouter />
-              </WouterRouter>
-            </TooltipProvider>
+            <SidebarPrefsProvider>
+              <TooltipProvider>
+                <Toaster />
+                <WouterRouter hook={useHashLocation}>
+                  <AppRouter />
+                </WouterRouter>
+              </TooltipProvider>
+            </SidebarPrefsProvider>
           </HomeVaultUIProvider>
         </LanguageProvider>
       </ThemeProvider>

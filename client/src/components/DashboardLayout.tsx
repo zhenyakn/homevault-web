@@ -26,6 +26,7 @@ import NotificationCenter from "@/components/NotificationCenter";
 import MobileTabBar from "@/components/MobileTabBar";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useSidebarPrefs } from "@/contexts/SidebarPrefsContext";
 import { TenantSwitcherSection } from "@/components/TenantSwitcher";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -69,10 +70,10 @@ import { HomeVaultLogo } from "@/components/HomeVaultLogo";
 type LucideIcon = React.ComponentType<
   React.SVGProps<SVGSVGElement> & { className?: string }
 >;
-type NavItem = { icon: LucideIcon; key: string; path: string };
-type NavGroup = { labelKey: string; items: NavItem[] };
+export type NavItem = { icon: LucideIcon; key: string; path: string };
+export type NavGroup = { labelKey: string; items: NavItem[] };
 
-const NAV_GROUPS: NavGroup[] = [
+export const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: "nav.group.overview",
     items: [
@@ -368,6 +369,8 @@ function DashboardLayoutContent({
   const { data: profiles } = trpc.profiles.list.useQuery();
   // Billing/plan UI is hosted-only — hidden on standalone (e.g. HA add-on).
   const { isSaas } = useCapabilities();
+  // User-controlled per-item sidebar visibility (Settings → Appearance).
+  const { isVisible } = useSidebarPrefs();
 
   const handleSearchOpen = () => {
     onSearchOpen?.();
@@ -395,7 +398,10 @@ function DashboardLayoutContent({
       return { ...g, items };
     }
     return g;
-  });
+  })
+    // Apply the user's per-item visibility prefs, then drop now-empty groups.
+    .map(g => ({ ...g, items: g.items.filter(i => isVisible(i.key)) }))
+    .filter(g => g.items.length > 0);
 
   // Breadcrumb lookup
   const pathKey =
