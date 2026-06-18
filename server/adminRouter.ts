@@ -142,9 +142,7 @@ export const adminRouter = router({
     // an explicit confirm flag; users (who may belong to other tenants) are not
     // deleted, only their membership here.
     delete: superAdminProcedure
-      .input(
-        z.object({ tenantId: z.number().int(), confirm: z.literal(true) })
-      )
+      .input(z.object({ tenantId: z.number().int(), confirm: z.literal(true) }))
       .mutation(async ({ ctx, input }) => {
         const tenant = await db.getTenantById(input.tenantId);
         if (!tenant) {

@@ -410,7 +410,10 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
       ).toBe(false);
 
       // Unlimited adds the notification channels.
-      await admin.admin.billing.assignPlan({ tenantId: tid, planId: "unlimited" });
+      await admin.admin.billing.assignPlan({
+        tenantId: tid,
+        planId: "unlimited",
+      });
       expect(
         await entitlements.hasCapability(tid, "notifications.telegram")
       ).toBe(true);
@@ -450,7 +453,10 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
       ).resolves.toEqual({ ok: true });
 
       // Unlimited unlocks it.
-      await admin.admin.billing.assignPlan({ tenantId: tid, planId: "unlimited" });
+      await admin.admin.billing.assignPlan({
+        tenantId: tid,
+        planId: "unlimited",
+      });
       await expect(
         caller.notification.setPref({ channel: "telegram", enabled: true })
       ).resolves.toEqual({ ok: true });

@@ -88,7 +88,8 @@ export const tenantProcedure = protectedProcedure.use(async opts => {
     if (!allowed) {
       throw new TRPCError({
         code: "TOO_MANY_REQUESTS",
-        message: "This workspace is making too many requests. Please slow down.",
+        message:
+          "This workspace is making too many requests. Please slow down.",
       });
     }
   }

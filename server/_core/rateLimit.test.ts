@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import {
-  rateLimitHit,
-  sweepExpired,
-  _resetRateLimits,
-} from "./rateLimit";
+import { rateLimitHit, sweepExpired, _resetRateLimits } from "./rateLimit";
 
 beforeEach(() => _resetRateLimits());
 

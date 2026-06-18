@@ -100,13 +100,11 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
   it("a new user joins an existing tenant via register(inviteToken)", async () => {
     // Owner with a tenant.
     const ownerEmail = `owner-${Date.now()}@example.com`;
-    await appRouter
-      .createCaller(anonCtx())
-      .auth.register({
-        email: ownerEmail,
-        password: "supersecret",
-        tenantName: "Shared Co",
-      });
+    await appRouter.createCaller(anonCtx()).auth.register({
+      email: ownerEmail,
+      password: "supersecret",
+      tenantName: "Shared Co",
+    });
     const owner = await creds.getCredentialByEmail(ownerEmail);
     const tenantId = (await tenantsDb.getTenantsForUser(owner!.userId))[0].id;
 
@@ -145,13 +143,11 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
 
   it("an existing signed-in user accepts an invite via tenant.invites.accept", async () => {
     const ownerEmail = `owner2-${Date.now()}@example.com`;
-    await appRouter
-      .createCaller(anonCtx())
-      .auth.register({
-        email: ownerEmail,
-        password: "supersecret",
-        tenantName: "Team Two",
-      });
+    await appRouter.createCaller(anonCtx()).auth.register({
+      email: ownerEmail,
+      password: "supersecret",
+      tenantName: "Team Two",
+    });
     const owner = await creds.getCredentialByEmail(ownerEmail);
     const tenantId = (await tenantsDb.getTenantsForUser(owner!.userId))[0].id;
 

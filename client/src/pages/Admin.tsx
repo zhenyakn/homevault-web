@@ -35,8 +35,7 @@ export default function Admin() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
   const { isSaas } = useCapabilities();
-  const isSuperAdmin =
-    user?.globalRole === "superadmin";
+  const isSuperAdmin = user?.globalRole === "superadmin";
   // Plans are a hosted (SAAS) concept; hide the tab on standalone installs.
   const tabs = isSaas ? TABS : TABS.filter(t => t.key !== "plans");
 
@@ -104,12 +103,11 @@ function Overview() {
     },
     onError: e => toast.error(errMessage(e)),
   });
-  const setEmailVerification = trpc.admin.config.setEmailVerification.useMutation(
-    {
+  const setEmailVerification =
+    trpc.admin.config.setEmailVerification.useMutation({
       onSuccess: () => utils.admin.config.get.invalidate(),
       onError: e => toast.error(errMessage(e)),
-    }
-  );
+    });
   const mode = config.data?.appMode;
   const nextMode = mode === "saas" ? "standalone" : "saas";
 
@@ -336,7 +334,10 @@ function TenantsTab() {
                   value={t.planId ?? ""}
                   disabled={assignPlan.isPending || plans.isLoading}
                   onChange={e =>
-                    assignPlan.mutate({ tenantId: t.id, planId: e.target.value })
+                    assignPlan.mutate({
+                      tenantId: t.id,
+                      planId: e.target.value,
+                    })
                   }
                 >
                   <option value="" disabled>
@@ -473,12 +474,7 @@ function TenantLimitsEditor({
         Save
       </Button>
       <span className="mx-1 h-4 w-px bg-border" />
-      <Button
-        size="sm"
-        variant="ghost"
-        disabled={exporting}
-        onClick={onExport}
-      >
+      <Button size="sm" variant="ghost" disabled={exporting} onClick={onExport}>
         Export
       </Button>
       <Button
@@ -762,7 +758,9 @@ function PlanEditor({
             />
           </label>
           <label className="text-xs space-y-1">
-            <span className="text-muted-foreground">Max properties (∞ = blank)</span>
+            <span className="text-muted-foreground">
+              Max properties (∞ = blank)
+            </span>
             <Input
               type="number"
               min={0}
@@ -773,7 +771,9 @@ function PlanEditor({
             />
           </label>
           <label className="text-xs space-y-1">
-            <span className="text-muted-foreground">Max members (∞ = blank)</span>
+            <span className="text-muted-foreground">
+              Max members (∞ = blank)
+            </span>
             <Input
               type="number"
               min={1}

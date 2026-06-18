@@ -406,9 +406,7 @@ function DashboardLayoutContent({
   const navItems: HVNavItem[] = [
     ...HV_NAV,
     { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
-    ...(isSaas
-      ? [{ icon: CreditCard, key: "nav.plan", path: "/plan" }]
-      : []),
+    ...(isSaas ? [{ icon: CreditCard, key: "nav.plan", path: "/plan" }] : []),
     { icon: Settings, key: "nav.settings", path: "/settings" },
   ];
 
