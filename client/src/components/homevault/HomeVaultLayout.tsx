@@ -25,6 +25,7 @@ import {
 import { getLoginUrl } from "@/const";
 import NotificationCenter from "@/components/NotificationCenter";
 import MobileTabBar from "@/components/homevault/HomeVaultMobileNav";
+import MobilePropertySwitcher from "@/components/MobilePropertySwitcher";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -135,30 +136,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [{ icon: Settings, key: "nav.settings", path: "/settings" }],
   },
 ];
-
-// Page → (section label key, page label key) for breadcrumb
-const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
-  "/": { sectionKey: "nav.group.overview", pageKey: "nav.today" },
-  "/calendar": { sectionKey: "nav.group.overview", pageKey: "nav.calendar" },
-  "/portfolio": { sectionKey: "nav.group.overview", pageKey: "nav.portfolio" },
-  "/expenses": { sectionKey: "nav.group.finances", pageKey: "nav.expenses" },
-  "/loans": { sectionKey: "nav.group.finances", pageKey: "nav.loans" },
-  "/purchase-costs": {
-    sectionKey: "nav.group.finances",
-    pageKey: "nav.purchaseCosts",
-  },
-  "/repairs": { sectionKey: "nav.group.property", pageKey: "nav.repairs" },
-  "/upgrades": { sectionKey: "nav.group.property", pageKey: "nav.projects" },
-  "/documents": { sectionKey: "nav.group.property", pageKey: "nav.documents" },
-  "/inventory": { sectionKey: "nav.group.property", pageKey: "nav.inventory" },
-  "/wishlist": { sectionKey: "nav.group.property", pageKey: "nav.wishlist" },
-  "/apartment-search": {
-    sectionKey: "nav.group.search",
-    pageKey: "nav.apartmentSearch",
-  },
-  "/plan": { sectionKey: "nav.group.account", pageKey: "nav.plan" },
-  "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
-};
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 260;
@@ -414,15 +391,6 @@ function DashboardLayoutContent({
     onSearchOpen?.();
   };
 
-  // Active-page lookup (used by the mobile topbar label).
-  const pathKey =
-    Object.keys(PAGE_META).find(p =>
-      p === "/"
-        ? location === "/"
-        : location === p || location.startsWith(p + "/")
-    ) ?? "/";
-  const pageMeta = PAGE_META[pathKey];
-
   const isActive = (path: string) =>
     path === "/"
       ? location === "/"
@@ -619,11 +587,9 @@ function DashboardLayoutContent({
         {/* Mobile topbar */}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <span className="tracking-tight text-foreground font-medium">
-                {pageMeta ? t(pageMeta.pageKey) : "Menu"}
-              </span>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <SidebarTrigger className="h-9 w-9 shrink-0 rounded-lg bg-background" />
+              <MobilePropertySwitcher />
             </div>
             <div className="flex items-center gap-0.5">
               <QuickAddMenu>
