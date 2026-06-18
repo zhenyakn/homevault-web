@@ -5,16 +5,40 @@
  */
 
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import { CHANNEL_KEYS, type ChannelKey } from "./notifications/types";
 import { notifyTest } from "./notifications";
 import { runReminderSweep } from "./notifications/scheduler";
+import { hasCapability } from "./db/entitlements";
+import type { CapabilityKey } from "./billing/capabilities";
 import * as notif from "./db/notifications";
 
 const channelEnum = z.enum(
   CHANNEL_KEYS as unknown as [ChannelKey, ...ChannelKey[]]
 );
+
+/** Channels that are a paid capability (SAAS-gated). Others are always on. */
+const CHANNEL_CAPABILITY: Partial<Record<ChannelKey, CapabilityKey>> = {
+  telegram: "notifications.telegram",
+  whatsapp: "notifications.whatsapp",
+};
+
+/** Throw if the tenant's plan doesn't include the channel (SAAS only). */
+async function assertChannelAllowed(
+  tenantId: number | null,
+  channel: ChannelKey
+): Promise<void> {
+  const cap = CHANNEL_CAPABILITY[channel];
+  if (!cap || tenantId == null) return;
+  if (!(await hasCapability(tenantId, cap))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `Your plan does not include ${channel} notifications.`,
+    });
+  }
+}
 
 export const notificationRouter = router({
   // ── Preferences & destinations ─────────────────────────────────────────────
@@ -34,6 +58,10 @@ export const notificationRouter = router({
   setPref: protectedProcedure
     .input(z.object({ channel: channelEnum, enabled: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
+      // Only block enabling a gated channel; disabling is always permitted.
+      if (input.enabled) {
+        await assertChannelAllowed(ctx.tenantId, input.channel);
+      }
       await notif.setPref(ctx.user.id, input.channel, input.enabled);
       return { ok: true } as const;
     }),
@@ -52,6 +80,7 @@ export const notificationRouter = router({
 
   // ── Telegram linking ───────────────────────────────────────────────────────
   createTelegramLinkCode: protectedProcedure.mutation(async ({ ctx }) => {
+    await assertChannelAllowed(ctx.tenantId, "telegram");
     const code = await notif.createTelegramLinkCode(ctx.user.id);
     return { code };
   }),
@@ -119,6 +148,7 @@ export const notificationRouter = router({
   sendTest: protectedProcedure
     .input(z.object({ channel: channelEnum }))
     .mutation(async ({ ctx, input }) => {
+      await assertChannelAllowed(ctx.tenantId, input.channel);
       const results = await notifyTest(ctx.user.id, input.channel);
       const result = results[0];
       return {

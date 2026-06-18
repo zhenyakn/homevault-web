@@ -1286,8 +1286,8 @@ async function main() {
      VALUES
        ('free',      'Free',      false, 0,    'ils', 'none',  1,    2,    '[]',               0, true),
        ('starter',   'Starter',   true,  2900, 'ils', 'month', 3,    5,    '["files.upload"]', 1, true),
-       ('pro',       'Pro',       true,  7900, 'ils', 'month', 10,   20,   '["files.upload"]', 2, true),
-       ('unlimited', 'Unlimited', true,  19900,'ils', 'month', NULL, NULL, '["files.upload"]', 3, true)`,
+       ('pro',       'Pro',       true,  7900, 'ils', 'month', 10,   20,   '["files.upload","data.export","apartment.search"]', 2, true),
+       ('unlimited', 'Unlimited', true,  19900,'ils', 'month', NULL, NULL, '["files.upload","data.export","apartment.search","notifications.telegram","notifications.whatsapp"]', 3, true)`,
     "seed default plans"
   );
 

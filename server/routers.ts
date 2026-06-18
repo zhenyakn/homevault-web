@@ -867,6 +867,12 @@ export const appRouter = router({
     }),
 
     exportAll: tenantProcedure.query(async ({ ctx }) => {
+      if (!(await db.hasCapability(ctx.tenantId, "data.export"))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Your plan does not include data export.",
+        });
+      }
       const pid = ctx.propertyId;
       const tid = ctx.tenantId;
       const [
@@ -1882,6 +1888,12 @@ export const appRouter = router({
     create: tenantProcedure
       .input(apartmentSearchSchema)
       .mutation(async ({ ctx, input }) => {
+        if (!(await db.hasCapability(ctx.tenantId, "apartment.search"))) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Your plan does not include apartment search.",
+          });
+        }
         return await db.createSearch({
           id: nanoid(),
           ...input,

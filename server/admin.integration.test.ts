@@ -328,6 +328,14 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     let list = (await admin.admin.plans.list()).plans;
     expect(list.find(p => p.key === key)?.maxMembers).toBe(7);
 
+    // Capabilities must come back as a real array, not the raw JSON string
+    // MariaDB's LONGTEXT-backed JSON column otherwise hands back (regression).
+    const seededFree = list.find(p => p.key === "free");
+    expect(Array.isArray(seededFree?.capabilities)).toBe(true);
+    const created = list.find(p => p.key === key);
+    expect(Array.isArray(created?.capabilities)).toBe(true);
+    expect(created?.capabilities).toContain("files.upload");
+
     await admin.admin.plans.update({
       key,
       name: "Team Plus",
@@ -376,9 +384,65 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
       // Free plan omits files.upload → gated off in SAAS.
       await admin.admin.billing.assignPlan({ tenantId: tid, planId: "free" });
       expect(await entitlements.hasCapability(tid, "files.upload")).toBe(false);
-      // Pro includes it → allowed.
+      expect(await entitlements.hasCapability(tid, "data.export")).toBe(false);
+
+      // Pro includes uploads / export / apartment search, but not the
+      // premium notification channels.
       await admin.admin.billing.assignPlan({ tenantId: tid, planId: "pro" });
       expect(await entitlements.hasCapability(tid, "files.upload")).toBe(true);
+      expect(await entitlements.hasCapability(tid, "data.export")).toBe(true);
+      expect(await entitlements.hasCapability(tid, "apartment.search")).toBe(
+        true
+      );
+      expect(
+        await entitlements.hasCapability(tid, "notifications.telegram")
+      ).toBe(false);
+
+      // Unlimited adds the notification channels.
+      await admin.admin.billing.assignPlan({ tenantId: tid, planId: "unlimited" });
+      expect(
+        await entitlements.hasCapability(tid, "notifications.telegram")
+      ).toBe(true);
+      expect(
+        await entitlements.hasCapability(tid, "notifications.whatsapp")
+      ).toBe(true);
+    } finally {
+      await admin.admin.config.setAppMode({ mode: "standalone" });
+    }
+  });
+
+  it("enforces a gated capability at the router boundary (notifications)", async () => {
+    const sid = await mkUser("notif-gate", "superadmin");
+    const tenantsDb = await import("./db/tenants");
+    const tid = await tenantsDb.createTenantWithOwner(sid, "NotifWs");
+    const admin = appRouter.createCaller(ctxFor(sid, "superadmin"));
+    const caller = appRouter.createCaller(ownerCtx(sid, tid));
+
+    // Standalone: enabling Telegram is allowed regardless of plan.
+    await expect(
+      caller.notification.setPref({ channel: "telegram", enabled: true })
+    ).resolves.toEqual({ ok: true });
+
+    await admin.admin.config.setAppMode({ mode: "saas" });
+    try {
+      await admin.admin.billing.assignPlan({ tenantId: tid, planId: "free" });
+      // Free plan: enabling a gated channel is refused…
+      await expect(
+        caller.notification.setPref({ channel: "telegram", enabled: true })
+      ).rejects.toThrow(/does not include telegram/i);
+      // …but disabling it is always permitted, and in-app is never gated.
+      await expect(
+        caller.notification.setPref({ channel: "telegram", enabled: false })
+      ).resolves.toEqual({ ok: true });
+      await expect(
+        caller.notification.setPref({ channel: "inapp", enabled: true })
+      ).resolves.toEqual({ ok: true });
+
+      // Unlimited unlocks it.
+      await admin.admin.billing.assignPlan({ tenantId: tid, planId: "unlimited" });
+      await expect(
+        caller.notification.setPref({ channel: "telegram", enabled: true })
+      ).resolves.toEqual({ ok: true });
     } finally {
       await admin.admin.config.setAppMode({ mode: "standalone" });
     }

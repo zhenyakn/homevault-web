@@ -59,7 +59,7 @@ export const SEED_PLANS: readonly SeedPlan[] = [
     interval: "month",
     maxProperties: 10,
     maxMembers: 20,
-    capabilities: ["files.upload"],
+    capabilities: ["files.upload", "data.export", "apartment.search"],
     sortOrder: 2,
   },
   {
@@ -71,7 +71,13 @@ export const SEED_PLANS: readonly SeedPlan[] = [
     interval: "month",
     maxProperties: null,
     maxMembers: null,
-    capabilities: ["files.upload"],
+    capabilities: [
+      "files.upload",
+      "data.export",
+      "apartment.search",
+      "notifications.telegram",
+      "notifications.whatsapp",
+    ],
     sortOrder: 3,
   },
 ] as const;

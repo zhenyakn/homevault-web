@@ -19,26 +19,54 @@ export type PlanInput = {
   active: boolean;
 };
 
+/**
+ * Normalise a plan row's `capabilities`. MariaDB's JSON type is LONGTEXT under
+ * the hood, so the driver hands it back as a raw string rather than a parsed
+ * array — coerce it here so every reader (server gating, admin UI, tenant view)
+ * gets a real `CapabilityKey[]`.
+ */
+function normalizePlan(p: Plan): Plan {
+  const raw: unknown = p.capabilities;
+  let caps: CapabilityKey[];
+  if (Array.isArray(raw)) {
+    caps = sanitizeCapabilities(raw);
+  } else if (typeof raw === "string" && raw.trim()) {
+    try {
+      caps = sanitizeCapabilities(JSON.parse(raw));
+    } catch {
+      caps = [];
+    }
+  } else {
+    caps = [];
+  }
+  return { ...p, capabilities: caps };
+}
+
 /** All plans, ordered for display. */
 export async function listPlans(): Promise<Plan[]> {
   const db = await getDb();
-  return db.select().from(plans).orderBy(asc(plans.sortOrder), asc(plans.id));
+  const rows = await db
+    .select()
+    .from(plans)
+    .orderBy(asc(plans.sortOrder), asc(plans.id));
+  return rows.map(normalizePlan);
 }
 
 /** Only the active plans (what tenants may self-select). */
 export async function listActivePlans(): Promise<Plan[]> {
   const db = await getDb();
-  return db
+  const rows = await db
     .select()
     .from(plans)
     .where(eq(plans.active, true))
     .orderBy(asc(plans.sortOrder), asc(plans.id));
+  return rows.map(normalizePlan);
 }
 
 export async function getPlanByKey(key: string): Promise<Plan | undefined> {
   const db = await getDb();
   const rows = await db.select().from(plans).where(eq(plans.key, key)).limit(1);
-  return rows[0];
+  return rows[0] ? normalizePlan(rows[0]) : undefined;
 }
 
 export async function createPlan(input: PlanInput): Promise<void> {
