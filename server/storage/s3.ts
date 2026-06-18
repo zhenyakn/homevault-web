@@ -225,7 +225,11 @@ export async function testS3(candidate?: {
   }
 }
 
-function buildKey(ownerUserId: number, originalName: string): string {
+function buildKey(
+  ownerUserId: number,
+  originalName: string,
+  tenantId?: number | null
+): string {
   // 8-char random suffix prevents collisions when the same name is uploaded
   // twice (matches the previous behaviour of storage.ts:appendHashSuffix).
   const hash = crypto.randomBytes(4).toString("hex");
@@ -235,7 +239,10 @@ function buildKey(ownerUserId: number, originalName: string): string {
     lastDot === -1
       ? `${safe}_${hash}`
       : `${safe.slice(0, lastDot)}_${hash}${safe.slice(lastDot)}`;
-  return `uploads/${ownerUserId}/${Date.now()}_${stamped}`;
+  // Per-tenant isolation prefix for new uploads. Existing objects keep their
+  // un-prefixed key (resolved via the stored externalId), so no re-keying.
+  const prefix = tenantId != null ? `tenant/${tenantId}/` : "";
+  return `${prefix}uploads/${ownerUserId}/${Date.now()}_${stamped}`;
 }
 
 export const s3Backend: StorageBackend = {
@@ -243,7 +250,7 @@ export const s3Backend: StorageBackend = {
 
   async upload(buffer: Buffer, meta: UploadMeta) {
     const { client, bucket } = await getClient();
-    const key = buildKey(meta.ownerUserId, meta.originalName);
+    const key = buildKey(meta.ownerUserId, meta.originalName, meta.tenantId);
     try {
       await client.send(
         new PutObjectCommand({

@@ -22,6 +22,11 @@ export interface UploadMeta {
   // it to compute the folder layout (HomeVault/property-<id>/<userId>/…) and
   // the `files` table records it for the file-browser UI. S3 ignores it.
   propertyId: number;
+  // The active tenant. Key-based backends (local, s3) prefix the object key
+  // with `tenant/<id>/` for per-tenant isolation; null for legacy/no-tenant
+  // uploads (which keep the un-prefixed layout). Existing objects are never
+  // re-keyed — download/delete resolve by the stored externalId.
+  tenantId?: number | null;
   originalName: string;
   mimeType: string;
 }

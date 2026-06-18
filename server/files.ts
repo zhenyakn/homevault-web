@@ -62,6 +62,9 @@ export async function createFileRecord(input: {
   ownerUserId: number;
   // Optional only for legacy callers (tests). New uploads always pass one.
   propertyId?: number | null;
+  // Active tenant the upload belongs to. Stamped so files participate in
+  // tenant-scoped export/erasure and per-tenant storage isolation.
+  tenantId?: number | null;
 }): Promise<FileRecord> {
   const db = await getDb();
   const id = nanoid();
@@ -74,6 +77,7 @@ export async function createFileRecord(input: {
     size: input.size,
     ownerUserId: input.ownerUserId,
     propertyId: input.propertyId ?? null,
+    tenantId: input.tenantId ?? null,
   });
   return {
     id,
@@ -84,9 +88,7 @@ export async function createFileRecord(input: {
     size: input.size,
     ownerUserId: input.ownerUserId,
     propertyId: input.propertyId ?? null,
-    // tenantId is populated by the Stage-1 backfill / Phase-3 write scoping;
-    // synthetic return mirrors the not-yet-scoped insert above.
-    tenantId: null,
+    tenantId: input.tenantId ?? null,
     createdAt: new Date(),
     deletedAt: null,
   };
@@ -242,6 +244,9 @@ export async function uploadAndRegister(opts: {
   // Property the upload belongs to. Drive uses it for the folder layout;
   // the files table records it for filtering / cleanup.
   propertyId: number;
+  // Active tenant — used for the per-tenant storage key prefix and stamped on
+  // the file row. Optional for legacy callers/tests.
+  tenantId?: number | null;
 }): Promise<{ record: FileRecord; url: string }> {
   const backend = await resolveActiveBackend();
   const { externalId } = await backend.upload(opts.buffer, {
@@ -249,6 +254,7 @@ export async function uploadAndRegister(opts: {
     mimeType: opts.mimeType,
     ownerUserId: opts.ownerUserId,
     propertyId: opts.propertyId,
+    tenantId: opts.tenantId ?? null,
   });
   const record = await createFileRecord({
     backend: backend.name,
@@ -258,6 +264,7 @@ export async function uploadAndRegister(opts: {
     size: opts.buffer.byteLength,
     ownerUserId: opts.ownerUserId,
     propertyId: opts.propertyId,
+    tenantId: opts.tenantId ?? null,
   });
   return {
     record,
@@ -266,6 +273,34 @@ export async function uploadAndRegister(opts: {
 }
 
 // ─── Bulk lifecycle helpers ──────────────────────────────────────────────────
+
+/**
+ * Best-effort delete of every stored binary object belonging to a tenant
+ * (GDPR erasure). Removes the objects from their storage backends; the `files`
+ * rows themselves are removed by `deleteTenantCascade`. Errors are swallowed
+ * per-object so one unreachable object can't block tenant deletion. Returns how
+ * many objects were successfully deleted.
+ */
+export async function purgeTenantFileObjects(tenantId: number): Promise<number> {
+  const db = await getDb();
+  const rows = await db
+    .select({ backend: files.backend, externalId: files.externalId })
+    .from(files)
+    .where(eq(files.tenantId, tenantId));
+  let deleted = 0;
+  for (const r of rows) {
+    try {
+      const backend = getBackendByName(r.backend as StorageBackendName);
+      await backend.delete(r.externalId);
+      deleted += 1;
+    } catch (err) {
+      logger.warn(
+        `purgeTenantFileObjects: failed to delete ${r.externalId}: ${(err as Error).message}`
+      );
+    }
+  }
+  return deleted;
+}
 
 /**
  * Reap every non-deleted file owned by `ownerUserId`. Used by

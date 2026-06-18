@@ -4,6 +4,7 @@ import { router, superAdminProcedure } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import * as db from "./db";
 import { PLANS, isPlanId } from "./billing/plans";
+import { purgeTenantFileObjects } from "./files";
 
 /**
  * Server-wide admin console. Every procedure is gated by superAdminProcedure
@@ -138,6 +139,8 @@ export const adminRouter = router({
             message: "Workspace not found",
           });
         }
+        // Remove the stored binary objects first (best-effort), then the DB rows.
+        await purgeTenantFileObjects(input.tenantId);
         await db.deleteTenantCascade(input.tenantId);
         await db.logAudit({
           actorUserId: ctx.user.id,

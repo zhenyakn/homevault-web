@@ -410,9 +410,9 @@ gating rather than another data refactor.
 - **Onboarding & limits:** ✅ a generic per-tenant quota substrate now exists
   (`tenants.maxProperties` / `maxMembers`, NULL = unlimited, enforced at the create/join paths,
   superadmin-settable). Binding these to named plan tiers is the remaining billing-coupled work.
-- **Isolation hardening:** per-tenant storage prefixes (S3/Drive), per-tenant rate limiting,
-  defense-in-depth tenant checks at the DB layer (consider a query wrapper that *requires* a
-  `tenantId`).
+- **Isolation hardening:** ✅ per-tenant storage prefixes (local/S3 key prefix, Drive folder)
+  and ✅ per-tenant + per-IP rate limiting now exist. A DB-layer query wrapper that *requires* a
+  `tenantId` (belt-and-braces over the existing per-helper scoping) remains optional future work.
 - **Custom domains / routing:** tenant `slug` subdomains or path prefixes (optional).
 - **Compliance:** ✅ per-tenant data export (`exportTenantData`, owner + superadmin) and hard
   deletion (`deleteTenantCascade`, superadmin, confirm-gated) now exist. Email deliverability
@@ -467,8 +467,8 @@ These two items were raised during Stage 1 design and are intentionally **part o
 | **13. Billing scaffold (provider-agnostic)** ✅ | Plan catalog + subscription table + adapter seam, bound to quotas | Done (§4.2) — code-defined `PLANS` catalog; `tenant_subscriptions` table; `BillingProvider` interface + `StubBillingProvider` (selected via `BILLING_PROVIDER` env); `db.applyPlan` copies a plan's limits onto the tenant quotas; admin assigns plans from the Tenants tab; tenant-facing `billing.current` shows plan + usage. Boot-safe CREATE (idempotent). Verified: real-MySQL integration + build. Real providers (Stripe/…) slot into the adapter + a webhook later. |
 | **14. Per-tenant rate limiting** ✅ | In-memory fixed-window limiter; per-tenant + per-IP auth guards | Done (§4.2) — `rateLimitHit` limiter; `tenantProcedure` enforces a generous per-tenant budget; sensitive public auth endpoints (login/register/resend/reset) are throttled per-IP for brute-force protection. Off under `NODE_ENV=test`; `RATE_LIMIT_ENABLED` env toggle. Single-instance (Redis-backed swap noted for scale-out). Verified: unit tests + suite. |
 | **15. GDPR export + tenant deletion** ✅ | Per-tenant data export + cascade hard-delete | Done (§4.2/§4.3) — `exportTenantData` (all entities incl. deep children + members) via owner/admin self-service (`data.exportTenant`) and superadmin (`admin.tenants.export`); `deleteTenantCascade` (transactional, child→parent order, users preserved) via `admin.tenants.delete` (confirm-gated, audit-logged). Admin Tenants tab gains Export (JSON download) + Delete (confirm). Verified: real-MySQL integration (export contents + cascade erasure, user survives). |
-| **16. Per-tenant storage isolation** ◻︎ | Prefix S3/Drive keys with tenantId (defense-in-depth) | Next — requires re-keying/migrating existing stored objects; carries data-migration risk, so implemented carefully with a backfill. |
-| **Stage 2 — remaining SAAS infra (§4.2)** ◻︎ | Real billing provider + webhooks, custom domains, scaling, observability | Deployment/external-service dependent; tracked, not yet built. |
+| **16. Per-tenant storage isolation** ✅ | Tenant-prefixed storage keys + file rows stamped with tenantId | Done (§4.2) — new uploads go under `tenant/<id>/…` (local + S3 key prefix; Drive `tenant-<id>/` folder). No re-keying: existing objects resolve by their stored `externalId`. `files.tenantId` is now stamped on upload (also closing a gap so files participate in tenant export/erasure), and tenant deletion purges the backend objects too. Verified: unit (local prefix) + suite + build. |
+| **Stage 2 — remaining SAAS infra (§4.2)** ◻︎ | Real billing provider + webhooks, custom domains, horizontal scaling, observability | Deployment/external-service dependent (Stripe account, DNS, replicas/pooling, metrics stack); tracked, not yet built. |
 
 ---
 

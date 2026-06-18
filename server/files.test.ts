@@ -434,6 +434,7 @@ describe("uploadAndRegister", () => {
       propertyId: 9,
       originalName: "hi.txt",
       mimeType: "text/plain",
+      tenantId: null,
     });
     expect(result.record.externalId).toBe("drive-xyz");
     expect(result.record.size).toBe(5);

@@ -177,6 +177,7 @@ router.post(
             mimeType: sniff.mimeType,
             ownerUserId: ctx.user.id,
             propertyId: ctx.propertyId,
+            tenantId: ctx.tenantId,
           });
           res.json({
             id: record.id,

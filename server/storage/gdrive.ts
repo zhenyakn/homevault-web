@@ -268,9 +268,11 @@ async function ensureRootFolder(drive: drive_v3.Drive): Promise<string> {
 
 /**
  * Per-property upload target.
- * Layout: HomeVault/property-<propertyId>/<userId>/
+ * Layout: HomeVault/[tenant-<tenantId>/]property-<propertyId>/<userId>/
  *
- * Files uploaded BEFORE this layout existed live at the legacy path
+ * When a tenant is known the property folder is nested under a per-tenant
+ * folder for isolation; without one (legacy/no-tenant) the original layout is
+ * kept. Files uploaded BEFORE these layouts existed live at the legacy path
  *   HomeVault/uploads/<userId>/<file>
  * and are still reachable by `externalId` (Drive file ID) regardless of path.
  * No migration of existing files.
@@ -278,15 +280,23 @@ async function ensureRootFolder(drive: drive_v3.Drive): Promise<string> {
 async function ensureUploadTargetFolder(
   drive: drive_v3.Drive,
   propertyId: number,
-  ownerUserId: number
+  ownerUserId: number,
+  tenantId?: number | null
 ): Promise<string> {
   const root = await ensureRootFolder(drive);
+  const base =
+    tenantId != null
+      ? await memoizeFolder(`gdrive.tenantFolder.${tenantId}`, () =>
+          ensureFolder(drive, `tenant-${tenantId}`, root)
+        )
+      : root;
+  const propScope = tenantId != null ? `t${tenantId}.` : "";
   const propertyFolder = await memoizeFolder(
-    GDRIVE_KEYS.propertyFolderPrefix + propertyId,
-    () => ensureFolder(drive, `property-${propertyId}`, root)
+    `${GDRIVE_KEYS.propertyFolderPrefix}${propScope}${propertyId}`,
+    () => ensureFolder(drive, `property-${propertyId}`, base)
   );
   return memoizeFolder(
-    `${GDRIVE_KEYS.userPropertyFolderPrefix}${propertyId}.${ownerUserId}`,
+    `${GDRIVE_KEYS.userPropertyFolderPrefix}${propScope}${propertyId}.${ownerUserId}`,
     () => ensureFolder(drive, String(ownerUserId), propertyFolder)
   );
 }
@@ -387,7 +397,8 @@ export const gdriveBackend: StorageBackend = {
       folderId = await ensureUploadTargetFolder(
         drive,
         meta.propertyId,
-        meta.ownerUserId
+        meta.ownerUserId,
+        meta.tenantId
       );
     } catch (err) {
       await classifyAndThrow("folder lookup", err);
