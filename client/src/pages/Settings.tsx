@@ -103,10 +103,16 @@ import {
   MessageCircle,
   Smartphone,
   Copy,
+  Lock,
   type LucideIcon,
 } from "lucide-react";
 import { csrfHeaders } from "@/lib/csrf";
 import BotPreview from "@/components/BotPreview";
+import {
+  useCapabilities,
+  type CapabilityKey,
+} from "@/hooks/useCapabilities";
+import { UpgradeNotice } from "@/components/UpgradeGate";
 import { subscribeToWebPush, webPushSupported } from "@/lib/webpush";
 
 type ChannelKey =
@@ -781,10 +787,10 @@ function HouseholdSection() {
         </Row>
         <Row label={t("settings.role")}>
           <Badge
-            variant={me?.role === "admin" ? "default" : "secondary"}
+            variant={me?.globalRole === "superadmin" ? "default" : "secondary"}
             className="capitalize text-xs h-5"
           >
-            {me?.role ?? "user"}
+            {me?.globalRole === "superadmin" ? "admin" : "user"}
           </Badge>
         </Row>
         <Row label={t("settings.lastSignIn")}>
@@ -1022,9 +1028,16 @@ function channelConfigured(ch: ChannelKey, status?: ChannelStatus): boolean {
  * (destinations, the Telegram bot, browser push) lives under Integrations. A
  * channel that's enabled but not yet connected shows a "Set up" shortcut.
  */
+/** Premium notification channels gated behind plan capabilities. */
+const CHANNEL_CAPABILITY: Partial<Record<ChannelKey, CapabilityKey>> = {
+  telegram: "notifications.telegram",
+  whatsapp: "notifications.whatsapp",
+};
+
 function ChannelsBlock() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
+  const { has } = useCapabilities();
   const u = trpc.useUtils();
   const { data: prefs } = trpc.notification.getPrefs.useQuery();
   const { data: status } = trpc.notification.getStatus.useQuery();
@@ -1064,6 +1077,8 @@ function ChannelsBlock() {
         const enabled = prefs?.[ch] ?? false;
         const configured = channelConfigured(ch, status);
         const needsConfig = meta.needsSetup && !configured;
+        const cap = CHANNEL_CAPABILITY[ch];
+        const chLocked = cap ? !has(cap) : false;
         return (
           <div
             key={ch}
@@ -1083,7 +1098,18 @@ function ChannelsBlock() {
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-3">
-              {enabled &&
+              {chLocked ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-muted-foreground"
+                  onClick={() => setLocation("/plan")}
+                >
+                  <Lock className="h-3 w-3 me-1" />
+                  {t("settings.ch.upgrade")}
+                </Button>
+              ) : (
+                enabled &&
                 (needsConfig ? (
                   <Button
                     variant="ghost"
@@ -1103,9 +1129,11 @@ function ChannelsBlock() {
                   >
                     {t("settings.ch.sendTest")}
                   </Button>
-                ))}
+                ))
+              )}
               <Switch
-                checked={enabled}
+                checked={chLocked ? false : enabled}
+                disabled={chLocked}
                 onCheckedChange={v =>
                   setPref.mutate({ channel: ch, enabled: v })
                 }
@@ -1604,7 +1632,7 @@ function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const { save, isPending } = usePropertyAutosave();
   const { data: me } = trpc.profiles.current.useQuery();
-  const isAdmin = me?.role === "admin";
+  const isAdmin = me?.globalRole === "superadmin";
   const mapsProvider = p?.mapsProvider ?? "google";
   // Selected storage backend is owned here so the Google Drive panel only
   // renders when Drive is the selected backend (not always, as before).
@@ -1727,7 +1755,7 @@ function StorageBackendGroup({
 }) {
   const { t } = useTranslation();
   const { data: me } = trpc.profiles.current.useQuery();
-  const isAdmin = me?.role === "admin";
+  const isAdmin = me?.globalRole === "superadmin";
 
   const [status, setStatus] = useState<StorageStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2243,7 +2271,7 @@ type GDriveStatus = {
 function FileStorageGroup() {
   const { t } = useTranslation();
   const { data: me } = trpc.profiles.current.useQuery();
-  const isAdmin = me?.role === "admin";
+  const isAdmin = me?.globalRole === "superadmin";
   const [status, setStatus] = useState<GDriveStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -2901,6 +2929,8 @@ function DataSection({
 }) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
+  const { has } = useCapabilities();
+  const canExport = has("data.export");
   const { refetch, isFetching } = trpc.data.exportAll.useQuery(undefined, {
     enabled: false,
   });
@@ -2977,37 +3007,53 @@ function DataSection({
       </Group>
 
       <Group label={t("settings.export")}>
-        <Row label={t("settings.allData")} hint={t("settings.allDataHint")}>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportAll}
-            disabled={isFetching}
-          >
-            {isFetching ? (
-              <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
-            ) : (
-              <Download className="me-1.5 h-3 w-3" />
-            )}
-            {isFetching ? t("settings.preparing") : t("settings.downloadJson")}
-          </Button>
-        </Row>
-        <Row
-          label={t("settings.exportFilesZipLabel")}
-          hint={t("settings.exportFilesZipHint")}
-        >
-          <Button variant="outline" size="sm" asChild>
-            <a href="/api/export/files.zip" download>
-              <Download className="me-1.5 h-3 w-3" />
-              {t("settings.exportFilesZipBtn")}
-            </a>
-          </Button>
-        </Row>
-        <Row label={t("settings.perModule")} hint={t("settings.perModuleHint")}>
-          <span className="text-xs text-muted-foreground">
-            {t("settings.perModuleList")}
-          </span>
-        </Row>
+        {canExport ? (
+          <>
+            <Row label={t("settings.allData")} hint={t("settings.allDataHint")}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportAll}
+                disabled={isFetching}
+              >
+                {isFetching ? (
+                  <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
+                ) : (
+                  <Download className="me-1.5 h-3 w-3" />
+                )}
+                {isFetching
+                  ? t("settings.preparing")
+                  : t("settings.downloadJson")}
+              </Button>
+            </Row>
+            <Row
+              label={t("settings.exportFilesZipLabel")}
+              hint={t("settings.exportFilesZipHint")}
+            >
+              <Button variant="outline" size="sm" asChild>
+                <a href="/api/export/files.zip" download>
+                  <Download className="me-1.5 h-3 w-3" />
+                  {t("settings.exportFilesZipBtn")}
+                </a>
+              </Button>
+            </Row>
+            <Row
+              label={t("settings.perModule")}
+              hint={t("settings.perModuleHint")}
+            >
+              <span className="text-xs text-muted-foreground">
+                {t("settings.perModuleList")}
+              </span>
+            </Row>
+          </>
+        ) : (
+          <div className="px-4 py-3">
+            <UpgradeNotice
+              title={t("settings.exportLockedTitle")}
+              description={t("settings.exportLockedBody")}
+            />
+          </div>
+        )}
       </Group>
 
       <Group label={t("settings.dangerZone")}>
@@ -3141,7 +3187,7 @@ function StoredFilesGroup() {
   });
 
   if (!me) return null;
-  const isAdmin = me.role === "admin";
+  const isAdmin = me.globalRole === "superadmin";
 
   const totalCount = list.data?.totalCount ?? 0;
   const totalBytes = list.data?.totalBytes ?? 0;

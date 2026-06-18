@@ -5,6 +5,7 @@ import { createContext } from "./_core/context";
 import { logger } from "./_core/logger";
 import { csrfRequireMiddleware } from "./_core/csrf";
 import { uploadAndRegister } from "./files";
+import { hasCapability } from "./db/entitlements";
 import {
   StorageNotConfiguredError,
   StorageOperationError,
@@ -153,6 +154,20 @@ router.post(
           return;
         }
 
+        // Feature gating: file uploads may be a paid capability (SAAS). In
+        // standalone everything is included, so this is a no-op there.
+        if (
+          ctx.tenantId != null &&
+          !(await hasCapability(ctx.tenantId, "files.upload"))
+        ) {
+          res.status(403).json({
+            error: "Your plan does not include file uploads.",
+            code: "CAPABILITY_REQUIRED",
+            capability: "files.upload",
+          });
+          return;
+        }
+
         const file = (req as any).file as Express.Multer.File | undefined;
         if (!file) {
           res.status(400).json({ error: "No file provided" });
@@ -177,6 +192,7 @@ router.post(
             mimeType: sniff.mimeType,
             ownerUserId: ctx.user.id,
             propertyId: ctx.propertyId,
+            tenantId: ctx.tenantId,
           });
           res.json({
             id: record.id,

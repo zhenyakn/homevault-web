@@ -76,6 +76,16 @@ export async function getPropertiesByUser(userId: number) {
     .where(eq(properties.userId, userId));
 }
 
+/** Properties owned by a tenant — the tenant-scoped replacement for
+ *  getPropertiesByUser now that data is shared across a tenant's members. */
+export async function getPropertiesByTenant(tenantId: number) {
+  const db = await getDb();
+  return await db
+    .select()
+    .from(properties)
+    .where(eq(properties.tenantId, tenantId));
+}
+
 /** All properties across all users — used by the reminder sweep. */
 export async function getAllProperties() {
   const db = await getDb();
@@ -95,14 +105,32 @@ export async function checkPropertyOwnership(
   return result.length > 0;
 }
 
+/** Whether a property belongs to the given tenant — the tenant-scoped gate
+ *  used by the request context and by property mutations. */
+export async function checkPropertyInTenant(
+  tenantId: number,
+  propertyId: number
+): Promise<boolean> {
+  const db = await getDb();
+  const result = await db
+    .select({ id: properties.id })
+    .from(properties)
+    .where(
+      and(eq(properties.tenantId, tenantId), eq(properties.id, propertyId))
+    )
+    .limit(1);
+  return result.length > 0;
+}
+
 export async function createProperty(
   userId: number,
+  tenantId: number,
   data: Partial<typeof properties.$inferInsert> = {}
 ) {
   const db = await getDb();
   const result = await db
     .insert(properties)
-    .values({ userId, houseName: "New Property", ...data });
+    .values({ userId, tenantId, houseName: "New Property", ...data });
   return result[0];
 }
 
@@ -114,6 +142,7 @@ export async function createProperty(
  */
 export async function createPropertyWithWizard(
   userId: number,
+  tenantId: number,
   input: PropertyWizardInput
 ) {
   const db = await getDb();
@@ -123,6 +152,7 @@ export async function createPropertyWithWizard(
   return await db.transaction(async tx => {
     const [res] = await tx.insert(properties).values({
       userId,
+      tenantId,
       propertyMode: input.mode,
       houseName: input.houseName,
       houseNickname: input.houseNickname,
@@ -157,6 +187,7 @@ export async function createPropertyWithWizard(
         id: nanoid(),
         propertyId,
         ownerId: userId,
+        tenantId,
         name: input.loan.name ?? input.loan.lender ?? "Mortgage",
         lender: input.loan.lender,
         originalAmount: input.loan.originalAmount,
@@ -175,6 +206,7 @@ export async function createPropertyWithWizard(
           id: nanoid(),
           propertyId,
           ownerId: userId,
+          tenantId,
           name: c.name,
           amount: c.amount,
           category: (c.category ?? "Other") as any,
@@ -189,6 +221,7 @@ export async function createPropertyWithWizard(
         id: nanoid(),
         propertyId,
         ownerId: userId,
+        tenantId,
         name: "Rent",
         category: "Other",
         amount: input.rentExpense.amount,

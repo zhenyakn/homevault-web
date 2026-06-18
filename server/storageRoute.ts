@@ -45,7 +45,7 @@ async function requireAdmin(req: Request, res: Response) {
     res.status(401).json({ error: "Unauthorized" });
     return null;
   }
-  if (ctx.user.role !== "admin") {
+  if (ctx.user.globalRole !== "superadmin") {
     res.status(403).json({ error: "Admin role required" });
     return null;
   }

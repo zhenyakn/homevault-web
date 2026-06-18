@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { useFeatureGuard } from "@/hooks/useCapabilities";
 
 type Expense = RouterOutputs["expenses"]["list"][number];
 
@@ -238,7 +239,9 @@ export default function HVExpenses() {
     });
   }, [expenses, view, search, monthKey]);
 
+  const exportGuard = useFeatureGuard();
   const handleExportCSV = () => {
+    if (exportGuard("data.export", t("common.exportCsv"))) return;
     if (!filtered.length) {
       toast.error(t("expenses.nothingToExport"));
       return;

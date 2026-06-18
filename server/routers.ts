@@ -3,13 +3,37 @@ import { z } from "zod";
 import type { inferRouterOutputs, inferRouterInputs } from "@trpc/server";
 import { createInsertSchema } from "drizzle-zod";
 import { TRPCError } from "@trpc/server";
-import { COOKIE_NAME } from "@shared/const";
+import {
+  COOKIE_NAME,
+  ONE_YEAR_MS,
+  INVALID_CREDENTIALS_ERR_MSG,
+  EMAIL_TAKEN_ERR_MSG,
+  EMAIL_NOT_VERIFIED_ERR_MSG,
+} from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { sdk } from "./_core/sdk";
+import {
+  hashPassword,
+  verifyPassword,
+  generateToken,
+  hashToken,
+} from "./auth/password";
+import { sendVerificationEmail, sendPasswordResetEmail } from "./auth/email";
 import { clearNoAuthUserCache } from "./_core/context";
 import { systemRouter } from "./_core/systemRouter";
 import { notificationRouter } from "./notificationRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import {
+  publicProcedure,
+  tenantProcedure,
+  tenantAdminProcedure,
+  router,
+} from "./_core/trpc";
 import { ENV } from "./_core/env";
+import {
+  rateLimitHit,
+  AUTH_MAX_ATTEMPTS,
+  AUTH_WINDOW_MS,
+} from "./_core/rateLimit";
 import * as db from "./db";
 import { parseJsonArray } from "./db/client";
 import {
@@ -23,6 +47,8 @@ import {
 } from "./files";
 import { logger } from "./_core/logger";
 import { searchRouter } from "./searchRouter";
+import { tenantRouter } from "./tenantRouter";
+import { adminRouter } from "./adminRouter";
 import {
   expenses,
   repairs,
@@ -36,11 +62,75 @@ import {
   apartmentCandidates,
 } from "../drizzle/schema";
 
+/** Best-effort client IP for per-IP auth rate limiting (honours a proxy hop). */
+function clientIp(req: { headers: Record<string, unknown>; socket?: unknown }): string {
+  const fwd = req.headers["x-forwarded-for"];
+  if (typeof fwd === "string" && fwd.length > 0) {
+    return fwd.split(",")[0]!.trim();
+  }
+  const sock = req.socket as { remoteAddress?: string } | undefined;
+  return sock?.remoteAddress ?? "unknown";
+}
+
+/**
+ * Throttle sensitive unauthenticated auth endpoints per IP (brute-force / abuse
+ * protection). No-ops when rate limiting is disabled (e.g. tests).
+ */
+function assertAuthRateLimit(
+  req: { headers: Record<string, unknown>; socket?: unknown },
+  bucket: string
+): void {
+  if (!ENV.rateLimitEnabled) return;
+  const { allowed } = rateLimitHit(
+    `auth:${bucket}:${clientIp(req)}`,
+    AUTH_MAX_ATTEMPTS,
+    AUTH_WINDOW_MS
+  );
+  if (!allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Too many attempts. Please try again in a minute.",
+    });
+  }
+}
+
+/**
+ * Enforce a tenant's per-quota limit before adding a property/member. NULL
+ * limit = unlimited (the standalone default), so these are no-ops unless a
+ * superadmin set a cap. Throws FORBIDDEN at the boundary.
+ */
+async function assertPropertyQuota(tenantId: number): Promise<void> {
+  const tenant = await db.getTenantById(tenantId);
+  if (tenant?.maxProperties != null) {
+    const count = await db.countPropertiesForTenant(tenantId);
+    if (count >= tenant.maxProperties) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `This workspace has reached its limit of ${tenant.maxProperties} propert${tenant.maxProperties === 1 ? "y" : "ies"}.`,
+      });
+    }
+  }
+}
+
+async function assertMemberQuota(tenantId: number): Promise<void> {
+  const tenant = await db.getTenantById(tenantId);
+  if (tenant?.maxMembers != null) {
+    const count = await db.countActiveMembers(tenantId);
+    if (count >= tenant.maxMembers) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `This workspace has reached its limit of ${tenant.maxMembers} member${tenant.maxMembers === 1 ? "" : "s"}.`,
+      });
+    }
+  }
+}
+
 // Fields always assigned by the server — never accepted from the client
 const SERVER_FIELDS = {
   id: true,
   ownerId: true,
   propertyId: true,
+  tenantId: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -51,21 +141,41 @@ const attachmentSchema = z.array(z.string()).optional();
 // caller owns within the active property.
 async function assertLoanLinkOwned(
   loanId: string | null | undefined,
-  ctx: { user: { id: number }; propertyId: number }
+  ctx: { tenantId: number; propertyId: number }
 ) {
   if (!loanId) return;
-  const loan = await db.getLoanById(loanId);
-  if (
-    !loan ||
-    loan.ownerId !== ctx.user.id ||
-    loan.propertyId !== ctx.propertyId
-  ) {
+  const loan = await db.getLoanById(loanId, ctx.tenantId);
+  if (!loan || loan.propertyId !== ctx.propertyId) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Cannot link expense to this loan",
     });
   }
 }
+
+// Issue a session: sign a JWT for the openId and set the httpOnly cookie. Used
+// by the native email/password login & register flows (OAuth has its own
+// callback that does the same). Mirrors server/_core/oauth.ts.
+async function issueSession(
+  ctx: { req: any; res: any },
+  openId: string,
+  name: string
+): Promise<void> {
+  const token = await sdk.createSessionToken(openId, {
+    name,
+    expiresInMs: ONE_YEAR_MS,
+  });
+  const cookieOptions = getSessionCookieOptions(ctx.req);
+  ctx.res.cookie(COOKIE_NAME, token, {
+    ...cookieOptions,
+    maxAge: ONE_YEAR_MS,
+  });
+}
+
+// Email/password validation shared by the auth endpoints. Password policy is
+// deliberately simple (length floor) — strength UX can layer on later.
+const emailField = z.string().trim().toLowerCase().email().max(320);
+const passwordField = z.string().min(8).max(200);
 
 const calendarCatMap: Record<string, string> = {
   Expense: "Payment",
@@ -158,7 +268,13 @@ const apartmentSearchSchema = createInsertSchema(apartmentSearches, {
   name: z.string().min(1),
   searchType: z.enum(["rent", "buy"]),
   targetBudget: z.number().int().min(0).optional(),
-}).omit({ id: true, userId: true, createdAt: true, updatedAt: true });
+}).omit({
+  id: true,
+  userId: true,
+  tenantId: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 const apartmentCandidateSchema = createInsertSchema(apartmentCandidates, {
   title: z.string().min(1),
@@ -178,6 +294,7 @@ const apartmentCandidateSchema = createInsertSchema(apartmentCandidates, {
 }).omit({
   id: true,
   userId: true,
+  tenantId: true,
   searchId: true,
   convertedPropertyId: true,
   latitude: true,
@@ -198,7 +315,13 @@ const candidateStageEnum = z.enum([
 const propertySchema = createInsertSchema(properties, {
   reminderDaysBefore: z.number().int().min(1).max(30).optional(),
   mapsProvider: z.enum(["google", "osm"]).optional(),
-}).omit({ id: true, createdAt: true, updatedAt: true, userId: true });
+}).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  userId: true,
+  tenantId: true,
+});
 
 const propertyModeEnum = z.enum(["owned_rented", "owned_personal", "rented"]);
 const wizardDate = z.preprocess(
@@ -280,9 +403,9 @@ export const wizardSchema = z.object({
 // Used only for child entities (repairQuotes, upgradeOptions/Items) that have no
 // direct ownerId column — ownership is checked through the parent record.
 
-async function assertRepairOwner(id: string, userId: number) {
-  const record = await db.getRepairById(id);
-  if (!record || record.ownerId !== userId) {
+async function assertRepairOwner(id: string, tenantId: number) {
+  const record = await db.getRepairById(id, tenantId);
+  if (!record) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Not authorised to modify this repair",
@@ -291,9 +414,9 @@ async function assertRepairOwner(id: string, userId: number) {
   return record;
 }
 
-async function assertUpgradeOwner(id: string, userId: number) {
-  const record = await db.getUpgradeById(id);
-  if (!record || record.ownerId !== userId) {
+async function assertUpgradeOwner(id: string, tenantId: number) {
+  const record = await db.getUpgradeById(id, tenantId);
+  if (!record) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Not authorised to modify this upgrade",
@@ -304,9 +427,9 @@ async function assertUpgradeOwner(id: string, userId: number) {
 
 // Apartment-search rows carry a direct userId (no propertyId scoping), so these
 // guards compare ownership against the authenticated user.
-async function assertSearchOwned(id: string, userId: number) {
+async function assertSearchOwned(id: string, tenantId: number) {
   const record = await db.getSearchById(id);
-  if (!record || record.userId !== userId) {
+  if (!record || record.tenantId !== tenantId) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Search not found",
@@ -315,9 +438,9 @@ async function assertSearchOwned(id: string, userId: number) {
   return record;
 }
 
-async function assertCandidateOwned(id: string, userId: number) {
+async function assertCandidateOwned(id: string, tenantId: number) {
   const record = await db.getCandidateById(id);
-  if (!record || record.userId !== userId) {
+  if (!record || record.tenantId !== tenantId) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Candidate not found",
@@ -332,11 +455,15 @@ async function assertCandidateOwned(id: string, userId: number) {
 // the storage backend (Google Drive / S3). Backend failures are logged but
 // never abort the user-facing operation.
 
-type WithAttachments = { ownerId: number; attachments?: string[] | null };
+type WithAttachments = {
+  tenantId: number | null;
+  attachments?: string[] | null;
+};
 
 async function diffAttachmentsOnUpdate<T extends WithAttachments>(
   loadOld: () => Promise<T | null | undefined>,
   newData: { attachments?: string[] | null },
+  tenantId: number,
   userId: number
 ) {
   // Skip the diff entirely if the update doesn't touch attachments.
@@ -351,7 +478,9 @@ async function diffAttachmentsOnUpdate<T extends WithAttachments>(
     );
     return;
   }
-  if (!oldRecord || oldRecord.ownerId !== userId) return;
+  // Gate by tenant (shared access); file reaping is still owner-scoped, so the
+  // acting user's id is what resolves storage-backend deletes.
+  if (!oldRecord || oldRecord.tenantId !== tenantId) return;
   const oldList = parseJsonArray(oldRecord.attachments) as string[];
   try {
     await syncAttachmentRemovals({
@@ -366,6 +495,7 @@ async function diffAttachmentsOnUpdate<T extends WithAttachments>(
 
 async function deleteAttachmentsOnRecordDelete<T extends WithAttachments>(
   loadRecord: () => Promise<T | null | undefined>,
+  tenantId: number,
   userId: number
 ) {
   let record: T | null | undefined;
@@ -378,7 +508,7 @@ async function deleteAttachmentsOnRecordDelete<T extends WithAttachments>(
     );
     return;
   }
-  if (!record || record.ownerId !== userId) return;
+  if (!record || record.tenantId !== tenantId) return;
   const list = parseJsonArray(record.attachments) as string[];
   try {
     await deleteAttachmentList(list, userId);
@@ -394,6 +524,8 @@ export const appRouter = router({
   system: systemRouter,
   search: searchRouter,
   notification: notificationRouter,
+  tenant: tenantRouter,
+  admin: adminRouter,
   auth: router({
     // In NO_AUTH mode (HA addon) ctx.user may be null on the very first
     // request if ingress strips/delays the session cookie. Fall back to
@@ -408,7 +540,7 @@ export const appRouter = router({
           openId,
           name: "HomeVault Admin",
           email: "admin@local",
-          role: "admin",
+          globalRole: "superadmin",
           lastSignedIn: new Date(),
         });
         return await db.getUserByOpenId(openId);
@@ -421,16 +553,293 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+
+    // ── Native email/password auth (SAAS) ─────────────────────────────────────
+    // Register a new account. Creates a local-identity user, a hashed
+    // credential, and a personal tenant (the new-tenant / join-tenant choice
+    // arrives in the next phase), sends a verification email (best-effort), and
+    // signs the user in immediately. Email verification is NOT enforced in
+    // Stage 1 (see docs/user-management-plan.md §4.3).
+    register: publicProcedure
+      .input(
+        z.object({
+          email: emailField,
+          password: passwordField,
+          name: z.string().trim().min(1).max(100).optional(),
+          // Path A — create a new tenant with this name.
+          tenantName: z.string().trim().min(1).max(200).optional(),
+          // Path B — join an existing tenant via an invite link's token.
+          inviteToken: z.string().min(1).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "register");
+        const existing = await db.getCredentialByEmail(input.email);
+        if (existing) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: EMAIL_TAKEN_ERR_MSG,
+          });
+        }
+
+        // Open self-registration can be turned off from the admin console;
+        // invited users may always register (the invite is the authorization).
+        if (!input.inviteToken && !(await db.getSignupsEnabled())) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Registration is currently disabled",
+          });
+        }
+
+        // When joining via an invite, validate it before creating anything so a
+        // bad/expired token doesn't leave a tenantless account behind.
+        const invite = input.inviteToken
+          ? await db.getLiveInviteByTokenHash(hashToken(input.inviteToken))
+          : undefined;
+        if (input.inviteToken && !invite) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This invitation is invalid or has expired",
+          });
+        }
+
+        const openId = `local:${nanoid()}`;
+        const name = input.name ?? input.email.split("@")[0];
+        await db.upsertUser({
+          openId,
+          name,
+          email: input.email,
+          loginMethod: "email",
+          lastSignedIn: new Date(),
+        });
+        const user = await db.getUserByOpenId(openId);
+        if (!user) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        }
+
+        await db.createCredential({
+          userId: user.id,
+          email: input.email,
+          passwordHash: await hashPassword(input.password),
+        });
+
+        // Tenant choice: join the invited tenant, create a named tenant, or
+        // fall back to a personal tenant. Either way the first request is scoped.
+        if (invite) {
+          await assertMemberQuota(invite.tenantId);
+          await db.addMember({
+            tenantId: invite.tenantId,
+            userId: user.id,
+            role: invite.role,
+            invitedByUserId: invite.invitedByUserId ?? undefined,
+          });
+          await db.setUserDefaultTenant(user.id, invite.tenantId);
+          await db.markInviteAccepted(invite.id);
+          await db.logAudit({
+            actorUserId: user.id,
+            tenantId: invite.tenantId,
+            action: "invite.accepted",
+            targetType: "user",
+            targetId: String(user.id),
+            metadata: { role: invite.role, via: "register" },
+          });
+        } else if (input.tenantName) {
+          const tenantId = await db.createTenantWithOwner(
+            user.id,
+            input.tenantName
+          );
+          await db.setUserDefaultTenant(user.id, tenantId);
+        } else {
+          await db.ensurePersonalTenant(user.id, name);
+        }
+
+        // Verification email (best-effort; sign-in is not gated on it).
+        const verify = generateToken();
+        await db.createEmailToken({
+          userId: user.id,
+          type: "verify_email",
+          tokenHash: verify.hash,
+          expiresAt: new Date(Date.now() + ONE_YEAR_MS / 365), // 24h
+        });
+        await sendVerificationEmail(input.email, verify.raw);
+
+        await issueSession(ctx, openId, name);
+        return { success: true as const };
+      }),
+
+    // Authenticate with email + password and start a session. Returns a generic
+    // error on any failure so accounts can't be enumerated.
+    login: publicProcedure
+      .input(z.object({ email: emailField, password: passwordField }))
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "login");
+        const cred = await db.getCredentialByEmail(input.email);
+        const ok =
+          !!cred && (await verifyPassword(input.password, cred.passwordHash));
+        if (!cred || !ok) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: INVALID_CREDENTIALS_ERR_MSG,
+          });
+        }
+        const user = await db.getUserById(cred.userId);
+        if (!user) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: INVALID_CREDENTIALS_ERR_MSG,
+          });
+        }
+
+        // Email-verification gate. When enforced (SAAS default; admin-toggle),
+        // an unverified account is blocked once its grace window has elapsed.
+        // The grace window is measured from account creation; 0 = strict.
+        if (!cred.emailVerifiedAt && (await db.getRequireEmailVerification())) {
+          const graceHours = await db.getEmailVerificationGraceHours();
+          const graceEndsAt =
+            cred.createdAt.getTime() + graceHours * 60 * 60 * 1000;
+          if (graceHours <= 0 || Date.now() > graceEndsAt) {
+            throw new TRPCError({
+              code: "UNAUTHORIZED",
+              message: EMAIL_NOT_VERIFIED_ERR_MSG,
+            });
+          }
+        }
+
+        await db.upsertUser({ openId: user.openId, lastSignedIn: new Date() });
+        await issueSession(ctx, user.openId, user.name ?? "");
+        return { success: true as const };
+      }),
+
+    // Confirm an email address from the verification link.
+    verifyEmail: publicProcedure
+      .input(z.object({ token: z.string().min(1) }))
+      .mutation(async ({ input }) => {
+        const userId = await db.consumeEmailToken(
+          hashToken(input.token),
+          "verify_email"
+        );
+        if (!userId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This verification link is invalid or has expired",
+          });
+        }
+        await db.markEmailVerified(userId);
+        return { success: true as const };
+      }),
+
+    // Re-send the verification email. Always reports success (no enumeration);
+    // an email is only sent when the address has an unverified account.
+    resendVerification: publicProcedure
+      .input(z.object({ email: emailField }))
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "resend");
+        const cred = await db.getCredentialByEmail(input.email);
+        if (cred && !cred.emailVerifiedAt) {
+          const verify = generateToken();
+          await db.createEmailToken({
+            userId: cred.userId,
+            type: "verify_email",
+            tokenHash: verify.hash,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
+          });
+          await sendVerificationEmail(input.email, verify.raw);
+        }
+        return { success: true as const };
+      }),
+
+    // Begin a password reset. Always reports success (no account enumeration);
+    // an email is only sent when the address actually has an account.
+    requestPasswordReset: publicProcedure
+      .input(z.object({ email: emailField }))
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "reset");
+        const cred = await db.getCredentialByEmail(input.email);
+        if (cred) {
+          const reset = generateToken();
+          await db.createEmailToken({
+            userId: cred.userId,
+            type: "reset_password",
+            tokenHash: reset.hash,
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1h
+          });
+          await sendPasswordResetEmail(input.email, reset.raw);
+        }
+        return { success: true as const };
+      }),
+
+    // Complete a password reset using the emailed token.
+    resetPassword: publicProcedure
+      .input(z.object({ token: z.string().min(1), password: passwordField }))
+      .mutation(async ({ input }) => {
+        const userId = await db.consumeEmailToken(
+          hashToken(input.token),
+          "reset_password"
+        );
+        if (!userId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This reset link is invalid or has expired",
+          });
+        }
+        await db.setPasswordHash(userId, await hashPassword(input.password));
+        return { success: true as const };
+      }),
+  }),
+
+  billing: router({
+    // The capability keys the active tenant is entitled to (standalone → all).
+    // The client caches this to gracefully gate gated features before the user
+    // hits a 403; server-side checks remain the real enforcement. `isSaas` lets
+    // the client hide billing/plan UI entirely on single-install (standalone)
+    // deployments like the Home Assistant add-on.
+    capabilities: tenantProcedure.query(async ({ ctx }) => {
+      const [capabilities, appMode] = await Promise.all([
+        db.getEffectiveCapabilities(ctx.tenantId),
+        db.getAppMode(),
+      ]);
+      return { capabilities, isSaas: appMode === "saas" };
+    }),
+
+    // The active tenant's plan + live usage against its quotas. Visible to any
+    // member so they understand the workspace's limits; changing plans is a
+    // superadmin action (adminRouter.billing.assignPlan).
+    current: tenantProcedure.query(async ({ ctx }) => {
+      const [planKey, sub, tenant, propertyCount, memberCount, available] =
+        await Promise.all([
+          db.getEffectivePlanKey(ctx.tenantId),
+          db.getSubscription(ctx.tenantId),
+          db.getTenantById(ctx.tenantId),
+          db.countPropertiesForTenant(ctx.tenantId),
+          db.countActiveMembers(ctx.tenantId),
+          db.listActivePlans(),
+        ]);
+      const plan = (await db.getPlanByKey(planKey)) ?? null;
+      return {
+        plan,
+        status: sub?.status ?? null,
+        currentPeriodEnd: sub?.currentPeriodEnd ?? null,
+        // Other active plans the tenant can move up to (each may carry a
+        // checkoutUrl the Upgrade button forwards to).
+        availablePlans: available.filter(p => p.key !== planKey),
+        usage: {
+          properties: propertyCount,
+          members: memberCount,
+          maxProperties: tenant?.maxProperties ?? null,
+          maxMembers: tenant?.maxMembers ?? null,
+        },
+      };
+    }),
   }),
 
   profiles: router({
-    list: protectedProcedure.query(async () => {
+    list: tenantProcedure.query(async () => {
       return await db.getAllUsers();
     }),
-    current: protectedProcedure.query(({ ctx }) => {
+    current: tenantProcedure.query(({ ctx }) => {
       return ctx.user;
     }),
-    updateMe: protectedProcedure
+    updateMe: tenantProcedure
       .input(z.object({ name: z.string().min(1).max(100) }))
       .mutation(async ({ ctx, input }) => {
         await db.upsertUser({ openId: ctx.user.openId, name: input.name });
@@ -438,7 +847,7 @@ export const appRouter = router({
       }),
     // Persist the chosen UI language so server-sent notifications (reminders,
     // test sends) are delivered in the same language across devices.
-    setLanguage: protectedProcedure
+    setLanguage: tenantProcedure
       .input(z.object({ language: z.enum(["en", "he", "ru"]) }))
       .mutation(async ({ ctx, input }) => {
         await db.setUserLanguage(ctx.user.id, input.language);
@@ -451,10 +860,10 @@ export const appRouter = router({
 
   onboarding: router({
     // Moved out of dashboard.stats query — side-effects belong in mutations.
-    ensureProperty: protectedProcedure.mutation(async ({ ctx }) => {
-      const props = await db.getPropertiesByUser(ctx.user.id);
+    ensureProperty: tenantProcedure.mutation(async ({ ctx }) => {
+      const props = await db.getPropertiesByTenant(ctx.tenantId);
       if (props.length === 0) {
-        const result = await db.createProperty(ctx.user.id, {
+        const result = await db.createProperty(ctx.user.id, ctx.tenantId, {
           houseName: "My Home",
         });
         return { created: true, propertyId: (result as any).insertId ?? 1 };
@@ -464,9 +873,21 @@ export const appRouter = router({
   }),
 
   data: router({
-    exportAll: protectedProcedure.query(async ({ ctx }) => {
+    // Full workspace export (all properties + entities + members), for the
+    // tenant's own owner/admin — GDPR data portability, self-service.
+    exportTenant: tenantAdminProcedure.query(async ({ ctx }) => {
+      return await db.exportTenantData(ctx.tenantId);
+    }),
+
+    exportAll: tenantProcedure.query(async ({ ctx }) => {
+      if (!(await db.hasCapability(ctx.tenantId, "data.export"))) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Your plan does not include data export.",
+        });
+      }
       const pid = ctx.propertyId;
-      const uid = ctx.user.id;
+      const tid = ctx.tenantId;
       const [
         expensesData,
         repairsData,
@@ -477,12 +898,12 @@ export const appRouter = router({
         events,
         property,
       ] = await Promise.all([
-        db.getExpenses(uid, pid),
-        db.getRepairs(uid, pid),
-        db.getUpgrades(uid, pid),
-        db.getLoans(uid, pid),
-        db.getWishlistItems(uid, pid),
-        db.getPurchaseCosts(uid, pid),
+        db.getExpenses(tid, pid),
+        db.getRepairs(tid, pid),
+        db.getUpgrades(tid, pid),
+        db.getLoans(tid, pid),
+        db.getWishlistItems(tid, pid),
+        db.getPurchaseCosts(tid, pid),
         db.getCalendarEvents(pid),
         db.getProperty(pid),
       ]);
@@ -498,11 +919,11 @@ export const appRouter = router({
         exportedAt: new Date().toISOString(),
       };
     }),
-    seedMock: protectedProcedure.mutation(async ({ ctx }) => {
-      const propertyId = await db.seedMockProperty(ctx.user.id);
+    seedMock: tenantProcedure.mutation(async ({ ctx }) => {
+      const propertyId = await db.seedMockProperty(ctx.user.id, ctx.tenantId);
       return { propertyId };
     }),
-    deleteAll: protectedProcedure
+    deleteAll: tenantProcedure
       .input(z.object({ confirmationPhrase: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const property = await db.getProperty(ctx.propertyId);
@@ -513,36 +934,36 @@ export const appRouter = router({
             message: `Type "${expected}" to confirm deletion`,
           });
         }
-        await db.deleteAllUserData(ctx.user.id);
+        await db.deleteAllTenantData(ctx.tenantId, ctx.user.id);
         return { success: true };
       }),
   }),
 
   dashboard: router({
-    stats: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getDashboardStats(ctx.user.id, ctx.propertyId);
+    stats: tenantProcedure.query(async ({ ctx }) => {
+      return await db.getDashboardStats(ctx.tenantId, ctx.propertyId);
     }),
-    attention: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getAttentionItems(ctx.user.id, ctx.propertyId);
+    attention: tenantProcedure.query(async ({ ctx }) => {
+      return await db.getAttentionItems(ctx.tenantId, ctx.propertyId);
     }),
-    recentActivity: protectedProcedure.query(async ({ ctx }) => {
+    recentActivity: tenantProcedure.query(async ({ ctx }) => {
       return await db.getRecentActivity(ctx.propertyId);
     }),
-    portfolio: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getPortfolioSummary(ctx.user.id);
+    portfolio: tenantProcedure.query(async ({ ctx }) => {
+      return await db.getPortfolioSummary(ctx.tenantId);
     }),
   }),
 
   documents: router({
     // Home-file completeness derived from attachments across the app's entity
     // tables (see server/db/documents.ts). No dedicated documents table yet.
-    summary: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getDocumentsSummary(ctx.user.id, ctx.propertyId);
+    summary: tenantProcedure.query(async ({ ctx }) => {
+      return await db.getDocumentsSummary(ctx.tenantId, ctx.propertyId);
     }),
   }),
 
   expenses: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(
         z
           .object({
@@ -553,13 +974,13 @@ export const appRouter = router({
       )
       .query(async ({ ctx, input }) => {
         return await db.getExpenses(
-          ctx.user.id,
+          ctx.tenantId,
           ctx.propertyId,
           input?.limit,
           input?.offset
         );
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(expenseSchema)
       .mutation(async ({ ctx, input }) => {
         await assertLoanLinkOwned(input.loanId, ctx);
@@ -567,46 +988,49 @@ export const appRouter = router({
           id: nanoid(),
           ...input,
           ownerId: ctx.user.id,
+          tenantId: ctx.tenantId,
           propertyId: ctx.propertyId,
         });
         await db.reconcileExpenseRepayment(created.id);
         return created;
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(z.object({ id: z.string(), data: expenseSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         if ("loanId" in input.data)
           await assertLoanLinkOwned(input.data.loanId, ctx);
         await diffAttachmentsOnUpdate(
-          () => db.getExpenseById(input.id),
+          () => db.getExpenseById(input.id, ctx.tenantId),
           input.data,
+          ctx.tenantId,
           ctx.user.id
         );
         const result = await db.updateExpense(
           input.id,
-          ctx.user.id,
+          ctx.tenantId,
           input.data
         );
         await db.reconcileExpenseRepayment(input.id);
         return result;
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         await deleteAttachmentsOnRecordDelete(
-          () => db.getExpenseById(input.id),
+          () => db.getExpenseById(input.id, ctx.tenantId),
+          ctx.tenantId,
           ctx.user.id
         );
-        const result = await db.deleteExpense(input.id, ctx.user.id);
+        const result = await db.deleteExpense(input.id, ctx.tenantId);
         // After the row is gone, reconcile removes any linked repayment and
         // restores the loan balance.
         await db.reconcileExpenseRepayment(input.id);
         return result;
       }),
-    markAsPaid: protectedProcedure
+    markAsPaid: tenantProcedure
       .input(z.object({ id: z.string(), paidDate: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        const result = await db.updateExpense(input.id, ctx.user.id, {
+        const result = await db.updateExpense(input.id, ctx.tenantId, {
           isPaid: true,
           paidDate: input.paidDate,
         } as any);
@@ -616,7 +1040,7 @@ export const appRouter = router({
   }),
 
   repairs: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(
         z
           .object({
@@ -628,61 +1052,64 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return (
           (await db.getRepairs(
-            ctx.user.id,
+            ctx.tenantId,
             ctx.propertyId,
             input?.limit,
             input?.offset
           )) ?? []
         );
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(repairSchema)
       .mutation(async ({ ctx, input }) => {
         return await db.createRepair({
           id: nanoid(),
           ...input,
           ownerId: ctx.user.id,
+          tenantId: ctx.tenantId,
           propertyId: ctx.propertyId,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(z.object({ id: z.string(), data: repairSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await diffAttachmentsOnUpdate(
-          () => db.getRepairById(input.id),
+          () => db.getRepairById(input.id, ctx.tenantId),
           input.data,
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.updateRepair(input.id, ctx.user.id, input.data);
+        return await db.updateRepair(input.id, ctx.tenantId, input.data);
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         await deleteAttachmentsOnRecordDelete(
-          () => db.getRepairById(input.id),
+          () => db.getRepairById(input.id, ctx.tenantId),
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.deleteRepair(input.id, ctx.user.id);
+        return await db.deleteRepair(input.id, ctx.tenantId);
       }),
   }),
 
   repairQuotes: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(z.object({ repairId: z.string() }))
       .query(async ({ ctx, input }) => {
-        await assertRepairOwner(input.repairId, ctx.user.id);
+        await assertRepairOwner(input.repairId, ctx.tenantId);
         return (await db.getRepairQuotes(input.repairId)) ?? [];
       }),
-    countByRepair: protectedProcedure
+    countByRepair: tenantProcedure
       .input(z.object({ repairIds: z.array(z.string()) }))
       .query(async ({ ctx, input }) => {
-        const owned = await db.filterOwnedRepairIds(
+        const owned = await db.filterTenantRepairIds(
           input.repairIds,
-          ctx.user.id
+          ctx.tenantId
         );
         return await db.getRepairQuoteCounts(owned);
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(
         z.object({
           repairId: z.string(),
@@ -693,7 +1120,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        await assertRepairOwner(input.repairId, ctx.user.id);
+        await assertRepairOwner(input.repairId, ctx.tenantId);
         return await db.createRepairQuote({
           id: nanoid(),
           repairId: input.repairId,
@@ -703,7 +1130,7 @@ export const appRouter = router({
           notes: input.notes,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(
         z.object({
           id: z.string(),
@@ -719,17 +1146,17 @@ export const appRouter = router({
         // Verify ownership through the parent repair
         const quote = await db.getRepairQuoteById(input.id);
         if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertRepairOwner(quote.repairId, ctx.user.id);
+        await assertRepairOwner(quote.repairId, ctx.tenantId);
         return await db.updateRepairQuote(input.id, input.data);
       }),
-    select: protectedProcedure
+    select: tenantProcedure
       .input(z.object({ repairId: z.string(), quoteId: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        await assertRepairOwner(input.repairId, ctx.user.id);
+        await assertRepairOwner(input.repairId, ctx.tenantId);
         await db.selectRepairQuote(input.repairId, input.quoteId);
         return { success: true };
       }),
-    logPayment: protectedProcedure
+    logPayment: tenantProcedure
       .input(
         z.object({
           quoteId: z.string(),
@@ -742,7 +1169,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const quote = await db.getRepairQuoteById(input.quoteId);
         if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertRepairOwner(quote.repairId, ctx.user.id);
+        await assertRepairOwner(quote.repairId, ctx.tenantId);
         const payment = await db.createRepairQuotePayment({
           id: nanoid(),
           quoteId: input.quoteId,
@@ -754,13 +1181,13 @@ export const appRouter = router({
         if (quote.selected) {
           const allPayments = await db.getRepairQuotePayments(input.quoteId);
           const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
-          await db.updateRepair(quote.repairId, ctx.user.id, {
+          await db.updateRepair(quote.repairId, ctx.tenantId, {
             cost: totalPaid,
           });
         }
         return payment;
       }),
-    deletePayment: protectedProcedure
+    deletePayment: tenantProcedure
       .input(
         z.object({
           paymentId: z.string(),
@@ -770,35 +1197,35 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const quote = await db.getRepairQuoteById(input.quoteId);
         if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertRepairOwner(quote.repairId, ctx.user.id);
+        await assertRepairOwner(quote.repairId, ctx.tenantId);
         await db.deleteRepairQuotePayment(input.paymentId, input.quoteId);
         if (quote.selected) {
           const allPayments = await db.getRepairQuotePayments(input.quoteId);
           const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
-          await db.updateRepair(quote.repairId, ctx.user.id, {
+          await db.updateRepair(quote.repairId, ctx.tenantId, {
             cost: totalPaid,
           });
         }
         return { success: true };
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const quote = await db.getRepairQuoteById(input.id);
         if (!quote) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertRepairOwner(quote.repairId, ctx.user.id);
+        await assertRepairOwner(quote.repairId, ctx.tenantId);
         return await db.deleteRepairQuote(input.id);
       }),
   }),
 
   upgradeOptions: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(z.object({ upgradeId: z.string() }))
       .query(async ({ ctx, input }) => {
-        await assertUpgradeOwner(input.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(input.upgradeId, ctx.tenantId);
         return (await db.getUpgradeOptions(input.upgradeId)) ?? [];
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(
         z.object({
           upgradeId: z.string(),
@@ -809,7 +1236,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        await assertUpgradeOwner(input.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(input.upgradeId, ctx.tenantId);
         return await db.createUpgradeOption({
           id: nanoid(),
           upgradeId: input.upgradeId,
@@ -818,7 +1245,7 @@ export const appRouter = router({
           description: input.description ?? input.notes,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(
         z.object({
           id: z.string(),
@@ -833,21 +1260,21 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const option = await db.getUpgradeOptionById(input.id);
         if (!option) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertUpgradeOwner(option.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(option.upgradeId, ctx.tenantId);
         const { notes, ...rest } = input.data;
         return await db.updateUpgradeOption(input.id, {
           ...rest,
           description: rest.description ?? notes,
         });
       }),
-    select: protectedProcedure
+    select: tenantProcedure
       .input(z.object({ upgradeId: z.string(), optionId: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        await assertUpgradeOwner(input.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(input.upgradeId, ctx.tenantId);
         await db.selectUpgradeOption(input.upgradeId, input.optionId);
         return { success: true };
       }),
-    logPayment: protectedProcedure
+    logPayment: tenantProcedure
       .input(
         z.object({
           optionId: z.string(),
@@ -860,7 +1287,7 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const option = await db.getUpgradeOptionById(input.optionId);
         if (!option) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertUpgradeOwner(option.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(option.upgradeId, ctx.tenantId);
         const payment = await db.createUpgradeOptionPayment({
           id: nanoid(),
           optionId: input.optionId,
@@ -872,13 +1299,13 @@ export const appRouter = router({
         if (option.selected) {
           const allPayments = await db.getUpgradeOptionPayments(input.optionId);
           const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
-          await db.updateUpgrade(option.upgradeId, ctx.user.id, {
+          await db.updateUpgrade(option.upgradeId, ctx.tenantId, {
             actualCost: totalPaid,
           });
         }
         return payment;
       }),
-    deletePayment: protectedProcedure
+    deletePayment: tenantProcedure
       .input(
         z.object({
           paymentId: z.string(),
@@ -888,44 +1315,44 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const option = await db.getUpgradeOptionById(input.optionId);
         if (!option) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertUpgradeOwner(option.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(option.upgradeId, ctx.tenantId);
         await db.deleteUpgradeOptionPayment(input.paymentId, input.optionId);
         if (option.selected) {
           const allPayments = await db.getUpgradeOptionPayments(input.optionId);
           const totalPaid = allPayments.reduce((s, p) => s + p.amount, 0);
-          await db.updateUpgrade(option.upgradeId, ctx.user.id, {
+          await db.updateUpgrade(option.upgradeId, ctx.tenantId, {
             actualCost: totalPaid,
           });
         }
         return { success: true };
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const option = await db.getUpgradeOptionById(input.id);
         if (!option) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertUpgradeOwner(option.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(option.upgradeId, ctx.tenantId);
         return await db.deleteUpgradeOption(input.id);
       }),
   }),
 
   upgradeItems: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(z.object({ upgradeId: z.string() }))
       .query(async ({ ctx, input }) => {
-        await assertUpgradeOwner(input.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(input.upgradeId, ctx.tenantId);
         return (await db.getUpgradeItems(input.upgradeId)) ?? [];
       }),
-    countByUpgrade: protectedProcedure
+    countByUpgrade: tenantProcedure
       .input(z.object({ upgradeIds: z.array(z.string()) }))
       .query(async ({ ctx, input }) => {
-        const owned = await db.filterOwnedUpgradeIds(
+        const owned = await db.filterTenantUpgradeIds(
           input.upgradeIds,
-          ctx.user.id
+          ctx.tenantId
         );
         return await db.getUpgradeItemCounts(owned);
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(
         z.object({
           upgradeId: z.string(),
@@ -938,14 +1365,14 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        await assertUpgradeOwner(input.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(input.upgradeId, ctx.tenantId);
         return await db.createUpgradeItem({
           id: nanoid(),
           ...input,
           purchased: input.purchased ?? false,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(
         z.object({
           id: z.string(),
@@ -962,21 +1389,21 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         const item = await db.getUpgradeItemById(input.id);
         if (!item) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertUpgradeOwner(item.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(item.upgradeId, ctx.tenantId);
         return await db.updateUpgradeItem(input.id, input.data);
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const item = await db.getUpgradeItemById(input.id);
         if (!item) throw new TRPCError({ code: "NOT_FOUND" });
-        await assertUpgradeOwner(item.upgradeId, ctx.user.id);
+        await assertUpgradeOwner(item.upgradeId, ctx.tenantId);
         return await db.deleteUpgradeItem(input.id);
       }),
   }),
 
   upgrades: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(
         z
           .object({
@@ -988,46 +1415,49 @@ export const appRouter = router({
       .query(async ({ ctx, input }) => {
         return (
           (await db.getUpgrades(
-            ctx.user.id,
+            ctx.tenantId,
             ctx.propertyId,
             input?.limit,
             input?.offset
           )) ?? []
         );
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(upgradeSchema)
       .mutation(async ({ ctx, input }) => {
         return await db.createUpgrade({
           id: nanoid(),
           ...input,
           ownerId: ctx.user.id,
+          tenantId: ctx.tenantId,
           propertyId: ctx.propertyId,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(z.object({ id: z.string(), data: upgradeSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await diffAttachmentsOnUpdate(
-          () => db.getUpgradeById(input.id),
+          () => db.getUpgradeById(input.id, ctx.tenantId),
           input.data,
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.updateUpgrade(input.id, ctx.user.id, input.data);
+        return await db.updateUpgrade(input.id, ctx.tenantId, input.data);
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         await deleteAttachmentsOnRecordDelete(
-          () => db.getUpgradeById(input.id),
+          () => db.getUpgradeById(input.id, ctx.tenantId),
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.deleteUpgrade(input.id, ctx.user.id);
+        return await db.deleteUpgrade(input.id, ctx.tenantId);
       }),
   }),
 
   loans: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(
         z
           .object({
@@ -1038,13 +1468,13 @@ export const appRouter = router({
       )
       .query(async ({ ctx, input }) => {
         return await db.getLoans(
-          ctx.user.id,
+          ctx.tenantId,
           ctx.propertyId,
           input?.limit,
           input?.offset
         );
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(loanSchema)
       .mutation(async ({ ctx, input }) => {
         return await db.createLoan({
@@ -1053,29 +1483,32 @@ export const appRouter = router({
           name: input.name ?? input.lender ?? "Loan",
           currentBalance: input.currentBalance ?? input.originalAmount,
           ownerId: ctx.user.id,
+          tenantId: ctx.tenantId,
           propertyId: ctx.propertyId,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(z.object({ id: z.string(), data: loanSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await diffAttachmentsOnUpdate(
-          () => db.getLoanById(input.id),
+          () => db.getLoanById(input.id, ctx.tenantId),
           input.data,
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.updateLoan(input.id, ctx.user.id, input.data);
+        return await db.updateLoan(input.id, ctx.tenantId, input.data);
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         await deleteAttachmentsOnRecordDelete(
-          () => db.getLoanById(input.id),
+          () => db.getLoanById(input.id, ctx.tenantId),
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.deleteLoan(input.id, ctx.user.id);
+        return await db.deleteLoan(input.id, ctx.tenantId);
       }),
-    addRepayment: protectedProcedure
+    addRepayment: tenantProcedure
       .input(
         z.object({
           loanId: z.string(),
@@ -1084,8 +1517,8 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const targetLoan = await db.getLoanById(input.loanId);
-        if (!targetLoan || targetLoan.ownerId !== ctx.user.id) {
+        const targetLoan = await db.getLoanById(input.loanId, ctx.tenantId);
+        if (!targetLoan) {
           throw new TRPCError({
             code: "FORBIDDEN",
             message: "Not authorised to modify this loan",
@@ -1105,7 +1538,7 @@ export const appRouter = router({
   }),
 
   wishlist: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(
         z
           .object({
@@ -1116,45 +1549,48 @@ export const appRouter = router({
       )
       .query(async ({ ctx, input }) => {
         return await db.getWishlistItems(
-          ctx.user.id,
+          ctx.tenantId,
           ctx.propertyId,
           input?.limit,
           input?.offset
         );
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(wishlistSchema)
       .mutation(async ({ ctx, input }) => {
         return await db.createWishlistItem({
           id: nanoid(),
           ...input,
           ownerId: ctx.user.id,
+          tenantId: ctx.tenantId,
           propertyId: ctx.propertyId,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(z.object({ id: z.string(), data: wishlistSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await diffAttachmentsOnUpdate(
-          () => db.getWishlistItemById(input.id),
+          () => db.getWishlistItemById(input.id, ctx.tenantId),
           input.data,
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.updateWishlistItem(input.id, ctx.user.id, input.data);
+        return await db.updateWishlistItem(input.id, ctx.tenantId, input.data);
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         await deleteAttachmentsOnRecordDelete(
-          () => db.getWishlistItemById(input.id),
+          () => db.getWishlistItemById(input.id, ctx.tenantId),
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.deleteWishlistItem(input.id, ctx.user.id);
+        return await db.deleteWishlistItem(input.id, ctx.tenantId);
       }),
   }),
 
   purchaseCosts: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(
         z
           .object({
@@ -1165,45 +1601,48 @@ export const appRouter = router({
       )
       .query(async ({ ctx, input }) => {
         return await db.getPurchaseCosts(
-          ctx.user.id,
+          ctx.tenantId,
           ctx.propertyId,
           input?.limit,
           input?.offset
         );
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(purchaseCostSchema)
       .mutation(async ({ ctx, input }) => {
         return await db.createPurchaseCost({
           id: nanoid(),
           ...input,
           ownerId: ctx.user.id,
+          tenantId: ctx.tenantId,
           propertyId: ctx.propertyId,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(z.object({ id: z.string(), data: purchaseCostSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
         await diffAttachmentsOnUpdate(
-          () => db.getPurchaseCostById(input.id),
+          () => db.getPurchaseCostById(input.id, ctx.tenantId),
           input.data,
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.updatePurchaseCost(input.id, ctx.user.id, input.data);
+        return await db.updatePurchaseCost(input.id, ctx.tenantId, input.data);
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         await deleteAttachmentsOnRecordDelete(
-          () => db.getPurchaseCostById(input.id),
+          () => db.getPurchaseCostById(input.id, ctx.tenantId),
+          ctx.tenantId,
           ctx.user.id
         );
-        return await db.deletePurchaseCost(input.id, ctx.user.id);
+        return await db.deletePurchaseCost(input.id, ctx.tenantId);
       }),
   }),
 
   calendar: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(
         z.object({
           startDate: z.string().optional(),
@@ -1217,7 +1656,7 @@ export const appRouter = router({
           input.endDate
         );
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(
         z.object({
           title: z.string().min(1),
@@ -1234,10 +1673,11 @@ export const appRouter = router({
           ...rest,
           category: calendarCatMap[eventType] ?? "Other",
           ownerId: ctx.user.id,
+          tenantId: ctx.tenantId,
           propertyId: ctx.propertyId,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(
         z.object({
           id: z.string(),
@@ -1250,40 +1690,46 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const { id, eventType, time, ...rest } = input as any;
-        return await db.updateCalendarEvent(id, ctx.user.id, {
+        return await db.updateCalendarEvent(id, ctx.tenantId, {
           ...rest,
           category: calendarCatMap[eventType] ?? "Other",
         });
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        return await db.deleteCalendarEvent(input.id, ctx.user.id);
+        return await db.deleteCalendarEvent(input.id, ctx.tenantId);
       }),
   }),
 
   property: router({
-    list: protectedProcedure.query(async ({ ctx }) => {
-      return await db.getPropertiesByUser(ctx.user.id);
+    list: tenantProcedure.query(async ({ ctx }) => {
+      return await db.getPropertiesByTenant(ctx.tenantId);
     }),
-    get: protectedProcedure.query(async ({ ctx }) => {
+    get: tenantProcedure.query(async ({ ctx }) => {
       return await db.getProperty(ctx.propertyId);
     }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(z.object({ houseName: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
-        return await db.createProperty(ctx.user.id, input);
+        await assertPropertyQuota(ctx.tenantId);
+        return await db.createProperty(ctx.user.id, ctx.tenantId, input);
       }),
     // Create a property and its optional linked records (mortgage, purchase
     // costs, recurring rent) in one transaction. Child rows are attached to the
     // freshly-inserted property id — NOT ctx.propertyId, which still points at
     // the previously-active property until the client switches.
-    createWithWizard: protectedProcedure
+    createWithWizard: tenantProcedure
       .input(wizardSchema)
       .mutation(async ({ ctx, input }) => {
-        return await db.createPropertyWithWizard(ctx.user.id, input);
+        await assertPropertyQuota(ctx.tenantId);
+        return await db.createPropertyWithWizard(
+          ctx.user.id,
+          ctx.tenantId,
+          input
+        );
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       // Optional propertyId lets the Portfolio editor save a property other than
       // the active one (e.g. the master/detail panel). Falls back to the
       // header-scoped active property when omitted. Ownership is verified.
@@ -1292,7 +1738,7 @@ export const appRouter = router({
         const { propertyId, ...data } = input;
         const target = propertyId ?? ctx.propertyId;
         if (propertyId && propertyId !== ctx.propertyId) {
-          const owns = await db.checkPropertyOwnership(ctx.user.id, propertyId);
+          const owns = await db.checkPropertyInTenant(ctx.tenantId, propertyId);
           if (!owns) {
             throw new TRPCError({
               code: "FORBIDDEN",
@@ -1302,10 +1748,10 @@ export const appRouter = router({
         }
         return await db.updateProperty(target, data);
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ propertyId: z.number().int() }))
       .mutation(async ({ ctx, input }) => {
-        const props = await db.getPropertiesByUser(ctx.user.id);
+        const props = await db.getPropertiesByTenant(ctx.tenantId);
         if (props.length <= 1)
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -1340,7 +1786,7 @@ export const appRouter = router({
   }),
 
   files: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(
         z
           .object({
@@ -1377,7 +1823,7 @@ export const appRouter = router({
           })),
         };
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
         const result = await deleteFileForOwner(input.id, ctx.user.id);
@@ -1385,8 +1831,8 @@ export const appRouter = router({
           throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
         return { deleted: true, backendError: result.backendError ?? null };
       }),
-    reapOrphans: protectedProcedure.mutation(async ({ ctx }) => {
-      if (ctx.user.role !== "admin") {
+    reapOrphans: tenantProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user.globalRole !== "superadmin") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Admin role required",
@@ -1397,7 +1843,7 @@ export const appRouter = router({
   }),
 
   inventory: router({
-    list: protectedProcedure
+    list: tenantProcedure
       .input(
         z
           .object({
@@ -1408,31 +1854,32 @@ export const appRouter = router({
       )
       .query(async ({ ctx, input }) => {
         return await db.getInventoryItems(
-          ctx.user.id,
+          ctx.tenantId,
           ctx.propertyId,
           input?.limit,
           input?.offset
         );
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(inventoryItemSchema)
       .mutation(async ({ ctx, input }) => {
         return await db.createInventoryItem({
           id: nanoid(),
           ...input,
           ownerId: ctx.user.id,
+          tenantId: ctx.tenantId,
           propertyId: ctx.propertyId,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(z.object({ id: z.string(), data: inventoryItemSchema.partial() }))
       .mutation(async ({ ctx, input }) => {
-        return await db.updateInventoryItem(input.id, ctx.user.id, input.data);
+        return await db.updateInventoryItem(input.id, ctx.tenantId, input.data);
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        return await db.deleteInventoryItem(input.id, ctx.user.id);
+        return await db.deleteInventoryItem(input.id, ctx.tenantId);
       }),
   }),
 
@@ -1441,79 +1888,87 @@ export const appRouter = router({
   apartmentSearch: router({
     // Accepts (and ignores) an optional input object so generic tooling that
     // posts an empty payload to `.list` works uniformly across entities.
-    list: protectedProcedure
+    list: tenantProcedure
       .input(z.object({}).optional())
       .query(async ({ ctx }) => {
-        return await db.getSearches(ctx.user.id);
+        return await db.getSearches(ctx.tenantId);
       }),
-    get: protectedProcedure
+    get: tenantProcedure
       .input(z.object({ id: z.string() }))
       .query(async ({ ctx, input }) => {
-        return await assertSearchOwned(input.id, ctx.user.id);
+        return await assertSearchOwned(input.id, ctx.tenantId);
       }),
-    create: protectedProcedure
+    create: tenantProcedure
       .input(apartmentSearchSchema)
       .mutation(async ({ ctx, input }) => {
+        if (!(await db.hasCapability(ctx.tenantId, "apartment.search"))) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Your plan does not include apartment search.",
+          });
+        }
         return await db.createSearch({
           id: nanoid(),
           ...input,
           userId: ctx.user.id,
+          tenantId: ctx.tenantId,
         });
       }),
-    update: protectedProcedure
+    update: tenantProcedure
       .input(
         z.object({ id: z.string(), data: apartmentSearchSchema.partial() })
       )
       .mutation(async ({ ctx, input }) => {
-        await assertSearchOwned(input.id, ctx.user.id);
-        return await db.updateSearch(input.id, ctx.user.id, input.data);
+        await assertSearchOwned(input.id, ctx.tenantId);
+        return await db.updateSearch(input.id, ctx.tenantId, input.data);
       }),
-    delete: protectedProcedure
+    delete: tenantProcedure
       .input(z.object({ id: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        await assertSearchOwned(input.id, ctx.user.id);
-        return await db.deleteSearch(input.id, ctx.user.id);
+        await assertSearchOwned(input.id, ctx.tenantId);
+        return await db.deleteSearch(input.id, ctx.tenantId);
       }),
-    counts: protectedProcedure
+    counts: tenantProcedure
       .input(z.object({ searchIds: z.array(z.string()) }))
       .query(async ({ ctx, input }) => {
         // Restrict to the caller's own searches before counting.
-        const owned = (await db.getSearches(ctx.user.id))
+        const owned = (await db.getSearches(ctx.tenantId))
           .filter(s => input.searchIds.includes(s.id))
           .map(s => s.id);
         return await db.getCandidateCounts(owned);
       }),
 
     candidates: router({
-      list: protectedProcedure
+      list: tenantProcedure
         .input(z.object({ searchId: z.string() }))
         .query(async ({ ctx, input }) => {
-          await assertSearchOwned(input.searchId, ctx.user.id);
+          await assertSearchOwned(input.searchId, ctx.tenantId);
           return await db.getCandidates(input.searchId);
         }),
-      get: protectedProcedure
+      get: tenantProcedure
         .input(z.object({ id: z.string() }))
         .query(async ({ ctx, input }) => {
-          return await assertCandidateOwned(input.id, ctx.user.id);
+          return await assertCandidateOwned(input.id, ctx.tenantId);
         }),
-      create: protectedProcedure
+      create: tenantProcedure
         .input(apartmentCandidateSchema.extend({ searchId: z.string() }))
         .mutation(async ({ ctx, input }) => {
           const { searchId, ...data } = input;
-          await assertSearchOwned(searchId, ctx.user.id);
+          await assertSearchOwned(searchId, ctx.tenantId);
           return await db.createCandidate({
             id: nanoid(),
             searchId,
             userId: ctx.user.id,
+            tenantId: ctx.tenantId,
             ...data,
           });
         }),
-      update: protectedProcedure
+      update: tenantProcedure
         .input(
           z.object({ id: z.string(), data: apartmentCandidateSchema.partial() })
         )
         .mutation(async ({ ctx, input }) => {
-          const existing = await assertCandidateOwned(input.id, ctx.user.id);
+          const existing = await assertCandidateOwned(input.id, ctx.tenantId);
           // Candidates key on userId (not ownerId), so reap removed
           // attachments directly rather than via the ownerId-based helper.
           if ("attachments" in input.data) {
@@ -1530,28 +1985,28 @@ export const appRouter = router({
               );
             }
           }
-          return await db.updateCandidate(input.id, ctx.user.id, input.data);
+          return await db.updateCandidate(input.id, ctx.tenantId, input.data);
         }),
-      setStage: protectedProcedure
+      setStage: tenantProcedure
         .input(z.object({ id: z.string(), stage: candidateStageEnum }))
         .mutation(async ({ ctx, input }) => {
-          await assertCandidateOwned(input.id, ctx.user.id);
-          return await db.updateCandidate(input.id, ctx.user.id, {
+          await assertCandidateOwned(input.id, ctx.tenantId);
+          return await db.updateCandidate(input.id, ctx.tenantId, {
             stage: input.stage,
           });
         }),
-      toggleFavorite: protectedProcedure
+      toggleFavorite: tenantProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          const candidate = await assertCandidateOwned(input.id, ctx.user.id);
-          return await db.updateCandidate(input.id, ctx.user.id, {
+          const candidate = await assertCandidateOwned(input.id, ctx.tenantId);
+          return await db.updateCandidate(input.id, ctx.tenantId, {
             isFavorite: !candidate.isFavorite,
           });
         }),
-      delete: protectedProcedure
+      delete: tenantProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          const existing = await assertCandidateOwned(input.id, ctx.user.id);
+          const existing = await assertCandidateOwned(input.id, ctx.tenantId);
           try {
             await deleteAttachmentList(
               parseJsonArray(existing.attachments) as string[],
@@ -1563,14 +2018,18 @@ export const appRouter = router({
               "[apartmentCandidate] attachment delete failed"
             );
           }
-          return await db.deleteCandidate(input.id, ctx.user.id);
+          return await db.deleteCandidate(input.id, ctx.tenantId);
         }),
       // Pick the winner: spin up a real tracked property from this candidate.
-      convertToProperty: protectedProcedure
+      convertToProperty: tenantProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-          await assertCandidateOwned(input.id, ctx.user.id);
-          return await db.convertCandidateToProperty(ctx.user.id, input.id);
+          await assertCandidateOwned(input.id, ctx.tenantId);
+          return await db.convertCandidateToProperty(
+            ctx.user.id,
+            ctx.tenantId,
+            input.id
+          );
         }),
     }),
   }),

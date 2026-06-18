@@ -3,7 +3,7 @@ import { expenses, type Expense } from "../../drizzle/schema";
 import { getDb } from "./client";
 
 export async function getExpenses(
-  userId: number,
+  tenantId: number,
   propertyId: number,
   limit = 500,
   offset = 0
@@ -13,19 +13,26 @@ export async function getExpenses(
     .select()
     .from(expenses)
     .where(
-      and(eq(expenses.ownerId, userId), eq(expenses.propertyId, propertyId))
+      and(eq(expenses.tenantId, tenantId), eq(expenses.propertyId, propertyId))
     )
     .orderBy(desc(expenses.date))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getExpenseById(id: string) {
+// getExpenseById is also called internally (loan reconciliation) where there is
+// no tenant context, so the tenant gate is optional: pass tenantId from request
+// handlers to enforce isolation; omit it for trusted internal lookups.
+export async function getExpenseById(id: string, tenantId?: number) {
   const db = await getDb();
   const result = await db
     .select()
     .from(expenses)
-    .where(eq(expenses.id, id))
+    .where(
+      tenantId == null
+        ? eq(expenses.id, id)
+        : and(eq(expenses.id, id), eq(expenses.tenantId, tenantId))
+    )
     .limit(1);
   return result[0] ?? null;
 }
@@ -40,7 +47,7 @@ export async function createExpense(data: typeof expenses.$inferInsert) {
 
 export async function updateExpense(
   id: string,
-  ownerId: number,
+  tenantId: number,
   data: Partial<Expense>
 ) {
   const db = await getDb();
@@ -50,14 +57,14 @@ export async function updateExpense(
   await db
     .update(expenses)
     .set(normalized)
-    .where(and(eq(expenses.id, id), eq(expenses.ownerId, ownerId)));
+    .where(and(eq(expenses.id, id), eq(expenses.tenantId, tenantId)));
   return data;
 }
 
-export async function deleteExpense(id: string, ownerId: number) {
+export async function deleteExpense(id: string, tenantId: number) {
   const db = await getDb();
   await db
     .delete(expenses)
-    .where(and(eq(expenses.id, id), eq(expenses.ownerId, ownerId)));
+    .where(and(eq(expenses.id, id), eq(expenses.tenantId, tenantId)));
   return true;
 }

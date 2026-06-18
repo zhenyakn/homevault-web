@@ -80,6 +80,7 @@ function registerHandlers(b: Bot) {
         id: nanoid(),
         propertyId: context.property.id,
         ownerId: context.user.id,
+        tenantId: context.property.tenantId,
         name,
         amount: Math.round(amount),
         category: "Other",
@@ -132,18 +133,19 @@ function registerHandlers(b: Bot) {
     }
     const props = await getPropertiesByUser(linkedUser.id);
     const property = props[0];
-    if (!property) {
+    if (!property || property.tenantId == null) {
       await ctx.reply(t(lang, "notLinked"));
       return;
     }
     const user = linkedUser;
+    const tenantId = property.tenantId;
 
     switch (parsed.type) {
       case "overdue": {
         const today = todayInTz(property.timezone);
         const [expenses, stats] = await Promise.all([
-          getExpenses(user.id, property.id),
-          getDashboardStats(user.id, property.id),
+          getExpenses(tenantId, property.id),
+          getDashboardStats(tenantId, property.id),
         ]);
         const overdue = getOverdueExpenses(expenses, today);
         const lines: string[] = [];
@@ -166,7 +168,7 @@ function registerHandlers(b: Bot) {
       }
 
       case "dashboard": {
-        const s = await getDashboardStats(user.id, property.id);
+        const s = await getDashboardStats(tenantId, property.id);
         await ctx.reply(
           [
             `🏠 ${property.houseNickname || property.houseName || t(lang, "home")}`,
@@ -209,12 +211,12 @@ function registerHandlers(b: Bot) {
       }
 
       case "paid": {
-        const expense = await getExpenseById(parsed.id);
-        if (!expense || expense.ownerId !== user.id) {
+        const expense = await getExpenseById(parsed.id, tenantId);
+        if (!expense) {
           await ctx.reply(t(lang, "noExpenseId"));
           return;
         }
-        await updateExpense(parsed.id, user.id, {
+        await updateExpense(parsed.id, tenantId, {
           isPaid: true,
           paidDate: todayInTz(property.timezone),
         });

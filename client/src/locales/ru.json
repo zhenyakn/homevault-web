@@ -46,6 +46,8 @@
     "inventory": "Инвентарь",
     "calendar": "Календарь",
     "settings": "Настройки",
+    "plan": "Тариф",
+    "members": "Участники",
     "portfolio": "Портфель",
     "more": "Ещё",
     "primary": "Основная навигация",
@@ -57,7 +59,11 @@
       "account": "Аккаунт",
       "search": "Поиск"
     },
-    "apartmentSearch": "Поиск квартиры"
+    "apartmentSearch": "Поиск квартиры",
+    "admin": "Админ"
+  },
+  "tenant": {
+    "workspace": "Рабочее пространство"
   },
   "common": {
     "add": "Добавить",
@@ -338,7 +344,9 @@
     "openSettings": "Открыть настройки",
     "quotaTitle": "Ваш Google Drive переполнен",
     "quotaDesc": "Освободите место на one.google.com/storage.",
-    "uploadFailed": "Не удалось загрузить"
+    "uploadFailed": "Не удалось загрузить",
+    "attach": "Прикрепить файл",
+    "upgradeToAttach": "Обновите тариф"
   },
   "settings": {
     "title": "Настройки",
@@ -504,7 +512,8 @@
       "webpushUnavailable": "Push в браузере не настроен на сервере.",
       "generateCode": "Создать код привязки",
       "testFailed": "Тест в {{channel}} не удался: {{reason}}",
-      "loading": "Загрузка каналов…"
+      "loading": "Загрузка каналов…",
+      "upgrade": "Обновить"
     },
     "syncEvents": "Синхронизация событий",
     "syncEventsHint": "Отправлять события HomeVault в Google Календарь",
@@ -675,7 +684,9 @@
     "noResults": "Нет результатов.",
     "placeholderMyHome": "Мой дом",
     "placeholderHome": "Дом",
-    "perModuleList": "Расходы · Ремонты · Кредиты …"
+    "perModuleList": "Расходы · Ремонты · Кредиты …",
+    "exportLockedTitle": "Экспорт данных — премиум-функция",
+    "exportLockedBody": "Обновите тариф, чтобы экспортировать данные."
   },
   "repairs": {
     "title": "Ремонт",
@@ -1207,6 +1218,8 @@
     "yes": "Да",
     "rate": "Оценить",
     "clearScore": "Убрать оценку",
-    "attachmentsHint": "Фото, планировки, проект договора, PDF…"
+    "attachmentsHint": "Фото, планировки, проект договора, PDF…",
+    "lockedTitle": "Поиск квартир — премиум-функция",
+    "lockedBody": "Обновите тариф, чтобы сохранять и отслеживать поиски квартир."
   }
 }

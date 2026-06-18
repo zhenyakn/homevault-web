@@ -9,7 +9,8 @@ function createTestContext(): TrpcContext {
     email: "test@example.com",
     name: "Test User",
     loginMethod: "oauth",
-    role: "admin" as const,
+    globalRole: "superadmin" as const,
+    defaultTenantId: 1,
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
@@ -17,6 +18,9 @@ function createTestContext(): TrpcContext {
 
   return {
     user,
+    propertyId: 1,
+    tenantId: 1,
+    tenantRole: "owner",
     req: {
       protocol: "https",
       headers: {},

@@ -16,12 +16,14 @@ import {
 
 // ─── Searches ──────────────────────────────────────────────────────────────────
 
-export async function getSearches(userId: number): Promise<ApartmentSearch[]> {
+export async function getSearches(
+  tenantId: number
+): Promise<ApartmentSearch[]> {
   const db = await getDb();
   return await db
     .select()
     .from(apartmentSearches)
-    .where(eq(apartmentSearches.userId, userId))
+    .where(eq(apartmentSearches.tenantId, tenantId))
     .orderBy(desc(apartmentSearches.createdAt));
 }
 
@@ -45,7 +47,7 @@ export async function createSearch(
 
 export async function updateSearch(
   id: string,
-  userId: number,
+  tenantId: number,
   data: Partial<ApartmentSearch>
 ) {
   const db = await getDb();
@@ -53,17 +55,23 @@ export async function updateSearch(
     .update(apartmentSearches)
     .set(data)
     .where(
-      and(eq(apartmentSearches.id, id), eq(apartmentSearches.userId, userId))
+      and(
+        eq(apartmentSearches.id, id),
+        eq(apartmentSearches.tenantId, tenantId)
+      )
     );
   return data;
 }
 
-export async function deleteSearch(id: string, userId: number) {
+export async function deleteSearch(id: string, tenantId: number) {
   const db = await getDb();
   await db
     .delete(apartmentSearches)
     .where(
-      and(eq(apartmentSearches.id, id), eq(apartmentSearches.userId, userId))
+      and(
+        eq(apartmentSearches.id, id),
+        eq(apartmentSearches.tenantId, tenantId)
+      )
     );
   return true;
 }
@@ -122,7 +130,7 @@ export async function createCandidate(
 
 export async function updateCandidate(
   id: string,
-  userId: number,
+  tenantId: number,
   data: Partial<ApartmentCandidate>
 ) {
   const db = await getDb();
@@ -132,20 +140,20 @@ export async function updateCandidate(
     .where(
       and(
         eq(apartmentCandidates.id, id),
-        eq(apartmentCandidates.userId, userId)
+        eq(apartmentCandidates.tenantId, tenantId)
       )
     );
   return data;
 }
 
-export async function deleteCandidate(id: string, userId: number) {
+export async function deleteCandidate(id: string, tenantId: number) {
   const db = await getDb();
   await db
     .delete(apartmentCandidates)
     .where(
       and(
         eq(apartmentCandidates.id, id),
-        eq(apartmentCandidates.userId, userId)
+        eq(apartmentCandidates.tenantId, tenantId)
       )
     );
   return true;
@@ -224,25 +232,28 @@ export function buildWizardInputFromCandidate(
  */
 export async function convertCandidateToProperty(
   userId: number,
+  tenantId: number,
   candidateId: string
 ): Promise<{ propertyId: number }> {
   const candidate = await getCandidateById(candidateId);
-  if (!candidate || candidate.userId !== userId) {
+  if (!candidate || candidate.tenantId !== tenantId) {
     throw new Error("Candidate not found");
   }
   const search = await getSearchById(candidate.searchId);
-  if (!search || search.userId !== userId) {
+  if (!search || search.tenantId !== tenantId) {
     throw new Error("Search not found");
   }
 
   const input = buildWizardInputFromCandidate(search, candidate);
-  const { insertId } = await createPropertyWithWizard(userId, input);
+  // The creator (userId) is recorded as owner for attribution; the property is
+  // owned by the tenant.
+  const { insertId } = await createPropertyWithWizard(userId, tenantId, input);
 
-  await updateCandidate(candidateId, userId, {
+  await updateCandidate(candidateId, tenantId, {
     stage: "accepted",
     convertedPropertyId: insertId,
   });
-  await updateSearch(search.id, userId, { status: "completed" });
+  await updateSearch(search.id, tenantId, { status: "completed" });
 
   return { propertyId: insertId };
 }

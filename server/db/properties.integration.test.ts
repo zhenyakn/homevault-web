@@ -17,6 +17,7 @@ describe.skipIf(!TEST_DB)("createPropertyWithWizard (real MySQL)", () => {
   let getDb: typeof import("./client").getDb;
   let schema: typeof import("../../drizzle/schema");
   let userId: number;
+  let tenantId: number;
 
   beforeAll(async () => {
     process.env.DATABASE_URL = TEST_DB!;
@@ -34,27 +35,33 @@ describe.skipIf(!TEST_DB)("createPropertyWithWizard (real MySQL)", () => {
       name: "PW",
     });
     userId = (res as any).insertId as number;
+    const tenantsDb = await import("./tenants");
+    tenantId = (await tenantsDb.ensurePersonalTenant(userId, "PW")).tenantId;
   });
 
   it("owned_rented: creates property + mortgage + purchase costs, no rent expense", async () => {
-    const { insertId } = await props.createPropertyWithWizard(userId, {
-      mode: "owned_rented",
-      houseName: "Wizard Rented Out",
-      purchasePrice: 240000000,
-      purchaseDate: "2019-05-01",
-      monthlyRent: 650000,
-      leaseStart: "2024-01-01",
-      leaseEnd: "2024-12-31",
-      loan: {
-        lender: "Bank Hapoalim",
-        originalAmount: 120000000,
-        monthlyPayment: 540000,
-      },
-      purchaseCosts: [
-        { name: "Tax", amount: 7200000, category: "Tax" },
-        { name: "Lawyer", amount: 900000, category: "Legal" },
-      ],
-    });
+    const { insertId } = await props.createPropertyWithWizard(
+      userId,
+      tenantId,
+      {
+        mode: "owned_rented",
+        houseName: "Wizard Rented Out",
+        purchasePrice: 240000000,
+        purchaseDate: "2019-05-01",
+        monthlyRent: 650000,
+        leaseStart: "2024-01-01",
+        leaseEnd: "2024-12-31",
+        loan: {
+          lender: "Bank Hapoalim",
+          originalAmount: 120000000,
+          monthlyPayment: 540000,
+        },
+        purchaseCosts: [
+          { name: "Tax", amount: 7200000, category: "Tax" },
+          { name: "Lawyer", amount: 900000, category: "Legal" },
+        ],
+      }
+    );
 
     const db = await getDb();
     const [p] = await db
@@ -88,22 +95,26 @@ describe.skipIf(!TEST_DB)("createPropertyWithWizard (real MySQL)", () => {
   });
 
   it("rented: creates property + recurring rent expense, no loan/purchase", async () => {
-    const { insertId } = await props.createPropertyWithWizard(userId, {
-      mode: "rented",
-      houseName: "Wizard Tenant",
-      // purchase fields should be ignored for a rented property
-      purchasePrice: 999,
-      monthlyRent: 650000,
-      leaseStart: "2024-01-01",
-      leaseEnd: "2024-12-31",
-      deposit: 1300000,
-      landlord: "Mr. Cohen",
-      rentExpense: {
-        amount: 650000,
-        recurringInterval: "monthly",
-        date: "2026-04-01",
-      },
-    });
+    const { insertId } = await props.createPropertyWithWizard(
+      userId,
+      tenantId,
+      {
+        mode: "rented",
+        houseName: "Wizard Tenant",
+        // purchase fields should be ignored for a rented property
+        purchasePrice: 999,
+        monthlyRent: 650000,
+        leaseStart: "2024-01-01",
+        leaseEnd: "2024-12-31",
+        deposit: 1300000,
+        landlord: "Mr. Cohen",
+        rentExpense: {
+          amount: 650000,
+          recurringInterval: "monthly",
+          date: "2026-04-01",
+        },
+      }
+    );
 
     const db = await getDb();
     const [p] = await db
@@ -130,12 +141,16 @@ describe.skipIf(!TEST_DB)("createPropertyWithWizard (real MySQL)", () => {
   });
 
   it("owned_personal: creates property with purchase, no rental records", async () => {
-    const { insertId } = await props.createPropertyWithWizard(userId, {
-      mode: "owned_personal",
-      houseName: "Wizard Personal",
-      purchasePrice: 280000000,
-      purchaseDate: "2022-03-15",
-    });
+    const { insertId } = await props.createPropertyWithWizard(
+      userId,
+      tenantId,
+      {
+        mode: "owned_personal",
+        houseName: "Wizard Personal",
+        purchasePrice: 280000000,
+        purchaseDate: "2022-03-15",
+      }
+    );
 
     const db = await getDb();
     const [p] = await db

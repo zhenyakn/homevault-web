@@ -3,7 +3,7 @@ import { purchaseCosts, type PurchaseCost } from "../../drizzle/schema";
 import { getDb } from "./client";
 
 export async function getPurchaseCosts(
-  userId: number,
+  tenantId: number,
   propertyId: number,
   limit = 500,
   offset = 0
@@ -14,7 +14,7 @@ export async function getPurchaseCosts(
     .from(purchaseCosts)
     .where(
       and(
-        eq(purchaseCosts.ownerId, userId),
+        eq(purchaseCosts.tenantId, tenantId),
         eq(purchaseCosts.propertyId, propertyId)
       )
     )
@@ -23,12 +23,16 @@ export async function getPurchaseCosts(
     .offset(offset);
 }
 
-export async function getPurchaseCostById(id: string) {
+export async function getPurchaseCostById(id: string, tenantId?: number) {
   const db = await getDb();
   const result = await db
     .select()
     .from(purchaseCosts)
-    .where(eq(purchaseCosts.id, id))
+    .where(
+      tenantId == null
+        ? eq(purchaseCosts.id, id)
+        : and(eq(purchaseCosts.id, id), eq(purchaseCosts.tenantId, tenantId))
+    )
     .limit(1);
   return result[0] ?? null;
 }
@@ -45,7 +49,7 @@ export async function createPurchaseCost(
 
 export async function updatePurchaseCost(
   id: string,
-  ownerId: number,
+  tenantId: number,
   data: Partial<PurchaseCost>
 ) {
   const db = await getDb();
@@ -55,14 +59,14 @@ export async function updatePurchaseCost(
   await db
     .update(purchaseCosts)
     .set(normalized)
-    .where(and(eq(purchaseCosts.id, id), eq(purchaseCosts.ownerId, ownerId)));
+    .where(and(eq(purchaseCosts.id, id), eq(purchaseCosts.tenantId, tenantId)));
   return data;
 }
 
-export async function deletePurchaseCost(id: string, ownerId: number) {
+export async function deletePurchaseCost(id: string, tenantId: number) {
   const db = await getDb();
   await db
     .delete(purchaseCosts)
-    .where(and(eq(purchaseCosts.id, id), eq(purchaseCosts.ownerId, ownerId)));
+    .where(and(eq(purchaseCosts.id, id), eq(purchaseCosts.tenantId, tenantId)));
   return true;
 }

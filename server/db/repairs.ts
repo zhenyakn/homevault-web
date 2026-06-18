@@ -14,7 +14,7 @@ export type RepairQuoteWithPayments = RepairQuote & {
 };
 
 export async function getRepairs(
-  userId: number,
+  tenantId: number,
   propertyId: number,
   limit = 500,
   offset = 0
@@ -23,32 +23,38 @@ export async function getRepairs(
   return await db
     .select()
     .from(repairs)
-    .where(and(eq(repairs.ownerId, userId), eq(repairs.propertyId, propertyId)))
+    .where(
+      and(eq(repairs.tenantId, tenantId), eq(repairs.propertyId, propertyId))
+    )
     .orderBy(desc(repairs.createdAt))
     .limit(limit)
     .offset(offset);
 }
 
-export async function getRepairById(id: string) {
+export async function getRepairById(id: string, tenantId?: number) {
   const db = await getDb();
   const result = await db
     .select()
     .from(repairs)
-    .where(eq(repairs.id, id))
+    .where(
+      tenantId == null
+        ? eq(repairs.id, id)
+        : and(eq(repairs.id, id), eq(repairs.tenantId, tenantId))
+    )
     .limit(1);
   return result[0] ?? null;
 }
 
-export async function filterOwnedRepairIds(
+export async function filterTenantRepairIds(
   ids: string[],
-  ownerId: number
+  tenantId: number
 ): Promise<string[]> {
   if (ids.length === 0) return [];
   const db = await getDb();
   const rows = await db
     .select({ id: repairs.id })
     .from(repairs)
-    .where(and(inArray(repairs.id, ids), eq(repairs.ownerId, ownerId)));
+    .where(and(inArray(repairs.id, ids), eq(repairs.tenantId, tenantId)));
   return rows.map(r => r.id);
 }
 
@@ -62,7 +68,7 @@ export async function createRepair(data: typeof repairs.$inferInsert) {
 
 export async function updateRepair(
   id: string,
-  ownerId: number,
+  tenantId: number,
   data: Partial<Repair>
 ) {
   const db = await getDb();
@@ -72,15 +78,15 @@ export async function updateRepair(
   await db
     .update(repairs)
     .set(normalized)
-    .where(and(eq(repairs.id, id), eq(repairs.ownerId, ownerId)));
+    .where(and(eq(repairs.id, id), eq(repairs.tenantId, tenantId)));
   return data;
 }
 
-export async function deleteRepair(id: string, ownerId: number) {
+export async function deleteRepair(id: string, tenantId: number) {
   const db = await getDb();
   await db
     .delete(repairs)
-    .where(and(eq(repairs.id, id), eq(repairs.ownerId, ownerId)));
+    .where(and(eq(repairs.id, id), eq(repairs.tenantId, tenantId)));
   return true;
 }
 

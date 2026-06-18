@@ -46,6 +46,8 @@
     "inventory": "Inventory",
     "calendar": "Calendar",
     "settings": "Settings",
+    "plan": "Plan",
+    "members": "Members",
     "portfolio": "Portfolio",
     "more": "More",
     "primary": "Primary navigation",
@@ -57,7 +59,11 @@
       "account": "Account",
       "search": "Search"
     },
-    "apartmentSearch": "Apartment Search"
+    "apartmentSearch": "Apartment Search",
+    "admin": "Admin"
+  },
+  "tenant": {
+    "workspace": "Workspace"
   },
   "common": {
     "add": "Add",
@@ -339,7 +345,9 @@
     "openSettings": "Open Settings",
     "quotaTitle": "Your Google Drive is full",
     "quotaDesc": "Free up space at one.google.com/storage.",
-    "uploadFailed": "Upload failed"
+    "uploadFailed": "Upload failed",
+    "attach": "Attach file",
+    "upgradeToAttach": "Upgrade to attach"
   },
   "settings": {
     "title": "Settings",
@@ -507,7 +515,8 @@
       "webpushNeedsKeys": "Browser push needs VAPID keys on the server. Run `npx web-push generate-vapid-keys` and set VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY.",
       "generateCode": "Generate link code",
       "testFailed": "Test to {{channel}} failed: {{reason}}",
-      "loading": "Loading channels…"
+      "loading": "Loading channels…",
+      "upgrade": "Upgrade"
     },
     "syncEvents": "Sync events",
     "syncEventsHint": "Push HomeVault events to Google Calendar",
@@ -678,7 +687,9 @@
     "noResults": "No results.",
     "placeholderMyHome": "My Home",
     "placeholderHome": "Home",
-    "perModuleList": "Expenses · Repairs · Loans …"
+    "perModuleList": "Expenses · Repairs · Loans …",
+    "exportLockedTitle": "Data export is a premium feature",
+    "exportLockedBody": "Upgrade your plan to export your data."
   },
   "repairs": {
     "title": "Repairs",
@@ -1215,6 +1226,8 @@
     "yes": "Yes",
     "rate": "Rate",
     "clearScore": "Clear score",
-    "attachmentsHint": "Photos, floor plans, a draft contract, listing PDFs…"
+    "attachmentsHint": "Photos, floor plans, a draft contract, listing PDFs…",
+    "lockedTitle": "Apartment search is a premium feature",
+    "lockedBody": "Upgrade your plan to save and track apartment searches."
   }
 }

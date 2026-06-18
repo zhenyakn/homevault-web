@@ -32,15 +32,19 @@ export async function runReminderSweep(
 
   for (const property of properties) {
     const userId = property.userId;
+    // Property-scoped reads are now tenant-scoped. Skip any property that hasn't
+    // been assigned a tenant yet (shouldn't happen after the Stage-1 backfill).
+    const tenantId = property.tenantId;
+    if (tenantId == null) continue;
     const today = todayInTz(property.timezone);
 
     const [expenses, loans, calendarEvents, inventory, stats] =
       await Promise.all([
-        getExpenses(userId, property.id),
-        getLoans(userId, property.id),
+        getExpenses(tenantId, property.id),
+        getLoans(tenantId, property.id),
         getCalendarEvents(property.id),
-        getInventoryItems(userId, property.id),
-        getDashboardStats(userId, property.id),
+        getInventoryItems(tenantId, property.id),
+        getDashboardStats(tenantId, property.id),
       ]);
 
     const due = collectDueReminders({

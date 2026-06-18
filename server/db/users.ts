@@ -26,12 +26,15 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     values.lastSignedIn = user.lastSignedIn;
     updateSet.lastSignedIn = user.lastSignedIn;
   }
-  if (user.role !== undefined) {
-    values.role = user.role;
-    updateSet.role = user.role;
+  // Server-wide admin is driven by globalRole. Honour an explicit globalRole,
+  // and always promote the configured owner so the NO_AUTH / dev owner can
+  // reach the admin console.
+  if (user.globalRole !== undefined) {
+    values.globalRole = user.globalRole;
+    updateSet.globalRole = user.globalRole;
   } else if (user.openId === ENV.ownerOpenId) {
-    values.role = "admin";
-    updateSet.role = "admin";
+    values.globalRole = "superadmin";
+    updateSet.globalRole = "superadmin";
   }
 
   if (!values.lastSignedIn) values.lastSignedIn = new Date();
@@ -51,12 +54,33 @@ export async function setUserLanguage(
   await db.update(users).set({ language }).where(eq(users.id, userId));
 }
 
+export async function setUserDefaultTenant(
+  userId: number,
+  tenantId: number
+): Promise<void> {
+  const db = await getDb();
+  await db
+    .update(users)
+    .set({ defaultTenantId: tenantId })
+    .where(eq(users.id, userId));
+}
+
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   const result = await db
     .select()
     .from(users)
     .where(eq(users.openId, openId))
+    .limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserById(userId: number) {
+  const db = await getDb();
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
     .limit(1);
   return result.length > 0 ? result[0] : undefined;
 }

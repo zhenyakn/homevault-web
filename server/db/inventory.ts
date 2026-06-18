@@ -7,7 +7,7 @@ import {
 import { getDb } from "./client";
 
 export async function getInventoryItems(
-  userId: number,
+  tenantId: number,
   propertyId: number,
   limit = 500,
   offset = 0
@@ -18,7 +18,7 @@ export async function getInventoryItems(
     .from(inventoryItems)
     .where(
       and(
-        eq(inventoryItems.ownerId, userId),
+        eq(inventoryItems.tenantId, tenantId),
         eq(inventoryItems.propertyId, propertyId)
       )
     )
@@ -27,12 +27,16 @@ export async function getInventoryItems(
     .offset(offset);
 }
 
-export async function getInventoryItemById(id: string) {
+export async function getInventoryItemById(id: string, tenantId?: number) {
   const db = await getDb();
   const result = await db
     .select()
     .from(inventoryItems)
-    .where(eq(inventoryItems.id, id))
+    .where(
+      tenantId == null
+        ? eq(inventoryItems.id, id)
+        : and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId))
+    )
     .limit(1);
   return result[0] ?? null;
 }
@@ -45,21 +49,25 @@ export async function createInventoryItem(data: InsertInventoryItem) {
 
 export async function updateInventoryItem(
   id: string,
-  ownerId: number,
+  tenantId: number,
   data: Partial<InventoryItem>
 ) {
   const db = await getDb();
   await db
     .update(inventoryItems)
     .set(data)
-    .where(and(eq(inventoryItems.id, id), eq(inventoryItems.ownerId, ownerId)));
+    .where(
+      and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId))
+    );
   return data;
 }
 
-export async function deleteInventoryItem(id: string, ownerId: number) {
+export async function deleteInventoryItem(id: string, tenantId: number) {
   const db = await getDb();
   await db
     .delete(inventoryItems)
-    .where(and(eq(inventoryItems.id, id), eq(inventoryItems.ownerId, ownerId)));
+    .where(
+      and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId))
+    );
   return true;
 }

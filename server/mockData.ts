@@ -20,7 +20,7 @@ import type {
  */
 type Seed<T> = Omit<
   T,
-  "id" | "ownerId" | "propertyId" | "createdAt" | "updatedAt"
+  "id" | "ownerId" | "propertyId" | "tenantId" | "createdAt" | "updatedAt"
 >;
 
 /**

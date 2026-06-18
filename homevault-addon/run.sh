@@ -16,6 +16,12 @@ export OAUTH_SERVER_URL=$(jq -r '.OAUTH_SERVER_URL // ""' "$OPTIONS")
 export PORT=$(jq -r '.PORT // 3005' "$OPTIONS")
 export HOST="0.0.0.0"
 export NODE_ENV="production"
+# The Home Assistant add-on is always a single-install, non-billable deployment.
+# Pin standalone mode so every capability is included and no SAAS-only paths
+# (native registration, plan gating, billing UI) ever engage — regardless of
+# the compiled default. Not exposed as an add-on option on purpose; SAAS also
+# requires NO_AUTH=false + authenticated tenants, which the add-on isn't.
+export APP_MODE="standalone"
 # Silence the DEP0040 punycode deprecation warning. It originates from a deep
 # transitive dependency (grammy -> node-fetch@2 -> whatwg-url/tr46) that still
 # require()s Node's built-in `punycode`. There is no clean upgrade path

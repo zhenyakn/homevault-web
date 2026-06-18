@@ -87,7 +87,7 @@ function purchaseBucket(cat: string | null): DocCategoryKey {
 }
 
 export async function getDocumentsSummary(
-  userId: number,
+  tenantId: number,
   propertyId: number
 ): Promise<DocumentsSummary> {
   const db = await getDb();
@@ -112,7 +112,7 @@ export async function getDocumentsSummary(
   const nAtt = (a: unknown) => parseJsonArray(a).length;
 
   const ownedExpenses = and(
-    eq(expenses.ownerId, userId),
+    eq(expenses.tenantId, tenantId),
     eq(expenses.propertyId, propertyId)
   );
 
@@ -129,24 +129,29 @@ export async function getDocumentsSummary(
       .select({ a: repairs.attachments, u: repairs.updatedAt })
       .from(repairs)
       .where(
-        and(eq(repairs.ownerId, userId), eq(repairs.propertyId, propertyId))
+        and(eq(repairs.tenantId, tenantId), eq(repairs.propertyId, propertyId))
       ),
     db
       .select({ a: upgrades.attachments, u: upgrades.updatedAt })
       .from(upgrades)
       .where(
-        and(eq(upgrades.ownerId, userId), eq(upgrades.propertyId, propertyId))
+        and(
+          eq(upgrades.tenantId, tenantId),
+          eq(upgrades.propertyId, propertyId)
+        )
       ),
     db
       .select({ a: loans.attachments, u: loans.updatedAt })
       .from(loans)
-      .where(and(eq(loans.ownerId, userId), eq(loans.propertyId, propertyId))),
+      .where(
+        and(eq(loans.tenantId, tenantId), eq(loans.propertyId, propertyId))
+      ),
     db
       .select({ a: wishlistItems.attachments, u: wishlistItems.updatedAt })
       .from(wishlistItems)
       .where(
         and(
-          eq(wishlistItems.ownerId, userId),
+          eq(wishlistItems.tenantId, tenantId),
           eq(wishlistItems.propertyId, propertyId)
         )
       ),
@@ -159,7 +164,7 @@ export async function getDocumentsSummary(
       .from(purchaseCosts)
       .where(
         and(
-          eq(purchaseCosts.ownerId, userId),
+          eq(purchaseCosts.tenantId, tenantId),
           eq(purchaseCosts.propertyId, propertyId)
         )
       ),

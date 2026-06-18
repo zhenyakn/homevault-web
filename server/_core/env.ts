@@ -6,6 +6,16 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
+  // Deployment mode. `standalone` = today's single-install behaviour (OAuth or
+  // NO_AUTH). `saas` = cloud, multi-tenant, native email/password registration;
+  // NO_AUTH is forbidden and session/email config is enforced (see below).
+  APP_MODE: z.enum(["standalone", "saas"]).default("standalone"),
+  // Billing provider for SAAS. "stub" records plan state locally without an
+  // external account; real providers (stripe, …) are wired in billing/provider.
+  BILLING_PROVIDER: z.string().default("stub"),
+  // Per-tenant + per-IP request rate limiting. On by default; auto-off under
+  // tests so integration callers can hammer a single tenant freely.
+  RATE_LIMIT_ENABLED: z.string().default("true"),
   VITE_APP_ID: z.string().default(""),
   OAUTH_SERVER_URL: z.string().default(""),
   OWNER_OPEN_ID: z.string().default(""),
@@ -71,7 +81,80 @@ if (!parsed.success) {
 
 const raw = parsed.data;
 
+export type EnvConfigInput = {
+  NODE_ENV: string;
+  APP_MODE: string;
+  NO_AUTH: string;
+  VITE_APP_ID: string;
+  PUBLIC_BASE_URL: string;
+};
+
+/**
+ * Cross-field runtime validation that the per-field schema can't express. Pure
+ * (no process.exit) so it can be unit-tested; the module wires the result to
+ * stderr + exit below.
+ *
+ * The most important rule: native (non-NO_AUTH) sessions embed VITE_APP_ID in
+ * the JWT and verifySession rejects an empty appId — so without it nobody can
+ * ever log in, which otherwise fails silently as a blank login screen.
+ *
+ * Skipped under NODE_ENV=test so the suite (which imports this module) isn't
+ * tripped by an absent appId. In development a missing appId is a warning; in
+ * production / saas it is fatal.
+ */
+export function validateEnvConfig(cfg: EnvConfigInput): {
+  fatal: string[];
+  warn: string[];
+} {
+  const fatal: string[] = [];
+  const warn: string[] = [];
+  if (cfg.NODE_ENV === "test") return { fatal, warn };
+
+  const isSaas = cfg.APP_MODE === "saas";
+  const noAuth = cfg.NO_AUTH === "true";
+
+  if (isSaas && noAuth) {
+    fatal.push(
+      "APP_MODE=saas is incompatible with NO_AUTH=true — SAAS requires every request to be an authenticated, tenant-scoped user."
+    );
+  }
+  // Sessions are in use whenever NO_AUTH is off. They can't be verified without
+  // a non-empty VITE_APP_ID.
+  if (!noAuth && !cfg.VITE_APP_ID) {
+    const msg =
+      "VITE_APP_ID is required when NO_AUTH is not enabled — sessions embed it and cannot be verified without it (logins would silently fail).";
+    if (isSaas || cfg.NODE_ENV === "production") fatal.push(msg);
+    else warn.push(msg);
+  }
+  // SAAS sends transactional emails (verify / reset / invite) whose links are
+  // built from PUBLIC_BASE_URL.
+  if (isSaas && !cfg.PUBLIC_BASE_URL) {
+    fatal.push(
+      "APP_MODE=saas requires PUBLIC_BASE_URL so verification / reset / invite links resolve."
+    );
+  }
+  return { fatal, warn };
+}
+
+{
+  const { fatal, warn } = validateEnvConfig(raw);
+  for (const w of warn) process.stderr.write(`[ENV] warning: ${w}\n`);
+  if (fatal.length > 0) {
+    process.stderr.write(
+      "\n[ENV] Server cannot start — invalid environment configuration:\n"
+    );
+    for (const f of fatal) process.stderr.write(`  ✗ ${f}\n`);
+    process.stderr.write("\nCheck your .env file against .env.example\n\n");
+    process.exit(1);
+  }
+}
+
 export const ENV = {
+  appMode: raw.APP_MODE,
+  isSaas: raw.APP_MODE === "saas",
+  billingProvider: raw.BILLING_PROVIDER,
+  rateLimitEnabled:
+    raw.RATE_LIMIT_ENABLED !== "false" && raw.NODE_ENV !== "test",
   appId: raw.VITE_APP_ID,
   cookieSecret: raw.JWT_SECRET,
   databaseUrl: raw.DATABASE_URL,

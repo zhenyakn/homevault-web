@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { TenantSwitcherSection } from "@/components/TenantSwitcher";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ import MobileTabBar from "@/components/homevault/HomeVaultMobileNav";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useCapabilities } from "@/hooks/useCapabilities";
 import { trpc } from "@/lib/trpc";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -37,6 +39,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  CreditCard,
   DollarSign,
   FileText,
   Heart,
@@ -153,6 +156,7 @@ const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
     sectionKey: "nav.group.search",
     pageKey: "nav.apartmentSearch",
   },
+  "/plan": { sectionKey: "nav.group.account", pageKey: "nav.plan" },
   "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
 };
 
@@ -395,11 +399,16 @@ function DashboardLayoutContent({
 
   const { data: profiles } = trpc.profiles.list.useQuery();
   const { data: docSummary } = trpc.documents.summary.useQuery();
+  const { isSaas } = useCapabilities();
 
   // Portfolio is the home for all property settings, so it's always in the nav.
+  // The Plan entry is hosted-only — hidden on standalone (e.g. HA add-on).
   const navItems: HVNavItem[] = [
     ...HV_NAV,
     { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
+    ...(isSaas
+      ? [{ icon: CreditCard, key: "nav.plan", path: "/plan" }]
+      : []),
     { icon: Settings, key: "nav.settings", path: "/settings" },
   ];
 
@@ -569,6 +578,7 @@ function DashboardLayoutContent({
                   ))}
                 </div>
                 <DropdownMenuSeparator />
+                <TenantSwitcherSection />
                 {profiles && profiles.length > 1 && (
                   <>
                     {profiles.map((profile: any, index: number) => (

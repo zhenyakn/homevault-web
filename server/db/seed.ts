@@ -34,76 +34,91 @@ import { getDb } from "./client";
 import { deleteAllFilesForOwner } from "../files";
 import { logger } from "../_core/logger";
 
-export async function deleteAllUserData(userId: number) {
-  // Reap the user's storage-backend files (Drive / S3) first so the rows-
-  // referencing-them in the entity tables still resolve to file IDs the
-  // helper can find. Best-effort: any backend failure logs + moves on; we
-  // don't want a Drive outage to block the DB wipe the user explicitly asked
-  // for. The files table's own rows are soft-deleted in the same call.
+/**
+ * Wipe all data belonging to a tenant (the workspace-level "delete everything"
+ * danger action). Scoped by tenantId so it removes shared records created by any
+ * member, not just the caller. Child tables without a tenantId column are
+ * removed via their parent ids; loanRepayments / quote+option payments cascade
+ * on their parent's delete.
+ *
+ * `requestedByUserId` is used only to reap that user's storage-backend files
+ * (file access is still per-uploader pending tenant-wide file storage).
+ */
+export async function deleteAllTenantData(
+  tenantId: number,
+  requestedByUserId: number
+) {
   try {
-    const summary = await deleteAllFilesForOwner(userId);
-    logger.info({ userId, summary }, "[deleteAllUserData] reaped files");
+    const summary = await deleteAllFilesForOwner(requestedByUserId);
+    logger.info(
+      { tenantId, requestedByUserId, summary },
+      "[deleteAllTenantData] reaped files"
+    );
   } catch (err) {
     logger.error(
-      { userId, err: (err as Error).message },
-      "[deleteAllUserData] file reap failed"
+      { tenantId, err: (err as Error).message },
+      "[deleteAllTenantData] file reap failed"
     );
   }
 
   const db = await getDb();
   await db.transaction(async tx => {
-    const userRepairIds = (
+    const tenantRepairIds = (
       await tx
         .select({ id: repairs.id })
         .from(repairs)
-        .where(eq(repairs.ownerId, userId))
+        .where(eq(repairs.tenantId, tenantId))
     ).map(r => r.id);
 
-    if (userRepairIds.length > 0) {
+    if (tenantRepairIds.length > 0) {
       await tx
         .delete(repairQuotes)
-        .where(inArray(repairQuotes.repairId, userRepairIds));
+        .where(inArray(repairQuotes.repairId, tenantRepairIds));
     }
 
-    const userUpgradeIds = (
+    const tenantUpgradeIds = (
       await tx
         .select({ id: upgrades.id })
         .from(upgrades)
-        .where(eq(upgrades.ownerId, userId))
+        .where(eq(upgrades.tenantId, tenantId))
     ).map(u => u.id);
 
-    if (userUpgradeIds.length > 0) {
+    if (tenantUpgradeIds.length > 0) {
       await tx
         .delete(upgradeOptions)
-        .where(inArray(upgradeOptions.upgradeId, userUpgradeIds));
+        .where(inArray(upgradeOptions.upgradeId, tenantUpgradeIds));
       await tx
         .delete(upgradeItems)
-        .where(inArray(upgradeItems.upgradeId, userUpgradeIds));
+        .where(inArray(upgradeItems.upgradeId, tenantUpgradeIds));
     }
 
     await Promise.all([
-      tx.delete(expenses).where(eq(expenses.ownerId, userId)),
-      tx.delete(repairs).where(eq(repairs.ownerId, userId)),
-      tx.delete(upgrades).where(eq(upgrades.ownerId, userId)),
-      tx.delete(loans).where(eq(loans.ownerId, userId)),
-      tx.delete(wishlistItems).where(eq(wishlistItems.ownerId, userId)),
-      tx.delete(purchaseCosts).where(eq(purchaseCosts.ownerId, userId)),
-      tx.delete(calendarEvents).where(eq(calendarEvents.ownerId, userId)),
-      tx.delete(inventoryItems).where(eq(inventoryItems.ownerId, userId)),
+      tx.delete(expenses).where(eq(expenses.tenantId, tenantId)),
+      tx.delete(repairs).where(eq(repairs.tenantId, tenantId)),
+      tx.delete(upgrades).where(eq(upgrades.tenantId, tenantId)),
+      tx.delete(loans).where(eq(loans.tenantId, tenantId)),
+      tx.delete(wishlistItems).where(eq(wishlistItems.tenantId, tenantId)),
+      tx.delete(purchaseCosts).where(eq(purchaseCosts.tenantId, tenantId)),
+      tx.delete(calendarEvents).where(eq(calendarEvents.tenantId, tenantId)),
+      tx.delete(inventoryItems).where(eq(inventoryItems.tenantId, tenantId)),
     ]);
   });
   return true;
 }
 
-export async function seedMockProperty(userId: number): Promise<number> {
+export async function seedMockProperty(
+  userId: number,
+  tenantId: number
+): Promise<number> {
   const db = await getDb();
+  const tid = tenantId;
 
   const existing = await db
     .select({ id: properties.id })
     .from(properties)
     .where(
       and(
-        eq(properties.userId, userId),
+        eq(properties.tenantId, tenantId),
         eq(properties.houseName, MOCK_PROPERTY_NAME)
       )
     )
@@ -120,7 +135,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
   } else {
     const [res] = await db
       .insert(properties)
-      .values({ userId, ...mockProperty });
+      .values({ userId, tenantId, ...mockProperty });
     propertyId = (res as any).insertId as number;
   }
 
@@ -174,6 +189,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
       id: nanoid(),
       ...e,
       ownerId: oid,
+      tenantId: tid,
       propertyId: pid,
       attachments: [] as any,
     }))
@@ -186,6 +202,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
       id: repairId,
       ...repairCore,
       ownerId: oid,
+      tenantId: tid,
       propertyId: pid,
       attachments: [] as any,
     });
@@ -217,6 +234,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
       id: upgradeId,
       ...upgradeCore,
       ownerId: oid,
+      tenantId: tid,
       propertyId: pid,
       attachments: [] as any,
     });
@@ -256,6 +274,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
       ...loanCore,
       attachments: [] as any,
       ownerId: oid,
+      tenantId: tid,
       propertyId: pid,
     });
     if (repayments?.length) {
@@ -271,6 +290,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
       ...w,
       attachments: [] as any,
       ownerId: oid,
+      tenantId: tid,
       propertyId: pid,
     }))
   );
@@ -281,6 +301,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
       ...c,
       attachments: [] as any,
       ownerId: oid,
+      tenantId: tid,
       propertyId: pid,
     }))
   );
@@ -290,6 +311,7 @@ export async function seedMockProperty(userId: number): Promise<number> {
       id: nanoid(),
       ...e,
       ownerId: oid,
+      tenantId: tid,
       propertyId: pid,
     }))
   );
@@ -299,13 +321,14 @@ export async function seedMockProperty(userId: number): Promise<number> {
       id: nanoid(),
       ...item,
       ownerId: oid,
+      tenantId: tid,
       propertyId: pid,
     }))
   );
 
   // Seed the extra demo properties (owned-and-rented-out, rented) so the
   // redesigned Portfolio shows all three modes. Idempotent by houseName.
-  await seedExtraProperties(userId);
+  await seedExtraProperties(userId, tenantId);
 
   return propertyId;
 }
@@ -316,7 +339,10 @@ export async function seedMockProperty(userId: number): Promise<number> {
  * replaced on every run. Best-effort: failures here never block the primary
  * seed (already returned by the caller).
  */
-async function seedExtraProperties(userId: number): Promise<void> {
+async function seedExtraProperties(
+  userId: number,
+  tenantId: number
+): Promise<void> {
   const db = await getDb();
 
   for (const bundle of mockExtraProperties) {
@@ -325,7 +351,7 @@ async function seedExtraProperties(userId: number): Promise<void> {
       .from(properties)
       .where(
         and(
-          eq(properties.userId, userId),
+          eq(properties.tenantId, tenantId),
           eq(properties.houseName, bundle.property.houseName as string)
         )
       )
@@ -341,7 +367,7 @@ async function seedExtraProperties(userId: number): Promise<void> {
     } else {
       const [res] = await db
         .insert(properties)
-        .values({ userId, ...bundle.property });
+        .values({ userId, tenantId, ...bundle.property });
       pid = (res as any).insertId as number;
     }
 
@@ -359,6 +385,7 @@ async function seedExtraProperties(userId: number): Promise<void> {
           ...e,
           attachments: [] as any,
           ownerId: userId,
+          tenantId,
           propertyId: pid,
         }))
       );
@@ -370,6 +397,7 @@ async function seedExtraProperties(userId: number): Promise<void> {
           ...l,
           attachments: [] as any,
           ownerId: userId,
+          tenantId,
           propertyId: pid,
         }))
       );
@@ -381,6 +409,7 @@ async function seedExtraProperties(userId: number): Promise<void> {
           ...c,
           attachments: [] as any,
           ownerId: userId,
+          tenantId,
           propertyId: pid,
         }))
       );

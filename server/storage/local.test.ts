@@ -60,6 +60,19 @@ describe("localBackend", () => {
     expect(got.equals(body)).toBe(true);
   });
 
+  it("prefixes the key with tenant/<id>/ when a tenant is provided", async () => {
+    const body = Buffer.from("scoped");
+    const { externalId } = await localBackend.upload(body, {
+      ...meta,
+      tenantId: 42,
+    });
+    expect(externalId.startsWith("tenant/42/7/")).toBe(true);
+    // Round-trips through download via the stored key.
+    const result = await localBackend.download(externalId);
+    if (result.kind !== "stream") throw new Error("expected stream");
+    expect((await streamToBuffer(result.stream)).toString()).toBe("scoped");
+  });
+
   it("delete removes the file and is idempotent (ENOENT swallowed)", async () => {
     const { externalId } = await localBackend.upload(Buffer.from("x"), meta);
     const abs = path.join(baseDir, externalId);

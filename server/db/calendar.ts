@@ -31,21 +31,25 @@ export async function createCalendarEvent(
 
 export async function updateCalendarEvent(
   id: string,
-  ownerId: number,
+  tenantId: number,
   data: Partial<CalendarEvent>
 ) {
   const db = await getDb();
   await db
     .update(calendarEvents)
     .set(data)
-    .where(and(eq(calendarEvents.id, id), eq(calendarEvents.ownerId, ownerId)));
+    .where(
+      and(eq(calendarEvents.id, id), eq(calendarEvents.tenantId, tenantId))
+    );
   return data;
 }
 
-export async function deleteCalendarEvent(id: string, ownerId: number) {
+export async function deleteCalendarEvent(id: string, tenantId: number) {
   const db = await getDb();
   await db
     .delete(calendarEvents)
-    .where(and(eq(calendarEvents.id, id), eq(calendarEvents.ownerId, ownerId)));
+    .where(
+      and(eq(calendarEvents.id, id), eq(calendarEvents.tenantId, tenantId))
+    );
   return true;
 }

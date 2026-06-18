@@ -9,6 +9,7 @@ import { logger } from "./_core/logger";
 import { buildContentDisposition } from "./_core/rfc8187";
 import { getDb } from "./db/client";
 import { files } from "../drizzle/schema";
+import { hasCapability } from "./db/entitlements";
 import { getBackendByName } from "./storage";
 import {
   StorageNotConfiguredError,
@@ -48,6 +49,17 @@ router.get("/api/export/files.zip", async (req: Request, res: Response) => {
   const ctx = await createContext({ req, res } as any);
   if (!ctx.user) {
     res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  if (
+    ctx.tenantId != null &&
+    !(await hasCapability(ctx.tenantId, "data.export"))
+  ) {
+    res.status(403).json({
+      error: "Your plan does not include data export.",
+      code: "CAPABILITY_REQUIRED",
+      capability: "data.export",
+    });
     return;
   }
   const userId = ctx.user.id;

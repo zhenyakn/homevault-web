@@ -26,8 +26,10 @@ import NotificationCenter from "@/components/NotificationCenter";
 import MobileTabBar from "@/components/MobileTabBar";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
+import { TenantSwitcherSection } from "@/components/TenantSwitcher";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
+import { useCapabilities } from "@/hooks/useCapabilities";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTranslation } from "react-i18next";
@@ -51,10 +53,13 @@ import {
   Receipt,
   Search,
   Settings,
+  Shield,
   ShoppingCart,
   Sun,
   TrendingUp,
+  Users,
   Wrench,
+  CreditCard,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -104,7 +109,11 @@ const NAV_GROUPS: NavGroup[] = [
   },
   {
     labelKey: "nav.group.account",
-    items: [{ icon: Settings, key: "nav.settings", path: "/settings" }],
+    items: [
+      { icon: Users, key: "nav.members", path: "/members" },
+      { icon: CreditCard, key: "nav.plan", path: "/plan" },
+      { icon: Settings, key: "nav.settings", path: "/settings" },
+    ],
   },
 ];
 
@@ -127,6 +136,9 @@ const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
     sectionKey: "nav.group.search",
     pageKey: "nav.apartmentSearch",
   },
+  "/members": { sectionKey: "nav.group.account", pageKey: "nav.members" },
+  "/plan": { sectionKey: "nav.group.account", pageKey: "nav.plan" },
+  "/admin": { sectionKey: "nav.group.account", pageKey: "nav.admin" },
   "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
 };
 
@@ -354,23 +366,37 @@ function DashboardLayoutContent({
   const isMobile = useIsMobile();
 
   const { data: profiles } = trpc.profiles.list.useQuery();
+  // Billing/plan UI is hosted-only — hidden on standalone (e.g. HA add-on).
+  const { isSaas } = useCapabilities();
 
   const handleSearchOpen = () => {
     onSearchOpen?.();
   };
 
+  // Server-wide admins get an extra Admin console entry in the Account group.
+  const isSuperAdmin =
+    user?.globalRole === "superadmin";
+
   // Portfolio is the home for all property settings, so it's always in the nav.
-  const navGroups: NavGroup[] = NAV_GROUPS.map(g =>
-    g.labelKey === "nav.group.overview"
-      ? {
-          ...g,
-          items: [
-            ...g.items,
-            { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
-          ],
-        }
-      : g
-  );
+  const navGroups: NavGroup[] = NAV_GROUPS.map(g => {
+    if (g.labelKey === "nav.group.overview") {
+      return {
+        ...g,
+        items: [
+          ...g.items,
+          { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
+        ],
+      };
+    }
+    if (g.labelKey === "nav.group.account") {
+      let items = isSaas ? g.items : g.items.filter(i => i.path !== "/plan");
+      if (isSuperAdmin) {
+        items = [{ icon: Shield, key: "nav.admin", path: "/admin" }, ...items];
+      }
+      return { ...g, items };
+    }
+    return g;
+  });
 
   // Breadcrumb lookup
   const pathKey =
@@ -558,6 +584,7 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
+                <TenantSwitcherSection />
                 {profiles && profiles.length > 1 && (
                   <>
                     <div className="px-2 py-1.5">

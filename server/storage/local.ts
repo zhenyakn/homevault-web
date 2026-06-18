@@ -64,7 +64,11 @@ function resolveSafe(baseDir: string, externalId: string): string {
   return abs;
 }
 
-function buildKey(ownerUserId: number, originalName: string): string {
+function buildKey(
+  ownerUserId: number,
+  originalName: string,
+  tenantId?: number | null
+): string {
   // 8-char random suffix prevents collisions when the same name is uploaded
   // twice (matches the S3 backend's buildKey).
   const hash = crypto.randomBytes(4).toString("hex");
@@ -74,7 +78,10 @@ function buildKey(ownerUserId: number, originalName: string): string {
     lastDot === -1
       ? `${safe}_${hash}`
       : `${safe.slice(0, lastDot)}_${hash}${safe.slice(lastDot)}`;
-  return `${ownerUserId}/${Date.now()}_${stamped}`;
+  // Per-tenant isolation prefix for new uploads. Existing objects keep their
+  // un-prefixed key (resolved via the stored externalId), so no re-keying.
+  const prefix = tenantId != null ? `tenant/${tenantId}/` : "";
+  return `${prefix}${ownerUserId}/${Date.now()}_${stamped}`;
 }
 
 /**
@@ -143,7 +150,7 @@ export const localBackend: StorageBackend = {
 
   async upload(buffer: Buffer, meta: UploadMeta) {
     const baseDir = await resolveBaseDir();
-    const key = buildKey(meta.ownerUserId, meta.originalName);
+    const key = buildKey(meta.ownerUserId, meta.originalName, meta.tenantId);
     const abs = resolveSafe(baseDir, key);
     try {
       await mkdir(path.dirname(abs), { recursive: true });

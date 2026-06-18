@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { like, and, eq, or } from "drizzle-orm";
-import { protectedProcedure, router } from "./_core/trpc";
+import { tenantProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import {
   expenses,
@@ -12,7 +12,7 @@ import {
 } from "../drizzle/schema";
 
 export const searchRouter = router({
-  global: protectedProcedure
+  global: tenantProcedure
     .input(
       z.object({
         query: z.string().min(1).max(100),
@@ -21,12 +21,14 @@ export const searchRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const { query, propertyId } = input;
-      const userId = ctx.user.id;
+      const tenantId = ctx.tenantId;
       const db = (await getDb())!;
       const pattern = `%${query}%`;
 
-      const scopeFilter = (table: { ownerId: any; propertyId: any }) =>
-        and(eq(table.ownerId, userId), eq(table.propertyId, propertyId));
+      // Scope by the active tenant (shared access) + the requested property. A
+      // propertyId outside the tenant simply yields no rows (tenantId mismatch).
+      const scopeFilter = (table: { tenantId: any; propertyId: any }) =>
+        and(eq(table.tenantId, tenantId), eq(table.propertyId, propertyId));
 
       const [
         expenseRows,

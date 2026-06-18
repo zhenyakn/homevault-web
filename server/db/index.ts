@@ -1,6 +1,14 @@
 export { getDb, parseJsonArray } from "./client";
 export * from "./appSettings";
 export * from "./users";
+export * from "./tenants";
+export * from "./credentials";
+export * from "./audit";
+export * from "./admin";
+export * from "./billing";
+export * from "./plans";
+export * from "./entitlements";
+export * from "./tenantLifecycle";
 export * from "./properties";
 export * from "./expenses";
 export * from "./repairs";

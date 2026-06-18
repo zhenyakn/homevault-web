@@ -30,6 +30,16 @@ export const systemRouter = router({
     noAuth: ENV.noAuth,
   })),
 
+  // Public bootstrap flags the signed-out client needs before there's a user:
+  // the deployment mode (mirrored like NO_AUTH, since VITE_* vars are empty in
+  // the pre-built image) and whether open self-registration is offered. Both
+  // honour the admin-set app_settings override over the env default.
+  config: publicProcedure.query(async () => ({
+    noAuth: ENV.noAuth,
+    appMode: await db.getAppMode(),
+    signupsEnabled: await db.getSignupsEnabled(),
+  })),
+
   // The Google Maps JS API key the frontend should load with. It's a public,
   // referrer-restricted browser key, so it's safe to hand to any signed-in user
   // (the map embeds it in the page anyway). Returns null when none is set, in

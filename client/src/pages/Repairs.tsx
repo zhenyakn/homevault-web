@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { useFeatureGuard } from "@/hooks/useCapabilities";
 
 type Repair = RouterOutputs["repairs"]["list"][number];
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -346,7 +347,9 @@ export default function Repairs() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const exportGuard = useFeatureGuard();
   const handleExportCSV = () => {
+    if (exportGuard("data.export", t("common.exportCsv"))) return;
     if (!repairs.length) {
       toast.error(t("repairs.nothingToExport"));
       return;

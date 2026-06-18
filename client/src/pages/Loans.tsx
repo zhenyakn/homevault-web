@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trpc, type RouterOutputs } from "@/lib/trpc";
+import { useFeatureGuard } from "@/hooks/useCapabilities";
 
 type Loan = RouterOutputs["loans"]["list"][number];
 type Repayment = { date: string; amount: number };
@@ -214,7 +215,9 @@ export default function Loans() {
     });
   };
 
+  const exportGuard = useFeatureGuard();
   const handleExportCSV = () => {
+    if (exportGuard("data.export", t("common.exportCsv"))) return;
     if (!loans || loans.length === 0) {
       toast.error(t("loans.nothingToExport"));
       return;
