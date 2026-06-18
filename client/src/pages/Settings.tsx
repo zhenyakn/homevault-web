@@ -26,10 +26,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
-import {
-  useSidebarPrefs,
-  ALWAYS_VISIBLE_NAV_KEYS,
-} from "@/contexts/SidebarPrefsContext";
+import { useSidebarPrefs } from "@/contexts/SidebarPrefsContext";
+import { isNavKeyLocked } from "@/lib/sidebarPrefs";
 import { NAV_GROUPS as SIDEBAR_NAV_GROUPS } from "@/components/DashboardLayout";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
@@ -2852,9 +2850,6 @@ function AppearanceSection() {
     { value: "system", label: t("settings.themeSystem"), icon: Monitor },
   ] as const;
 
-  const isLocked = (key: string) =>
-    (ALWAYS_VISIBLE_NAV_KEYS as readonly string[]).includes(key);
-
   return (
     <div className="space-y-5">
       <SectionHeader
@@ -2882,7 +2877,7 @@ function AppearanceSection() {
           {SIDEBAR_NAV_GROUPS.map(group => (
             <Group key={group.labelKey} label={t(group.labelKey)}>
               {group.items.map(item => {
-                const locked = isLocked(item.key);
+                const locked = isNavKeyLocked(item.key);
                 return (
                   <Row
                     key={item.key}

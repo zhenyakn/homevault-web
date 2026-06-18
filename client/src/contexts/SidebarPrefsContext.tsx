@@ -1,13 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  isNavKeyVisible,
+  nextHiddenSet,
+  parseHiddenKeys,
+} from "@/lib/sidebarPrefs";
 
-/**
- * Nav items the user can never hide from the hamburger sidebar. Settings must
- * always be reachable so the visibility controls themselves can't lock the user
- * out of the very page that manages them.
- */
-export const ALWAYS_VISIBLE_NAV_KEYS = ["nav.settings"] as const;
-
-const ALWAYS_VISIBLE_SET = new Set<string>(ALWAYS_VISIBLE_NAV_KEYS);
+export { ALWAYS_VISIBLE_NAV_KEYS } from "@/lib/sidebarPrefs";
 
 interface SidebarPrefsContextType {
   /** Whether a nav item (by its i18n key) should appear in the sidebar. */
@@ -22,19 +20,6 @@ const SidebarPrefsContext = createContext<SidebarPrefsContextType | undefined>(
 
 const STORAGE_KEY = "homevault-sidebar-hidden";
 
-function readStored(): string[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed.filter((k): k is string => typeof k === "string")
-      : [];
-  } catch {
-    return [];
-  }
-}
-
 export function SidebarPrefsProvider({
   children,
 }: {
@@ -42,9 +27,13 @@ export function SidebarPrefsProvider({
 }) {
   // Stores the set of *hidden* nav keys; everything else is visible by default
   // so new sections show up automatically without a migration.
-  const [hidden, setHidden] = useState<Set<string>>(
-    () => new Set(readStored())
-  );
+  const [hidden, setHidden] = useState<Set<string>>(() => {
+    try {
+      return new Set(parseHiddenKeys(localStorage.getItem(STORAGE_KEY)));
+    } catch {
+      return new Set();
+    }
+  });
 
   useEffect(() => {
     try {
@@ -54,18 +43,10 @@ export function SidebarPrefsProvider({
     }
   }, [hidden]);
 
-  const isVisible = (key: string) =>
-    ALWAYS_VISIBLE_SET.has(key) || !hidden.has(key);
+  const isVisible = (key: string) => isNavKeyVisible(hidden, key);
 
-  const setVisible = (key: string, visible: boolean) => {
-    if (ALWAYS_VISIBLE_SET.has(key)) return;
-    setHidden(prev => {
-      const next = new Set(prev);
-      if (visible) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
+  const setVisible = (key: string, visible: boolean) =>
+    setHidden(prev => nextHiddenSet(prev, key, visible));
 
   return (
     <SidebarPrefsContext.Provider value={{ isVisible, setVisible }}>

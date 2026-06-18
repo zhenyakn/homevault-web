@@ -27,6 +27,7 @@ import MobileTabBar from "@/components/MobileTabBar";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useSidebarPrefs } from "@/contexts/SidebarPrefsContext";
+import { filterNavGroups } from "@/lib/sidebarPrefs";
 import { TenantSwitcherSection } from "@/components/TenantSwitcher";
 import { useIsMobile } from "@/hooks/useMobile";
 import { trpc } from "@/lib/trpc";
@@ -398,10 +399,10 @@ function DashboardLayoutContent({
       return { ...g, items };
     }
     return g;
-  })
-    // Apply the user's per-item visibility prefs, then drop now-empty groups.
-    .map(g => ({ ...g, items: g.items.filter(i => isVisible(i.key)) }))
-    .filter(g => g.items.length > 0);
+  });
+
+  // Apply the user's per-item visibility prefs, then drop now-empty groups.
+  const visibleNavGroups = filterNavGroups(navGroups, isVisible);
 
   // Breadcrumb lookup
   const pathKey =
@@ -504,7 +505,7 @@ function DashboardLayoutContent({
 
           {/* ── Nav groups ───────────────────────────────────────────── */}
           <SidebarContent className="gap-0">
-            {navGroups.map(group => (
+            {visibleNavGroups.map(group => (
               <div key={group.labelKey} className="mb-1">
                 {!isCollapsed && (
                   <p className="px-4 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
