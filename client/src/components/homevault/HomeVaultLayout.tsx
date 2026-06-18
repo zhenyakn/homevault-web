@@ -38,6 +38,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  CreditCard,
   DollarSign,
   FileText,
   Heart,
@@ -154,6 +155,7 @@ const PAGE_META: Record<string, { sectionKey: string; pageKey: string }> = {
     sectionKey: "nav.group.search",
     pageKey: "nav.apartmentSearch",
   },
+  "/plan": { sectionKey: "nav.group.account", pageKey: "nav.plan" },
   "/settings": { sectionKey: "nav.group.account", pageKey: "nav.settings" },
 };
 
@@ -401,6 +403,7 @@ function DashboardLayoutContent({
   const navItems: HVNavItem[] = [
     ...HV_NAV,
     { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
+    { icon: CreditCard, key: "nav.plan", path: "/plan" },
     { icon: Settings, key: "nav.settings", path: "/settings" },
   ];
 
