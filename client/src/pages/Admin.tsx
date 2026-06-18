@@ -359,6 +359,7 @@ function TenantsTab() {
             </div>
             <TenantLimitsEditor
               tenantId={t.id}
+              name={t.name}
               maxProperties={t.maxProperties}
               maxMembers={t.maxMembers}
             />
@@ -369,19 +370,22 @@ function TenantsTab() {
   );
 }
 
-/** Inline editor for a tenant's quotas. Empty input = unlimited (null). */
+/** Inline editor for a tenant's quotas + GDPR export / delete actions. */
 function TenantLimitsEditor({
   tenantId,
+  name,
   maxProperties,
   maxMembers,
 }: {
   tenantId: number;
+  name: string;
   maxProperties: number | null;
   maxMembers: number | null;
 }) {
   const utils = trpc.useUtils();
   const [props, setProps] = useState(maxProperties?.toString() ?? "");
   const [members, setMembers] = useState(maxMembers?.toString() ?? "");
+  const [exporting, setExporting] = useState(false);
   const save = trpc.admin.tenants.setLimits.useMutation({
     onSuccess: () => {
       utils.admin.tenants.list.invalidate();
@@ -389,12 +393,48 @@ function TenantLimitsEditor({
     },
     onError: e => toast.error(errMessage(e)),
   });
+  const del = trpc.admin.tenants.delete.useMutation({
+    onSuccess: () => {
+      utils.admin.tenants.list.invalidate();
+      utils.admin.stats.invalidate();
+      toast.success("Workspace deleted");
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
   const parse = (s: string) => {
     const n = parseInt(s, 10);
     return Number.isFinite(n) && n >= 0 ? n : null;
   };
+  const onExport = async () => {
+    setExporting(true);
+    try {
+      const data = await utils.admin.tenants.export.fetch({ tenantId });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `workspace-${tenantId}-export.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error(errMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  };
+  const onDelete = () => {
+    if (
+      window.confirm(
+        `Permanently delete "${name}" and ALL its data? This cannot be undone.`
+      )
+    ) {
+      del.mutate({ tenantId, confirm: true });
+    }
+  };
   return (
-    <div className="flex items-center gap-2 mt-2">
+    <div className="flex flex-wrap items-center gap-2 mt-2">
       <span className="text-xs text-muted-foreground">Limits</span>
       <Input
         type="number"
@@ -425,6 +465,24 @@ function TenantLimitsEditor({
         }
       >
         Save
+      </Button>
+      <span className="mx-1 h-4 w-px bg-border" />
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={exporting}
+        onClick={onExport}
+      >
+        Export
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="text-destructive hover:text-destructive"
+        disabled={del.isPending}
+        onClick={onDelete}
+      >
+        Delete
       </Button>
     </div>
   );

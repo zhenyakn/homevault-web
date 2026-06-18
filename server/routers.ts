@@ -22,7 +22,12 @@ import { sendVerificationEmail, sendPasswordResetEmail } from "./auth/email";
 import { clearNoAuthUserCache } from "./_core/context";
 import { systemRouter } from "./_core/systemRouter";
 import { notificationRouter } from "./notificationRouter";
-import { publicProcedure, tenantProcedure, router } from "./_core/trpc";
+import {
+  publicProcedure,
+  tenantProcedure,
+  tenantAdminProcedure,
+  router,
+} from "./_core/trpc";
 import { ENV } from "./_core/env";
 import {
   rateLimitHit,
@@ -851,6 +856,12 @@ export const appRouter = router({
   }),
 
   data: router({
+    // Full workspace export (all properties + entities + members), for the
+    // tenant's own owner/admin — GDPR data portability, self-service.
+    exportTenant: tenantAdminProcedure.query(async ({ ctx }) => {
+      return await db.exportTenantData(ctx.tenantId);
+    }),
+
     exportAll: tenantProcedure.query(async ({ ctx }) => {
       const pid = ctx.propertyId;
       const tid = ctx.tenantId;

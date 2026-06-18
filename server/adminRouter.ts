@@ -108,6 +108,47 @@ export const adminRouter = router({
         return db.getMembersOfTenant(input.tenantId);
       }),
 
+    // GDPR data portability: full export of a tenant's data (admin).
+    export: superAdminProcedure
+      .input(z.object({ tenantId: z.number().int() }))
+      .query(async ({ ctx, input }) => {
+        const data = await db.exportTenantData(input.tenantId);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          tenantId: input.tenantId,
+          action: "admin.tenant.exported",
+          targetType: "tenant",
+          targetId: String(input.tenantId),
+        });
+        return data;
+      }),
+
+    // GDPR erasure: hard-delete a tenant and everything scoped to it. Requires
+    // an explicit confirm flag; users (who may belong to other tenants) are not
+    // deleted, only their membership here.
+    delete: superAdminProcedure
+      .input(
+        z.object({ tenantId: z.number().int(), confirm: z.literal(true) })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const tenant = await db.getTenantById(input.tenantId);
+        if (!tenant) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Workspace not found",
+          });
+        }
+        await db.deleteTenantCascade(input.tenantId);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.tenant.deleted",
+          targetType: "tenant",
+          targetId: String(input.tenantId),
+          metadata: { name: tenant.name },
+        });
+        return { success: true as const };
+      }),
+
     // Set per-tenant quotas. null clears a limit (unlimited).
     setLimits: superAdminProcedure
       .input(

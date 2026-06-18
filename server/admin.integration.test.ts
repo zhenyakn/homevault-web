@@ -4,6 +4,7 @@
  * TEST_DATABASE_URL is set.
  */
 import { describe, it, expect, beforeAll } from "vitest";
+import { eq } from "drizzle-orm";
 
 const TEST_DB = process.env.TEST_DATABASE_URL;
 
@@ -256,5 +257,51 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     await expect(
       admin.admin.billing.assignPlan({ tenantId: tid, planId: "enterprise" })
     ).rejects.toThrow(/unknown plan/i);
+  });
+
+  it("exports a tenant's data then hard-deletes it (cascade)", async () => {
+    const sid = await mkUser("gdpr-owner", "superadmin");
+    const tenantsDb = await import("./db/tenants");
+    const tid = await tenantsDb.createTenantWithOwner(sid, "Erasable");
+    const admin = appRouter.createCaller(ctxFor(sid, "superadmin"));
+    const owner = appRouter.createCaller(ownerCtx(sid, tid));
+
+    // Seed a property + an expense under it.
+    const created: any = await owner.property.create({ houseName: "House A" });
+    const propertyId = created.insertId ?? created.id ?? created;
+    const db = await getDb();
+    await db.insert(schema.expenses).values({
+      id: `exp-${Date.now()}`,
+      tenantId: tid,
+      propertyId,
+      ownerId: sid,
+      name: "Test expense",
+      amount: "10.00",
+      date: "2026-06-18",
+    });
+
+    // Export includes the seeded rows + the membership roster.
+    const dump = await admin.admin.tenants.export({ tenantId: tid });
+    expect(dump.tenant?.id).toBe(tid);
+    expect(dump.properties.length).toBeGreaterThanOrEqual(1);
+    expect(dump.expenses.length).toBeGreaterThanOrEqual(1);
+    expect(dump.members.length).toBeGreaterThanOrEqual(1);
+
+    // Delete requires the confirm flag.
+    await admin.admin.tenants.delete({ tenantId: tid, confirm: true });
+
+    // Tenant + its scoped rows are gone; the user (sid) survives.
+    expect(await tenantsDb.getTenantById(tid)).toBeUndefined();
+    expect(await tenantsDb.countPropertiesForTenant(tid)).toBe(0);
+    const remainingExpenses = await db
+      .select()
+      .from(schema.expenses)
+      .where(eq(schema.expenses.tenantId, tid));
+    expect(remainingExpenses).toHaveLength(0);
+    const stillUser = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, sid));
+    expect(stillUser).toHaveLength(1);
   });
 });

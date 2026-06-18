@@ -6,6 +6,7 @@ export * from "./credentials";
 export * from "./audit";
 export * from "./admin";
 export * from "./billing";
+export * from "./tenantLifecycle";
 export * from "./properties";
 export * from "./expenses";
 export * from "./repairs";
