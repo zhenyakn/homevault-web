@@ -59,7 +59,7 @@
       "account": "Account",
       "search": "Search"
     },
-    "apartmentSearch": "Apartment Search",
+    "apartmentSearch": "Property Search",
     "admin": "Admin"
   },
   "tenant": {
@@ -1215,7 +1215,7 @@
     "deleteConfirm": "Delete this inventory item?"
   },
   "apartmentSearch": {
-    "title": "Apartment Search",
+    "title": "Property Search",
     "subtitle": "Track places you're considering — to rent or to buy.",
     "newSearch": "New search",
     "searchName": "Search name",
@@ -1230,7 +1230,7 @@
     "candidateCount": "{{n}} candidates",
     "statusCompleted": "Completed",
     "emptyTitle": "No searches yet",
-    "emptyBody": "Start a search to collect and compare apartments you're considering — for rent or purchase.",
+    "emptyBody": "Start a search to collect and compare properties you're considering — for rent or purchase.",
     "addCandidate": "Add candidate",
     "editCandidate": "Edit candidate",
     "candidateAdded": "Candidate added",
@@ -1256,7 +1256,7 @@
     "favorites": "Favorites",
     "accepted": "Accepted",
     "noCandidatesTitle": "No candidates yet",
-    "noCandidatesBody": "Add the first apartment you're considering.",
+    "noCandidatesBody": "Add the first property you're considering.",
     "stage": {
       "saved": "Saved",
       "viewing_scheduled": "Viewing set",
@@ -1276,7 +1276,7 @@
     "pass": "Pass",
     "reconsider": "Reconsider",
     "deleteCandidateConfirm": "Delete this candidate?",
-    "convertedToast": "Property created from this apartment",
+    "convertedToast": "Converted to a property",
     "alreadyConverted": "This candidate has been added to your properties.",
     "technicalDetails": "Technical details",
     "propertyType": "Property type",
@@ -1286,7 +1286,7 @@
     "rate": "Rate",
     "clearScore": "Clear score",
     "attachmentsHint": "Photos, floor plans, a draft contract, listing PDFs…",
-    "lockedTitle": "Apartment search is a premium feature",
-    "lockedBody": "Upgrade your plan to save and track apartment searches."
+    "lockedTitle": "Property search is a premium feature",
+    "lockedBody": "Upgrade your plan to save and track property searches."
   }
 }
