@@ -254,3 +254,34 @@ export async function setEmailVerificationGraceHours(
   const n = Math.max(0, Math.floor(hours));
   await setSetting(EMAIL_VERIFICATION_GRACE_HOURS_KEY, String(n));
 }
+
+const ALLOWED_EMAIL_DOMAINS_KEY = "auth.allowedEmailDomains";
+
+/**
+ * Domains permitted for open (un-invited) self-registration, e.g.
+ * `["acme.com","contoso.com"]`. Empty = no restriction. Stored as a
+ * comma-separated string; always normalised to lowercase, bare domains.
+ */
+export async function getAllowedEmailDomains(): Promise<string[]> {
+  const v = await getSetting(ALLOWED_EMAIL_DOMAINS_KEY);
+  if (!v) return [];
+  return v
+    .split(",")
+    .map(d => d.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export async function setAllowedEmailDomains(domains: string[]): Promise<void> {
+  const normalized = domains
+    .map(d => d.trim().toLowerCase().replace(/^@/, ""))
+    .filter(Boolean);
+  await setSetting(ALLOWED_EMAIL_DOMAINS_KEY, normalized.join(","));
+}
+
+/** Whether an email's domain is allowed under the current allowlist (empty = all). */
+export async function isEmailDomainAllowed(email: string): Promise<boolean> {
+  const allowed = await getAllowedEmailDomains();
+  if (allowed.length === 0) return true;
+  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+  return allowed.includes(domain);
+}

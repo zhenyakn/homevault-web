@@ -700,4 +700,117 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
       appRouter.createCaller(wrongCtx).tenant.invites.accept({ token: tok.raw })
     ).rejects.toThrow(/different email/i);
   });
+
+  it("enforces the email-domain allowlist on open registration", async () => {
+    const adminId = await mkUser("domain-admin", "superadmin");
+    const admin = appRouter.createCaller(ctxFor(adminId, "superadmin"));
+    const adminDb = await import("./db/admin");
+    const prevSignups = await adminDb.getSignupsEnabled();
+    await adminDb.setSignupsEnabled(true);
+    await admin.admin.config.setAllowedEmailDomains({ domains: ["allowed.com"] });
+    try {
+      // Wrong domain is refused…
+      await expect(
+        appRouter.createCaller(anonCtx()).auth.register({
+          email: `nope-${Date.now()}@blocked.com`,
+          password: "supersecret1",
+        })
+      ).rejects.toThrow(/email domain/i);
+      // …an allowed domain goes through.
+      await expect(
+        appRouter.createCaller(anonCtx()).auth.register({
+          email: `ok-${Date.now()}@allowed.com`,
+          password: "supersecret1",
+        })
+      ).resolves.toEqual({ success: true });
+    } finally {
+      await admin.admin.config.setAllowedEmailDomains({ domains: [] });
+      await adminDb.setSignupsEnabled(prevSignups);
+    }
+  });
+
+  it("lets a user change their own email (requires the password)", async () => {
+    const adminId = await mkUser("ce-admin", "superadmin");
+    const admin = appRouter.createCaller(ctxFor(adminId, "superadmin"));
+    const email = `ce-${Date.now()}@example.com`;
+    const { userId } = await admin.admin.users.create({
+      email,
+      password: "originalpw1",
+    });
+    const user = { id: userId, openId: "", email, globalRole: "user" };
+    const db = await getDb();
+    const [row] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, userId));
+    user.openId = row.openId;
+    const selfCtx = {
+      user,
+      propertyId: 1,
+      tenantId: null,
+      tenantRole: null,
+      req: { headers: {}, protocol: "https" },
+      res: { cookie: () => {}, clearCookie: () => {} },
+    } as any;
+    const caller = appRouter.createCaller(selfCtx);
+
+    // Wrong password is refused.
+    await expect(
+      caller.auth.changeEmail({
+        currentPassword: "wrong",
+        newEmail: `new-${Date.now()}@example.com`,
+      })
+    ).rejects.toThrow();
+
+    const newEmail = `new-${Date.now()}@example.com`;
+    await caller.auth.changeEmail({
+      currentPassword: "originalpw1",
+      newEmail,
+    });
+    const credsDb = await import("./db/credentials");
+    const cred = await credsDb.getCredentialByEmail(newEmail);
+    expect(cred?.userId).toBe(userId);
+    expect(cred?.emailVerifiedAt).toBeNull(); // re-verification required
+  });
+
+  it("self-deletes an account and cascades its sole-owned workspace", async () => {
+    const adminId = await mkUser("sd-admin", "superadmin");
+    const admin = appRouter.createCaller(ctxFor(adminId, "superadmin"));
+    const email = `sd-${Date.now()}@example.com`;
+    const { userId } = await admin.admin.users.create({
+      email,
+      password: "delete-me-1",
+      tenantName: "ToErase",
+    });
+    const db = await getDb();
+    const [row] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, userId));
+    const tenantsDb = await import("./db/tenants");
+    const owned = await tenantsDb.getTenantsForUser(userId);
+    expect(owned.length).toBe(1);
+    const tid = owned[0].id;
+
+    const selfCtx = {
+      user: { id: userId, openId: row.openId, email, globalRole: "user" },
+      propertyId: 1,
+      tenantId: tid,
+      tenantRole: "owner",
+      tenantStatus: "active",
+      req: { headers: {}, protocol: "https" },
+      res: { cookie: () => {}, clearCookie: () => {} },
+    } as any;
+    const caller = appRouter.createCaller(selfCtx);
+
+    await caller.auth.deleteMe({ confirm: true, password: "delete-me-1" });
+
+    // The user and their sole-owned workspace are gone.
+    const stillUser = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, userId));
+    expect(stillUser).toHaveLength(0);
+    expect(await tenantsDb.getTenantById(tid)).toBeUndefined();
+  });
 });

@@ -15,6 +15,7 @@ import { sdk } from "./_core/sdk";
 import {
   hashPassword,
   verifyPassword,
+  needsRehash,
   generateToken,
   hashToken,
 } from "./auth/password";
@@ -46,6 +47,7 @@ import {
   deleteFileForOwner,
   reapOrphanedFiles,
   buildProxyUrl,
+  purgeTenantFileObjects,
 } from "./files";
 import { logger } from "./_core/logger";
 import { searchRouter } from "./searchRouter";
@@ -594,6 +596,18 @@ export const appRouter = router({
           });
         }
 
+        // Optional email-domain allowlist for open signups (invited users
+        // bypass — the invite is the authorization).
+        if (
+          !input.inviteToken &&
+          !(await db.isEmailDomainAllowed(input.email))
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Registration isn't allowed for this email domain",
+          });
+        }
+
         // When joining via an invite, validate it before creating anything so a
         // bad/expired token doesn't leave a tenantless account behind.
         const invite = input.inviteToken
@@ -693,6 +707,19 @@ export const appRouter = router({
             code: "UNAUTHORIZED",
             message: INVALID_CREDENTIALS_ERR_MSG,
           });
+        }
+        // Transparent hash upgrade: if this credential was stored with a weaker
+        // work factor (or the legacy paramless form), re-hash it now that we
+        // hold the plaintext. Best-effort — never blocks the login.
+        if (needsRehash(cred.passwordHash)) {
+          try {
+            await db.setPasswordHash(
+              cred.userId,
+              await hashPassword(input.password)
+            );
+          } catch {
+            /* non-fatal */
+          }
         }
         const user = await db.getUserById(cred.userId);
         if (!user) {
@@ -829,6 +856,118 @@ export const appRouter = router({
         // the caller stays signed in on the device they changed it from.
         await db.bumpSessionEpoch(ctx.user.id);
         await issueSession(ctx, ctx.user.openId, ctx.user.name ?? "");
+        return { success: true as const };
+      }),
+
+    // Change the email on a local (email/password) account. Requires the
+    // current password, re-runs the uniqueness check, and marks the new address
+    // unverified (re-sending a verification email). Accounts managed by an
+    // external IdP (OAuth) get their email from the provider and are rejected.
+    changeEmail: protectedProcedure
+      .input(
+        z.object({
+          currentPassword: z.string().min(1).max(200),
+          newEmail: emailField,
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const cred = await db.getCredentialByUserId(ctx.user.id);
+        if (!cred) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This account's email is managed by its sign-in provider",
+          });
+        }
+        if (!(await verifyPassword(input.currentPassword, cred.passwordHash))) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: INVALID_CREDENTIALS_ERR_MSG,
+          });
+        }
+        if (input.newEmail !== cred.email) {
+          const taken = await db.getCredentialByEmail(input.newEmail);
+          if (taken) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: EMAIL_TAKEN_ERR_MSG,
+            });
+          }
+        }
+        await db.setCredentialEmail(ctx.user.id, input.newEmail);
+        await db.upsertUser({ openId: ctx.user.openId, email: input.newEmail });
+        await db.markEmailUnverified(ctx.user.id);
+        clearNoAuthUserCache();
+        // Send a fresh verification link to the new address (best-effort).
+        const verify = generateToken();
+        await db.createEmailToken({
+          userId: ctx.user.id,
+          type: "verify_email",
+          tokenHash: verify.hash,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
+        await sendVerificationEmail(input.newEmail, verify.raw);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "user.email_changed",
+          targetType: "user",
+          targetId: String(ctx.user.id),
+        });
+        return { success: true as const };
+      }),
+
+    // Delete your own account. Workspaces you solely own are deleted with it
+    // (cascade, incl. their stored files); shared workspaces just lose your
+    // membership. Requires the current password for local accounts, and is
+    // confirm-gated. The last super-admin can't delete themselves.
+    deleteMe: protectedProcedure
+      .input(
+        z.object({
+          confirm: z.literal(true),
+          password: z.string().max(200).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (
+          ctx.user.globalRole === "superadmin" &&
+          (await db.countSuperAdmins()) <= 1
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "You are the last super-admin. Promote another before deleting your account.",
+          });
+        }
+        // Local accounts must re-enter their password to confirm.
+        const cred = await db.getCredentialByUserId(ctx.user.id);
+        if (cred) {
+          if (
+            !input.password ||
+            !(await verifyPassword(input.password, cred.passwordHash))
+          ) {
+            throw new TRPCError({
+              code: "UNAUTHORIZED",
+              message: INVALID_CREDENTIALS_ERR_MSG,
+            });
+          }
+        }
+        // Cascade-delete the workspaces this user is the only owner of (their
+        // stored objects too), then remove the account; shared memberships are
+        // dropped by deleteUserAccount.
+        const owned = await db.getSoleOwnerTenantIds(ctx.user.id);
+        for (const tenantId of owned) {
+          await purgeTenantFileObjects(tenantId);
+          await db.deleteTenantCascade(tenantId);
+        }
+        await db.deleteUserAccount(ctx.user.id);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "user.self_deleted",
+          targetType: "user",
+          targetId: String(ctx.user.id),
+        });
+        // Clear the session cookie — the account no longer exists.
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
         return { success: true as const };
       }),
   }),

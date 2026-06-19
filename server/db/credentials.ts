@@ -81,6 +81,27 @@ export async function markEmailVerified(userId: number): Promise<void> {
     .where(eq(userCredentials.userId, userId));
 }
 
+/** Clear the verified flag — used when a user changes their email address. */
+export async function markEmailUnverified(userId: number): Promise<void> {
+  const db = await getDb();
+  await db
+    .update(userCredentials)
+    .set({ emailVerifiedAt: null })
+    .where(eq(userCredentials.userId, userId));
+}
+
+/** Update the email on a user's local credential (change-email flow). */
+export async function setCredentialEmail(
+  userId: number,
+  email: string
+): Promise<void> {
+  const db = await getDb();
+  await db
+    .update(userCredentials)
+    .set({ email })
+    .where(eq(userCredentials.userId, userId));
+}
+
 // ── Email / reset tokens ──────────────────────────────────────────────────────
 
 export async function createEmailToken(params: {

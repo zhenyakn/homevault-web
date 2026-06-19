@@ -547,8 +547,23 @@ export const adminRouter = router({
         signupsEnabled: await db.getSignupsEnabled(),
         requireEmailVerification: await db.getRequireEmailVerification(),
         emailVerificationGraceHours: await db.getEmailVerificationGraceHours(),
+        allowedEmailDomains: await db.getAllowedEmailDomains(),
       };
     }),
+
+    // Restrict open self-registration to a set of email domains. Empty list
+    // clears the restriction. Invited users always bypass it.
+    setAllowedEmailDomains: superAdminProcedure
+      .input(z.object({ domains: z.array(z.string().trim()).max(100) }))
+      .mutation(async ({ ctx, input }) => {
+        await db.setAllowedEmailDomains(input.domains);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.config.email_domains",
+          metadata: { count: input.domains.filter(Boolean).length },
+        });
+        return { success: true as const };
+      }),
 
     // Switch a NO_AUTH install between the single auto-admin (admin@local, no
     // login screen) and real per-user email/password login. Guarded so enabling

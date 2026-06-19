@@ -90,6 +90,7 @@ export async function getMembersOfTenant(tenantId: number) {
       role: tenantMembers.role,
       status: tenantMembers.status,
       joinedAt: tenantMembers.joinedAt,
+      lastSignedIn: users.lastSignedIn,
     })
     .from(tenantMembers)
     .innerJoin(users, eq(users.id, tenantMembers.userId))
