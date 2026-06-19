@@ -174,6 +174,33 @@ export async function setAppMode(mode: AppMode): Promise<void> {
   await setSetting(APP_MODE_KEY, mode);
 }
 
+const LOCAL_LOGIN_KEY = "auth.localLoginEnabled";
+
+/**
+ * Whether the admin has switched a NO_AUTH install over to real per-user
+ * (email/password) login. Stored in `app_settings`; defaults to off so existing
+ * single-admin installs are unchanged. Only meaningful when `NO_AUTH=true` —
+ * see {@link isAutoAdminActive}.
+ */
+export async function getLocalLoginEnabled(): Promise<boolean> {
+  return (await getSetting(LOCAL_LOGIN_KEY)) === "true";
+}
+
+export async function setLocalLoginEnabled(enabled: boolean): Promise<void> {
+  await setSetting(LOCAL_LOGIN_KEY, enabled ? "true" : "false");
+}
+
+/**
+ * Whether the NO_AUTH auto-admin (single `admin@local` superadmin, no login
+ * screen) should be active for this request. True only when the `NO_AUTH` env
+ * flag is set AND the admin hasn't opted into real user login. When false on a
+ * NO_AUTH install, the server falls through to normal session-cookie auth.
+ */
+export async function isAutoAdminActive(): Promise<boolean> {
+  if (!ENV.noAuth) return false;
+  return !(await getLocalLoginEnabled());
+}
+
 /**
  * Whether open (un-invited) self-registration is allowed. An explicit admin
  * toggle wins; otherwise the default is mode-driven — open in SAAS (self-serve

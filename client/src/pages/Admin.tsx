@@ -109,8 +109,24 @@ function Overview() {
       onSuccess: () => utils.admin.config.get.invalidate(),
       onError: e => toast.error(errMessage(e)),
     });
+  const setLocalLogin = trpc.admin.config.setLocalLogin.useMutation({
+    onSuccess: (_data, vars) => {
+      if (vars.enabled) {
+        // Enabling drops the auto-admin session; reload so the now-signed-out
+        // client lands on the login screen.
+        toast.success("User login enabled — reloading…");
+        setTimeout(() => window.location.reload(), 900);
+      } else {
+        utils.admin.config.get.invalidate();
+        toast.success("Automatic admin login restored");
+      }
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
   const mode = config.data?.appMode;
   const nextMode = mode === "saas" ? "standalone" : "saas";
+  const localLoginOn = config.data?.localLoginEnabled ?? false;
+  const credentialedAdmins = config.data?.credentialedSuperAdmins ?? 0;
 
   return (
     <div className="space-y-6">
@@ -215,6 +231,63 @@ function Overview() {
           </div>
         </CardContent>
       </Card>
+
+      {config.data?.noAuth && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Sign-in security</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">User login</p>
+                <p className="text-xs text-muted-foreground">
+                  {localLoginOn
+                    ? "On — everyone must sign in with their own email and password."
+                    : "Off — anyone who reaches this server is automatically signed in as a single admin (admin@local) with no password."}
+                </p>
+              </div>
+              <Badge variant={localLoginOn ? "default" : "secondary"}>
+                {localLoginOn ? "User login" : "Auto-admin"}
+              </Badge>
+            </div>
+
+            {!localLoginOn && credentialedAdmins < 1 && (
+              <div className="flex items-start gap-2 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+                <p>
+                  Create a super-admin with a password first (Users → New user →
+                  grant super-admin). Otherwise enabling login would lock you
+                  out of the console.
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                {localLoginOn
+                  ? "Turn this off to restore the automatic admin login."
+                  : "Turn this on once at least one super-admin has a password."}
+              </p>
+              <Button
+                variant={localLoginOn ? "outline" : "default"}
+                size="sm"
+                disabled={
+                  setLocalLogin.isPending ||
+                  config.isLoading ||
+                  (!localLoginOn && credentialedAdmins < 1)
+                }
+                onClick={() => setLocalLogin.mutate({ enabled: !localLoginOn })}
+              >
+                {setLocalLogin.isPending && (
+                  <Loader2 className="w-4 h-4 me-2 animate-spin" />
+                )}
+                {localLoginOn ? "Disable user login" : "Enable user login"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

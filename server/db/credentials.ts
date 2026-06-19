@@ -1,5 +1,6 @@
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import {
+  users,
   userCredentials,
   emailTokens,
   type EmailToken,
@@ -8,6 +9,21 @@ import {
 import { getDb } from "./client";
 
 export type EmailTokenType = EmailToken["type"];
+
+/**
+ * Number of super-admins that have a password credential — i.e. accounts that
+ * could actually sign in if the NO_AUTH auto-admin were switched off. Used to
+ * guard against locking the install out of its own admin console.
+ */
+export async function countCredentialedSuperAdmins(): Promise<number> {
+  const db = await getDb();
+  const rows = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(users)
+    .innerJoin(userCredentials, eq(userCredentials.userId, users.id))
+    .where(eq(users.globalRole, "superadmin"));
+  return Number(rows[0]?.n ?? 0);
+}
 
 export async function getCredentialByEmail(
   email: string
