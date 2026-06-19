@@ -733,8 +733,17 @@
       },
       "telegram": {
         "title": "Telegram-бот",
-        "desc": "Токен бота от @BotFather. Нужен и для двустороннего чата, и для исходящих оповещений. Вступает в силу после перезапуска.",
-        "token": "Токен бота"
+        "desc": "Токен бота от @BotFather. Нужен и для двустороннего чата, и для исходящих оповещений. Сохранение автоматически регистрирует webhook — перезапуск не нужен.",
+        "token": "Токен бота",
+        "webhookActive": "Webhook активен — сообщения принимаются",
+        "webhookPending": "Webhook активен — {{count}} обновлений в очереди",
+        "webhookError": "Ошибка webhook: {{error}}",
+        "webhookInactive": "Webhook не зарегистрирован — команды не дойдут до сервера",
+        "registerWebhook": "Зарегистрировать webhook",
+        "webhookRegistered": "Webhook зарегистрирован в Telegram",
+        "webhookFailedNoUrl": "Не удалось определить публичный URL — задайте его в разделе «Общие»",
+        "webhookFailedNoToken": "Сначала укажите токен бота",
+        "webhookFailed": "Не удалось зарегистрировать webhook: {{error}}"
       },
       "webpush": {
         "title": "Push в браузере (VAPID)",

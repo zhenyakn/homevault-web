@@ -722,8 +722,17 @@
       },
       "telegram": {
         "title": "בוט טלגרם",
-        "desc": "אסימון בוט מ-@BotFather. נדרש גם לצ׳אט דו-כיווני וגם להתראות יוצאות. נכנס לתוקף לאחר הפעלה מחדש.",
-        "token": "אסימון בוט"
+        "desc": "אסימון בוט מ-@BotFather. נדרש גם לצ׳אט דו-כיווני וגם להתראות יוצאות. השמירה רושמת את ה-webhook אוטומטית — אין צורך בהפעלה מחדש.",
+        "token": "אסימון בוט",
+        "webhookActive": "Webhook פעיל — מקבל הודעות",
+        "webhookPending": "Webhook פעיל — {{count}} עדכונים ממתינים",
+        "webhookError": "שגיאת Webhook: {{error}}",
+        "webhookInactive": "Webhook לא רשום — הפקודות לא יגיעו לשרת",
+        "registerWebhook": "רישום Webhook",
+        "webhookRegistered": "ה-Webhook נרשם בטלגרם",
+        "webhookFailedNoUrl": "לא ניתן לזהות כתובת ציבורית — הגדר אחת תחת כללי",
+        "webhookFailedNoToken": "הגדר תחילה אסימון בוט",
+        "webhookFailed": "רישום ה-Webhook נכשל: {{error}}"
       },
       "webpush": {
         "title": "התראות דפדפן (VAPID)",
