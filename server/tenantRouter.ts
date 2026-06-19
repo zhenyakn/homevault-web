@@ -10,10 +10,36 @@ import {
 import * as db from "./db";
 import { generateToken, hashToken } from "./auth/password";
 import { sendInviteEmail } from "./auth/email";
+import { ENV } from "./_core/env";
+import {
+  rateLimitHit,
+  clientIp,
+  AUTH_MAX_ATTEMPTS,
+  AUTH_WINDOW_MS,
+} from "./_core/rateLimit";
 
 // Invitations expire after 7 days.
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const inviteRoleEnum = z.enum(["admin", "member", "viewer"]);
+
+/** Per-IP throttle for token-bearing invite endpoints (brute-force guard). */
+function assertInviteRateLimit(req: {
+  headers: Record<string, unknown>;
+  socket?: unknown;
+}): void {
+  if (!ENV.rateLimitEnabled) return;
+  const { allowed } = rateLimitHit(
+    `invite:${clientIp(req)}`,
+    AUTH_MAX_ATTEMPTS,
+    AUTH_WINDOW_MS
+  );
+  if (!allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Too many attempts. Please try again in a minute.",
+    });
+  }
+}
 
 /**
  * Tenant/workspace endpoints. Read surface for the active tenant plus the
@@ -37,12 +63,30 @@ export const tenantRouter = router({
     return db.getMembersOfTenant(ctx.tenantId);
   }),
 
+  // Recent security-relevant activity in the active tenant (invites, member and
+  // role changes, plan/limit changes…). Owner/admin only — gives workspace
+  // admins visibility without needing the server-wide admin console.
+  activity: tenantAdminProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const rows = await db.getAuditLogForTenant(ctx.tenantId, input?.limit ?? 50);
+      return rows.map(r => ({
+        id: r.id,
+        action: r.action,
+        targetType: r.targetType,
+        targetId: r.targetId,
+        actorUserId: r.actorUserId,
+        createdAt: r.createdAt,
+      }));
+    }),
+
   // Public preview of an invite (shown on the accept-invite screen before the
   // user signs in / registers). Returns null for an invalid/expired token so
   // the UI can show a friendly "this link is no longer valid" message.
   inviteInfo: publicProcedure
     .input(z.object({ token: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      assertInviteRateLimit(ctx.req);
       const invite = await db.getLiveInviteByTokenHash(hashToken(input.token));
       if (!invite) return null;
       const tenant = await db.getTenantById(invite.tenantId);
@@ -119,6 +163,7 @@ export const tenantRouter = router({
     accept: protectedProcedure
       .input(z.object({ token: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
+        assertInviteRateLimit(ctx.req);
         const invite = await db.getLiveInviteByTokenHash(
           hashToken(input.token)
         );
@@ -126,6 +171,18 @@ export const tenantRouter = router({
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "This invitation is invalid or has expired",
+          });
+        }
+        // Bind the invite to its target address when the accepting account has a
+        // known email — a forwarded link mustn't grant access to someone else.
+        // (Accounts without an email, e.g. some OAuth identities, are exempt.)
+        if (
+          ctx.user.email &&
+          invite.email.toLowerCase() !== ctx.user.email.toLowerCase()
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "This invitation was sent to a different email address",
           });
         }
         // Per-tenant member quota (NULL = unlimited).
@@ -178,6 +235,19 @@ export const tenantRouter = router({
       if (!target) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Member not found" });
       }
+      // Only owners may grant or revoke ownership, or alter another owner's
+      // role. Without this an admin could promote themselves to owner (or
+      // demote the owner) — a privilege escalation the client hides but the API
+      // must enforce too.
+      const ownerInvolved = input.role === "owner" || target.role === "owner";
+      if (ownerInvolved && ctx.tenantRole !== "owner") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only an owner can change ownership",
+        });
+      }
+      // Don't let the acting owner demote themselves while they're the last one
+      // — it would strand the workspace with no owner.
       const owners = members.filter(m => m.role === "owner");
       if (
         target.role === "owner" &&
@@ -209,6 +279,13 @@ export const tenantRouter = router({
       const target = members.find(m => m.userId === input.userId);
       if (!target) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Member not found" });
+      }
+      // Only an owner may remove another owner (mirrors setMemberRole).
+      if (target.role === "owner" && ctx.tenantRole !== "owner") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only an owner can remove an owner",
+        });
       }
       const owners = members.filter(m => m.role === "owner");
       if (target.role === "owner" && owners.length <= 1) {

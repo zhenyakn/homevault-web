@@ -24,6 +24,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { notificationRouter } from "./notificationRouter";
 import {
   publicProcedure,
+  protectedProcedure,
   tenantProcedure,
   tenantAdminProcedure,
   router,
@@ -31,6 +32,7 @@ import {
 import { ENV } from "./_core/env";
 import {
   rateLimitHit,
+  clientIp,
   AUTH_MAX_ATTEMPTS,
   AUTH_WINDOW_MS,
 } from "./_core/rateLimit";
@@ -61,19 +63,6 @@ import {
   apartmentSearches,
   apartmentCandidates,
 } from "../drizzle/schema";
-
-/** Best-effort client IP for per-IP auth rate limiting (honours a proxy hop). */
-function clientIp(req: {
-  headers: Record<string, unknown>;
-  socket?: unknown;
-}): string {
-  const fwd = req.headers["x-forwarded-for"];
-  if (typeof fwd === "string" && fwd.length > 0) {
-    return fwd.split(",")[0]!.trim();
-  }
-  const sock = req.socket as { remoteAddress?: string } | undefined;
-  return sock?.remoteAddress ?? "unknown";
-}
 
 /**
  * Throttle sensitive unauthenticated auth endpoints per IP (brute-force / abuse
@@ -175,10 +164,21 @@ async function issueSession(
   });
 }
 
-// Email/password validation shared by the auth endpoints. Password policy is
-// deliberately simple (length floor) — strength UX can layer on later.
+// Email/password validation shared by the auth endpoints.
 const emailField = z.string().trim().toLowerCase().email().max(320);
-const passwordField = z.string().min(8).max(200);
+// Login accepts any non-trivial string — historical passwords predate any
+// complexity policy, so we only sanity-check length here.
+const passwordField = z.string().min(1).max(200);
+// New passwords (register / reset / change) must clear a basic strength bar:
+// at least 8 chars with both a letter and a digit. Kept deliberately light —
+// a fuller breached-password check can layer on later.
+const newPasswordField = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(200)
+  .refine(v => /[A-Za-z]/.test(v) && /\d/.test(v), {
+    message: "Password must contain at least one letter and one number",
+  });
 
 const calendarCatMap: Record<string, string> = {
   Expense: "Payment",
@@ -567,7 +567,7 @@ export const appRouter = router({
       .input(
         z.object({
           email: emailField,
-          password: passwordField,
+          password: newPasswordField,
           name: z.string().trim().min(1).max(100).optional(),
           // Path A — create a new tenant with this name.
           tenantName: z.string().trim().min(1).max(200).optional(),
@@ -603,6 +603,15 @@ export const appRouter = router({
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "This invitation is invalid or has expired",
+          });
+        }
+        // The invite is bound to the address it was sent to: registering under a
+        // different email would let a forwarded link grant access to the wrong
+        // person. (Comparison is case-insensitive; both are stored lowercased.)
+        if (invite && invite.email.toLowerCase() !== input.email) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This invitation was sent to a different email address",
           });
         }
 
@@ -662,7 +671,7 @@ export const appRouter = router({
           userId: user.id,
           type: "verify_email",
           tokenHash: verify.hash,
-          expiresAt: new Date(Date.now() + ONE_YEAR_MS / 365), // 24h
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
         });
         await sendVerificationEmail(input.email, verify.raw);
 
@@ -716,7 +725,8 @@ export const appRouter = router({
     // Confirm an email address from the verification link.
     verifyEmail: publicProcedure
       .input(z.object({ token: z.string().min(1) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "verify");
         const userId = await db.consumeEmailToken(
           hashToken(input.token),
           "verify_email"
@@ -773,8 +783,9 @@ export const appRouter = router({
 
     // Complete a password reset using the emailed token.
     resetPassword: publicProcedure
-      .input(z.object({ token: z.string().min(1), password: passwordField }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ token: z.string().min(1), password: newPasswordField }))
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "reset");
         const userId = await db.consumeEmailToken(
           hashToken(input.token),
           "reset_password"
@@ -786,6 +797,38 @@ export const appRouter = router({
           });
         }
         await db.setPasswordHash(userId, await hashPassword(input.password));
+        // Revoke every existing session — a reset is also how a user recovers a
+        // compromised account, so old cookies must stop working.
+        await db.bumpSessionEpoch(userId);
+        return { success: true as const };
+      }),
+
+    // Change password while signed in. Requires the current password and
+    // re-issues the session (the epoch bump would otherwise log the caller out
+    // too). Only for accounts that actually have a local credential.
+    changePassword: protectedProcedure
+      .input(
+        z.object({
+          currentPassword: z.string().min(1).max(200),
+          newPassword: newPasswordField,
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const cred = await db.getCredentialByUserId(ctx.user.id);
+        if (
+          !cred ||
+          !(await verifyPassword(input.currentPassword, cred.passwordHash))
+        ) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: INVALID_CREDENTIALS_ERR_MSG,
+          });
+        }
+        await db.setPasswordHash(ctx.user.id, await hashPassword(input.newPassword));
+        // Invalidate other sessions, then mint a fresh cookie for this one so
+        // the caller stays signed in on the device they changed it from.
+        await db.bumpSessionEpoch(ctx.user.id);
+        await issueSession(ctx, ctx.user.openId, ctx.user.name ?? "");
         return { success: true as const };
       }),
   }),
@@ -836,21 +879,36 @@ export const appRouter = router({
   }),
 
   profiles: router({
-    list: tenantProcedure.query(async () => {
-      return await db.getAllUsers();
+    // Members of the *active tenant* only (for avatars / "household" lists).
+    // Must never return the full users table — that would leak every account
+    // (and their openId / notification destinations) across tenants. Minimal
+    // display fields only.
+    list: tenantProcedure.query(async ({ ctx }) => {
+      const members = await db.getMembersOfTenant(ctx.tenantId);
+      return members.map(m => ({
+        userId: m.userId,
+        name: m.name,
+        email: m.email,
+        role: m.role,
+      }));
     }),
     current: tenantProcedure.query(({ ctx }) => {
       return ctx.user;
     }),
-    updateMe: tenantProcedure
+    // Self-service: a member edits their own display name. On protectedProcedure
+    // (not tenantProcedure) so even a view-only member can update their own
+    // profile — it isn't a tenant-data write.
+    updateMe: protectedProcedure
       .input(z.object({ name: z.string().min(1).max(100) }))
       .mutation(async ({ ctx, input }) => {
         await db.upsertUser({ openId: ctx.user.openId, name: input.name });
+        clearNoAuthUserCache();
         return { success: true };
       }),
     // Persist the chosen UI language so server-sent notifications (reminders,
-    // test sends) are delivered in the same language across devices.
-    setLanguage: tenantProcedure
+    // test sends) are delivered in the same language across devices. Self-
+    // service, so on protectedProcedure (see updateMe).
+    setLanguage: protectedProcedure
       .input(z.object({ language: z.enum(["en", "he", "ru"]) }))
       .mutation(async ({ ctx, input }) => {
         await db.setUserLanguage(ctx.user.id, input.language);
