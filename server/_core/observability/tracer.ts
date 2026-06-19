@@ -143,6 +143,43 @@ export function startSpan(name: string, opts: StartSpanOptions = {}): ActiveSpan
 }
 
 /**
+ * Start the request's root span, reusing the trace/span ids already placed on
+ * the active context (so the HTTP layer controls id generation + propagation).
+ * Unlike `startSpan` it does not allocate a new span id or reparent.
+ */
+export function startRootSpan(
+  name: string,
+  opts: StartSpanOptions = {}
+): ActiveSpan {
+  const ctx = getContext();
+  if (!cfg.trace.enabled || !ctx) {
+    return new NoopSpan({
+      traceId: ctx?.traceId ?? "0".repeat(32),
+      spanId: ctx?.spanId ?? "0".repeat(16),
+      name,
+      kind: opts.kind ?? "server",
+      startTime: Date.now(),
+      attributes: opts.attributes ?? {},
+      events: [],
+      status: "unset",
+    });
+  }
+  const data: SpanData = {
+    traceId: ctx.traceId,
+    spanId: ctx.spanId,
+    parentSpanId: ctx.parentSpanId,
+    name,
+    kind: opts.kind ?? "server",
+    startTime: Date.now(),
+    attributes: { ...opts.attributes },
+    events: [],
+    status: "unset",
+  };
+  // restoreSpanId = its own id: ending the root is a no-op for context.
+  return new RealSpan(data, ctx.spanId);
+}
+
+/**
  * Run `fn` inside a span, ending it automatically and recording an error status
  * (plus re-throwing) if it throws.
  */

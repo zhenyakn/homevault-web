@@ -27,6 +27,22 @@ import { RotatingFileSink } from "./fileSink";
 
 const cfg = obsConfig;
 
+/**
+ * Error serializer that preserves the full `cause` chain (Node 16+ Error
+ * `cause`), so a wrapped error logs every layer's type/message/stack instead of
+ * just the outermost one. Depth-capped to avoid pathological cycles.
+ */
+function serializeError(err: unknown, depth = 0): unknown {
+  if (depth > 5 || !(err instanceof Error)) return err;
+  const base = pino.stdSerializers.err(err as Error) as Record<string, unknown>;
+  const cause = (err as Error).cause;
+  if (cause) base.cause = serializeError(cause, depth + 1);
+  // Surface a domain error code if present (TRPCError, HTTP errors, etc.).
+  const code = (err as { code?: unknown }).code;
+  if (code != null) base.code = code;
+  return base;
+}
+
 // ── In-memory buffer for the viewer ──────────────────────────────────────────
 export const logStore = new LogStore(cfg.bufferSize);
 let droppedParseFailures = 0;
@@ -117,6 +133,7 @@ export const logger: pino.Logger = pino(
     level: initialLevel,
     base: { service: cfg.serviceName, version: cfg.serviceVersion },
     redact: { paths: REDACT_PATHS, censor: REDACT_CENSOR },
+    serializers: { err: serializeError, error: serializeError },
     // Auto-correlation: fold the AsyncLocalStorage context into every line.
     mixin: () => contextFields(),
   },

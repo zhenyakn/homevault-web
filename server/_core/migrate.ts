@@ -18,8 +18,10 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import fs from "fs";
 import path from "path";
+import { createLogger } from "./logger";
 
 const execFileAsync = promisify(execFile);
+const log = createLogger("migrate");
 
 /** Locate apply-migration-addon.mjs across dev / bundled / Docker layouts. */
 export function resolveAddonScript(): string {
@@ -40,7 +42,7 @@ type Log = (msg: string) => void;
  * than run against a half-migrated schema.
  */
 export async function runMigrations(opts: { log?: Log } = {}): Promise<void> {
-  const log = opts.log ?? (m => console.log(m));
+  const logFn = opts.log ?? ((m: string) => log.info(m));
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
 
   const script = resolveAddonScript();
@@ -48,12 +50,12 @@ export async function runMigrations(opts: { log?: Log } = {}): Promise<void> {
     throw new Error(`[migrate] migration script not found at ${script}`);
   }
 
-  log(`[migrate] converging schema via ${path.basename(script)}`);
+  logFn(`[migrate] converging schema via ${path.basename(script)}`);
   const { stdout, stderr } = await execFileAsync("node", [script], {
     env: process.env,
     cwd: path.dirname(script),
     maxBuffer: 16 * 1024 * 1024,
   });
   const out = `${stdout ?? ""}${stderr ?? ""}`.trim();
-  if (out) log(out);
+  if (out) logFn(out);
 }

@@ -8,6 +8,7 @@ import {
 } from "@shared/const";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
+import { performance } from "perf_hooks";
 import type { TrpcContext } from "./context";
 import { ENV } from "./env";
 import {
@@ -15,13 +16,84 @@ import {
   TENANT_MAX_REQUESTS,
   TENANT_WINDOW_MS,
 } from "./rateLimit";
+import {
+  createLogger,
+  startSpan,
+  recordRequest,
+  updateContext,
+  shouldSampleAccessLog,
+} from "./observability";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
 });
 
 export const router = t.router;
-export const publicProcedure = t.procedure;
+
+const rpcLog = createLogger("rpc");
+
+/**
+ * Per-procedure observability: opens a child span, times the call, records RED
+ * metrics, and emits a correlated log line (sampled when it's a successful
+ * call, always when it errors). Folds the resolved user/tenant/route into the
+ * request context so every nested log inherits them. Applied to the base
+ * procedure below so every query/mutation in the app is instrumented.
+ */
+const observabilityMiddleware = t.middleware(async ({ ctx, path, type, next }) => {
+  const route = `rpc:${path}`;
+  updateContext({
+    route,
+    userId: ctx.user?.id,
+    tenantId: ctx.tenantId ?? undefined,
+  });
+  const span = startSpan(route, {
+    kind: "server",
+    attributes: {
+      "rpc.method": path,
+      "rpc.type": type,
+      route,
+      user_id: ctx.user?.id,
+      tenant_id: ctx.tenantId ?? undefined,
+    },
+  });
+  const start = performance.now();
+  const result = await next();
+  const durationMs = performance.now() - start;
+  const fields = {
+    path,
+    type,
+    duration_ms: Math.round(durationMs),
+  };
+
+  if (result.ok) {
+    span.setStatus("ok");
+    if (shouldSampleAccessLog()) rpcLog.info(fields, "rpc call");
+  } else {
+    const code = result.error.code;
+    span.setStatus("error", result.error.message);
+    span.setAttribute("rpc.error_code", code);
+    rpcLog.warn({ ...fields, code, err: result.error }, "rpc call failed");
+  }
+  span.setAttribute("rpc.ok", result.ok);
+  span.end();
+
+  recordRequest({
+    transport: "rpc",
+    route: path,
+    method: type.toUpperCase(),
+    statusCode: result.ok ? 200 : 500,
+    durationMs,
+    errored: !result.ok,
+    tenantId: ctx.tenantId ?? undefined,
+  });
+
+  return result;
+});
+
+/** Base procedure: every public/protected/admin procedure derives from this. */
+const baseProcedure = t.procedure.use(observabilityMiddleware);
+
+export const publicProcedure = baseProcedure;
 
 const requireUser = t.middleware(async opts => {
   const { ctx, next } = opts;
@@ -38,7 +110,7 @@ const requireUser = t.middleware(async opts => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser);
+export const protectedProcedure = baseProcedure.use(requireUser);
 
 /**
  * A logged-in user is a server-wide super-admin when their `globalRole` is
@@ -60,7 +132,7 @@ const requireSuperAdmin = t.middleware(async opts => {
 });
 
 /** Server-wide admin console. Replaces the legacy `adminProcedure`. */
-export const superAdminProcedure = t.procedure.use(requireSuperAdmin);
+export const superAdminProcedure = baseProcedure.use(requireSuperAdmin);
 
 /**
  * Deprecated alias kept so existing call sites keep working during the

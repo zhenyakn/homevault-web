@@ -69,6 +69,7 @@ export { listLogFiles, type LogFileInfo } from "./fileSink";
 // Tracing
 export {
   startSpan,
+  startRootSpan,
   withSpan,
   getTrace,
   recentTraces,
@@ -93,6 +94,10 @@ export { toOtlpLogRecord, type RemoteSink } from "./remoteSink";
 
 // Retention
 export { startRetentionSweep, pruneNow } from "./retention";
+
+// HTTP middleware + process failure capture
+export { httpObservabilityMiddleware } from "./http";
+export { installProcessHandlers } from "./process";
 
 /**
  * Flush + close all sinks. Call on graceful shutdown so no buffered log line is
