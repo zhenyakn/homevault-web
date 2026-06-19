@@ -1351,6 +1351,15 @@ async function main() {
     `ALTER TABLE \`users\` ADD COLUMN \`defaultTenantId\` int DEFAULT NULL`,
     "users.defaultTenantId"
   );
+  // Account lifecycle + session-revocation columns (user-management hardening).
+  await run(
+    `ALTER TABLE \`users\` ADD COLUMN \`status\` enum('active','disabled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'active'`,
+    "users.status"
+  );
+  await run(
+    `ALTER TABLE \`users\` ADD COLUMN \`sessionEpoch\` int NOT NULL DEFAULT 0`,
+    "users.sessionEpoch"
+  );
 
   // Nullable `tenantId` on every directly-queried entity table, each with an
   // index. Statements are written out explicitly (one per table) so the

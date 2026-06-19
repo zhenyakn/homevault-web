@@ -669,7 +669,7 @@
     "preparing": "מכין…",
     "perModule": "לפי מודול",
     "perModuleHint": "CSV זמין מכל עמוד מודול",
-    "dangerZone": "אזור מסוכן",
+    "dangerZone": "מחיקת חשבון",
     "deleteAll": "מחק את כל הרשומות",
     "deleteAllHint": "מסיר לצמיתות את כל הנתונים הפיננסיים. הגדרות הנכס נשמרות.",
     "deleteAllBtn": "מחק הכל…",
@@ -751,7 +751,21 @@
         "publicBaseUrl": "כתובת בסיס ציבורית",
         "webhookSecret": "סוד webhook של טלגרם"
       }
-    }
+    },
+    "changePassword": "שינוי סיסמה",
+    "changePasswordDesc": "עדכון הסיסמה שבה אתה משתמש להתחברות.",
+    "currentPassword": "סיסמה נוכחית",
+    "newPasswordLabel": "סיסמה חדשה",
+    "passwordChanged": "הסיסמה שונתה",
+    "updatePassword": "עדכון סיסמה",
+    "changeEmail": "שינוי אימייל",
+    "changeEmailDesc": "כתובת נוכחית: {{email}}. כתובת חדשה תדרוש אימות מחדש.",
+    "newEmail": "אימייל חדש",
+    "updateEmail": "עדכון אימייל",
+    "emailChanged": "האימייל עודכן — בדקו את תיבת הדואר כדי לאמת אותו",
+    "deleteAccount": "מחיקת החשבון שלי",
+    "deleteAccountDesc": "מחיקה לצמיתות של החשבון שלך. סביבות עבודה שבבעלותך הבלעדית יימחקו יחד איתו; סביבות משותפות פשוט יאבדו את חברותך. לא ניתן לבטל פעולה זו.",
+    "deleteAccountConfirm": "למחוק לצמיתות את החשבון שלך ואת סביבות העבודה שבבעלותך הבלעדית? לא ניתן לבטל."
   },
   "repairs": {
     "title": "תיקונים",
@@ -1397,7 +1411,10 @@
       "admin": "מנהל",
       "member": "חבר",
       "viewer": "צופה"
-    }
+    },
+    "you": "אתה",
+    "recentActivity": "פעילות אחרונה",
+    "lastActive": "פעיל לאחרונה {{when}}"
   },
   "plan": {
     "planUsage": "מנוי ושימוש",
@@ -1563,6 +1580,24 @@
     "planSaved": "התוכנית נשמרה",
     "planDeleted": "התוכנית נמחקה",
     "recentActivity": "פעילות אחרונה",
-    "noActivity": "אין פעילות עדיין."
+    "noActivity": "אין פעילות עדיין.",
+    "you": "אתה",
+    "actions": "פעולות",
+    "editName": "עריכת שם",
+    "resetPassword": "איפוס סיסמה",
+    "newPassword": "סיסמה חדשה",
+    "resetPasswordHint": "הגדרת סיסמה חדשה למשתמש זה. כל ההתחברויות הקיימות שלו ינותקו.",
+    "passwordReset": "הסיסמה אופסה",
+    "enable": "הפעלה",
+    "disable": "השבתה",
+    "deleteUser": "מחיקת משתמש",
+    "confirmDeleteUser": "למחוק משתמש זה לצמיתות? סביבות העבודה שלו יישמרו; לא ניתן לבטל פעולה זו.",
+    "userDeleted": "המשתמש נמחק",
+    "saved": "נשמר",
+    "name": "שם",
+    "cancel": "ביטול",
+    "save": "שמירה",
+    "allowedDomains": "דומייני אימייל מורשים",
+    "allowedDomainsDesc": "הגבלת הרשמה פתוחה לדומיינים אלה (מופרדים בפסיקים). השאירו ריק כדי לאפשר הכול; משתמשים מוזמנים תמיד עוקפים זאת."
   }
 }

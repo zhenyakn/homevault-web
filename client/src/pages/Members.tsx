@@ -75,8 +75,41 @@ export default function Members() {
       <InviteForm onChanged={() => utils.tenant.invites.list.invalidate()} />
       <PendingInvites />
       <MemberList ownRole={current.data!.role as Role} />
+      <ActivityLog />
     </div>
   );
+}
+
+function ActivityLog() {
+  const { t } = useTranslation();
+  const activity = trpc.tenant.activity.useQuery({ limit: 25 });
+  if (!activity.data || activity.data.length === 0) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">
+          {t("members.recentActivity")}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="divide-y">
+        {activity.data.map(a => (
+          <div
+            key={a.id}
+            className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
+          >
+            <span className="text-sm truncate">{a.action}</span>
+            <span className="text-xs text-muted-foreground shrink-0">
+              {new Date(a.createdAt as unknown as string).toLocaleString()}
+            </span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function useMyUserId(): number | undefined {
+  return trpc.profiles.current.useQuery().data?.id;
 }
 
 function InviteForm({ onChanged }: { onChanged: () => void }) {
@@ -198,6 +231,7 @@ function PendingInvites() {
 function MemberList({ ownRole }: { ownRole: Role }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
+  const myUserId = useMyUserId();
   const members = trpc.tenant.members.useQuery();
   const setRole = trpc.tenant.setMemberRole.useMutation({
     onSuccess: () => utils.tenant.members.invalidate(),
@@ -232,10 +266,24 @@ function MemberList({ ownRole }: { ownRole: Role }) {
             <div className="min-w-0">
               <p className="text-sm font-medium truncate">
                 {m.name || m.email || `User #${m.userId}`}
+                {m.userId === myUserId && (
+                  <span className="ms-2 text-xs text-muted-foreground font-normal">
+                    ({t("members.you")})
+                  </span>
+                )}
               </p>
               {m.email && (
                 <p className="text-xs text-muted-foreground truncate">
                   {m.email}
+                </p>
+              )}
+              {m.lastSignedIn && (
+                <p className="text-xs text-muted-foreground/70 truncate">
+                  {t("members.lastActive", {
+                    when: new Date(
+                      m.lastSignedIn as unknown as string
+                    ).toLocaleDateString(),
+                  })}
                 </p>
               )}
             </div>

@@ -23,6 +23,11 @@ export type SessionPayload = {
   openId: string;
   appId: string;
   name: string;
+  // Session-revocation epoch captured when the token was minted. Compared
+  // against the user's current `sessionEpoch` on every request; a mismatch
+  // means the session was revoked (password change/reset, disable, sign-out-
+  // everywhere) and the cookie is rejected.
+  sv?: number;
 };
 
 // Synthetic app id for sessions minted by self-hosted / NO_AUTH installs, which
@@ -171,6 +176,10 @@ class SDKServer {
     openId: string,
     options: { expiresInMs?: number; name?: string } = {}
   ): Promise<string> {
+    // Capture the user's current session epoch so the token can be revoked
+    // later by advancing it. Best-effort: a brand-new account (or a lookup
+    // miss) defaults to 0, which matches the column default.
+    const user = await db.getUserByOpenId(openId);
     return this.signSession(
       {
         // OAuth installs embed their Manus app id; self-hosted / NO_AUTH builds
@@ -181,6 +190,7 @@ class SDKServer {
         appId: ENV.appId || LOCAL_APP_ID,
         openId,
         name: options.name || "",
+        sv: user?.sessionEpoch ?? 0,
       },
       options
     );
@@ -199,15 +209,19 @@ class SDKServer {
       openId: payload.openId,
       appId: payload.appId,
       name: payload.name,
+      sv: payload.sv ?? 0,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
       .sign(secretKey);
   }
 
-  async verifySession(
-    cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string } | null> {
+  async verifySession(cookieValue: string | undefined | null): Promise<{
+    openId: string;
+    appId: string;
+    name: string;
+    sv: number;
+  } | null> {
     if (!cookieValue) {
       logger.warn("[Auth] Missing session cookie");
       return null;
@@ -218,7 +232,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name } = payload as Record<string, unknown>;
+      const { openId, appId, name, sv } = payload as Record<string, unknown>;
 
       if (
         !isNonEmptyString(openId) ||
@@ -233,6 +247,10 @@ class SDKServer {
         openId,
         appId,
         name,
+        // Tokens minted before session-revocation shipped have no `sv`; treat
+        // them as epoch 0 (the column default) so they keep working until the
+        // epoch is actually bumped.
+        sv: typeof sv === "number" ? sv : 0,
       };
     } catch (error) {
       logger.warn(
@@ -301,6 +319,18 @@ class SDKServer {
 
     if (!user) {
       throw ForbiddenError("User not found");
+    }
+
+    // Account locked out by an admin — reject regardless of a valid cookie.
+    if (user.status === "disabled") {
+      throw ForbiddenError("Account disabled");
+    }
+
+    // Session revocation: the cookie's epoch must match the account's current
+    // one. A bump (password change/reset, disable, sign-out-everywhere) makes
+    // every previously-issued cookie fail here.
+    if ((session.sv ?? 0) !== user.sessionEpoch) {
+      throw ForbiddenError("Session expired");
     }
 
     await db.upsertUser({

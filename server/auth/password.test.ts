@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
+import { scryptSync } from "node:crypto";
 import {
   hashPassword,
   verifyPassword,
+  needsRehash,
   generateToken,
   hashToken,
 } from "./password";
@@ -28,6 +30,24 @@ describe("password hashing (scrypt)", () => {
     expect(await verifyPassword("x", "")).toBe(false);
     expect(await verifyPassword("x", "notscrypt$aa$bb")).toBe(false);
     expect(await verifyPassword("x", "garbage")).toBe(false);
+  });
+
+  it("verifies a legacy (paramless) hash and flags it for rehash", async () => {
+    // Emulate the old `scrypt$<salt>$<key>` form at Node's default cost.
+    const salt = Buffer.from("00112233445566778899aabbccddeeff", "hex");
+    const key = scryptSync("legacypw", salt, 64);
+    const legacy = `scrypt$${salt.toString("hex")}$${key.toString("hex")}`;
+    expect(await verifyPassword("legacypw", legacy)).toBe(true);
+    expect(await verifyPassword("nope", legacy)).toBe(false);
+    // Legacy hashes are below the current work factor → rehash on next login.
+    expect(needsRehash(legacy)).toBe(true);
+  });
+
+  it("does not flag a freshly-hashed password for rehash", async () => {
+    const hash = await hashPassword("fresh-password-1");
+    expect(needsRehash(hash)).toBe(false);
+    // The encoded form now carries the work factor: scrypt$N$r$p$salt$key.
+    expect(hash.split("$")).toHaveLength(6);
   });
 });
 

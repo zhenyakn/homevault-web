@@ -15,6 +15,7 @@ import { sdk } from "./_core/sdk";
 import {
   hashPassword,
   verifyPassword,
+  needsRehash,
   generateToken,
   hashToken,
 } from "./auth/password";
@@ -24,6 +25,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { notificationRouter } from "./notificationRouter";
 import {
   publicProcedure,
+  protectedProcedure,
   tenantProcedure,
   tenantAdminProcedure,
   router,
@@ -31,6 +33,7 @@ import {
 import { ENV } from "./_core/env";
 import {
   rateLimitHit,
+  clientIp,
   AUTH_MAX_ATTEMPTS,
   AUTH_WINDOW_MS,
 } from "./_core/rateLimit";
@@ -44,6 +47,7 @@ import {
   deleteFileForOwner,
   reapOrphanedFiles,
   buildProxyUrl,
+  purgeTenantFileObjects,
 } from "./files";
 import { logger } from "./_core/logger";
 import { searchRouter } from "./searchRouter";
@@ -61,19 +65,6 @@ import {
   apartmentSearches,
   apartmentCandidates,
 } from "../drizzle/schema";
-
-/** Best-effort client IP for per-IP auth rate limiting (honours a proxy hop). */
-function clientIp(req: {
-  headers: Record<string, unknown>;
-  socket?: unknown;
-}): string {
-  const fwd = req.headers["x-forwarded-for"];
-  if (typeof fwd === "string" && fwd.length > 0) {
-    return fwd.split(",")[0]!.trim();
-  }
-  const sock = req.socket as { remoteAddress?: string } | undefined;
-  return sock?.remoteAddress ?? "unknown";
-}
 
 /**
  * Throttle sensitive unauthenticated auth endpoints per IP (brute-force / abuse
@@ -175,10 +166,21 @@ async function issueSession(
   });
 }
 
-// Email/password validation shared by the auth endpoints. Password policy is
-// deliberately simple (length floor) — strength UX can layer on later.
+// Email/password validation shared by the auth endpoints.
 const emailField = z.string().trim().toLowerCase().email().max(320);
-const passwordField = z.string().min(8).max(200);
+// Login accepts any non-trivial string — historical passwords predate any
+// complexity policy, so we only sanity-check length here.
+const passwordField = z.string().min(1).max(200);
+// New passwords (register / reset / change) must clear a basic strength bar:
+// at least 8 chars with both a letter and a digit. Kept deliberately light —
+// a fuller breached-password check can layer on later.
+const newPasswordField = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(200)
+  .refine(v => /[A-Za-z]/.test(v) && /\d/.test(v), {
+    message: "Password must contain at least one letter and one number",
+  });
 
 const calendarCatMap: Record<string, string> = {
   Expense: "Payment",
@@ -567,7 +569,7 @@ export const appRouter = router({
       .input(
         z.object({
           email: emailField,
-          password: passwordField,
+          password: newPasswordField,
           name: z.string().trim().min(1).max(100).optional(),
           // Path A — create a new tenant with this name.
           tenantName: z.string().trim().min(1).max(200).optional(),
@@ -594,6 +596,18 @@ export const appRouter = router({
           });
         }
 
+        // Optional email-domain allowlist for open signups (invited users
+        // bypass — the invite is the authorization).
+        if (
+          !input.inviteToken &&
+          !(await db.isEmailDomainAllowed(input.email))
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Registration isn't allowed for this email domain",
+          });
+        }
+
         // When joining via an invite, validate it before creating anything so a
         // bad/expired token doesn't leave a tenantless account behind.
         const invite = input.inviteToken
@@ -603,6 +617,15 @@ export const appRouter = router({
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "This invitation is invalid or has expired",
+          });
+        }
+        // The invite is bound to the address it was sent to: registering under a
+        // different email would let a forwarded link grant access to the wrong
+        // person. (Comparison is case-insensitive; both are stored lowercased.)
+        if (invite && invite.email.toLowerCase() !== input.email) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This invitation was sent to a different email address",
           });
         }
 
@@ -662,7 +685,7 @@ export const appRouter = router({
           userId: user.id,
           type: "verify_email",
           tokenHash: verify.hash,
-          expiresAt: new Date(Date.now() + ONE_YEAR_MS / 365), // 24h
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
         });
         await sendVerificationEmail(input.email, verify.raw);
 
@@ -684,6 +707,19 @@ export const appRouter = router({
             code: "UNAUTHORIZED",
             message: INVALID_CREDENTIALS_ERR_MSG,
           });
+        }
+        // Transparent hash upgrade: if this credential was stored with a weaker
+        // work factor (or the legacy paramless form), re-hash it now that we
+        // hold the plaintext. Best-effort — never blocks the login.
+        if (needsRehash(cred.passwordHash)) {
+          try {
+            await db.setPasswordHash(
+              cred.userId,
+              await hashPassword(input.password)
+            );
+          } catch {
+            /* non-fatal */
+          }
         }
         const user = await db.getUserById(cred.userId);
         if (!user) {
@@ -716,7 +752,8 @@ export const appRouter = router({
     // Confirm an email address from the verification link.
     verifyEmail: publicProcedure
       .input(z.object({ token: z.string().min(1) }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "verify");
         const userId = await db.consumeEmailToken(
           hashToken(input.token),
           "verify_email"
@@ -773,8 +810,9 @@ export const appRouter = router({
 
     // Complete a password reset using the emailed token.
     resetPassword: publicProcedure
-      .input(z.object({ token: z.string().min(1), password: passwordField }))
-      .mutation(async ({ input }) => {
+      .input(z.object({ token: z.string().min(1), password: newPasswordField }))
+      .mutation(async ({ ctx, input }) => {
+        assertAuthRateLimit(ctx.req, "reset");
         const userId = await db.consumeEmailToken(
           hashToken(input.token),
           "reset_password"
@@ -786,6 +824,153 @@ export const appRouter = router({
           });
         }
         await db.setPasswordHash(userId, await hashPassword(input.password));
+        // Revoke every existing session — a reset is also how a user recovers a
+        // compromised account, so old cookies must stop working.
+        await db.bumpSessionEpoch(userId);
+        return { success: true as const };
+      }),
+
+    // Change password while signed in. Requires the current password and
+    // re-issues the session (the epoch bump would otherwise log the caller out
+    // too). Only for accounts that actually have a local credential.
+    changePassword: protectedProcedure
+      .input(
+        z.object({
+          currentPassword: z.string().min(1).max(200),
+          newPassword: newPasswordField,
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const cred = await db.getCredentialByUserId(ctx.user.id);
+        if (
+          !cred ||
+          !(await verifyPassword(input.currentPassword, cred.passwordHash))
+        ) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: INVALID_CREDENTIALS_ERR_MSG,
+          });
+        }
+        await db.setPasswordHash(
+          ctx.user.id,
+          await hashPassword(input.newPassword)
+        );
+        // Invalidate other sessions, then mint a fresh cookie for this one so
+        // the caller stays signed in on the device they changed it from.
+        await db.bumpSessionEpoch(ctx.user.id);
+        await issueSession(ctx, ctx.user.openId, ctx.user.name ?? "");
+        return { success: true as const };
+      }),
+
+    // Change the email on a local (email/password) account. Requires the
+    // current password, re-runs the uniqueness check, and marks the new address
+    // unverified (re-sending a verification email). Accounts managed by an
+    // external IdP (OAuth) get their email from the provider and are rejected.
+    changeEmail: protectedProcedure
+      .input(
+        z.object({
+          currentPassword: z.string().min(1).max(200),
+          newEmail: emailField,
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const cred = await db.getCredentialByUserId(ctx.user.id);
+        if (!cred) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This account's email is managed by its sign-in provider",
+          });
+        }
+        if (!(await verifyPassword(input.currentPassword, cred.passwordHash))) {
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: INVALID_CREDENTIALS_ERR_MSG,
+          });
+        }
+        if (input.newEmail !== cred.email) {
+          const taken = await db.getCredentialByEmail(input.newEmail);
+          if (taken) {
+            throw new TRPCError({
+              code: "CONFLICT",
+              message: EMAIL_TAKEN_ERR_MSG,
+            });
+          }
+        }
+        await db.setCredentialEmail(ctx.user.id, input.newEmail);
+        await db.upsertUser({ openId: ctx.user.openId, email: input.newEmail });
+        await db.markEmailUnverified(ctx.user.id);
+        clearNoAuthUserCache();
+        // Send a fresh verification link to the new address (best-effort).
+        const verify = generateToken();
+        await db.createEmailToken({
+          userId: ctx.user.id,
+          type: "verify_email",
+          tokenHash: verify.hash,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        });
+        await sendVerificationEmail(input.newEmail, verify.raw);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "user.email_changed",
+          targetType: "user",
+          targetId: String(ctx.user.id),
+        });
+        return { success: true as const };
+      }),
+
+    // Delete your own account. Workspaces you solely own are deleted with it
+    // (cascade, incl. their stored files); shared workspaces just lose your
+    // membership. Requires the current password for local accounts, and is
+    // confirm-gated. The last super-admin can't delete themselves.
+    deleteMe: protectedProcedure
+      .input(
+        z.object({
+          confirm: z.literal(true),
+          password: z.string().max(200).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (
+          ctx.user.globalRole === "superadmin" &&
+          (await db.countSuperAdmins()) <= 1
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "You are the last super-admin. Promote another before deleting your account.",
+          });
+        }
+        // Local accounts must re-enter their password to confirm.
+        const cred = await db.getCredentialByUserId(ctx.user.id);
+        if (cred) {
+          if (
+            !input.password ||
+            !(await verifyPassword(input.password, cred.passwordHash))
+          ) {
+            throw new TRPCError({
+              code: "UNAUTHORIZED",
+              message: INVALID_CREDENTIALS_ERR_MSG,
+            });
+          }
+        }
+        // Cascade-delete the workspaces this user is the only owner of (their
+        // stored objects too), then remove the account; shared memberships are
+        // dropped by deleteUserAccount.
+        const owned = await db.getSoleOwnerTenantIds(ctx.user.id);
+        for (const tenantId of owned) {
+          await purgeTenantFileObjects(tenantId);
+          await db.deleteTenantCascade(tenantId);
+        }
+        await db.deleteUserAccount(ctx.user.id);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "user.self_deleted",
+          targetType: "user",
+          targetId: String(ctx.user.id),
+        });
+        // Clear the session cookie — the account no longer exists.
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
         return { success: true as const };
       }),
   }),
@@ -836,21 +1021,36 @@ export const appRouter = router({
   }),
 
   profiles: router({
-    list: tenantProcedure.query(async () => {
-      return await db.getAllUsers();
+    // Members of the *active tenant* only (for avatars / "household" lists).
+    // Must never return the full users table — that would leak every account
+    // (and their openId / notification destinations) across tenants. Minimal
+    // display fields only.
+    list: tenantProcedure.query(async ({ ctx }) => {
+      const members = await db.getMembersOfTenant(ctx.tenantId);
+      return members.map(m => ({
+        userId: m.userId,
+        name: m.name,
+        email: m.email,
+        role: m.role,
+      }));
     }),
     current: tenantProcedure.query(({ ctx }) => {
       return ctx.user;
     }),
-    updateMe: tenantProcedure
+    // Self-service: a member edits their own display name. On protectedProcedure
+    // (not tenantProcedure) so even a view-only member can update their own
+    // profile — it isn't a tenant-data write.
+    updateMe: protectedProcedure
       .input(z.object({ name: z.string().min(1).max(100) }))
       .mutation(async ({ ctx, input }) => {
         await db.upsertUser({ openId: ctx.user.openId, name: input.name });
+        clearNoAuthUserCache();
         return { success: true };
       }),
     // Persist the chosen UI language so server-sent notifications (reminders,
-    // test sends) are delivered in the same language across devices.
-    setLanguage: tenantProcedure
+    // test sends) are delivered in the same language across devices. Self-
+    // service, so on protectedProcedure (see updateMe).
+    setLanguage: protectedProcedure
       .input(z.object({ language: z.enum(["en", "he", "ru"]) }))
       .mutation(async ({ ctx, input }) => {
         await db.setUserLanguage(ctx.user.id, input.language);

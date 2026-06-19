@@ -153,6 +153,150 @@ export const adminRouter = router({
         });
         return { success: true as const };
       }),
+
+    // Edit a user's display name.
+    update: superAdminProcedure
+      .input(
+        z.object({
+          userId: z.number().int(),
+          name: z.string().trim().min(1).max(100),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const target = await db.getUserById(input.userId);
+        if (!target) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+        await db.upsertUser({ openId: target.openId, name: input.name });
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.user.updated",
+          targetType: "user",
+          targetId: String(input.userId),
+        });
+        return { success: true as const };
+      }),
+
+    // Enable / disable an account. Disabling revokes every active session and
+    // locks out sign-in. Can't disable yourself or the last active super-admin.
+    setStatus: superAdminProcedure
+      .input(
+        z.object({
+          userId: z.number().int(),
+          status: z.enum(["active", "disabled"]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const target = await db.getUserById(input.userId);
+        if (!target) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+        if (input.status === "disabled") {
+          if (input.userId === ctx.user.id) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "You can't disable your own account",
+            });
+          }
+          if (
+            target.globalRole === "superadmin" &&
+            (await db.countSuperAdmins()) <= 1
+          ) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Cannot disable the last super-admin",
+            });
+          }
+        }
+        await db.setUserStatus(input.userId, input.status);
+        if (input.status === "disabled") {
+          // Kill existing sessions immediately, not just future sign-ins.
+          await db.bumpSessionEpoch(input.userId);
+        }
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.user.status_changed",
+          targetType: "user",
+          targetId: String(input.userId),
+          metadata: { status: input.status },
+        });
+        return { success: true as const };
+      }),
+
+    // Set a new password for a user (admin-initiated reset). Revokes existing
+    // sessions. The user must already have a local credential.
+    resetPassword: superAdminProcedure
+      .input(
+        z.object({
+          userId: z.number().int(),
+          password: z.string().min(8).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const cred = await db.getCredentialByUserId(input.userId);
+        if (!cred) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "This account has no email/password credential to reset",
+          });
+        }
+        await db.setPasswordHash(
+          input.userId,
+          await hashPassword(input.password)
+        );
+        await db.bumpSessionEpoch(input.userId);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.user.password_reset",
+          targetType: "user",
+          targetId: String(input.userId),
+        });
+        return { success: true as const };
+      }),
+
+    // Hard-delete a user. Refuses when it would strand a workspace (sole owner)
+    // or remove the last super-admin; the admin must fix those first. Confirm-
+    // gated. Data the user authored stays with its tenant.
+    delete: superAdminProcedure
+      .input(z.object({ userId: z.number().int(), confirm: z.literal(true) }))
+      .mutation(async ({ ctx, input }) => {
+        const target = await db.getUserById(input.userId);
+        if (!target) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+        if (input.userId === ctx.user.id) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "You can't delete your own account",
+          });
+        }
+        if (
+          target.globalRole === "superadmin" &&
+          (await db.countSuperAdmins()) <= 1
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Cannot delete the last super-admin",
+          });
+        }
+        const stranded = await db.getSoleOwnerTenantIds(input.userId);
+        if (stranded.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "This user is the only owner of one or more workspaces. Transfer ownership or delete those workspaces first.",
+          });
+        }
+        await db.deleteUserAccount(input.userId);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.user.deleted",
+          targetType: "user",
+          targetId: String(input.userId),
+          metadata: { email: target.email },
+        });
+        return { success: true as const };
+      }),
   }),
 
   tenants: router({
@@ -406,8 +550,23 @@ export const adminRouter = router({
         signupsEnabled: await db.getSignupsEnabled(),
         requireEmailVerification: await db.getRequireEmailVerification(),
         emailVerificationGraceHours: await db.getEmailVerificationGraceHours(),
+        allowedEmailDomains: await db.getAllowedEmailDomains(),
       };
     }),
+
+    // Restrict open self-registration to a set of email domains. Empty list
+    // clears the restriction. Invited users always bypass it.
+    setAllowedEmailDomains: superAdminProcedure
+      .input(z.object({ domains: z.array(z.string().trim()).max(100) }))
+      .mutation(async ({ ctx, input }) => {
+        await db.setAllowedEmailDomains(input.domains);
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.config.email_domains",
+          metadata: { count: input.domains.filter(Boolean).length },
+        });
+        return { success: true as const };
+      }),
 
     // Switch a NO_AUTH install between the single auto-admin (admin@local, no
     // login screen) and real per-user email/password login. Guarded so enabling

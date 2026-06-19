@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, ShieldAlert } from "lucide-react";
+import { Loader2, ShieldAlert, MoreVertical } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useCapabilities } from "@/hooks/useCapabilities";
@@ -16,6 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 function errMessage(e: unknown): string {
@@ -106,6 +113,13 @@ function Overview() {
       onSuccess: () => utils.admin.config.get.invalidate(),
       onError: e => toast.error(errMessage(e)),
     });
+  const setDomains = trpc.admin.config.setAllowedEmailDomains.useMutation({
+    onSuccess: () => {
+      utils.admin.config.get.invalidate();
+      toast.success(t("admin.saved"));
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
   const setLocalLogin = trpc.admin.config.setLocalLogin.useMutation({
     onSuccess: (_data, vars) => {
       if (vars.enabled) {
@@ -207,6 +221,11 @@ function Overview() {
                 : t("admin.disabled")}
             </Button>
           </div>
+          <AllowedDomainsEditor
+            value={config.data?.allowedEmailDomains ?? []}
+            disabled={setDomains.isPending || config.isLoading}
+            onSave={domains => setDomains.mutate({ domains })}
+          />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-medium">
@@ -306,14 +325,88 @@ function Overview() {
   );
 }
 
+// Comma/space/newline-separated email-domain allowlist for open registration.
+// Empty = no restriction.
+function AllowedDomainsEditor({
+  value,
+  disabled,
+  onSave,
+}: {
+  value: string[];
+  disabled: boolean;
+  onSave: (domains: string[]) => void;
+}) {
+  const { t } = useTranslation();
+  const joined = value.join(", ");
+  // Uncontrolled input seeded from the saved value; we read it on save.
+  const [text, setText] = useState(joined);
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{t("admin.allowedDomains")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("admin.allowedDomainsDesc")}
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          id="allowed-domains"
+          placeholder="acme.com, contoso.com"
+          defaultValue={joined}
+          onChange={e => setText(e.target.value)}
+          className="flex-1"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() =>
+            onSave(
+              text
+                .split(/[\s,]+/)
+                .map(d => d.trim())
+                .filter(Boolean)
+            )
+          }
+        >
+          {t("admin.save")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function UsersTab() {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
+  const { user: me } = useAuth();
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  // The user currently being edited (rename) or password-reset, if any.
+  const [editing, setEditing] = useState<{
+    userId: number;
+    name: string;
+  } | null>(null);
+  const [resetting, setResetting] = useState<{ userId: number } | null>(null);
   const users = trpc.admin.users.list.useQuery({ search: search || undefined });
+  const invalidate = () => utils.admin.users.list.invalidate();
   const setRole = trpc.admin.users.setGlobalRole.useMutation({
-    onSuccess: () => utils.admin.users.list.invalidate(),
+    onSuccess: invalidate,
+    onError: e => toast.error(errMessage(e)),
+  });
+  const setStatus = trpc.admin.users.setStatus.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success(t("admin.saved"));
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
+  const del = trpc.admin.users.delete.useMutation({
+    onSuccess: () => {
+      invalidate();
+      utils.admin.stats.invalidate();
+      toast.success(t("admin.userDeleted"));
+    },
     onError: e => toast.error(errMessage(e)),
   });
 
@@ -339,40 +432,103 @@ function UsersTab() {
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         )}
-        {users.data?.map(u => (
-          <div
-            key={u.id}
-            className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">
-                {u.name || u.email || `User #${u.id}`}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {u.email} · {u.loginMethod ?? "—"}
-              </p>
-            </div>
-            <Select
-              value={u.globalRole}
-              onValueChange={v =>
-                setRole.mutate({
-                  userId: u.id,
-                  globalRole: v as "user" | "superadmin",
-                })
-              }
+        {users.data?.map(u => {
+          const isSelf = u.id === me?.id;
+          const disabled = u.status === "disabled";
+          return (
+            <div
+              key={u.id}
+              className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
             >
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">{t("admin.roleUser")}</SelectItem>
-                <SelectItem value="superadmin">
-                  {t("admin.roleSuperadmin")}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        ))}
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate flex items-center gap-2">
+                  {u.name || u.email || `User #${u.id}`}
+                  {isSelf && (
+                    <Badge variant="outline" className="text-xs h-5">
+                      {t("admin.you")}
+                    </Badge>
+                  )}
+                  {disabled && (
+                    <Badge variant="destructive" className="text-xs h-5">
+                      {t("admin.disabled")}
+                    </Badge>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {u.email} · {u.loginMethod ?? "—"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Select
+                  value={u.globalRole}
+                  onValueChange={v =>
+                    setRole.mutate({
+                      userId: u.id,
+                      globalRole: v as "user" | "superadmin",
+                    })
+                  }
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">{t("admin.roleUser")}</SelectItem>
+                    <SelectItem value="superadmin">
+                      {t("admin.roleSuperadmin")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("admin.actions")}
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() =>
+                        setEditing({ userId: u.id, name: u.name ?? "" })
+                      }
+                    >
+                      {t("admin.editName")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setResetting({ userId: u.id })}
+                    >
+                      {t("admin.resetPassword")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={isSelf}
+                      onClick={() =>
+                        setStatus.mutate({
+                          userId: u.id,
+                          status: disabled ? "active" : "disabled",
+                        })
+                      }
+                    >
+                      {disabled ? t("admin.enable") : t("admin.disable")}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      disabled={isSelf}
+                      onClick={() => {
+                        if (window.confirm(t("admin.confirmDeleteUser")))
+                          del.mutate({ userId: u.id, confirm: true });
+                      }}
+                    >
+                      {t("admin.deleteUser")}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          );
+        })}
       </CardContent>
 
       {creating && (
@@ -384,7 +540,135 @@ function UsersTab() {
           }}
         />
       )}
+      {editing && (
+        <EditNameDialog
+          initial={editing.name}
+          userId={editing.userId}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            invalidate();
+            setEditing(null);
+          }}
+        />
+      )}
+      {resetting && (
+        <ResetPasswordDialog
+          userId={resetting.userId}
+          onClose={() => setResetting(null)}
+          onDone={() => setResetting(null)}
+        />
+      )}
     </Card>
+  );
+}
+
+function EditNameDialog({
+  initial,
+  userId,
+  onClose,
+  onSaved,
+}: {
+  initial: string;
+  userId: number;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const [name, setName] = useState(initial);
+  const update = trpc.admin.users.update.useMutation({
+    onSuccess: () => {
+      toast.success(t("admin.saved"));
+      onSaved();
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          update.mutate({ userId, name: name.trim() });
+        }}
+        className="bg-card w-full max-w-sm rounded-xl border shadow-lg p-5 space-y-4"
+      >
+        <h3 className="font-semibold">{t("admin.editName")}</h3>
+        <div className="space-y-2">
+          <Label htmlFor="edit-name">{t("admin.name")}</Label>
+          <Input
+            id="edit-name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            required
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t("admin.cancel")}
+          </Button>
+          <Button type="submit" disabled={update.isPending || !name.trim()}>
+            {t("admin.save")}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ResetPasswordDialog({
+  userId,
+  onClose,
+  onDone,
+}: {
+  userId: number;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const [password, setPassword] = useState("");
+  const reset = trpc.admin.users.resetPassword.useMutation({
+    onSuccess: () => {
+      toast.success(t("admin.passwordReset"));
+      onDone();
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <form
+        onSubmit={e => {
+          e.preventDefault();
+          reset.mutate({ userId, password });
+        }}
+        className="bg-card w-full max-w-sm rounded-xl border shadow-lg p-5 space-y-4"
+      >
+        <h3 className="font-semibold">{t("admin.resetPassword")}</h3>
+        <p className="text-xs text-muted-foreground">
+          {t("admin.resetPasswordHint")}
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor="reset-pw">{t("admin.newPassword")}</Label>
+          <Input
+            id="reset-pw"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            minLength={8}
+            required
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t("admin.cancel")}
+          </Button>
+          <Button
+            type="submit"
+            disabled={reset.isPending || password.length < 8}
+          >
+            {t("admin.resetPassword")}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 

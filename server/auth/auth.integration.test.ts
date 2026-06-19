@@ -75,7 +75,7 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
     const { ctx, cookies } = anonCtx();
     const res = await appRouter.createCaller(ctx).auth.register({
       email,
-      password: "supersecret",
+      password: "supersecret1",
       name: "Reg User",
     });
     expect(res.success).toBe(true);
@@ -88,7 +88,7 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
     ).getCredentialByEmail(email);
     expect(cred).toBeTruthy();
     // Password is stored hashed, never in clear text.
-    expect(cred!.passwordHash).not.toContain("supersecret");
+    expect(cred!.passwordHash).not.toContain("supersecret1");
 
     // A user + an owner tenant membership exist.
     const [user] = await db
@@ -108,11 +108,11 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
     const email = `dup-${Date.now()}@example.com`;
     await appRouter
       .createCaller(anonCtx().ctx)
-      .auth.register({ email, password: "supersecret" });
+      .auth.register({ email, password: "supersecret1" });
     await expect(
       appRouter
         .createCaller(anonCtx().ctx)
-        .auth.register({ email, password: "supersecret" })
+        .auth.register({ email, password: "supersecret1" })
     ).rejects.toThrow(/already exists/i);
   });
 
@@ -120,12 +120,12 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
     const email = `login-${Date.now()}@example.com`;
     await appRouter
       .createCaller(anonCtx().ctx)
-      .auth.register({ email, password: "rightpassword" });
+      .auth.register({ email, password: "rightpassword1" });
 
     const { ctx, cookies } = anonCtx();
     const ok = await appRouter
       .createCaller(ctx)
-      .auth.login({ email, password: "rightpassword" });
+      .auth.login({ email, password: "rightpassword1" });
     expect(ok.success).toBe(true);
     expect(Object.keys(cookies).length).toBe(1);
 
@@ -146,7 +146,7 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
     const email = `verify-${Date.now()}@example.com`;
     await appRouter
       .createCaller(anonCtx().ctx)
-      .auth.register({ email, password: "supersecret" });
+      .auth.register({ email, password: "supersecret1" });
     const cred = await (
       await import("../db/credentials")
     ).getCredentialByEmail(email);
@@ -183,7 +183,7 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
     const email = `reset-${Date.now()}@example.com`;
     await appRouter
       .createCaller(anonCtx().ctx)
-      .auth.register({ email, password: "oldpassword" });
+      .auth.register({ email, password: "oldpassword1" });
     const creds = await import("../db/credentials");
     const cred = await creds.getCredentialByEmail(email);
 
@@ -207,18 +207,18 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
 
     const out = await appRouter
       .createCaller(anonCtx().ctx)
-      .auth.resetPassword({ token: known.raw, password: "newpassword" });
+      .auth.resetPassword({ token: known.raw, password: "newpassword1" });
     expect(out.success).toBe(true);
 
     // Old password no longer works; new one does.
     await expect(
       appRouter
         .createCaller(anonCtx().ctx)
-        .auth.login({ email, password: "oldpassword" })
+        .auth.login({ email, password: "oldpassword1" })
     ).rejects.toThrow();
     const ok = await appRouter
       .createCaller(anonCtx().ctx)
-      .auth.login({ email, password: "newpassword" });
+      .auth.login({ email, password: "newpassword1" });
     expect(ok.success).toBe(true);
   });
 
@@ -228,7 +228,7 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
     const email = `gate-${Date.now()}@example.com`;
     await appRouter
       .createCaller(anonCtx().ctx)
-      .auth.register({ email, password: "supersecret" });
+      .auth.register({ email, password: "supersecret1" });
 
     // Enforce verification with no grace window. Restore afterwards so sibling
     // tests (and re-runs) see the relaxed standalone default again.
@@ -238,7 +238,7 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
       await expect(
         appRouter
           .createCaller(anonCtx().ctx)
-          .auth.login({ email, password: "supersecret" })
+          .auth.login({ email, password: "supersecret1" })
       ).rejects.toThrow(/verify your email/i);
 
       // resendVerification reports success regardless (no enumeration).
@@ -252,7 +252,7 @@ describe.skipIf(!TEST_DB)("native auth flow (real MySQL)", () => {
       await creds.markEmailVerified(cred!.userId);
       const ok = await appRouter
         .createCaller(anonCtx().ctx)
-        .auth.login({ email, password: "supersecret" });
+        .auth.login({ email, password: "supersecret1" });
       expect(ok.success).toBe(true);
     } finally {
       await adminDb.setRequireEmailVerification(false);
