@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.6.91
-- Add sidebar section visibility settings (#124)
-- Add quick property switcher to the mobile top bar (#123)
-- Make all notification channels runtime-configurable + implement WhatsApp (#122)
-- Brighten active mobile bottom-nav indicator in dark mode (#121)
+## 0.6.92
+- Add admin user-creation flow for standalone installs (#129)
+- Use gender-inclusive Hebrew pronoun את/ה instead of אתה (#128)
+- Use 'property' terminology in the property search flow (#127)
+- Fix sidebar toggles not affecting the new HomeVault UI (#126)
+- Full parity: make Forge push, PUBLIC_BASE_URL & webhook secret UI-configurable (#125)
