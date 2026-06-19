@@ -1,12 +1,17 @@
-import express, { type Express } from "express";
+import { type Express } from "express";
 import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
-import { logger } from "./logger";
 
+// Dev-only Vite middleware. This module statically imports `vite` (and the
+// Vite config, which pulls in the React/Tailwind build plugins), so it must
+// NEVER be imported on the production code path — doing so would drag the
+// entire build toolchain into the runtime image. It is loaded lazily via a
+// dynamic import in index.ts, gated on NODE_ENV=development. Production static
+// serving lives in ./serveStatic, which has no Vite dependency.
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -45,25 +50,5 @@ export async function setupVite(app: Express, server: Server) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
     }
-  });
-}
-
-export function serveStatic(app: Express) {
-  const distPath =
-    process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
-  if (!fs.existsSync(distPath)) {
-    logger.error(
-      { distPath },
-      "Build directory not found — run client build first"
-    );
-  }
-
-  app.use(express.static(distPath));
-
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

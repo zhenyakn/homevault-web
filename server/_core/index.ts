@@ -13,7 +13,6 @@ import { googleDriveRouter } from "../googleDriveRoute";
 import { storageRouter } from "../storageRoute";
 import { exportRouter } from "../exportRoute";
 import { createContext } from "./context";
-import { serveStatic, setupVite } from "./vite";
 import { sdk } from "./sdk";
 import { getSessionCookieOptions } from "./cookies";
 import { csrfIssueMiddleware } from "./csrf";
@@ -393,8 +392,14 @@ async function startServer() {
   );
 
   if (process.env.NODE_ENV === "development") {
+    // Dev only: dynamically import the Vite middleware so the bundled
+    // production server never statically references `vite`. Keeping this off
+    // the production import graph lets the add-on image ship production
+    // dependencies only (no Vite / build toolchain) → much smaller download.
+    const { setupVite } = await import("./vite");
     await setupVite(app, server);
   } else {
+    const { serveStatic } = await import("./serveStatic");
     serveStatic(app);
   }
 

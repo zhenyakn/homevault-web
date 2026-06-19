@@ -13,12 +13,29 @@ RUN npm install -g pnpm@10.4.1
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
 
-# Install ALL dependencies (dev included — needed for build & vite runtime import)
+# Install ALL dependencies (dev included — needed for the build step below)
 RUN pnpm install --frozen-lockfile
 
 # Copy source and build
 COPY . .
 RUN pnpm build
+
+# ── Production dependencies stage ──────────────────────────────────────────────────────────────────
+# Resolve a runtime-only node_modules (no dev/build toolchain). The bundled
+# server loads Vite via a lazy dynamic import gated on NODE_ENV=development, so
+# production never touches it — letting us drop Vite, esbuild, TypeScript,
+# Playwright, the Tailwind build plugins, @types/*, pnpm, etc. This shrinks the
+# add-on image substantially → much faster download/install on the HA device.
+FROM node:26-alpine AS proddeps
+
+WORKDIR /app
+
+RUN npm install -g pnpm@10.4.1
+
+COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
+
+RUN pnpm install --frozen-lockfile --prod
 
 # ── Production stage ──────────────────────────────────────────────────────────────────────────────
 ARG BUILD_ARCH
@@ -30,9 +47,9 @@ RUN apk add --no-cache nodejs bash
 
 WORKDIR /app
 
-# Copy built output and full node_modules from builder
+# Copy built output, production-only node_modules, and the manifest
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=proddeps /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
 # Copy the unified addon migration script
