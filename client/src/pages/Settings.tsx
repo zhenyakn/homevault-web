@@ -1783,9 +1783,144 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
             pending={save.isPending}
             onSave={v => save.mutate({ whatsapp: v })}
           />
+          <PushDeliveryForm
+            status={cfg.push}
+            pending={save.isPending}
+            onSave={v => save.mutate({ push: v })}
+          />
+          <GeneralDeliveryForm
+            status={cfg.general}
+            pending={save.isPending}
+            onSave={v => save.mutate({ general: v })}
+          />
         </div>
       )}
     </CollapsibleCategory>
+  );
+}
+
+function PushDeliveryForm({
+  status,
+  onSave,
+  pending,
+}: {
+  status: any;
+  onSave: (v: any) => void;
+  pending: boolean;
+}) {
+  const { t } = useTranslation();
+  const ro = Boolean(status.fromEnv);
+  const [apiUrl, setApiUrl] = useState(status.apiUrl ?? "");
+  const [apiKey, setApiKey] = useState("");
+  return (
+    <IntegrationCard
+      icon={<Smartphone className="h-4 w-4" />}
+      name={t("settings.delivery.push.title")}
+      description={t("settings.delivery.push.desc")}
+      badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
+      footer={
+        ro ? (
+          <p className="text-xs text-muted-foreground">
+            {t("settings.delivery.fromEnv")}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <DeliveryField
+              label={t("settings.delivery.push.apiUrl")}
+              value={apiUrl}
+              onChange={setApiUrl}
+              placeholder="https://api.forge.example.com"
+            />
+            <DeliveryField
+              label={t("settings.delivery.push.apiKey")}
+              value={apiKey}
+              onChange={setApiKey}
+              type="password"
+              placeholder={
+                status.apiKeySet
+                  ? t("settings.delivery.secretPlaceholder")
+                  : undefined
+              }
+            />
+            <SaveDeliveryButton
+              pending={pending}
+              onClick={() =>
+                onSave({ forgeApiUrl: apiUrl, forgeApiKey: apiKey })
+              }
+            />
+          </div>
+        )
+      }
+    />
+  );
+}
+
+function GeneralDeliveryForm({
+  status,
+  onSave,
+  pending,
+}: {
+  status: any;
+  onSave: (v: any) => void;
+  pending: boolean;
+}) {
+  const { t } = useTranslation();
+  const baseRo = Boolean(status.publicBaseUrlFromEnv);
+  const secretRo = Boolean(status.webhookSecretFromEnv);
+  const [baseUrl, setBaseUrl] = useState(status.publicBaseUrl ?? "");
+  const [secret, setSecret] = useState("");
+  return (
+    <IntegrationCard
+      icon={<Globe className="h-4 w-4" />}
+      name={t("settings.delivery.general.title")}
+      description={t("settings.delivery.general.desc")}
+      footer={
+        <div className="flex flex-col gap-2">
+          {baseRo ? (
+            <p className="text-xs text-muted-foreground">
+              {t("settings.delivery.general.publicBaseUrl")} ·{" "}
+              {t("settings.delivery.fromEnv")}
+            </p>
+          ) : (
+            <DeliveryField
+              label={t("settings.delivery.general.publicBaseUrl")}
+              value={baseUrl}
+              onChange={setBaseUrl}
+              placeholder="https://home.example.com"
+            />
+          )}
+          {secretRo ? (
+            <p className="text-xs text-muted-foreground">
+              {t("settings.delivery.general.webhookSecret")} ·{" "}
+              {t("settings.delivery.fromEnv")}
+            </p>
+          ) : (
+            <DeliveryField
+              label={t("settings.delivery.general.webhookSecret")}
+              value={secret}
+              onChange={setSecret}
+              type="password"
+              placeholder={
+                status.webhookSecretSet
+                  ? t("settings.delivery.secretPlaceholder")
+                  : undefined
+              }
+            />
+          )}
+          {(!baseRo || !secretRo) && (
+            <SaveDeliveryButton
+              pending={pending}
+              onClick={() =>
+                onSave({
+                  ...(baseRo ? {} : { publicBaseUrl: baseUrl }),
+                  ...(secretRo ? {} : { telegramWebhookSecret: secret }),
+                })
+              }
+            />
+          )}
+        </div>
+      }
+    />
   );
 }
 

@@ -13,6 +13,18 @@ vi.mock("./notifications/config", () => ({
   })),
   saveNotificationConfig: vi.fn(async () => {}),
 }));
+vi.mock("./_core/integrationsConfig", () => ({
+  getIntegrationsConfigStatus: vi.fn(() => ({
+    push: { configured: false, fromEnv: false, apiUrl: null, apiKeySet: false },
+    general: {
+      publicBaseUrl: null,
+      publicBaseUrlFromEnv: false,
+      webhookSecretSet: false,
+      webhookSecretFromEnv: false,
+    },
+  })),
+  saveIntegrationsConfig: vi.fn(async () => {}),
+}));
 vi.mock("web-push", () => ({
   default: {
     generateVAPIDKeys: vi.fn(() => ({
@@ -40,6 +52,10 @@ import {
   getNotificationConfigStatus,
   saveNotificationConfig,
 } from "./notifications/config";
+import {
+  getIntegrationsConfigStatus,
+  saveIntegrationsConfig,
+} from "./_core/integrationsConfig";
 
 const adminCtx = {
   user: { id: 1, globalRole: "superadmin" },
@@ -53,11 +69,15 @@ const userCtx = {
 beforeEach(() => vi.clearAllMocks());
 
 describe("notificationRouter admin config endpoints", () => {
-  it("getChannelConfig returns the masked status for an admin", async () => {
+  it("getChannelConfig merges notification + integrations status for an admin", async () => {
     const caller = notificationRouter.createCaller(adminCtx);
     const status = await caller.getChannelConfig();
     expect(getNotificationConfigStatus).toHaveBeenCalledOnce();
+    expect(getIntegrationsConfigStatus).toHaveBeenCalledOnce();
     expect(status.email.configured).toBe(false);
+    // Push (Forge) + general sections come from the integrations config.
+    expect(status.push.configured).toBe(false);
+    expect(status.general.webhookSecretSet).toBe(false);
   });
 
   it("getChannelConfig is forbidden for a non-admin", async () => {
@@ -66,17 +86,26 @@ describe("notificationRouter admin config endpoints", () => {
     expect(getNotificationConfigStatus).not.toHaveBeenCalled();
   });
 
-  it("saveChannelConfig flattens the per-section input", async () => {
+  it("saveChannelConfig routes channel + integration sections to the right stores", async () => {
     const caller = notificationRouter.createCaller(adminCtx);
     const res = await caller.saveChannelConfig({
       email: { smtpHost: "smtp.example.com", smtpFrom: "a@b.c" },
       telegram: { telegramBotToken: "tok" },
+      push: { forgeApiUrl: "https://forge", forgeApiKey: "fk" },
+      general: { publicBaseUrl: "https://home" },
     });
     expect(res).toEqual({ ok: true });
+    // Channel creds (SMTP, Telegram token) → notification config store.
     expect(saveNotificationConfig).toHaveBeenCalledWith({
       smtpHost: "smtp.example.com",
       smtpFrom: "a@b.c",
       telegramBotToken: "tok",
+    });
+    // Forge (push) + general (base URL) → integrations config store.
+    expect(saveIntegrationsConfig).toHaveBeenCalledWith({
+      forgeApiUrl: "https://forge",
+      forgeApiKey: "fk",
+      publicBaseUrl: "https://home",
     });
   });
 

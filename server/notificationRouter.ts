@@ -16,6 +16,10 @@ import {
   getNotificationConfigStatus,
   saveNotificationConfig,
 } from "./notifications/config";
+import {
+  getIntegrationsConfigStatus,
+  saveIntegrationsConfig,
+} from "./_core/integrationsConfig";
 import { hasCapability } from "./db/entitlements";
 import type { CapabilityKey } from "./billing/capabilities";
 import * as notif from "./db/notifications";
@@ -164,7 +168,10 @@ export const notificationRouter = router({
 
   // ── Admin: server-side channel credentials (env-first, app_settings-backed) ─
   /** Masked status of every channel's server config for the admin Settings UI. */
-  getChannelConfig: adminProcedure.query(() => getNotificationConfigStatus()),
+  getChannelConfig: adminProcedure.query(() => ({
+    ...getNotificationConfigStatus(),
+    ...getIntegrationsConfigStatus(),
+  })),
 
   /**
    * Persist channel credentials for one section. Secrets left blank are kept;
@@ -199,6 +206,18 @@ export const notificationRouter = router({
             whatsappApiVersion: z.string().max(16).optional(),
           })
           .optional(),
+        push: z
+          .object({
+            forgeApiUrl: z.string().max(512).optional(),
+            forgeApiKey: z.string().max(512).optional(),
+          })
+          .optional(),
+        general: z
+          .object({
+            publicBaseUrl: z.string().max(512).optional(),
+            telegramWebhookSecret: z.string().max(255).optional(),
+          })
+          .optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -207,6 +226,10 @@ export const notificationRouter = router({
         ...input.telegram,
         ...input.webpush,
         ...input.whatsapp,
+      });
+      await saveIntegrationsConfig({
+        ...input.push,
+        ...input.general,
       });
       return { ok: true } as const;
     }),

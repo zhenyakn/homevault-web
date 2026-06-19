@@ -563,6 +563,18 @@
         "phoneId": "Phone number ID",
         "token": "Access token",
         "apiVersion": "API version"
+      },
+      "push": {
+        "title": "Mobile push (Forge)",
+        "desc": "Built-in push service credentials. Also power the AI, voice and maps features.",
+        "apiUrl": "Service URL",
+        "apiKey": "API key"
+      },
+      "general": {
+        "title": "General",
+        "desc": "Shared settings used to build links in emails and to register the Telegram webhook.",
+        "publicBaseUrl": "Public base URL",
+        "webhookSecret": "Telegram webhook secret"
       }
     },
     "syncEvents": "Sync events",

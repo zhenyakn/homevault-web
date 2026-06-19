@@ -11,6 +11,7 @@ import { webPushChannel } from "./webpush";
 import { telegramChannel } from "./telegram";
 import { whatsappChannel } from "./whatsapp";
 import { _resetNotificationConfigForTests } from "../config";
+import { _resetIntegrationsConfigForTests } from "../../_core/integrationsConfig";
 import type { NotificationPayload, Recipient } from "../types";
 
 const payload: NotificationPayload = {
@@ -40,6 +41,8 @@ const NOTIF_ENV_VARS = [
   "WHATSAPP_PHONE_NUMBER_ID",
   "WHATSAPP_ACCESS_TOKEN",
   "WHATSAPP_API_VERSION",
+  "BUILT_IN_FORGE_API_URL",
+  "BUILT_IN_FORGE_API_KEY",
 ];
 function clearNotifEnv() {
   for (const v of NOTIF_ENV_VARS) delete process.env[v];
@@ -49,11 +52,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   clearNotifEnv();
   _resetNotificationConfigForTests();
+  _resetIntegrationsConfigForTests();
 });
 afterEach(() => {
   vi.unstubAllGlobals();
   clearNotifEnv();
   _resetNotificationConfigForTests();
+  _resetIntegrationsConfigForTests();
 });
 
 describe("canDeliverTo / isConfigured guards (nothing configured)", () => {
@@ -90,6 +95,10 @@ describe("canDeliverTo / isConfigured guards (nothing configured)", () => {
     );
     expect(whatsappChannel.canDeliverTo({ id: 1 })).toBe(false);
   });
+
+  it("push needs Forge creds; unset → not configured", () => {
+    expect(pushChannel.isConfigured()).toBe(false);
+  });
 });
 
 describe("isConfigured reflects runtime config", () => {
@@ -114,6 +123,12 @@ describe("isConfigured reflects runtime config", () => {
     process.env.WHATSAPP_PHONE_NUMBER_ID = "123";
     process.env.WHATSAPP_ACCESS_TOKEN = "tok";
     expect(whatsappChannel.isConfigured()).toBe(true);
+  });
+
+  it("push becomes configured once Forge URL + key are set", () => {
+    process.env.BUILT_IN_FORGE_API_URL = "https://forge.example.com";
+    process.env.BUILT_IN_FORGE_API_KEY = "forge-key";
+    expect(pushChannel.isConfigured()).toBe(true);
   });
 });
 

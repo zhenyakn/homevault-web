@@ -1,4 +1,4 @@
-import { ENV } from "../../_core/env";
+import { getForgeConfig } from "../../_core/integrationsConfig";
 import { notifyOwner } from "../../_core/notification";
 import type { NotificationChannel } from "../types";
 
@@ -8,7 +8,10 @@ import type { NotificationChannel } from "../types";
  */
 export const pushChannel: NotificationChannel = {
   key: "push",
-  isConfigured: () => Boolean(ENV.forgeApiUrl && ENV.forgeApiKey),
+  isConfigured: () => {
+    const { apiUrl, apiKey } = getForgeConfig();
+    return Boolean(apiUrl && apiKey);
+  },
   canDeliverTo: () => true,
   async send(_recipient, payload) {
     const ok = await notifyOwner({

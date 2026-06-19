@@ -1,36 +1,42 @@
 import nodemailer, { type Transporter } from "nodemailer";
-import { ENV } from "../_core/env";
 import { logger } from "../_core/logger";
+import { getPublicBaseUrl } from "../_core/integrationsConfig";
+import {
+  getNotificationConfig,
+  isSectionConfigured,
+} from "../notifications/config";
 
 // Transactional auth emails (verify address, reset password). Reuses the same
-// SMTP configuration as notification emails. Sending is best-effort: a failure
-// is logged but never blocks the auth flow that triggered it (e.g. a user can
-// still register if the verification email can't be sent).
+// SMTP configuration as notification emails (resolved env-first, then the
+// admin-set override). Sending is best-effort: a failure is logged but never
+// blocks the auth flow that triggered it (e.g. a user can still register if the
+// verification email can't be sent).
 
 let transporter: Transporter | null = null;
+let transporterKey = "";
 
 function getTransport(): Transporter {
-  if (!transporter) {
-    const port = ENV.smtpPort ? Number(ENV.smtpPort) : 587;
+  const c = getNotificationConfig();
+  const port = c.smtpPort ? Number(c.smtpPort) : 587;
+  const key = JSON.stringify([c.smtpHost, port, c.smtpUser, c.smtpPass]);
+  if (!transporter || transporterKey !== key) {
     transporter = nodemailer.createTransport({
-      host: ENV.smtpHost,
+      host: c.smtpHost,
       port,
       secure: port === 465,
-      auth: ENV.smtpUser
-        ? { user: ENV.smtpUser, pass: ENV.smtpPass }
-        : undefined,
+      auth: c.smtpUser ? { user: c.smtpUser, pass: c.smtpPass } : undefined,
     });
+    transporterKey = key;
   }
   return transporter;
 }
 
 export function isEmailConfigured(): boolean {
-  return Boolean(ENV.smtpHost && (ENV.smtpFrom || ENV.smtpUser));
+  return isSectionConfigured("email");
 }
 
 function appUrl(path: string): string {
-  const base = (ENV.publicBaseUrl || "").replace(/\/$/, "");
-  return `${base}${path}`;
+  return `${getPublicBaseUrl()}${path}`;
 }
 
 async function send(
@@ -44,8 +50,9 @@ async function send(
     return;
   }
   try {
+    const c = getNotificationConfig();
     await getTransport().sendMail({
-      from: ENV.smtpFrom || ENV.smtpUser,
+      from: c.smtpFrom || c.smtpUser,
       to,
       subject,
       text,

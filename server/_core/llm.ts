@@ -1,4 +1,4 @@
-import { ENV } from "./env";
+import { getForgeConfig } from "./integrationsConfig";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
@@ -215,12 +215,12 @@ const normalizeToolChoice = (
 };
 
 const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
+  getForgeConfig().apiUrl && getForgeConfig().apiUrl.trim().length > 0
+    ? `${getForgeConfig().apiUrl.replace(/\/$/, "")}/v1/chat/completions`
     : "";
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
+  if (!getForgeConfig().apiKey) {
     throw new Error("OPENAI_API_KEY is not configured");
   }
 };
@@ -321,7 +321,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${getForgeConfig().apiKey}`,
     },
     body: JSON.stringify(payload),
   });
