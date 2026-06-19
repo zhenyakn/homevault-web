@@ -745,7 +745,13 @@
         "publicBaseUrl": "כתובת בסיס ציבורית",
         "webhookSecret": "סוד webhook של טלגרם"
       }
-    }
+    },
+    "changePassword": "שינוי סיסמה",
+    "changePasswordDesc": "עדכון הסיסמה שבה אתה משתמש להתחברות.",
+    "currentPassword": "סיסמה נוכחית",
+    "newPasswordLabel": "סיסמה חדשה",
+    "passwordChanged": "הסיסמה שונתה",
+    "updatePassword": "עדכון סיסמה"
   },
   "repairs": {
     "title": "תיקונים",
@@ -1391,7 +1397,9 @@
       "admin": "מנהל",
       "member": "חבר",
       "viewer": "צופה"
-    }
+    },
+    "you": "אתה",
+    "recentActivity": "פעילות אחרונה"
   },
   "plan": {
     "planUsage": "מנוי ושימוש",
@@ -1557,6 +1565,22 @@
     "planSaved": "התוכנית נשמרה",
     "planDeleted": "התוכנית נמחקה",
     "recentActivity": "פעילות אחרונה",
-    "noActivity": "אין פעילות עדיין."
+    "noActivity": "אין פעילות עדיין.",
+    "you": "אתה",
+    "actions": "פעולות",
+    "editName": "עריכת שם",
+    "resetPassword": "איפוס סיסמה",
+    "newPassword": "סיסמה חדשה",
+    "resetPasswordHint": "הגדרת סיסמה חדשה למשתמש זה. כל ההתחברויות הקיימות שלו ינותקו.",
+    "passwordReset": "הסיסמה אופסה",
+    "enable": "הפעלה",
+    "disable": "השבתה",
+    "deleteUser": "מחיקת משתמש",
+    "confirmDeleteUser": "למחוק משתמש זה לצמיתות? סביבות העבודה שלו יישמרו; לא ניתן לבטל פעולה זו.",
+    "userDeleted": "המשתמש נמחק",
+    "saved": "נשמר",
+    "name": "שם",
+    "cancel": "ביטול",
+    "save": "שמירה"
   }
 }

@@ -756,7 +756,13 @@
         "publicBaseUrl": "Публичный базовый URL",
         "webhookSecret": "Секрет webhook Telegram"
       }
-    }
+    },
+    "changePassword": "Сменить пароль",
+    "changePasswordDesc": "Обновите пароль, используемый для входа.",
+    "currentPassword": "Текущий пароль",
+    "newPasswordLabel": "Новый пароль",
+    "passwordChanged": "Пароль изменён",
+    "updatePassword": "Обновить пароль"
   },
   "repairs": {
     "title": "Ремонт",
@@ -1393,7 +1399,9 @@
       "admin": "администратор",
       "member": "участник",
       "viewer": "наблюдатель"
-    }
+    },
+    "you": "Вы",
+    "recentActivity": "Недавняя активность"
   },
   "plan": {
     "planUsage": "Тариф и использование",
@@ -1559,6 +1567,22 @@
     "planSaved": "Тариф сохранён",
     "planDeleted": "Тариф удалён",
     "recentActivity": "Недавняя активность",
-    "noActivity": "Пока нет активности."
+    "noActivity": "Пока нет активности.",
+    "you": "Вы",
+    "actions": "Действия",
+    "editName": "Изменить имя",
+    "resetPassword": "Сбросить пароль",
+    "newPassword": "Новый пароль",
+    "resetPasswordHint": "Задайте новый пароль для этого пользователя. Его текущие сессии будут завершены.",
+    "passwordReset": "Пароль сброшен",
+    "enable": "Включить",
+    "disable": "Отключить",
+    "deleteUser": "Удалить пользователя",
+    "confirmDeleteUser": "Удалить этого пользователя навсегда? Его рабочие пространства сохранятся; отменить нельзя.",
+    "userDeleted": "Пользователь удалён",
+    "saved": "Сохранено",
+    "name": "Имя",
+    "cancel": "Отмена",
+    "save": "Сохранить"
   }
 }

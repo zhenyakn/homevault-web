@@ -754,7 +754,13 @@
     "placeholderHome": "Home",
     "perModuleList": "Expenses · Repairs · Loans …",
     "exportLockedTitle": "Data export is a premium feature",
-    "exportLockedBody": "Upgrade your plan to export your data."
+    "exportLockedBody": "Upgrade your plan to export your data.",
+    "changePassword": "Change password",
+    "changePasswordDesc": "Update the password you use to sign in.",
+    "currentPassword": "Current password",
+    "newPasswordLabel": "New password",
+    "passwordChanged": "Password changed",
+    "updatePassword": "Update password"
   },
   "repairs": {
     "title": "Repairs",
@@ -1391,7 +1397,9 @@
       "admin": "admin",
       "member": "member",
       "viewer": "viewer"
-    }
+    },
+    "you": "You",
+    "recentActivity": "Recent activity"
   },
   "plan": {
     "planUsage": "Plan & usage",
@@ -1557,6 +1565,22 @@
     "planSaved": "Plan saved",
     "planDeleted": "Plan deleted",
     "recentActivity": "Recent activity",
-    "noActivity": "No activity yet."
+    "noActivity": "No activity yet.",
+    "you": "You",
+    "actions": "Actions",
+    "editName": "Edit name",
+    "resetPassword": "Reset password",
+    "newPassword": "New password",
+    "resetPasswordHint": "Set a new password for this user. Their existing sessions will be signed out.",
+    "passwordReset": "Password reset",
+    "enable": "Enable",
+    "disable": "Disable",
+    "deleteUser": "Delete user",
+    "confirmDeleteUser": "Delete this user permanently? Their workspaces are kept; this can't be undone.",
+    "userDeleted": "User deleted",
+    "saved": "Saved",
+    "name": "Name",
+    "cancel": "Cancel",
+    "save": "Save"
   }
 }

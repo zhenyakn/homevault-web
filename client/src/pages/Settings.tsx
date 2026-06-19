@@ -800,16 +800,18 @@ function HouseholdSection() {
         </Row>
       </Group>
 
+      {me?.loginMethod === "email" && <ChangePasswordGroup />}
+
       {(members?.length ?? 0) > 0 && (
         <Group label={`${t("settings.members")} · ${members?.length}`}>
           {members?.map(m => (
             <Row
-              key={m.id}
+              key={m.userId}
               label={m.name ?? "Unknown"}
-              hint={m.email ?? m.openId}
+              hint={m.email ?? undefined}
             >
               <div className="flex items-center gap-2">
-                {m.id === me?.id && (
+                {m.userId === me?.id && (
                   <Badge variant="outline" className="text-xs h-5 font-normal">
                     {t("settings.you")}
                   </Badge>
@@ -825,6 +827,62 @@ function HouseholdSection() {
         </Group>
       )}
     </div>
+  );
+}
+
+// Self-service password change for accounts that sign in with email/password.
+// Verifies the current password server-side, then re-issues this session while
+// revoking any others.
+function ChangePasswordGroup() {
+  const { t } = useTranslation();
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const change = trpc.auth.changePassword.useMutation({
+    onSuccess: () => {
+      toast.success(t("settings.passwordChanged"));
+      setCurrent("");
+      setNext("");
+    },
+    onError: e => toast.error(e.message),
+  });
+  return (
+    <Group label={t("settings.changePassword")}>
+      <form
+        className="space-y-3 py-1"
+        onSubmit={e => {
+          e.preventDefault();
+          change.mutate({ currentPassword: current, newPassword: next });
+        }}
+      >
+        <p className="text-sm text-muted-foreground">
+          {t("settings.changePasswordDesc")}
+        </p>
+        <Input
+          type="password"
+          autoComplete="current-password"
+          placeholder={t("settings.currentPassword")}
+          value={current}
+          onChange={e => setCurrent(e.target.value)}
+          required
+        />
+        <Input
+          type="password"
+          autoComplete="new-password"
+          placeholder={t("settings.newPasswordLabel")}
+          value={next}
+          onChange={e => setNext(e.target.value)}
+          minLength={8}
+          required
+        />
+        <Button
+          type="submit"
+          size="sm"
+          disabled={change.isPending || !current || next.length < 8}
+        >
+          {t("settings.updatePassword")}
+        </Button>
+      </form>
+    </Group>
   );
 }
 
