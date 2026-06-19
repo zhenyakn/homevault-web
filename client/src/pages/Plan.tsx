@@ -1,12 +1,14 @@
 import { Loader2, Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCapabilities } from "@/hooks/useCapabilities";
+import i18n from "@/lib/i18n";
 
 function price(cents: number, currency: string, interval: string): string {
-  if (cents === 0) return "Free";
+  if (cents === 0) return i18n.t("plan.free");
   const amount = (cents / 100).toLocaleString(undefined, {
     style: "currency",
     currency: (currency || "ils").toUpperCase(),
@@ -35,6 +37,7 @@ function Usage({
 }
 
 export default function Plan() {
+  const { t } = useTranslation();
   const billing = trpc.billing.current.useQuery();
   const { isSaas, loaded } = useCapabilities();
 
@@ -53,16 +56,13 @@ export default function Plan() {
       <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">
-            Plan &amp; usage
+            {t("plan.planUsage")}
           </h1>
         </div>
         <Card>
           <CardContent className="flex items-center gap-3 py-8 text-muted-foreground">
             <Check className="w-5 h-5 shrink-0 text-primary" />
-            <p className="text-sm">
-              This is a self-hosted install — all features are included and
-              there are no plan limits.
-            </p>
+            <p className="text-sm">{t("plan.selfHostedAllIncluded")}</p>
           </CardContent>
         </Card>
       </div>
@@ -76,9 +76,11 @@ export default function Plan() {
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Plan &amp; usage</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {t("plan.planUsage")}
+        </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Your workspace's current plan and what it includes.
+          {t("plan.subtitle")}
         </p>
       </div>
 
@@ -100,12 +102,12 @@ export default function Plan() {
         </CardHeader>
         <CardContent className="space-y-2">
           <Usage
-            label="Properties"
+            label={t("plan.properties")}
             used={data?.usage.properties ?? 0}
             max={data?.usage.maxProperties ?? null}
           />
           <Usage
-            label="Members"
+            label={t("plan.members")}
             used={data?.usage.members ?? 0}
             max={data?.usage.maxMembers ?? null}
           />
@@ -125,7 +127,7 @@ export default function Plan() {
       {upgrades.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">
-            Other plans
+            {t("plan.otherPlans")}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {upgrades.map(p => (
@@ -140,8 +142,10 @@ export default function Plan() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    {p.maxProperties ?? "∞"} properties · {p.maxMembers ?? "∞"}{" "}
-                    members
+                    {t("plan.propertiesMembers", {
+                      properties: p.maxProperties ?? "∞",
+                      members: p.maxMembers ?? "∞",
+                    })}
                   </p>
                   {p.isPaid ? (
                     p.checkoutUrl ? (
@@ -151,16 +155,16 @@ export default function Plan() {
                           window.location.href = p.checkoutUrl!;
                         }}
                       >
-                        Upgrade
+                        {t("plan.upgrade")}
                       </Button>
                     ) : (
                       <Button className="w-full" variant="outline" disabled>
-                        Contact us to upgrade
+                        {t("plan.contactToUpgrade")}
                       </Button>
                     )
                   ) : (
                     <Button className="w-full" variant="outline" disabled>
-                      Downgrade via support
+                      {t("plan.downgradeViaSupport")}
                     </Button>
                   )}
                 </CardContent>

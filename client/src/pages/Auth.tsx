@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { Home, Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -105,6 +106,7 @@ function usePublicConfig() {
 // ─── Login ─────────────────────────────────────────────────────────────────────
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const goHome = useGoHome();
   const { signupsEnabled } = usePublicConfig();
   const [email, setEmail] = useState("");
@@ -123,14 +125,14 @@ export function LoginPage() {
 
   return (
     <AuthShell
-      title="Welcome back"
-      subtitle="Sign in to your HomeVault account"
+      title={t("auth.welcomeBack")}
+      subtitle={t("auth.signInSubtitle")}
       footer={
         signupsEnabled ? (
           <>
-            No account?{" "}
+            {t("auth.noAccount")}{" "}
             <Link href="/register" className="text-primary hover:underline">
-              Create one
+              {t("auth.createOne")}
             </Link>
           </>
         ) : undefined
@@ -146,7 +148,7 @@ export function LoginPage() {
         }}
       >
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("common.email")}</Label>
           <Input
             id="email"
             type="email"
@@ -158,12 +160,12 @@ export function LoginPage() {
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("common.password")}</Label>
             <Link
               href="/forgot-password"
               className="text-xs text-muted-foreground hover:underline"
             >
-              Forgot password?
+              {t("auth.forgotPassword")}
             </Link>
           </div>
           <Input
@@ -179,7 +181,7 @@ export function LoginPage() {
         {needsVerify &&
           (resend.isSuccess ? (
             <p className="text-sm text-muted-foreground">
-              Verification email sent. Check your inbox.
+              {t("auth.verificationSent")}
             </p>
           ) : (
             <Button
@@ -192,7 +194,7 @@ export function LoginPage() {
               {resend.isPending && (
                 <Loader2 className="w-4 h-4 me-2 animate-spin" />
               )}
-              Resend verification email
+              {t("auth.resendVerification")}
             </Button>
           ))}
         <Button
@@ -205,7 +207,7 @@ export function LoginPage() {
           ) : (
             <LogIn className="w-4 h-4 me-2" />
           )}
-          Sign in
+          {t("auth.signIn")}
         </Button>
       </form>
 
@@ -216,7 +218,9 @@ export function LoginPage() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">or</span>
+              <span className="bg-card px-2 text-muted-foreground">
+                {t("auth.or")}
+              </span>
             </div>
           </div>
           <Button
@@ -226,7 +230,7 @@ export function LoginPage() {
               window.location.href = getLoginUrl();
             }}
           >
-            Continue with single sign-on
+            {t("auth.continueSso")}
           </Button>
         </>
       )}
@@ -240,7 +244,7 @@ export function LoginPage() {
             window.location.reload();
           }}
         >
-          Dev login
+          {t("auth.devLogin")}
         </Button>
       )}
     </AuthShell>
@@ -250,6 +254,7 @@ export function LoginPage() {
 // ─── Register ──────────────────────────────────────────────────────────────────
 
 export function RegisterPage() {
+  const { t } = useTranslation();
   const goHome = useGoHome();
   const { loaded, signupsEnabled } = usePublicConfig();
   const [name, setName] = useState("");
@@ -268,17 +273,16 @@ export function RegisterPage() {
   if (loaded && !signupsEnabled) {
     return (
       <AuthShell
-        title="Registration closed"
-        subtitle="New sign-ups aren't being accepted right now"
+        title={t("auth.registrationClosed")}
+        subtitle={t("auth.registrationClosedSubtitle")}
         footer={
           <Link href="/login" className="text-primary hover:underline">
-            Back to sign in
+            {t("auth.backToSignIn")}
           </Link>
         }
       >
         <p className="text-sm text-center text-muted-foreground">
-          If you were invited to a workspace, open the link in your invitation
-          email to join.
+          {t("auth.invitedJoinHint")}
         </p>
       </AuthShell>
     );
@@ -286,13 +290,13 @@ export function RegisterPage() {
 
   return (
     <AuthShell
-      title="Create your account"
-      subtitle="Start managing your property in minutes"
+      title={t("auth.createAccount")}
+      subtitle={t("auth.registerSubtitle")}
       footer={
         <>
-          Already have an account?{" "}
+          {t("auth.alreadyHaveAccount")}{" "}
           <Link href="/login" className="text-primary hover:underline">
-            Sign in
+            {t("auth.signIn")}
           </Link>
         </>
       }
@@ -311,7 +315,7 @@ export function RegisterPage() {
         }}
       >
         <div className="space-y-2">
-          <Label htmlFor="name">Your name</Label>
+          <Label htmlFor="name">{t("auth.yourName")}</Label>
           <Input
             id="name"
             value={name}
@@ -319,7 +323,7 @@ export function RegisterPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("common.email")}</Label>
           <Input
             id="email"
             type="email"
@@ -330,7 +334,7 @@ export function RegisterPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("common.password")}</Label>
           <Input
             id="password"
             type="password"
@@ -341,20 +345,19 @@ export function RegisterPage() {
             minLength={8}
           />
           <p className="text-xs text-muted-foreground">
-            At least 8 characters.
+            {t("auth.passwordMin")}
           </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="workspace">Workspace name</Label>
+          <Label htmlFor="workspace">{t("auth.workspaceName")}</Label>
           <Input
             id="workspace"
-            placeholder="e.g. The Smith Household"
+            placeholder={t("auth.workspacePlaceholder")}
             value={tenantName}
             onChange={e => setTenantName(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Optional — we'll name one for you if left blank. You can invite
-            others to it later.
+            {t("auth.workspaceHint")}
           </p>
         </div>
         <FieldError message={error} />
@@ -366,7 +369,7 @@ export function RegisterPage() {
           {register.isPending && (
             <Loader2 className="w-4 h-4 me-2 animate-spin" />
           )}
-          Create account
+          {t("auth.createAccountBtn")}
         </Button>
       </form>
     </AuthShell>
@@ -376,23 +379,23 @@ export function RegisterPage() {
 // ─── Forgot password ───────────────────────────────────────────────────────────
 
 export function ForgotPasswordPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const req = trpc.auth.requestPasswordReset.useMutation();
 
   return (
     <AuthShell
-      title="Reset your password"
-      subtitle="We'll email you a link to choose a new password"
+      title={t("auth.resetPassword")}
+      subtitle={t("auth.resetSubtitle")}
       footer={
         <Link href="/login" className="text-primary hover:underline">
-          Back to sign in
+          {t("auth.backToSignIn")}
         </Link>
       }
     >
       {req.isSuccess ? (
         <p className="text-sm text-center text-muted-foreground">
-          If an account exists for <strong>{email}</strong>, a reset link is on
-          its way. Check your inbox.
+          {t("auth.resetLinkSent", { email })}
         </p>
       ) : (
         <form
@@ -403,7 +406,7 @@ export function ForgotPasswordPage() {
           }}
         >
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("common.email")}</Label>
             <Input
               id="email"
               type="email"
@@ -419,7 +422,7 @@ export function ForgotPasswordPage() {
             disabled={req.isPending}
           >
             {req.isPending && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
-            Send reset link
+            {t("auth.sendResetLink")}
           </Button>
         </form>
       )}
@@ -430,6 +433,7 @@ export function ForgotPasswordPage() {
 // ─── Reset password ────────────────────────────────────────────────────────────
 
 export function ResetPasswordPage() {
+  const { t } = useTranslation();
   const token = useMemo(() => hashParam("token"), []);
   const [pw, setPw] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -439,20 +443,20 @@ export function ResetPasswordPage() {
 
   return (
     <AuthShell
-      title="Choose a new password"
+      title={t("auth.chooseNewPassword")}
       footer={
         <Link href="/login" className="text-primary hover:underline">
-          Back to sign in
+          {t("auth.backToSignIn")}
         </Link>
       }
     >
       {!token ? (
         <p className="text-sm text-center text-destructive">
-          This reset link is missing its token.
+          {t("auth.resetMissingToken")}
         </p>
       ) : reset.isSuccess ? (
         <p className="text-sm text-center text-muted-foreground">
-          Your password has been updated. You can now sign in.
+          {t("auth.passwordUpdated")}
         </p>
       ) : (
         <form
@@ -464,7 +468,7 @@ export function ResetPasswordPage() {
           }}
         >
           <div className="space-y-2">
-            <Label htmlFor="password">New password</Label>
+            <Label htmlFor="password">{t("auth.newPassword")}</Label>
             <Input
               id="password"
               type="password"
@@ -484,7 +488,7 @@ export function ResetPasswordPage() {
             {reset.isPending && (
               <Loader2 className="w-4 h-4 me-2 animate-spin" />
             )}
-            Update password
+            {t("auth.updatePassword")}
           </Button>
         </form>
       )}
@@ -495,6 +499,7 @@ export function ResetPasswordPage() {
 // ─── Verify email ──────────────────────────────────────────────────────────────
 
 export function VerifyEmailPage() {
+  const { t } = useTranslation();
   const token = useMemo(() => hashParam("token"), []);
   const verify = trpc.auth.verifyEmail.useMutation();
 
@@ -505,21 +510,21 @@ export function VerifyEmailPage() {
 
   return (
     <AuthShell
-      title="Email verification"
+      title={t("auth.emailVerification")}
       footer={
         <Link href="/" className="text-primary hover:underline">
-          Continue to HomeVault
+          {t("auth.continueToApp")}
         </Link>
       }
     >
       <p className="text-sm text-center text-muted-foreground">
         {!token
-          ? "This verification link is missing its token."
+          ? t("auth.verifyMissingToken")
           : verify.isPending
-            ? "Verifying your email…"
+            ? t("auth.verifying")
             : verify.isSuccess
-              ? "Your email is verified. Thanks!"
-              : "This verification link is invalid or has expired."}
+              ? t("auth.verified")
+              : t("auth.verifyInvalid")}
       </p>
     </AuthShell>
   );
@@ -528,6 +533,7 @@ export function VerifyEmailPage() {
 // ─── Accept invite ─────────────────────────────────────────────────────────────
 
 export function AcceptInvitePage() {
+  const { t } = useTranslation();
   const goHome = useGoHome();
   const token = useMemo(() => hashParam("token"), []);
   const info = trpc.tenant.inviteInfo.useQuery(
@@ -558,9 +564,9 @@ export function AcceptInvitePage() {
 
   if (!token) {
     return (
-      <AuthShell title="Invitation">
+      <AuthShell title={t("auth.invitation")}>
         <p className="text-sm text-center text-destructive">
-          This invite link is missing its token.
+          {t("auth.inviteMissingToken")}
         </p>
       </AuthShell>
     );
@@ -568,7 +574,7 @@ export function AcceptInvitePage() {
 
   if (info.isLoading) {
     return (
-      <AuthShell title="Invitation">
+      <AuthShell title={t("auth.invitation")}>
         <div className="flex justify-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
@@ -579,15 +585,15 @@ export function AcceptInvitePage() {
   if (!info.data) {
     return (
       <AuthShell
-        title="Invitation"
+        title={t("auth.invitation")}
         footer={
           <Link href="/login" className="text-primary hover:underline">
-            Back to sign in
+            {t("auth.backToSignIn")}
           </Link>
         }
       >
         <p className="text-sm text-center text-destructive">
-          This invitation is invalid or has expired.
+          {t("auth.inviteInvalid")}
         </p>
       </AuthShell>
     );
@@ -595,22 +601,24 @@ export function AcceptInvitePage() {
 
   return (
     <AuthShell
-      title={`Join ${info.data.tenantName}`}
-      subtitle={`You've been invited as ${info.data.role}.`}
+      title={t("auth.joinTenant", { name: info.data.tenantName })}
+      subtitle={t("auth.invitedAsRole", {
+        role: t(`members.roles.${info.data.role}`),
+      })}
       footer={
         mode === "register" ? (
           <button
             className="text-primary hover:underline"
             onClick={() => setMode("login")}
           >
-            Already have an account? Sign in to accept
+            {t("auth.alreadyHaveAccountSignIn")}
           </button>
         ) : (
           <button
             className="text-primary hover:underline"
             onClick={() => setMode("register")}
           >
-            New here? Create an account to accept
+            {t("auth.newHereCreate")}
           </button>
         )
       }
@@ -634,7 +642,7 @@ export function AcceptInvitePage() {
       >
         {mode === "register" && (
           <div className="space-y-2">
-            <Label htmlFor="name">Your name</Label>
+            <Label htmlFor="name">{t("auth.yourName")}</Label>
             <Input
               id="name"
               value={name}
@@ -643,7 +651,7 @@ export function AcceptInvitePage() {
           </div>
         )}
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t("common.email")}</Label>
           <Input
             id="email"
             type="email"
@@ -654,7 +662,7 @@ export function AcceptInvitePage() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t("common.password")}</Label>
           <Input
             id="password"
             type="password"
@@ -670,7 +678,9 @@ export function AcceptInvitePage() {
         <FieldError message={error} />
         <Button type="submit" className="w-full h-11" disabled={busy}>
           {busy && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
-          {mode === "register" ? "Create account & join" : "Sign in & join"}
+          {mode === "register"
+            ? t("auth.createAccountJoin")
+            : t("auth.signInJoin")}
         </Button>
       </form>
     </AuthShell>

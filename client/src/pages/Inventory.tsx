@@ -126,40 +126,43 @@ export default function Inventory() {
 
   const createMutation = trpc.inventory.create.useMutation({
     onSuccess: () => {
-      toast.success("Item added to inventory");
+      toast.success(t("inventory.added"));
       utils.inventory.list.invalidate();
       closeDialog();
     },
-    onError: error => toast.error(`Failed to add item: ${error.message}`),
+    onError: error =>
+      toast.error(t("inventory.addFailed", { error: error.message })),
   });
 
   const updateMutation = trpc.inventory.update.useMutation({
     onSuccess: () => {
-      toast.success("Item updated");
+      toast.success(t("inventory.updated"));
       utils.inventory.list.invalidate();
       closeDialog();
     },
-    onError: error => toast.error(`Failed to update item: ${error.message}`),
+    onError: error =>
+      toast.error(t("inventory.updateFailed", { error: error.message })),
   });
 
   const deleteMutation = trpc.inventory.delete.useMutation({
     onSuccess: () => {
-      toast.success("Item deleted");
+      toast.success(t("inventory.deletedToast"));
       utils.inventory.list.invalidate();
     },
-    onError: error => toast.error(`Failed to delete item: ${error.message}`),
+    onError: error =>
+      toast.error(t("inventory.deleteFailed", { error: error.message })),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      toast.error("Name is required");
+      toast.error(t("inventory.nameRequired"));
       return;
     }
 
     const qty = parseInt(formData.quantity);
     if (isNaN(qty) || qty < 0) {
-      toast.error("Quantity must be a non-negative number");
+      toast.error(t("inventory.qtyInvalid"));
       return;
     }
 
@@ -263,7 +266,7 @@ export default function Inventory() {
 
   const handleExportCSV = () => {
     if (!items.length) {
-      toast.error("Nothing to export");
+      toast.error(t("inventory.nothingToExport"));
       return;
     }
     const headers = [
@@ -308,7 +311,7 @@ export default function Inventory() {
     a.download = `inventory_${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Exported to CSV");
+    toast.success(t("inventory.exported"));
   };
 
   if (isLoading) {
@@ -334,29 +337,29 @@ export default function Inventory() {
                 className="h-11 rounded-full px-[18px]"
               >
                 <Download className="h-3.5 w-3.5 me-1.5" />
-                Export CSV
+                {t("common.exportCsv")}
               </Button>
               <Button
                 onClick={() => setIsDialogOpen(true)}
                 className="h-11 rounded-full px-[18px]"
               >
                 <Plus className="me-1.5 h-4 w-4" />
-                Add Item
+                {t("inventory.addItem")}
               </Button>
             </>
           }
         />
       ) : (
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Inventory</h1>
+          <h1 className="text-xl font-semibold">{t("nav.inventory")}</h1>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExportCSV}>
               <Download className="h-3.5 w-3.5 me-1.5" />
-              Export CSV
+              {t("common.exportCsv")}
             </Button>
             <Button size="sm" onClick={() => setIsDialogOpen(true)}>
               <Plus className="h-3.5 w-3.5 me-1.5" />
-              Add Item
+              {t("inventory.addItem")}
             </Button>
           </div>
         </div>
@@ -372,25 +375,27 @@ export default function Inventory() {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingId ? "Edit Item" : "Add Inventory Item"}
+              {editingId
+                ? t("inventory.editItem")
+                : t("inventory.addInventoryItem")}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">{t("common.name")} *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={e =>
                     setFormData({ ...formData, name: e.target.value })
                   }
-                  placeholder="e.g. Bosch Washing Machine"
+                  placeholder={t("inventory.namePlaceholder")}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="category">{t("common.category")}</Label>
                 <Select
                   value={formData.category}
                   onValueChange={(v: Category) =>
@@ -403,14 +408,14 @@ export default function Inventory() {
                   <SelectContent>
                     {CATEGORIES.map(c => (
                       <SelectItem key={c} value={c}>
-                        {c}
+                        {t(`inventory.cat.${c}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="condition">Condition</Label>
+                <Label htmlFor="condition">{t("inventory.condition")}</Label>
                 <Select
                   value={formData.condition}
                   onValueChange={(v: Condition) =>
@@ -423,14 +428,14 @@ export default function Inventory() {
                   <SelectContent>
                     {CONDITIONS.map(c => (
                       <SelectItem key={c} value={c}>
-                        {c}
+                        {t(`inventory.cond.${c}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="assetType">Ownership</Label>
+                <Label htmlFor="assetType">{t("inventory.ownership")}</Label>
                 <Select
                   value={formData.assetType}
                   onValueChange={(v: AssetType) =>
@@ -442,36 +447,38 @@ export default function Inventory() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="fixture">
-                      Fixture (stays with home)
+                      {t("inventory.fixtureOption")}
                     </SelectItem>
-                    <SelectItem value="personal">Personal belonging</SelectItem>
+                    <SelectItem value="personal">
+                      {t("inventory.personalOption")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="room">Room</Label>
+                <Label htmlFor="room">{t("inventory.room")}</Label>
                 <Input
                   id="room"
                   value={formData.room}
                   onChange={e =>
                     setFormData({ ...formData, room: e.target.value })
                   }
-                  placeholder="e.g. Kitchen"
+                  placeholder={t("inventory.roomPlaceholder")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="brand">Brand</Label>
+                <Label htmlFor="brand">{t("inventory.brand")}</Label>
                 <Input
                   id="brand"
                   value={formData.brand}
                   onChange={e =>
                     setFormData({ ...formData, brand: e.target.value })
                   }
-                  placeholder="e.g. Samsung"
+                  placeholder={t("inventory.brandPlaceholder")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity</Label>
+                <Label htmlFor="quantity">{t("inventory.quantity")}</Label>
                 <Input
                   id="quantity"
                   type="number"
@@ -484,7 +491,7 @@ export default function Inventory() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="minQuantity">
-                  Min Quantity (alert threshold)
+                  {t("inventory.minQuantity")}
                 </Label>
                 <Input
                   id="minQuantity"
@@ -500,18 +507,20 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unit">Unit</Label>
+                <Label htmlFor="unit">{t("inventory.unit")}</Label>
                 <Input
                   id="unit"
                   value={formData.unit}
                   onChange={e =>
                     setFormData({ ...formData, unit: e.target.value })
                   }
-                  placeholder="e.g. pcs, liters"
+                  placeholder={t("inventory.unitPlaceholder")}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="purchasePrice">Purchase Price</Label>
+                <Label htmlFor="purchasePrice">
+                  {t("inventory.purchasePrice")}
+                </Label>
                 <Input
                   id="purchasePrice"
                   type="number"
@@ -528,7 +537,9 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="purchaseDate">Purchase Date</Label>
+                <Label htmlFor="purchaseDate">
+                  {t("inventory.purchaseDate")}
+                </Label>
                 <Input
                   id="purchaseDate"
                   type="date"
@@ -542,7 +553,9 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="warrantyExpiry">Warranty Expiry</Label>
+                <Label htmlFor="warrantyExpiry">
+                  {t("inventory.warrantyExpiry")}
+                </Label>
                 <Input
                   id="warrantyExpiry"
                   type="date"
@@ -556,7 +569,7 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sku">SKU / Model #</Label>
+                <Label htmlFor="sku">{t("inventory.skuLabel")}</Label>
                 <Input
                   id="sku"
                   value={formData.sku}
@@ -567,7 +580,9 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="serialNumber">Serial Number</Label>
+                <Label htmlFor="serialNumber">
+                  {t("inventory.serialNumber")}
+                </Label>
                 <Input
                   id="serialNumber"
                   value={formData.serialNumber}
@@ -581,31 +596,31 @@ export default function Inventory() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="store">Store / Supplier</Label>
+                <Label htmlFor="store">{t("inventory.store")}</Label>
                 <Input
                   id="store"
                   value={formData.store}
                   onChange={e =>
                     setFormData({ ...formData, store: e.target.value })
                   }
-                  placeholder="e.g. Home Depot"
+                  placeholder={t("inventory.storePlaceholder")}
                 />
               </div>
               <div className="col-span-2 space-y-2">
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="notes">{t("common.notes")}</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
                   onChange={e =>
                     setFormData({ ...formData, notes: e.target.value })
                   }
-                  placeholder="Any additional notes..."
+                  placeholder={t("inventory.notesPlaceholder")}
                 />
               </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={closeDialog}>
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 type="submit"
@@ -614,7 +629,7 @@ export default function Inventory() {
                 {(createMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 )}
-                {editingId ? "Update" : "Add Item"}
+                {editingId ? t("common.update") : t("inventory.addItem")}
               </Button>
             </div>
           </form>
@@ -624,7 +639,9 @@ export default function Inventory() {
       {/* Stats */}
       <div className="grid grid-cols-3 border border-border rounded-lg divide-x divide-border overflow-hidden">
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">Total Items</p>
+          <p className="text-xs text-muted-foreground">
+            {t("inventory.totalItems")}
+          </p>
           <p className="text-xl font-semibold tabular-nums mt-1">
             {totalItems}
           </p>
@@ -632,24 +649,21 @@ export default function Inventory() {
         <div className="px-4 py-3.5">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1">
-              <p className="text-xs text-muted-foreground">Total Value</p>
+              <p className="text-xs text-muted-foreground">
+                {t("inventory.totalValue")}
+              </p>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    aria-label="What counts as a fixture?"
+                    aria-label={t("inventory.fixtureQuestion")}
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <Info className="h-3 w-3" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-[220px]">
-                  <p>
-                    <span className="font-medium">Fixtures</span> are items that
-                    convey with the home (appliances, built-ins).{" "}
-                    <span className="font-medium">All</span> also includes
-                    personal belongings.
-                  </p>
+                  <p>{t("inventory.fixtureTooltip")}</p>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -657,18 +671,18 @@ export default function Inventory() {
               <button
                 type="button"
                 onClick={() => setValueScope("fixtures")}
-                title="Items that convey with the home"
+                title={t("inventory.fixturesTitle")}
                 className={`px-1.5 py-0.5 transition-colors ${valueScope === "fixtures" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"}`}
               >
-                Fixtures
+                {t("inventory.fixtures")}
               </button>
               <button
                 type="button"
                 onClick={() => setValueScope("all")}
-                title="Fixtures plus personal belongings"
+                title={t("inventory.allTitle")}
                 className={`px-1.5 py-0.5 transition-colors ${valueScope === "all" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-accent"}`}
               >
-                All
+                {t("inventory.all")}
               </button>
             </div>
           </div>
@@ -677,7 +691,9 @@ export default function Inventory() {
           </p>
         </div>
         <div className="px-4 py-3.5">
-          <p className="text-xs text-muted-foreground">Low Stock Alerts</p>
+          <p className="text-xs text-muted-foreground">
+            {t("inventory.lowStockAlerts")}
+          </p>
           <p
             className={`text-xl font-semibold tabular-nums mt-1 ${lowStockCount > 0 ? "text-orange-500" : ""}`}
           >
@@ -689,7 +705,7 @@ export default function Inventory() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <Input
-          placeholder="Search items..."
+          placeholder={t("inventory.searchItems")}
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           className="max-w-xs"
@@ -699,13 +715,13 @@ export default function Inventory() {
             className="w-40"
             aria-label={t("common.filterByCategory")}
           >
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder={t("inventory.allCategories")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="all">{t("inventory.allCategories")}</SelectItem>
             {CATEGORIES.map(c => (
               <SelectItem key={c} value={c}>
-                {c}
+                {t(`inventory.cat.${c}`)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -716,10 +732,10 @@ export default function Inventory() {
               className="w-36"
               aria-label={t("common.filterByRoom")}
             >
-              <SelectValue placeholder="All rooms" />
+              <SelectValue placeholder={t("inventory.allRooms")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All rooms</SelectItem>
+              <SelectItem value="all">{t("inventory.allRooms")}</SelectItem>
               {rooms.map(r => (
                 <SelectItem key={r} value={r}>
                   {r}
@@ -734,18 +750,17 @@ export default function Inventory() {
       {filteredItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center text-muted-foreground border border-dashed border-border rounded-lg">
           <Package className="h-10 w-10 mb-3 text-muted-foreground" />
-          <p className="font-medium text-foreground">No inventory items</p>
-          <p className="text-sm mt-1 max-w-xs">
-            Track appliances, furniture, tools, and consumables. Add your first
-            item to get started.
+          <p className="font-medium text-foreground">
+            {t("inventory.noItems")}
           </p>
+          <p className="text-sm mt-1 max-w-xs">{t("inventory.noItemsBody")}</p>
           <Button
             size="sm"
             className="mt-4"
             onClick={() => setIsDialogOpen(true)}
           >
             <Plus className="h-3.5 w-3.5 me-1.5" />
-            Add first item
+            {t("inventory.addFirstItem")}
           </Button>
         </div>
       ) : (
@@ -754,25 +769,25 @@ export default function Inventory() {
             <thead className="bg-muted/50 border-b border-border">
               <tr>
                 <th className="text-start px-4 py-3 font-medium text-muted-foreground">
-                  Name
+                  {t("common.name")}
                 </th>
                 <th className="text-start px-4 py-3 font-medium text-muted-foreground">
-                  Category
+                  {t("common.category")}
                 </th>
                 <th className="text-start px-4 py-3 font-medium text-muted-foreground">
-                  Room
+                  {t("inventory.room")}
                 </th>
                 <th className="text-start px-4 py-3 font-medium text-muted-foreground">
-                  Qty
+                  {t("inventory.colQty")}
                 </th>
                 <th className="text-start px-4 py-3 font-medium text-muted-foreground">
-                  Condition
+                  {t("inventory.condition")}
                 </th>
                 <th className="text-start px-4 py-3 font-medium text-muted-foreground">
-                  Value
+                  {t("inventory.colValue")}
                 </th>
                 <th className="text-end px-4 py-3 font-medium text-muted-foreground">
-                  Actions
+                  {t("inventory.colActions")}
                 </th>
               </tr>
             </thead>
@@ -800,13 +815,15 @@ export default function Inventory() {
                         {isLowStock && (
                           <AlertTriangle
                             className="h-3.5 w-3.5 text-orange-500 shrink-0"
-                            aria-label="Low stock"
+                            aria-label={t("inventory.lowStockBadge")}
                           />
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {item.category || "—"}
+                      {item.category
+                        ? t(`inventory.cat.${item.category}`)
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {item.room || "—"}
@@ -830,7 +847,7 @@ export default function Inventory() {
                         <Badge
                           className={`text-xs ${CONDITION_COLORS[item.condition as Condition] || ""}`}
                         >
-                          {item.condition}
+                          {t(`inventory.cond.${item.condition}`)}
                         </Badge>
                       ) : (
                         "—"

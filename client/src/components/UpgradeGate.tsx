@@ -1,4 +1,5 @@
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Lock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -14,8 +15,8 @@ import { useCapabilities, type CapabilityKey } from "@/hooks/useCapabilities";
 
 /** Inline banner nudging the user to upgrade for a gated feature. */
 export function UpgradeNotice({
-  title = "Upgrade to unlock this feature",
-  description = "This feature isn't included in your current plan.",
+  title,
+  description,
   className,
 }: {
   title?: string;
@@ -23,14 +24,15 @@ export function UpgradeNotice({
   className?: string;
 }) {
   const [, navigate] = useLocation();
+  const { t } = useTranslation();
   return (
     <Alert className={className}>
       <Sparkles className="h-4 w-4" />
-      <AlertTitle>{title}</AlertTitle>
+      <AlertTitle>{title ?? t("upgrade.defaultTitle")}</AlertTitle>
       <AlertDescription className="flex flex-col items-start gap-2">
-        <span>{description}</span>
+        <span>{description ?? t("upgrade.defaultDescription")}</span>
         <Button size="sm" onClick={() => navigate("/plan")}>
-          View plans
+          {t("upgrade.viewPlans")}
         </Button>
       </AlertDescription>
     </Alert>
@@ -46,6 +48,7 @@ export function UpgradeEmpty({
   description: string;
 }) {
   const [, navigate] = useLocation();
+  const { t } = useTranslation();
   return (
     <Empty className="border min-h-[50vh]">
       <EmptyHeader>
@@ -56,7 +59,9 @@ export function UpgradeEmpty({
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button onClick={() => navigate("/plan")}>View plans</Button>
+        <Button onClick={() => navigate("/plan")}>
+          {t("upgrade.viewPlans")}
+        </Button>
       </EmptyContent>
     </Empty>
   );

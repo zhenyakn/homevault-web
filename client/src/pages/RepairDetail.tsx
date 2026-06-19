@@ -157,7 +157,7 @@ function QuoteDialog({
                 onChange={e =>
                   setF(p => ({ ...p, contractorName: e.target.value }))
                 }
-                placeholder="e.g. Moshe Plumbing"
+                placeholder={t("repairDetail.contractorPlaceholder")}
               />
             </div>
             <div className="space-y-1.5">
