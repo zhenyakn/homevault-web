@@ -57,9 +57,11 @@ import {
   Receipt,
   Search,
   Settings,
+  Shield,
   ShoppingCart,
   Sun,
   TrendingUp,
+  Users,
   Wrench,
 } from "lucide-react";
 import { QuickAddMenu } from "@/components/homevault/QuickAddMenu";
@@ -382,12 +384,19 @@ function DashboardLayoutContent({
   // default layout and keyed by path so both sidebars honor the same choices.
   const { isVisible } = useSidebarPrefs();
 
+  // Server-wide admins get the Admin console entry (mirrors the default layout).
+  const isSuperAdmin = user?.globalRole === "superadmin";
+
   // Portfolio is the home for all property settings, so it's always in the nav.
   // The Plan entry is hosted-only — hidden on standalone (e.g. HA add-on).
   const navItems: HVNavItem[] = [
     ...HV_NAV,
     { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
+    { icon: Users, key: "nav.members", path: "/members" },
     ...(isSaas ? [{ icon: CreditCard, key: "nav.plan", path: "/plan" }] : []),
+    ...(isSuperAdmin
+      ? [{ icon: Shield, key: "nav.admin", path: "/admin" }]
+      : []),
     { icon: Settings, key: "nav.settings", path: "/settings" },
   ].filter(item => isVisible(item.path));
 
