@@ -1,21 +1,27 @@
 import nodemailer, { type Transporter } from "nodemailer";
-import { ENV } from "../../_core/env";
+import { getPublicBaseUrl } from "../../_core/integrationsConfig";
+import { getNotificationConfig, isSectionConfigured } from "../config";
 import { formatEmailHtml, formatEmailSubject } from "../format";
 import type { NotificationChannel } from "../types";
 
+// Cache the transporter, but key it on the resolved SMTP config so it is rebuilt
+// when an admin changes the credentials at runtime (env-only installs build it
+// once and reuse it forever).
 let transporter: Transporter | null = null;
+let transporterKey = "";
 
 function getTransport(): Transporter {
-  if (!transporter) {
-    const port = ENV.smtpPort ? Number(ENV.smtpPort) : 587;
+  const c = getNotificationConfig();
+  const port = c.smtpPort ? Number(c.smtpPort) : 587;
+  const key = JSON.stringify([c.smtpHost, port, c.smtpUser, c.smtpPass]);
+  if (!transporter || transporterKey !== key) {
     transporter = nodemailer.createTransport({
-      host: ENV.smtpHost,
+      host: c.smtpHost,
       port,
       secure: port === 465,
-      auth: ENV.smtpUser
-        ? { user: ENV.smtpUser, pass: ENV.smtpPass }
-        : undefined,
+      auth: c.smtpUser ? { user: c.smtpUser, pass: c.smtpPass } : undefined,
     });
+    transporterKey = key;
   }
   return transporter;
 }
@@ -23,15 +29,16 @@ function getTransport(): Transporter {
 /** Email via SMTP (nodemailer). Configured when a host + a from/user is set. */
 export const emailChannel: NotificationChannel = {
   key: "email",
-  isConfigured: () => Boolean(ENV.smtpHost && (ENV.smtpFrom || ENV.smtpUser)),
+  isConfigured: () => isSectionConfigured("email"),
   canDeliverTo: r => Boolean(r.email),
   async send(recipient, payload) {
+    const c = getNotificationConfig();
     await getTransport().sendMail({
-      from: ENV.smtpFrom || ENV.smtpUser,
+      from: c.smtpFrom || c.smtpUser,
       to: recipient.email!,
       subject: formatEmailSubject(payload),
       text: payload.body,
-      html: formatEmailHtml(payload, ENV.publicBaseUrl),
+      html: formatEmailHtml(payload, getPublicBaseUrl()),
     });
   },
 };

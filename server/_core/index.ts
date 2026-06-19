@@ -24,6 +24,12 @@ import { logger } from "./logger";
 import { webhookCallback } from "grammy";
 import { getBot } from "../bot/telegram";
 import { startReminderScheduler } from "../notifications/scheduler";
+import { loadNotificationConfig } from "../notifications/config";
+import {
+  loadIntegrationsConfig,
+  getPublicBaseUrl,
+  getTelegramWebhookSecret,
+} from "./integrationsConfig";
 import { runMigrations } from "./migrate";
 
 // Rate limiters. NODE_ENV=test bypasses all of these so the test suite isn't
@@ -186,6 +192,18 @@ async function startServer() {
     }
   }
 
+  // Load admin-set notification channel credentials (SMTP / Telegram / VAPID /
+  // WhatsApp) from app_settings into the in-memory overlay so channels resolve
+  // them synchronously. Env values still win; this only adds DB overrides. Must
+  // run before getBot() below, which resolves its token from the same config.
+  if (process.env.NODE_ENV !== "test") {
+    try {
+      await Promise.all([loadNotificationConfig(), loadIntegrationsConfig()]);
+    } catch (err) {
+      logger.warn({ err }, "[notifications] failed to load runtime config");
+    }
+  }
+
   const app = express();
   const server = createServer(app);
 
@@ -293,7 +311,7 @@ async function startServer() {
     app.post(
       "/api/bot/telegram",
       webhookCallback(telegramBot, "express", {
-        secretToken: ENV.telegramWebhookSecret || undefined,
+        secretToken: getTelegramWebhookSecret() || undefined,
       })
     );
     logger.info("[telegram] webhook registered at /api/bot/telegram");
@@ -396,11 +414,12 @@ async function startServer() {
     // Start the daily reminder sweep (no-op under NODE_ENV=test).
     startReminderScheduler();
     // Best-effort: point Telegram at our webhook if a public URL is set.
-    if (telegramBot && ENV.publicBaseUrl) {
-      const url = `${ENV.publicBaseUrl.replace(/\/$/, "")}/api/bot/telegram`;
+    const publicBaseUrl = getPublicBaseUrl();
+    if (telegramBot && publicBaseUrl) {
+      const url = `${publicBaseUrl}/api/bot/telegram`;
       telegramBot.api
         .setWebhook(url, {
-          secret_token: ENV.telegramWebhookSecret || undefined,
+          secret_token: getTelegramWebhookSecret() || undefined,
         })
         .then(() => logger.info({ url }, "[telegram] webhook set"))
         .catch(err => logger.warn({ err }, "[telegram] failed to set webhook"));

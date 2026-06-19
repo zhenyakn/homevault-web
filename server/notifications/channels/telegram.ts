@@ -1,15 +1,16 @@
-import { ENV } from "../../_core/env";
+import { getNotificationConfig, isSectionConfigured } from "../config";
 import { formatPlainText } from "../format";
 import type { NotificationChannel } from "../types";
 
 /** Telegram outbound via the Bot API sendMessage endpoint. */
 export const telegramChannel: NotificationChannel = {
   key: "telegram",
-  isConfigured: () => Boolean(ENV.telegramBotToken),
+  isConfigured: () => isSectionConfigured("telegram"),
   canDeliverTo: r => Boolean(r.telegramChatId),
   async send(recipient, payload) {
+    const { telegramBotToken } = getNotificationConfig();
     const res = await fetch(
-      `https://api.telegram.org/bot${ENV.telegramBotToken}/sendMessage`,
+      `https://api.telegram.org/bot${telegramBotToken}/sendMessage`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },

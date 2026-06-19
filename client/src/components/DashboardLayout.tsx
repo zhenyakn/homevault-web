@@ -24,6 +24,7 @@ import {
 import { getLoginUrl } from "@/const";
 import NotificationCenter from "@/components/NotificationCenter";
 import MobileTabBar from "@/components/MobileTabBar";
+import MobilePropertySwitcher from "@/components/MobilePropertySwitcher";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useSidebarPrefs } from "@/contexts/SidebarPrefsContext";
@@ -647,11 +648,9 @@ function DashboardLayoutContent({
         {/* Mobile topbar */}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
-              <span className="tracking-tight text-foreground font-medium">
-                {pageMeta ? t(pageMeta.pageKey) : "Menu"}
-              </span>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <SidebarTrigger className="h-9 w-9 shrink-0 rounded-lg bg-background" />
+              <MobilePropertySwitcher />
             </div>
             <div className="flex items-center gap-0.5">
               <NotificationCenter />

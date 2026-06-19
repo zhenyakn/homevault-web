@@ -1,32 +1,7 @@
 # Changelog
 
-## 0.6.9
-- style: apply Prettier formatting to satisfy CI quality-gate
-- Pin Home Assistant add-on to standalone; hide billing UI off-SAAS
-- Graceful client-side feature gating with upgrade prompts
-- docs: update plan tracker for expanded capabilities + UI wiring
-- Wire the Plan page into the new HomeVault UI navigation
-- Stage 2 Phase 18+: more gated capabilities + enforcement + JSON fix
-- Stage 2 Phase 18: capability-based feature gating
-- Stage 2 Phase 17: admin-managed plans (DB CRUD) + tenant upgrade view
-- docs: document BILLING_PROVIDER + RATE_LIMIT_ENABLED in .env.example
-- Stage 2 Phase 16: per-tenant storage isolation
-- Stage 2 Phase 15: GDPR per-tenant export + tenant deletion
-- Stage 2 Phase 14: per-tenant + per-IP rate limiting
-- Stage 2 Phase 13: provider-agnostic billing scaffold
-- Stage 2 Phase 12: per-tenant quotas
-- Stage 2 Phase 11: enforced email verification gate
-- Stage 2 Phase 10: multi-tenant workspace switcher UI
-- Stage 2 Phase 9: runtime deployment-mode switch + signup gating
-- Retire legacy users.role column (role cleanup migration)
-- feat: Stage 1 Phase 8 — harden tenant scoping + move authz off legacy role
-- feat: Stage 1 Phase 7 — super-admin console
-- feat(env): add APP_MODE + boot-time config guard for native sessions
-- feat(web): Stage 1 Phase 6 — auth UI + in-app member management
-- feat(auth): Stage 1 Phase 5 — registration flow (new tenant vs join) + invites
-- feat(auth): Stage 1 Phase 4 — native email/password authentication
-- feat(db): Stage 1 Phase 3 — scope all data access by tenant
-- feat(auth): Stage 1 Phase 2 — tenant context + authorization guards
-- feat(db): Stage 1 multi-tenancy schema + idempotent backfill
-- docs: move email-verification gating and tenant switcher UI to Stage 2
-- docs: add user management & multi-tenancy implementation plan
+## 0.6.91
+- Add sidebar section visibility settings (#124)
+- Add quick property switcher to the mobile top bar (#123)
+- Make all notification channels runtime-configurable + implement WhatsApp (#122)
+- Brighten active mobile bottom-nav indicator in dark mode (#121)

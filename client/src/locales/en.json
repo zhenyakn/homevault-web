@@ -80,6 +80,8 @@
     "signOut": "Sign out",
     "household": "Household",
     "addProperty": "Add property",
+    "myHome": "My Home",
+    "switchProperty": "Switch property",
     "propertyName": "Property name",
     "adding": "Adding…",
     "open": "Open",
@@ -520,6 +522,60 @@
       "testFailed": "Test to {{channel}} failed: {{reason}}",
       "loading": "Loading channels…",
       "upgrade": "Upgrade"
+    },
+    "delivery": {
+      "title": "Notification delivery setup",
+      "desc": "Configure the server-side credentials that let HomeVault actually send notifications. Values set here are stored securely in the database; environment variables, when present, take precedence and are shown as read-only.",
+      "configured": "Ready",
+      "notConfigured": "Not set up",
+      "fromEnv": "Set via environment",
+      "saved": "Settings saved",
+      "save": "Save",
+      "saving": "Saving…",
+      "secretPlaceholder": "•••••••• (unchanged)",
+      "secretSet": "A value is saved. Leave blank to keep it.",
+      "email": {
+        "title": "Email (SMTP)",
+        "desc": "Outgoing mail server used to send email notifications.",
+        "host": "SMTP host",
+        "port": "Port",
+        "user": "Username",
+        "pass": "Password",
+        "from": "From address"
+      },
+      "telegram": {
+        "title": "Telegram bot",
+        "desc": "Bot token from @BotFather. Needed for both two-way chat and outbound alerts. Takes effect after a restart.",
+        "token": "Bot token"
+      },
+      "webpush": {
+        "title": "Browser push (VAPID)",
+        "desc": "VAPID keypair for browser Web Push. Generate one here or paste your own.",
+        "publicKey": "Public key",
+        "privateKey": "Private key",
+        "subject": "Subject (mailto: or URL)",
+        "generate": "Generate keys",
+        "generated": "New VAPID keys generated and saved"
+      },
+      "whatsapp": {
+        "title": "WhatsApp (Cloud API)",
+        "desc": "Meta WhatsApp Business Cloud API credentials.",
+        "phoneId": "Phone number ID",
+        "token": "Access token",
+        "apiVersion": "API version"
+      },
+      "push": {
+        "title": "Mobile push (Forge)",
+        "desc": "Built-in push service credentials. Also power the AI, voice and maps features.",
+        "apiUrl": "Service URL",
+        "apiKey": "API key"
+      },
+      "general": {
+        "title": "General",
+        "desc": "Shared settings used to build links in emails and to register the Telegram webhook.",
+        "publicBaseUrl": "Public base URL",
+        "webhookSecret": "Telegram webhook secret"
+      }
     },
     "syncEvents": "Sync events",
     "syncEventsHint": "Push HomeVault events to Google Calendar",

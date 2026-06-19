@@ -4,13 +4,22 @@
  * sends, and an admin-only manual sweep trigger.
  */
 
+import webpush from "web-push";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
-import { ENV } from "./_core/env";
 import { CHANNEL_KEYS, type ChannelKey } from "./notifications/types";
 import { notifyTest } from "./notifications";
 import { runReminderSweep } from "./notifications/scheduler";
+import {
+  getNotificationConfig,
+  getNotificationConfigStatus,
+  saveNotificationConfig,
+} from "./notifications/config";
+import {
+  getIntegrationsConfigStatus,
+  saveIntegrationsConfig,
+} from "./_core/integrationsConfig";
 import { hasCapability } from "./db/entitlements";
 import type { CapabilityKey } from "./billing/capabilities";
 import * as notif from "./db/notifications";
@@ -51,7 +60,7 @@ export const notificationRouter = router({
       email: recipient?.email ?? null,
       whatsappPhone: recipient?.whatsappPhone ?? null,
       telegramLinked: Boolean(recipient?.telegramChatId),
-      webPushAvailable: Boolean(ENV.vapidPublicKey),
+      webPushAvailable: Boolean(getNotificationConfig().vapidPublicKey),
     };
   }),
 
@@ -92,7 +101,7 @@ export const notificationRouter = router({
 
   // ── Web push ───────────────────────────────────────────────────────────────
   getVapidPublicKey: protectedProcedure.query(() => ({
-    key: ENV.vapidPublicKey || null,
+    key: getNotificationConfig().vapidPublicKey || null,
   })),
 
   subscribeWebPush: protectedProcedure
@@ -156,6 +165,88 @@ export const notificationRouter = router({
         reason: result?.reason ?? null,
       };
     }),
+
+  // ── Admin: server-side channel credentials (env-first, app_settings-backed) ─
+  /** Masked status of every channel's server config for the admin Settings UI. */
+  getChannelConfig: adminProcedure.query(() => ({
+    ...getNotificationConfigStatus(),
+    ...getIntegrationsConfigStatus(),
+  })),
+
+  /**
+   * Persist channel credentials for one section. Secrets left blank are kept;
+   * non-secret fields left blank are cleared (fall back to env / default).
+   */
+  saveChannelConfig: adminProcedure
+    .input(
+      z.object({
+        email: z
+          .object({
+            smtpHost: z.string().max(255).optional(),
+            smtpPort: z.string().max(10).optional(),
+            smtpUser: z.string().max(255).optional(),
+            smtpPass: z.string().max(255).optional(),
+            smtpFrom: z.string().max(255).optional(),
+          })
+          .optional(),
+        telegram: z
+          .object({ telegramBotToken: z.string().max(255).optional() })
+          .optional(),
+        webpush: z
+          .object({
+            vapidPublicKey: z.string().max(255).optional(),
+            vapidPrivateKey: z.string().max(255).optional(),
+            vapidSubject: z.string().max(255).optional(),
+          })
+          .optional(),
+        whatsapp: z
+          .object({
+            whatsappPhoneNumberId: z.string().max(64).optional(),
+            whatsappAccessToken: z.string().max(512).optional(),
+            whatsappApiVersion: z.string().max(16).optional(),
+          })
+          .optional(),
+        push: z
+          .object({
+            forgeApiUrl: z.string().max(512).optional(),
+            forgeApiKey: z.string().max(512).optional(),
+          })
+          .optional(),
+        general: z
+          .object({
+            publicBaseUrl: z.string().max(512).optional(),
+            telegramWebhookSecret: z.string().max(255).optional(),
+          })
+          .optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      await saveNotificationConfig({
+        ...input.email,
+        ...input.telegram,
+        ...input.webpush,
+        ...input.whatsapp,
+      });
+      await saveIntegrationsConfig({
+        ...input.push,
+        ...input.general,
+      });
+      return { ok: true } as const;
+    }),
+
+  /**
+   * Generate a fresh VAPID keypair and persist it as the Web Push config, so an
+   * admin can enable browser push from the UI without running the CLI. Returns
+   * the public key for immediate display.
+   */
+  generateVapidKeys: adminProcedure.mutation(async () => {
+    const { publicKey, privateKey } = webpush.generateVAPIDKeys();
+    await saveNotificationConfig({
+      vapidPublicKey: publicKey,
+      vapidPrivateKey: privateKey,
+    });
+    return { publicKey } as const;
+  }),
 
   // ── Admin: run the sweep now (for testing/manual trigger) ──────────────────
   runSweepNow: adminProcedure.mutation(() => runReminderSweep()),
