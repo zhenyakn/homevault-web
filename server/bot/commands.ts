@@ -5,7 +5,7 @@
  */
 
 export type ParsedCommand =
-  | { type: "start" }
+  | { type: "start"; code?: string }
   | { type: "help" }
   | { type: "link"; code: string }
   | { type: "overdue" }
@@ -40,7 +40,9 @@ export function parseCommand(raw: string): ParsedCommand {
 
   switch (cmd) {
     case "start":
-      return { type: "start" };
+      // A deep link (t.me/<bot>?start=<code>) delivers "/start <code>", letting
+      // the user link in one tap. A bare "/start" carries no code.
+      return rest ? { type: "start", code: rest.split(/\s+/)[0] } : { type: "start" };
     case "help":
       return { type: "help" };
     case "overdue":

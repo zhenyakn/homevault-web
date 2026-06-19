@@ -1399,6 +1399,18 @@ function TelegramConnectCard() {
   const { data: status } = trpc.notification.getStatus.useQuery();
   const connected = Boolean(status?.telegramLinked);
   const [code, setCode] = useState<string | null>(null);
+  // The real bot resolved from the configured token; fall back to a generic
+  // label when it can't be resolved (no token yet / unreachable).
+  const botUsername = status?.telegramBotUsername ?? null;
+  const handle = botUsername
+    ? `@${botUsername}`
+    : t("settings.ch.botHandleFallback");
+  // One-tap deep link: t.me/<bot>?start=<code> sends "/start <code>" to the bot,
+  // which links the account without the user typing /link.
+  const deepLink =
+    botUsername && code
+      ? `https://t.me/${botUsername}?start=${encodeURIComponent(code)}`
+      : null;
 
   const createCode = trpc.notification.createTelegramLinkCode.useMutation({
     onSuccess: r => setCode(r.code),
@@ -1441,22 +1453,37 @@ function TelegramConnectCard() {
           ) : (
             <>
               <p className="text-xs text-muted-foreground leading-snug">
-                {t("settings.ch.botInstructions")}
+                {t("settings.ch.botInstructions", { handle })}
               </p>
               {code ? (
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-sm font-mono tracking-wider">
-                    {code}
-                  </code>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-9 w-9 shrink-0"
-                    onClick={copyCode}
-                    aria-label={t("settings.ch.copyCode")}
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded-md border bg-muted/40 px-3 py-2 text-sm font-mono tracking-wider">
+                      {code}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-9 w-9 shrink-0"
+                      onClick={copyCode}
+                      aria-label={t("settings.ch.copyCode")}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {deepLink && (
+                    <Button
+                      asChild
+                      variant="secondary"
+                      size="sm"
+                      className="h-8 w-full text-xs"
+                    >
+                      <a href={deepLink} target="_blank" rel="noopener noreferrer">
+                        <Send className="me-1.5 h-3.5 w-3.5" />
+                        {t("settings.ch.openInTelegram")}
+                      </a>
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <Button

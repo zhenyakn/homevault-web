@@ -59,6 +59,32 @@ export function getBot(): Bot | null {
   return bot;
 }
 
+/** Cached `@username` of the configured bot, resolved once via getMe. */
+let cachedUsername: string | null = null;
+
+/**
+ * Resolve the configured bot's Telegram username (without the leading "@").
+ *
+ * The Settings UI needs the *actual* bot the admin's token points to so it can
+ * tell users which bot to open — hardcoding a name would send them to the wrong
+ * bot and silently break linking. Result is cached for the process lifetime;
+ * the token only changes on restart (same lifecycle as the webhook), which
+ * resets this module's state. Returns null when no token is set or getMe fails.
+ */
+export async function getBotUsername(): Promise<string | null> {
+  if (cachedUsername) return cachedUsername;
+  const b = getBot();
+  if (!b) return null;
+  try {
+    const me = await b.api.getMe();
+    cachedUsername = me.username ?? null;
+    return cachedUsername;
+  } catch (err) {
+    logger.warn({ err }, "[telegram] failed to resolve bot username");
+    return null;
+  }
+}
+
 function registerHandlers(b: Bot) {
   // Confirm callback for /addexpense → "ax|<amount>|<name>"
   b.on("callback_query:data", async ctx => {
@@ -108,22 +134,33 @@ function registerHandlers(b: Bot) {
     const linkedUser = await getUserByTelegramChatId(chatId);
     const lang = normalizeLanguage(linkedUser?.language);
 
+    // Consume a link code and bind this chat to its user. The linking user may
+    // differ from the previously-unlinked chat, so the success reply re-resolves
+    // the language from the now-linked account.
+    const tryLink = async (code: string): Promise<boolean> => {
+      const userId = await consumeTelegramLinkCode(code);
+      if (!userId) return false;
+      await setTelegramChatId(userId, chatId);
+      await ctx.reply(t(await resolveLang(chatId), "linkSuccess"));
+      return true;
+    };
+
     switch (parsed.type) {
       case "start":
+        // Deep link (t.me/<bot>?start=<code>) → link in one tap; bare /start is
+        // just a greeting. An invalid/expired code falls through to help.
+        if (parsed.code && (await tryLink(parsed.code))) return;
+        await ctx.reply(t(lang, "help"));
+        return;
+
       case "help":
         await ctx.reply(t(lang, "help"));
         return;
 
       case "link": {
-        const userId = await consumeTelegramLinkCode(parsed.code);
-        if (!userId) {
+        if (!(await tryLink(parsed.code))) {
           await ctx.reply(t(lang, "linkInvalid"));
-          return;
         }
-        await setTelegramChatId(userId, chatId);
-        // The linking user may differ from the previously-unlinked chat, so
-        // re-resolve the language from the now-linked account.
-        await ctx.reply(t(await resolveLang(chatId), "linkSuccess"));
         return;
       }
 
