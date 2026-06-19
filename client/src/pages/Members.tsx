@@ -87,7 +87,9 @@ function ActivityLog() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">{t("members.recentActivity")}</CardTitle>
+        <CardTitle className="text-base">
+          {t("members.recentActivity")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="divide-y">
         {activity.data.map(a => (

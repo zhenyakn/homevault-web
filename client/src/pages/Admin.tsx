@@ -480,7 +480,11 @@ function UsersTab() {
                 </Select>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" aria-label={t("admin.actions")}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t("admin.actions")}
+                    >
                       <MoreVertical className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -656,7 +660,10 @@ function ResetPasswordDialog({
           <Button type="button" variant="ghost" onClick={onClose}>
             {t("admin.cancel")}
           </Button>
-          <Button type="submit" disabled={reset.isPending || password.length < 8}>
+          <Button
+            type="submit"
+            disabled={reset.isPending || password.length < 8}
+          >
             {t("admin.resetPassword")}
           </Button>
         </div>

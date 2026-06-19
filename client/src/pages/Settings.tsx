@@ -800,7 +800,9 @@ function HouseholdSection() {
         </Row>
       </Group>
 
-      {me?.loginMethod === "email" && <ChangeEmailGroup currentEmail={me?.email ?? ""} />}
+      {me?.loginMethod === "email" && (
+        <ChangeEmailGroup currentEmail={me?.email ?? ""} />
+      )}
       {me?.loginMethod === "email" && <ChangePasswordGroup />}
       <DeleteAccountGroup isLocal={me?.loginMethod === "email"} />
 

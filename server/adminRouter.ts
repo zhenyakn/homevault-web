@@ -240,7 +240,10 @@ export const adminRouter = router({
             message: "This account has no email/password credential to reset",
           });
         }
-        await db.setPasswordHash(input.userId, await hashPassword(input.password));
+        await db.setPasswordHash(
+          input.userId,
+          await hashPassword(input.password)
+        );
         await db.bumpSessionEpoch(input.userId);
         await db.logAudit({
           actorUserId: ctx.user.id,

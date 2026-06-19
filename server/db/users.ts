@@ -166,9 +166,7 @@ export async function deleteUserAccount(userId: number): Promise<void> {
   const db = await getDb();
   await db.transaction(async tx => {
     await tx.delete(emailTokens).where(eq(emailTokens.userId, userId));
-    await tx
-      .delete(userCredentials)
-      .where(eq(userCredentials.userId, userId));
+    await tx.delete(userCredentials).where(eq(userCredentials.userId, userId));
     await tx.delete(tenantMembers).where(eq(tenantMembers.userId, userId));
     await tx.delete(users).where(eq(users.id, userId));
   });

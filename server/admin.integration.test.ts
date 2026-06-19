@@ -627,7 +627,11 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     const adminId = await mkUser("esc-admin", "user");
     const memberId = await mkUser("esc-member", "user");
     const tid = await tenantsDb.createTenantWithOwner(ownerId, "Escalate");
-    await tenantsDb.addMember({ tenantId: tid, userId: adminId, role: "admin" });
+    await tenantsDb.addMember({
+      tenantId: tid,
+      userId: adminId,
+      role: "admin",
+    });
     await tenantsDb.addMember({
       tenantId: tid,
       userId: memberId,
@@ -688,7 +692,11 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
       .set({ email: "someone-else@example.com" })
       .where(eq(schema.users.id, wrongId));
     const wrongCtx = {
-      user: { id: wrongId, email: "someone-else@example.com", globalRole: "user" },
+      user: {
+        id: wrongId,
+        email: "someone-else@example.com",
+        globalRole: "user",
+      },
       propertyId: 1,
       tenantId: tid,
       tenantRole: "member",
@@ -707,7 +715,9 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     const adminDb = await import("./db/admin");
     const prevSignups = await adminDb.getSignupsEnabled();
     await adminDb.setSignupsEnabled(true);
-    await admin.admin.config.setAllowedEmailDomains({ domains: ["allowed.com"] });
+    await admin.admin.config.setAllowedEmailDomains({
+      domains: ["allowed.com"],
+    });
     try {
       // Wrong domain is refused…
       await expect(

@@ -67,9 +67,16 @@ export const tenantRouter = router({
   // role changes, plan/limit changes…). Owner/admin only — gives workspace
   // admins visibility without needing the server-wide admin console.
   activity: tenantAdminProcedure
-    .input(z.object({ limit: z.number().int().min(1).max(200).optional() }).optional())
+    .input(
+      z
+        .object({ limit: z.number().int().min(1).max(200).optional() })
+        .optional()
+    )
     .query(async ({ ctx, input }) => {
-      const rows = await db.getAuditLogForTenant(ctx.tenantId, input?.limit ?? 50);
+      const rows = await db.getAuditLogForTenant(
+        ctx.tenantId,
+        input?.limit ?? 50
+      );
       return rows.map(r => ({
         id: r.id,
         action: r.action,

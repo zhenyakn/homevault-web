@@ -851,7 +851,10 @@ export const appRouter = router({
             message: INVALID_CREDENTIALS_ERR_MSG,
           });
         }
-        await db.setPasswordHash(ctx.user.id, await hashPassword(input.newPassword));
+        await db.setPasswordHash(
+          ctx.user.id,
+          await hashPassword(input.newPassword)
+        );
         // Invalidate other sessions, then mint a fresh cookie for this one so
         // the caller stays signed in on the device they changed it from.
         await db.bumpSessionEpoch(ctx.user.id);

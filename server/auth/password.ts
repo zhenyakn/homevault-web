@@ -77,12 +77,7 @@ export async function verifyPassword(
   const parsed = parseStored(stored);
   if (!parsed) return false;
   const { opts, salt, expected } = parsed;
-  const actual = await scrypt(
-    password,
-    salt,
-    expected.length || KEYLEN,
-    opts
-  );
+  const actual = await scrypt(password, salt, expected.length || KEYLEN, opts);
   if (actual.length !== expected.length) return false;
   return timingSafeEqual(actual, expected);
 }
