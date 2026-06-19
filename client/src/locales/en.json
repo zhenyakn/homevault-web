@@ -559,8 +559,19 @@
       },
       "telegram": {
         "title": "Telegram bot",
-        "desc": "Bot token from @BotFather. Needed for both two-way chat and outbound alerts. Takes effect after a restart.",
-        "token": "Bot token"
+        "desc": "Paste the bot token from @BotFather. Saving validates it and registers the webhook automatically — no restart needed. Telegram needs a public HTTPS address; if HomeVault isn't reachable at one, set your Public base URL under General below. Then link your account under Notification channels.",
+        "token": "Bot token",
+        "webhookUrl": "Delivering to {{url}}",
+        "webhookActive": "Webhook active — receiving messages",
+        "webhookPending": "Webhook active — {{count}} update(s) pending",
+        "webhookError": "Webhook error: {{error}}",
+        "webhookInactive": "Webhook not registered — commands won't reach the server",
+        "registerWebhook": "Register webhook",
+        "webhookRegistered": "Webhook registered with Telegram",
+        "webhookFailedNoUrl": "Couldn't determine a public URL — set your Public base URL under General",
+        "webhookFailedNotHttps": "Telegram requires a public HTTPS URL — set an https:// Public base URL under General",
+        "webhookFailedNoToken": "Set a bot token first",
+        "webhookFailed": "Failed to register webhook: {{error}}"
       },
       "webpush": {
         "title": "Browser push (VAPID)",
