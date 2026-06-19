@@ -30,6 +30,7 @@ import { hasCapability } from "./db/entitlements";
 import type { CapabilityKey } from "./billing/capabilities";
 import * as notif from "./db/notifications";
 import { logAudit } from "./db/audit";
+import { getBotUsername } from "./bot/telegram";
 
 const integrationSectionEnum = z.enum(
   TESTABLE_SECTIONS as unknown as [TestableSection, ...TestableSection[]]
@@ -71,6 +72,9 @@ export const notificationRouter = router({
       email: recipient?.email ?? null,
       whatsappPhone: recipient?.whatsappPhone ?? null,
       telegramLinked: Boolean(recipient?.telegramChatId),
+      // The real bot username (from the configured token), so the UI tells users
+      // which bot to open instead of a hardcoded guess. Null when no token / unreachable.
+      telegramBotUsername: await getBotUsername(),
       webPushAvailable: Boolean(getNotificationConfig().vapidPublicKey),
     };
   }),
