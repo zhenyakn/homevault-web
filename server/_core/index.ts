@@ -12,6 +12,7 @@ import { filesRouter } from "../filesRoute";
 import { googleDriveRouter } from "../googleDriveRoute";
 import { storageRouter } from "../storageRoute";
 import { exportRouter } from "../exportRoute";
+import { metricsRouter } from "../metricsRoute";
 import { createContext } from "./context";
 import { sdk } from "./sdk";
 import { getSessionCookieOptions } from "./cookies";
@@ -417,6 +418,9 @@ async function startServer() {
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
+
+  // Prometheus scrape endpoint (no-op 404 unless METRICS_ENDPOINT_ENABLED).
+  app.use(metricsRouter);
 
   app.use(
     "/api/trpc",

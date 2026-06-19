@@ -98,6 +98,9 @@ const envSchema = z.object({
   // deliberately behind your own auth/network policy).
   METRICS_ENABLED: z.string().default("true"),
   METRICS_ENDPOINT_ENABLED: z.string().default("false"),
+  // Optional bearer token guarding /metrics (recommended when the endpoint is
+  // reachable beyond a trusted scrape network). Empty = no token required.
+  METRICS_TOKEN: z.string().default(""),
   // Reserved seam for remote export (OTLP/Loki/Datadog/…). Empty = disabled;
   // wiring an exporter to this endpoint is the "pluggable later" step.
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(""),

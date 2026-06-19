@@ -24,7 +24,7 @@ export type ObsConfig = {
   bufferSize: number;
   sampleRate: number;
   trace: { enabled: boolean; bufferSize: number };
-  metrics: { enabled: boolean; endpointEnabled: boolean };
+  metrics: { enabled: boolean; endpointEnabled: boolean; token: string };
   otlpEndpoint: string;
 };
 
@@ -86,6 +86,7 @@ function buildConfig(env: NodeJS.ProcessEnv): ObsConfig {
     metrics: {
       enabled: env.METRICS_ENABLED !== "false",
       endpointEnabled: env.METRICS_ENDPOINT_ENABLED === "true",
+      token: env.METRICS_TOKEN || "",
     },
     otlpEndpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT || "",
   };
