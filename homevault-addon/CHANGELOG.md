@@ -1,5 +1,5 @@
 # Changelog
 
-## 0.6.94
-- i18n: translate recently-added pages into all three UI languages (#136)
-- Fix Admin console horizontal overflow on mobile (#135)
+## 0.6.95
+- Harden user management: authorization, account lifecycle & self-service (#138)
+- Add connection tests + audit logging for server integrations (#137)
