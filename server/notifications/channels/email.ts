@@ -26,6 +26,17 @@ function getTransport(): Transporter {
   return transporter;
 }
 
+/**
+ * Probe the configured SMTP server: open a connection and authenticate without
+ * sending a message (nodemailer's `verify()`). Throws with the SMTP error when
+ * the host is unreachable or the credentials are rejected — used by the admin
+ * "Test connection" action so a misconfiguration is caught before a real
+ * notification silently fails.
+ */
+export async function verifyEmailConnection(): Promise<void> {
+  await getTransport().verify();
+}
+
 /** Email via SMTP (nodemailer). Configured when a host + a from/user is set. */
 export const emailChannel: NotificationChannel = {
   key: "email",
