@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2, UserPlus, Trash2, Mail, ShieldAlert } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ function errMessage(e: unknown): string {
 }
 
 export default function Members() {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const current = trpc.tenant.current.useQuery();
   const canManage =
@@ -50,9 +52,7 @@ export default function Members() {
         <Card>
           <CardContent className="flex items-center gap-3 py-8 text-muted-foreground">
             <ShieldAlert className="w-5 h-5 shrink-0" />
-            <p className="text-sm">
-              Only workspace owners and admins can manage members.
-            </p>
+            <p className="text-sm">{t("members.onlyOwnersAdmins")}</p>
           </CardContent>
         </Card>
       </div>
@@ -62,10 +62,13 @@ export default function Members() {
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Members</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {t("members.title")}
+        </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          People with access to{" "}
-          <strong>{current.data?.name ?? "this workspace"}</strong>.
+          {t("members.subtitle", {
+            name: current.data?.name ?? t("members.thisWorkspace"),
+          })}
         </p>
       </div>
 
@@ -77,11 +80,12 @@ export default function Members() {
 }
 
 function InviteForm({ onChanged }: { onChanged: () => void }) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("member");
   const invite = trpc.tenant.invites.create.useMutation({
     onSuccess: () => {
-      toast.success(`Invitation sent to ${email}`);
+      toast.success(t("members.inviteSent", { email }));
       setEmail("");
       onChanged();
     },
@@ -92,11 +96,9 @@ function InviteForm({ onChanged }: { onChanged: () => void }) {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <UserPlus className="w-4 h-4" /> Invite someone
+          <UserPlus className="w-4 h-4" /> {t("members.inviteSomeone")}
         </CardTitle>
-        <CardDescription>
-          They'll get an email link to join this workspace.
-        </CardDescription>
+        <CardDescription>{t("members.inviteDesc")}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -110,7 +112,7 @@ function InviteForm({ onChanged }: { onChanged: () => void }) {
           }}
         >
           <div className="flex-1 space-y-2">
-            <Label htmlFor="invite-email">Email</Label>
+            <Label htmlFor="invite-email">{t("common.email")}</Label>
             <Input
               id="invite-email"
               type="email"
@@ -120,7 +122,7 @@ function InviteForm({ onChanged }: { onChanged: () => void }) {
             />
           </div>
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label>{t("members.role")}</Label>
             <Select value={role} onValueChange={v => setRole(v as Role)}>
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -128,7 +130,7 @@ function InviteForm({ onChanged }: { onChanged: () => void }) {
               <SelectContent>
                 {INVITE_ROLES.map(r => (
                   <SelectItem key={r} value={r}>
-                    {r}
+                    {t(`members.roles.${r}`)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -138,7 +140,7 @@ function InviteForm({ onChanged }: { onChanged: () => void }) {
             {invite.isPending && (
               <Loader2 className="w-4 h-4 me-2 animate-spin" />
             )}
-            Send invite
+            {t("members.sendInvite")}
           </Button>
         </form>
       </CardContent>
@@ -147,6 +149,7 @@ function InviteForm({ onChanged }: { onChanged: () => void }) {
 }
 
 function PendingInvites() {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const invites = trpc.tenant.invites.list.useQuery();
   const revoke = trpc.tenant.invites.revoke.useMutation({
@@ -160,7 +163,7 @@ function PendingInvites() {
     <Card>
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
-          <Mail className="w-4 h-4" /> Pending invitations
+          <Mail className="w-4 h-4" /> {t("members.pendingInvitations")}
         </CardTitle>
       </CardHeader>
       <CardContent className="divide-y">
@@ -172,7 +175,9 @@ function PendingInvites() {
             <div>
               <p className="text-sm font-medium">{inv.email}</p>
               <p className="text-xs text-muted-foreground">
-                invited as {inv.role}
+                {t("members.invitedAs", {
+                  role: t(`members.roles.${inv.role}`),
+                })}
               </p>
             </div>
             <Button
@@ -181,7 +186,7 @@ function PendingInvites() {
               onClick={() => revoke.mutate({ id: inv.id })}
               disabled={revoke.isPending}
             >
-              Revoke
+              {t("members.revoke")}
             </Button>
           </div>
         ))}
@@ -191,6 +196,7 @@ function PendingInvites() {
 }
 
 function MemberList({ ownRole }: { ownRole: Role }) {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const members = trpc.tenant.members.useQuery();
   const setRole = trpc.tenant.setMemberRole.useMutation({
@@ -208,7 +214,9 @@ function MemberList({ ownRole }: { ownRole: Role }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Current members</CardTitle>
+        <CardTitle className="text-base">
+          {t("members.currentMembers")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="divide-y">
         {members.isLoading && (
@@ -244,7 +252,7 @@ function MemberList({ ownRole }: { ownRole: Role }) {
                 <SelectContent>
                   {assignable.map(r => (
                     <SelectItem key={r} value={r}>
-                      {r}
+                      {t(`members.roles.${r}`)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -252,7 +260,7 @@ function MemberList({ ownRole }: { ownRole: Role }) {
               <Button
                 variant="ghost"
                 size="icon"
-                title="Remove member"
+                title={t("members.removeMember")}
                 onClick={() => remove.mutate({ userId: m.userId })}
                 disabled={remove.isPending}
               >

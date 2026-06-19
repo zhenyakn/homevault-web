@@ -475,7 +475,7 @@ function DashboardLayoutContent({
                 <button
                   onClick={toggleSidebar}
                   className="flex items-center justify-center w-full focus:outline-none"
-                  aria-label="Expand sidebar"
+                  aria-label={t("nav.expandSidebar")}
                 >
                   <PropertySwitcher isCollapsed={true} />
                 </button>
@@ -491,7 +491,7 @@ function DashboardLayoutContent({
                   <button
                     onClick={toggleSidebar}
                     className="h-7 w-7 flex items-center justify-center hover:bg-sidebar-accent rounded-md transition-colors focus:outline-none shrink-0"
-                    aria-label="Collapse sidebar"
+                    aria-label={t("nav.collapseSidebar")}
                   >
                     {isRTL ? (
                       <PanelRight className="h-3.5 w-3.5 text-muted-foreground" />

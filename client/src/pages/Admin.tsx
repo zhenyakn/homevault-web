@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Loader2, ShieldAlert } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -24,21 +25,16 @@ function errMessage(e: unknown): string {
 }
 
 type Tab = "overview" | "users" | "tenants" | "plans" | "audit";
-const TABS: { key: Tab; label: string }[] = [
-  { key: "overview", label: "Overview" },
-  { key: "users", label: "Users" },
-  { key: "tenants", label: "Tenants" },
-  { key: "plans", label: "Plans" },
-  { key: "audit", label: "Audit log" },
-];
+const TAB_KEYS: Tab[] = ["overview", "users", "tenants", "plans", "audit"];
 
 export default function Admin() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("overview");
   const { isSaas } = useCapabilities();
   const isSuperAdmin = user?.globalRole === "superadmin";
   // Plans are a hosted (SAAS) concept; hide the tab on standalone installs.
-  const tabs = isSaas ? TABS : TABS.filter(t => t.key !== "plans");
+  const tabs = isSaas ? TAB_KEYS : TAB_KEYS.filter(k => k !== "plans");
 
   if (!isSuperAdmin) {
     return (
@@ -46,9 +42,7 @@ export default function Admin() {
         <Card>
           <CardContent className="flex items-center gap-3 py-8 text-muted-foreground">
             <ShieldAlert className="w-5 h-5 shrink-0" />
-            <p className="text-sm">
-              You don't have access to the admin console.
-            </p>
+            <p className="text-sm">{t("admin.noAccess")}</p>
           </CardContent>
         </Card>
       </div>
@@ -58,24 +52,26 @@ export default function Admin() {
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Admin console</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {t("admin.title")}
+        </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Server-wide users, workspaces, and configuration.
+          {t("admin.subtitle")}
         </p>
       </div>
 
       <div className="flex gap-1 border-b">
-        {tabs.map(t => (
+        {tabs.map(key => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={key}
+            onClick={() => setTab(key)}
             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px ${
-              tab === t.key
+              tab === key
                 ? "border-primary text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t.label}
+            {t(`admin.tabs.${key}`)}
           </button>
         ))}
       </div>
@@ -90,6 +86,7 @@ export default function Admin() {
 }
 
 function Overview() {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const stats = trpc.admin.stats.useQuery();
   const config = trpc.admin.config.get.useQuery();
@@ -114,11 +111,11 @@ function Overview() {
       if (vars.enabled) {
         // Enabling drops the auto-admin session; reload so the now-signed-out
         // client lands on the login screen.
-        toast.success("User login enabled — reloading…");
+        toast.success(t("admin.loginEnabledReloading"));
         setTimeout(() => window.location.reload(), 900);
       } else {
         utils.admin.config.get.invalidate();
-        toast.success("Automatic admin login restored");
+        toast.success(t("admin.autoAdminRestored"));
       }
     },
     onError: e => toast.error(errMessage(e)),
@@ -132,9 +129,9 @@ function Overview() {
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-3 sm:gap-4">
         {[
-          ["Users", stats.data?.users],
-          ["Workspaces", stats.data?.tenants],
-          ["Properties", stats.data?.properties],
+          [t("admin.statUsers"), stats.data?.users],
+          [t("admin.statWorkspaces"), stats.data?.tenants],
+          [t("admin.statProperties"), stats.data?.properties],
         ].map(([label, n]) => (
           <Card key={label as string}>
             <CardContent className="px-2 py-6 text-center sm:px-6">
@@ -149,19 +146,21 @@ function Overview() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Server configuration</CardTitle>
+          <CardTitle className="text-base">{t("admin.serverConfig")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-medium">Deployment mode</p>
+              <p className="text-sm font-medium">{t("admin.deploymentMode")}</p>
               <p className="text-xs text-muted-foreground">
                 {mode === "saas"
-                  ? "Cloud, multi-tenant: open registration and tenant isolation."
-                  : "Single install: invite-only, preserves standalone behaviour."}
+                  ? t("admin.deploymentSaas")
+                  : t("admin.deploymentStandalone")}
                 {config.data &&
                   config.data.appMode !== config.data.appModeEnvDefault &&
-                  ` Overrides the APP_MODE env default (${config.data.appModeEnvDefault}).`}
+                  t("admin.overridesEnvDefault", {
+                    mode: config.data.appModeEnvDefault,
+                  })}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -176,21 +175,22 @@ function Overview() {
                 }
                 title={
                   nextMode === "saas" && config.data?.noAuth
-                    ? "SAAS is incompatible with NO_AUTH mode."
+                    ? t("admin.saasIncompatibleNoAuth")
                     : undefined
                 }
                 onClick={() => setAppMode.mutate({ mode: nextMode })}
               >
-                Switch to {nextMode}
+                {t("admin.switchTo", { mode: nextMode })}
               </Button>
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-medium">Open registration</p>
+              <p className="text-sm font-medium">
+                {t("admin.openRegistration")}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Allow anyone to create an account. Invited users can always
-                join.
+                {t("admin.openRegistrationDesc")}
               </p>
             </div>
             <Button
@@ -202,17 +202,23 @@ function Overview() {
                 setSignups.mutate({ enabled: !config.data?.signupsEnabled })
               }
             >
-              {config.data?.signupsEnabled ? "Enabled" : "Disabled"}
+              {config.data?.signupsEnabled
+                ? t("admin.enabled")
+                : t("admin.disabled")}
             </Button>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="text-sm font-medium">Require email verification</p>
+              <p className="text-sm font-medium">
+                {t("admin.requireEmailVerification")}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Block sign-in until the address is confirmed
+                {t("admin.requireEmailVerificationDesc")}
                 {config.data?.requireEmailVerification &&
                 config.data.emailVerificationGraceHours > 0
-                  ? `, after a ${config.data.emailVerificationGraceHours}h grace period.`
+                  ? t("admin.graceSuffix", {
+                      hours: config.data.emailVerificationGraceHours,
+                    })
                   : "."}
               </p>
             </div>
@@ -230,7 +236,9 @@ function Overview() {
                 })
               }
             >
-              {config.data?.requireEmailVerification ? "Required" : "Optional"}
+              {config.data?.requireEmailVerification
+                ? t("admin.required")
+                : t("admin.optional")}
             </Button>
           </div>
         </CardContent>
@@ -239,39 +247,39 @@ function Overview() {
       {config.data?.noAuth && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Sign-in security</CardTitle>
+            <CardTitle className="text-base">
+              {t("admin.signinSecurity")}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">User login</p>
+                <p className="text-sm font-medium">{t("admin.userLogin")}</p>
                 <p className="text-xs text-muted-foreground">
                   {localLoginOn
-                    ? "On — everyone must sign in with their own email and password."
-                    : "Off — anyone who reaches this server is automatically signed in as a single admin (admin@local) with no password."}
+                    ? t("admin.userLoginOn")
+                    : t("admin.userLoginOff")}
                 </p>
               </div>
               <Badge variant={localLoginOn ? "default" : "secondary"}>
-                {localLoginOn ? "User login" : "Auto-admin"}
+                {localLoginOn
+                  ? t("admin.userLoginBadge")
+                  : t("admin.autoAdminBadge")}
               </Badge>
             </div>
 
             {!localLoginOn && credentialedAdmins < 1 && (
               <div className="flex items-start gap-2 rounded-md border border-dashed p-3 text-xs text-muted-foreground">
                 <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
-                <p>
-                  Create a super-admin with a password first (Users → New user →
-                  grant super-admin). Otherwise enabling login would lock you
-                  out of the console.
-                </p>
+                <p>{t("admin.noCredentialedAdminWarning")}</p>
               </div>
             )}
 
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs text-muted-foreground">
                 {localLoginOn
-                  ? "Turn this off to restore the automatic admin login."
-                  : "Turn this on once at least one super-admin has a password."}
+                  ? t("admin.userLoginOnHint")
+                  : t("admin.userLoginOffHint")}
               </p>
               <Button
                 variant={localLoginOn ? "outline" : "default"}
@@ -286,7 +294,9 @@ function Overview() {
                 {setLocalLogin.isPending && (
                   <Loader2 className="w-4 h-4 me-2 animate-spin" />
                 )}
-                {localLoginOn ? "Disable user login" : "Enable user login"}
+                {localLoginOn
+                  ? t("admin.disableUserLogin")
+                  : t("admin.enableUserLogin")}
               </Button>
             </div>
           </CardContent>
@@ -297,6 +307,7 @@ function Overview() {
 }
 
 function UsersTab() {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
@@ -310,16 +321,16 @@ function UsersTab() {
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <CardTitle className="text-base">Users</CardTitle>
+          <CardTitle className="text-base">{t("admin.usersTitle")}</CardTitle>
           <Input
-            placeholder="Search by name or email…"
+            placeholder={t("admin.searchUsers")}
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="mt-2 max-w-sm"
           />
         </div>
         <Button size="sm" onClick={() => setCreating(true)}>
-          New user
+          {t("admin.newUser")}
         </Button>
       </CardHeader>
       <CardContent className="divide-y">
@@ -354,8 +365,10 @@ function UsersTab() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="user">user</SelectItem>
-                <SelectItem value="superadmin">superadmin</SelectItem>
+                <SelectItem value="user">{t("admin.roleUser")}</SelectItem>
+                <SelectItem value="superadmin">
+                  {t("admin.roleSuperadmin")}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -387,9 +400,10 @@ function CreateUserDialog({
   const [password, setPassword] = useState("");
   const [tenantName, setTenantName] = useState("");
   const [superadmin, setSuperadmin] = useState(false);
+  const { t } = useTranslation();
   const create = trpc.admin.users.create.useMutation({
     onSuccess: () => {
-      toast.success(`Account created for ${email}`);
+      toast.success(t("admin.accountCreated", { email }));
       onCreated();
       onClose();
     },
@@ -414,15 +428,14 @@ function CreateUserDialog({
         className="bg-card w-full max-w-md rounded-xl border shadow-lg p-5 space-y-4 max-h-[90vh] overflow-auto"
       >
         <div>
-          <h3 className="text-base font-semibold">Create a user</h3>
+          <h3 className="text-base font-semibold">{t("admin.createUser")}</h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Provision an account directly. The user can sign in with this email
-            and password immediately — no verification email is required.
+            {t("admin.createUserDesc")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="new-user-email">Email</Label>
+          <Label htmlFor="new-user-email">{t("common.email")}</Label>
           <Input
             id="new-user-email"
             type="email"
@@ -432,16 +445,16 @@ function CreateUserDialog({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="new-user-name">Name (optional)</Label>
+          <Label htmlFor="new-user-name">{t("admin.nameOptional")}</Label>
           <Input
             id="new-user-name"
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="Derived from the email if left blank"
+            placeholder={t("admin.namePlaceholderDerive")}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="new-user-password">Password</Label>
+          <Label htmlFor="new-user-password">{t("common.password")}</Label>
           <Input
             id="new-user-password"
             type="password"
@@ -451,16 +464,18 @@ function CreateUserDialog({
             required
           />
           <p className="text-xs text-muted-foreground">
-            At least 8 characters.
+            {t("admin.passwordMin")}
           </p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="new-user-tenant">Workspace name (optional)</Label>
+          <Label htmlFor="new-user-tenant">
+            {t("admin.workspaceOptional")}
+          </Label>
           <Input
             id="new-user-tenant"
             value={tenantName}
             onChange={e => setTenantName(e.target.value)}
-            placeholder="A personal workspace is created if left blank"
+            placeholder={t("admin.workspacePlaceholder")}
           />
         </div>
         <label className="flex items-center gap-2 text-sm">
@@ -469,7 +484,7 @@ function CreateUserDialog({
             checked={superadmin}
             onChange={e => setSuperadmin(e.target.checked)}
           />
-          Grant server-wide super-admin
+          {t("admin.grantSuperadmin")}
         </label>
 
         <div className="flex justify-end gap-2 pt-2">
@@ -479,13 +494,13 @@ function CreateUserDialog({
             onClick={onClose}
             disabled={create.isPending}
           >
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button type="submit" disabled={create.isPending}>
             {create.isPending && (
               <Loader2 className="w-4 h-4 me-2 animate-spin" />
             )}
-            Create user
+            {t("admin.createUserBtn")}
           </Button>
         </div>
       </form>
@@ -494,6 +509,7 @@ function CreateUserDialog({
 }
 
 function TenantsTab() {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const tenants = trpc.admin.tenants.list.useQuery();
   const plans = trpc.admin.billing.plans.useQuery();
@@ -504,7 +520,7 @@ function TenantsTab() {
   const assignPlan = trpc.admin.billing.assignPlan.useMutation({
     onSuccess: () => {
       utils.admin.tenants.list.invalidate();
-      toast.success("Plan updated");
+      toast.success(t("admin.planUpdated"));
     },
     onError: e => toast.error(errMessage(e)),
   });
@@ -512,7 +528,9 @@ function TenantsTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Workspaces</CardTitle>
+        <CardTitle className="text-base">
+          {t("admin.workspacesTitle")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="divide-y">
         {tenants.isLoading && (
@@ -520,40 +538,40 @@ function TenantsTab() {
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </div>
         )}
-        {tenants.data?.map(t => (
-          <div key={t.id} className="py-3 first:pt-0 last:pb-0">
+        {tenants.data?.map(tn => (
+          <div key={tn.id} className="py-3 first:pt-0 last:pb-0">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">
-                  {t.name}{" "}
-                  {t.status === "suspended" && (
+                  {tn.name}{" "}
+                  {tn.status === "suspended" && (
                     <Badge variant="destructive" className="ms-1">
-                      suspended
+                      {t("admin.suspended")}
                     </Badge>
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {t.memberCount}
-                  {t.maxMembers != null ? `/${t.maxMembers}` : ""} member(s) ·{" "}
-                  {t.propertyCount}
-                  {t.maxProperties != null ? `/${t.maxProperties}` : ""} propert
-                  {t.propertyCount === 1 ? "y" : "ies"}
+                  {tn.memberCount}
+                  {tn.maxMembers != null ? `/${tn.maxMembers}` : ""}{" "}
+                  {t("admin.membersLabel")} · {tn.propertyCount}
+                  {tn.maxProperties != null ? `/${tn.maxProperties}` : ""}{" "}
+                  {t("admin.propertiesLabel")}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <select
                   className="h-8 rounded-md border bg-background px-2 text-xs"
-                  value={t.planId ?? ""}
+                  value={tn.planId ?? ""}
                   disabled={assignPlan.isPending || plans.isLoading}
                   onChange={e =>
                     assignPlan.mutate({
-                      tenantId: t.id,
+                      tenantId: tn.id,
                       planId: e.target.value,
                     })
                   }
                 >
                   <option value="" disabled>
-                    {t.planId ? t.planId : "No plan"}
+                    {tn.planId ? tn.planId : t("admin.noPlan")}
                   </option>
                   {plans.data?.plans.map(p => (
                     <option key={p.key} value={p.key}>
@@ -562,25 +580,27 @@ function TenantsTab() {
                   ))}
                 </select>
                 <Button
-                  variant={t.status === "active" ? "outline" : "default"}
+                  variant={tn.status === "active" ? "outline" : "default"}
                   size="sm"
                   disabled={setStatus.isPending}
                   onClick={() =>
                     setStatus.mutate({
-                      tenantId: t.id,
-                      status: t.status === "active" ? "suspended" : "active",
+                      tenantId: tn.id,
+                      status: tn.status === "active" ? "suspended" : "active",
                     })
                   }
                 >
-                  {t.status === "active" ? "Suspend" : "Reactivate"}
+                  {tn.status === "active"
+                    ? t("admin.suspend")
+                    : t("admin.reactivate")}
                 </Button>
               </div>
             </div>
             <TenantLimitsEditor
-              tenantId={t.id}
-              name={t.name}
-              maxProperties={t.maxProperties}
-              maxMembers={t.maxMembers}
+              tenantId={tn.id}
+              name={tn.name}
+              maxProperties={tn.maxProperties}
+              maxMembers={tn.maxMembers}
             />
           </div>
         ))}
@@ -601,6 +621,7 @@ function TenantLimitsEditor({
   maxProperties: number | null;
   maxMembers: number | null;
 }) {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const [props, setProps] = useState(maxProperties?.toString() ?? "");
   const [members, setMembers] = useState(maxMembers?.toString() ?? "");
@@ -608,7 +629,7 @@ function TenantLimitsEditor({
   const save = trpc.admin.tenants.setLimits.useMutation({
     onSuccess: () => {
       utils.admin.tenants.list.invalidate();
-      toast.success("Limits updated");
+      toast.success(t("admin.limitsUpdated"));
     },
     onError: e => toast.error(errMessage(e)),
   });
@@ -616,7 +637,7 @@ function TenantLimitsEditor({
     onSuccess: () => {
       utils.admin.tenants.list.invalidate();
       utils.admin.stats.invalidate();
-      toast.success("Workspace deleted");
+      toast.success(t("admin.workspaceDeleted"));
     },
     onError: e => toast.error(errMessage(e)),
   });
@@ -644,22 +665,18 @@ function TenantLimitsEditor({
     }
   };
   const onDelete = () => {
-    if (
-      window.confirm(
-        `Permanently delete "${name}" and ALL its data? This cannot be undone.`
-      )
-    ) {
+    if (window.confirm(t("admin.deleteWorkspaceConfirm", { name }))) {
       del.mutate({ tenantId, confirm: true });
     }
   };
   return (
     <div className="flex flex-wrap items-center gap-2 mt-2">
-      <span className="text-xs text-muted-foreground">Limits</span>
+      <span className="text-xs text-muted-foreground">{t("admin.limits")}</span>
       <Input
         type="number"
         min={0}
         className="h-7 w-24 text-xs"
-        placeholder="∞ props"
+        placeholder={t("admin.propsPlaceholder")}
         value={props}
         onChange={e => setProps(e.target.value)}
       />
@@ -667,7 +684,7 @@ function TenantLimitsEditor({
         type="number"
         min={1}
         className="h-7 w-24 text-xs"
-        placeholder="∞ members"
+        placeholder={t("admin.membersPlaceholder")}
         value={members}
         onChange={e => setMembers(e.target.value)}
       />
@@ -683,11 +700,11 @@ function TenantLimitsEditor({
           })
         }
       >
-        Save
+        {t("common.save")}
       </Button>
       <span className="mx-1 h-4 w-px bg-border" />
       <Button size="sm" variant="ghost" disabled={exporting} onClick={onExport}>
-        Export
+        {t("admin.export")}
       </Button>
       <Button
         size="sm"
@@ -696,7 +713,7 @@ function TenantLimitsEditor({
         disabled={del.isPending}
         onClick={onDelete}
       >
-        Delete
+        {t("common.delete")}
       </Button>
     </div>
   );
@@ -733,6 +750,7 @@ const BLANK_PLAN: PlanRow = {
 };
 
 function PlansTab() {
+  const { t } = useTranslation();
   const data = trpc.admin.plans.list.useQuery();
   const [editing, setEditing] = useState<PlanRow | null>(null);
   const [creating, setCreating] = useState(false);
@@ -741,10 +759,11 @@ function PlansTab() {
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-base">Plans</CardTitle>
+          <CardTitle className="text-base">{t("admin.plansTitle")}</CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
-            Billing provider: {data.data?.provider ?? "—"}. Capabilities are
-            gated by plan in SAAS mode; everything is included in standalone.
+            {t("admin.billingProvider", {
+              provider: data.data?.provider ?? "—",
+            })}
           </p>
         </div>
         <Button
@@ -754,7 +773,7 @@ function PlansTab() {
             setCreating(true);
           }}
         >
-          New plan
+          {t("admin.newPlan")}
         </Button>
       </CardHeader>
       <CardContent className="divide-y">
@@ -774,7 +793,7 @@ function PlansTab() {
                 <span className="text-xs text-muted-foreground">({p.key})</span>
                 {!p.active && (
                   <Badge variant="outline" className="ms-1">
-                    hidden
+                    {t("admin.hidden")}
                   </Badge>
                 )}
                 {p.isPaid ? (
@@ -787,13 +806,16 @@ function PlansTab() {
                   </Badge>
                 ) : (
                   <Badge variant="outline" className="ms-1">
-                    free
+                    {t("admin.free")}
                   </Badge>
                 )}
               </p>
               <p className="text-xs text-muted-foreground">
-                {p.maxProperties ?? "∞"} properties · {p.maxMembers ?? "∞"}{" "}
-                members · caps: {(p.capabilities ?? []).join(", ") || "none"}
+                {t("admin.planUsage", {
+                  properties: p.maxProperties ?? "∞",
+                  members: p.maxMembers ?? "∞",
+                  caps: (p.capabilities ?? []).join(", ") || t("admin.none"),
+                })}
               </p>
             </div>
             <Button
@@ -804,7 +826,7 @@ function PlansTab() {
                 setCreating(false);
               }}
             >
-              Edit
+              {t("common.edit")}
             </Button>
           </div>
         ))}
@@ -833,6 +855,7 @@ function PlanEditor({
   capabilities: readonly { key: string; label: string; description: string }[];
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const utils = trpc.useUtils();
   const [draft, setDraft] = useState<PlanRow>(plan);
   const refresh = () => {
@@ -842,7 +865,7 @@ function PlanEditor({
   const create = trpc.admin.plans.create.useMutation({
     onSuccess: () => {
       refresh();
-      toast.success("Plan created");
+      toast.success(t("admin.planCreated"));
       onClose();
     },
     onError: e => toast.error(errMessage(e)),
@@ -850,7 +873,7 @@ function PlanEditor({
   const update = trpc.admin.plans.update.useMutation({
     onSuccess: () => {
       refresh();
-      toast.success("Plan saved");
+      toast.success(t("admin.planSaved"));
       onClose();
     },
     onError: e => toast.error(errMessage(e)),
@@ -858,7 +881,7 @@ function PlanEditor({
   const del = trpc.admin.plans.delete.useMutation({
     onSuccess: () => {
       refresh();
-      toast.success("Plan deleted");
+      toast.success(t("admin.planDeleted"));
       onClose();
     },
     onError: e => toast.error(errMessage(e)),
@@ -901,12 +924,14 @@ function PlanEditor({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-card w-full max-w-lg rounded-xl border shadow-lg p-5 space-y-4 max-h-[90vh] overflow-auto">
         <h3 className="text-base font-semibold">
-          {isNew ? "New plan" : `Edit ${plan.name}`}
+          {isNew
+            ? t("admin.newPlan")
+            : t("admin.editPlan", { name: plan.name })}
         </h3>
 
         <div className="grid grid-cols-2 gap-3">
           <label className="text-xs space-y-1">
-            <span className="text-muted-foreground">Key</span>
+            <span className="text-muted-foreground">{t("admin.key")}</span>
             <Input
               value={draft.key}
               disabled={!isNew}
@@ -915,7 +940,7 @@ function PlanEditor({
             />
           </label>
           <label className="text-xs space-y-1">
-            <span className="text-muted-foreground">Name</span>
+            <span className="text-muted-foreground">{t("common.name")}</span>
             <Input
               value={draft.name}
               placeholder="Pro"
@@ -923,7 +948,9 @@ function PlanEditor({
             />
           </label>
           <label className="text-xs space-y-1">
-            <span className="text-muted-foreground">Price (cents)</span>
+            <span className="text-muted-foreground">
+              {t("admin.priceCents")}
+            </span>
             <Input
               type="number"
               min={0}
@@ -934,7 +961,7 @@ function PlanEditor({
             />
           </label>
           <label className="text-xs space-y-1">
-            <span className="text-muted-foreground">Currency</span>
+            <span className="text-muted-foreground">{t("admin.currency")}</span>
             <Input
               value={draft.currency}
               maxLength={3}
@@ -942,7 +969,7 @@ function PlanEditor({
             />
           </label>
           <label className="text-xs space-y-1">
-            <span className="text-muted-foreground">Interval</span>
+            <span className="text-muted-foreground">{t("admin.interval")}</span>
             <select
               className="h-9 w-full rounded-md border bg-background px-2 text-sm"
               value={draft.interval}
@@ -953,13 +980,15 @@ function PlanEditor({
                 })
               }
             >
-              <option value="none">none</option>
-              <option value="month">month</option>
-              <option value="year">year</option>
+              <option value="none">{t("admin.intervalNone")}</option>
+              <option value="month">{t("admin.intervalMonth")}</option>
+              <option value="year">{t("admin.intervalYear")}</option>
             </select>
           </label>
           <label className="text-xs space-y-1">
-            <span className="text-muted-foreground">Sort order</span>
+            <span className="text-muted-foreground">
+              {t("admin.sortOrder")}
+            </span>
             <Input
               type="number"
               min={0}
@@ -971,7 +1000,7 @@ function PlanEditor({
           </label>
           <label className="text-xs space-y-1">
             <span className="text-muted-foreground">
-              Max properties (∞ = blank)
+              {t("admin.maxProperties")}
             </span>
             <Input
               type="number"
@@ -984,7 +1013,7 @@ function PlanEditor({
           </label>
           <label className="text-xs space-y-1">
             <span className="text-muted-foreground">
-              Max members (∞ = blank)
+              {t("admin.maxMembers")}
             </span>
             <Input
               type="number"
@@ -999,7 +1028,7 @@ function PlanEditor({
 
         <label className="text-xs space-y-1 block">
           <span className="text-muted-foreground">
-            Checkout / payment-link URL (paid plans)
+            {t("admin.checkoutUrl")}
           </span>
           <Input
             value={draft.checkoutUrl ?? ""}
@@ -1009,7 +1038,9 @@ function PlanEditor({
         </label>
 
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">Included capabilities</p>
+          <p className="text-xs text-muted-foreground">
+            {t("admin.includedCapabilities")}
+          </p>
           <div className="space-y-1">
             {capabilities.map(c => (
               <label key={c.key} className="flex items-start gap-2 text-sm">
@@ -1037,7 +1068,7 @@ function PlanEditor({
               checked={draft.isPaid}
               onChange={e => setDraft({ ...draft, isPaid: e.target.checked })}
             />
-            Paid plan
+            {t("admin.paidPlan")}
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -1045,7 +1076,7 @@ function PlanEditor({
               checked={draft.active}
               onChange={e => setDraft({ ...draft, active: e.target.checked })}
             />
-            Active (offered)
+            {t("admin.activeOffered")}
           </label>
         </div>
 
@@ -1056,23 +1087,27 @@ function PlanEditor({
               className="text-destructive hover:text-destructive"
               disabled={busy}
               onClick={() => {
-                if (window.confirm(`Delete plan "${plan.name}"?`)) {
+                if (
+                  window.confirm(
+                    t("admin.deletePlanConfirm", { name: plan.name })
+                  )
+                ) {
                   del.mutate({ key: plan.key });
                 }
               }}
             >
-              Delete
+              {t("common.delete")}
             </Button>
           ) : (
             <span />
           )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onClose} disabled={busy}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button onClick={submit} disabled={busy}>
               {busy && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
-              {isNew ? "Create" : "Save"}
+              {isNew ? t("common.create") : t("common.save")}
             </Button>
           </div>
         </div>
@@ -1082,11 +1117,12 @@ function PlanEditor({
 }
 
 function AuditTab() {
+  const { t } = useTranslation();
   const audit = trpc.admin.audit.list.useQuery({ limit: 100 });
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Recent activity</CardTitle>
+        <CardTitle className="text-base">{t("admin.recentActivity")}</CardTitle>
       </CardHeader>
       <CardContent className="divide-y">
         {audit.isLoading && (
@@ -1095,7 +1131,9 @@ function AuditTab() {
           </div>
         )}
         {audit.data?.length === 0 && (
-          <p className="text-sm text-muted-foreground py-4">No activity yet.</p>
+          <p className="text-sm text-muted-foreground py-4">
+            {t("admin.noActivity")}
+          </p>
         )}
         {audit.data?.map(a => (
           <div key={a.id} className="py-2 first:pt-0 last:pb-0">
