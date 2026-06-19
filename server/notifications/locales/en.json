@@ -28,6 +28,18 @@
     "title": "Lease ending soon",
     "body": "The lease for your property ends on {{date}}."
   },
+  "inviteAccepted": {
+    "title": "Invitation accepted",
+    "body": "{{name}} joined {{tenant}}."
+  },
+  "memberRoleChanged": {
+    "title": "Your role changed",
+    "body": "Your role in {{tenant}} is now {{role}}."
+  },
+  "memberRemoved": {
+    "title": "Removed from workspace",
+    "body": "You no longer have access to {{tenant}}."
+  },
   "test": {
     "title": "HomeVault test notification",
     "body": "This is a test notification. If you can read it, the channel works."

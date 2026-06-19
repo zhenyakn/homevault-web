@@ -1479,7 +1479,11 @@ function TelegramConnectCard() {
                       size="sm"
                       className="h-8 w-full text-xs"
                     >
-                      <a href={deepLink} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={deepLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <Send className="me-1.5 h-3.5 w-3.5" />
                         {t("settings.ch.openInTelegram")}
                       </a>
@@ -1994,6 +1998,11 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
     undefined,
     { enabled: isAdmin }
   );
+  // The admin's own notification email — used to prefill the "send test email"
+  // recipient so a one-click test is the common case.
+  const { data: myStatus } = trpc.notification.getStatus.useQuery(undefined, {
+    enabled: isAdmin,
+  });
 
   const invalidate = () =>
     Promise.all([
@@ -2043,7 +2052,8 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
   const testProps = (section: string, lastTest: LastTest) => ({
     lastTest,
     testing: testingSection === section,
-    onTest: () => testIntegration.mutate({ section: section as never }),
+    onTest: (opts?: { testEmailTo?: string }) =>
+      testIntegration.mutate({ section: section as never, ...opts }),
   });
 
   if (!isAdmin) return null;
@@ -2065,6 +2075,7 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
             status={cfg.email}
             pending={save.isPending}
             onSave={v => save.mutate({ email: v })}
+            defaultTestEmail={myStatus?.email ?? ""}
             {...testProps("email", cfg.lastTests?.email ?? null)}
           />
           <TelegramDeliveryForm
@@ -2108,7 +2119,7 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
 type DeliveryTestProps = {
   lastTest: LastTest;
   testing: boolean;
-  onTest: () => void;
+  onTest: (opts?: { testEmailTo?: string }) => void;
 };
 
 function PushDeliveryForm({
@@ -2254,10 +2265,12 @@ function EmailDeliveryForm({
   lastTest,
   testing,
   onTest,
+  defaultTestEmail,
 }: {
   status: any;
   onSave: (v: any) => void;
   pending: boolean;
+  defaultTestEmail?: string;
 } & DeliveryTestProps) {
   const { t } = useTranslation();
   const ro = Boolean(status.fromEnv);
@@ -2266,6 +2279,7 @@ function EmailDeliveryForm({
   const [user, setUser] = useState(status.user ?? "");
   const [from, setFrom] = useState(status.from ?? "");
   const [pass, setPass] = useState("");
+  const [testEmail, setTestEmail] = useState(defaultTestEmail ?? "");
   return (
     <IntegrationCard
       icon={<Mail className="h-4 w-4" />}
@@ -2336,6 +2350,36 @@ function EmailDeliveryForm({
             testing={testing}
             onTest={onTest}
           />
+          <div className="flex flex-col gap-1.5">
+            <p className="text-xs text-muted-foreground">
+              {t("settings.delivery.email.sendTestDesc")}
+            </p>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="flex-1 min-w-[12rem]">
+                <DeliveryField
+                  label={t("settings.delivery.email.testRecipient")}
+                  value={testEmail}
+                  onChange={setTestEmail}
+                  type="email"
+                  placeholder="you@example.com"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => onTest({ testEmailTo: testEmail.trim() })}
+                disabled={testing || !status.configured || !testEmail.trim()}
+              >
+                {testing ? (
+                  <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Send className="me-1.5 h-3.5 w-3.5" />
+                )}
+                {t("settings.delivery.email.sendTest")}
+              </Button>
+            </div>
+          </div>
         </div>
       }
     />
@@ -2367,7 +2411,8 @@ function TelegramDeliveryForm({
   const register = trpc.notification.registerTelegramWebhook.useMutation({
     onSuccess: async r => {
       await u.notification.getTelegramWebhookStatus.invalidate();
-      if (r.ok) toast.success(t("settings.delivery.telegram.webhookRegistered"));
+      if (r.ok)
+        toast.success(t("settings.delivery.telegram.webhookRegistered"));
       else toast.error(webhookErrorMessage(t, r));
     },
     onError: e => toast.error(e.message),

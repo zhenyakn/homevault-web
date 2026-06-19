@@ -42,7 +42,9 @@ export function parseCommand(raw: string): ParsedCommand {
     case "start":
       // A deep link (t.me/<bot>?start=<code>) delivers "/start <code>", letting
       // the user link in one tap. A bare "/start" carries no code.
-      return rest ? { type: "start", code: rest.split(/\s+/)[0] } : { type: "start" };
+      return rest
+        ? { type: "start", code: rest.split(/\s+/)[0] }
+        : { type: "start" };
     case "help":
       return { type: "help" };
     case "overdue":

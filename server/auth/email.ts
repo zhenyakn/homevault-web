@@ -1,35 +1,17 @@
-import nodemailer, { type Transporter } from "nodemailer";
 import { logger } from "../_core/logger";
 import { getPublicBaseUrl } from "../_core/integrationsConfig";
 import {
   getNotificationConfig,
   isSectionConfigured,
 } from "../notifications/config";
+import { getEmailTransport } from "../notifications/channels/emailTransport";
 
 // Transactional auth emails (verify address, reset password). Reuses the same
-// SMTP configuration as notification emails (resolved env-first, then the
-// admin-set override). Sending is best-effort: a failure is logged but never
-// blocks the auth flow that triggered it (e.g. a user can still register if the
-// verification email can't be sent).
-
-let transporter: Transporter | null = null;
-let transporterKey = "";
-
-function getTransport(): Transporter {
-  const c = getNotificationConfig();
-  const port = c.smtpPort ? Number(c.smtpPort) : 587;
-  const key = JSON.stringify([c.smtpHost, port, c.smtpUser, c.smtpPass]);
-  if (!transporter || transporterKey !== key) {
-    transporter = nodemailer.createTransport({
-      host: c.smtpHost,
-      port,
-      secure: port === 465,
-      auth: c.smtpUser ? { user: c.smtpUser, pass: c.smtpPass } : undefined,
-    });
-    transporterKey = key;
-  }
-  return transporter;
-}
+// SMTP transport as notification emails (resolved env-first, then the admin-set
+// override) — so the admin "Send test email" action validates this path too.
+// Sending is best-effort: a failure is logged but never blocks the auth flow
+// that triggered it (e.g. a user can still register if the verification email
+// can't be sent).
 
 export function isEmailConfigured(): boolean {
   return isSectionConfigured("email");
@@ -51,7 +33,7 @@ async function send(
   }
   try {
     const c = getNotificationConfig();
-    await getTransport().sendMail({
+    await getEmailTransport().sendMail({
       from: c.smtpFrom || c.smtpUser,
       to,
       subject,

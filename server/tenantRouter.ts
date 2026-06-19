@@ -10,6 +10,11 @@ import {
 import * as db from "./db";
 import { generateToken, hashToken } from "./auth/password";
 import { sendInviteEmail } from "./auth/email";
+import {
+  notifyInviteAccepted,
+  notifyMemberRoleChanged,
+  notifyMemberRemoved,
+} from "./notifications/events";
 import { ENV } from "./_core/env";
 import {
   rateLimitHit,
@@ -219,6 +224,14 @@ export const tenantRouter = router({
           metadata: { role: invite.role },
         });
         const tenant = await db.getTenantById(invite.tenantId);
+        // Let whoever sent the invite know it was accepted (best-effort).
+        if (invite.invitedByUserId && invite.invitedByUserId !== ctx.user.id) {
+          await notifyInviteAccepted(invite.invitedByUserId, {
+            accepterName: ctx.user.name ?? ctx.user.email ?? "A new member",
+            tenantName: tenant?.name ?? "your workspace",
+            tenantId: invite.tenantId,
+          });
+        }
         return {
           tenantId: invite.tenantId,
           tenantName: tenant?.name ?? null,
@@ -275,6 +288,15 @@ export const tenantRouter = router({
         targetId: String(input.userId),
         metadata: { role: input.role },
       });
+      // Notify the affected member (skip self-changes; best-effort).
+      if (input.userId !== ctx.user.id) {
+        const tenant = await db.getTenantById(ctx.tenantId);
+        await notifyMemberRoleChanged(input.userId, {
+          tenantName: tenant?.name ?? "your workspace",
+          tenantId: ctx.tenantId,
+          role: input.role,
+        });
+      }
       return { success: true as const };
     }),
 
@@ -309,6 +331,14 @@ export const tenantRouter = router({
         targetType: "user",
         targetId: String(input.userId),
       });
+      // Notify the removed member (skip self-removal; best-effort).
+      if (input.userId !== ctx.user.id) {
+        const tenant = await db.getTenantById(ctx.tenantId);
+        await notifyMemberRemoved(input.userId, {
+          tenantName: tenant?.name ?? "your workspace",
+          tenantId: ctx.tenantId,
+        });
+      }
       return { success: true as const };
     }),
 });

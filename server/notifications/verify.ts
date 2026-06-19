@@ -18,7 +18,7 @@ import webpush from "web-push";
 import { getSetting, setSetting } from "../db/appSettings";
 import { getNotificationConfig, isSectionConfigured } from "./config";
 import { getForgeConfig } from "../_core/integrationsConfig";
-import { verifyEmailConnection } from "./channels/email";
+import { sendTestEmail, verifyEmailConnection } from "./channels/email";
 import { notifyOwner } from "../_core/notification";
 
 /** Server-side integrations that expose a "Test connection" action. */
@@ -106,10 +106,19 @@ async function probeWhatsApp(): Promise<IntegrationTestResult> {
   }
 }
 
-async function probeEmail(): Promise<IntegrationTestResult> {
+async function probeEmail(
+  testEmailTo?: string
+): Promise<IntegrationTestResult> {
   if (!isSectionConfigured("email")) return fail(NOT_CONFIGURED);
   try {
     await verifyEmailConnection();
+    // When a recipient is supplied, go beyond the handshake and actually send a
+    // message, so the admin can confirm end-to-end delivery (relay acceptance,
+    // `from` header) reaches a real inbox.
+    if (testEmailTo) {
+      await sendTestEmail(testEmailTo);
+      return ok(`Test email sent to ${testEmailTo}`);
+    }
     return ok("SMTP connection verified");
   } catch (e) {
     return fail(errMsg(e));
@@ -145,10 +154,19 @@ async function probePush(): Promise<IntegrationTestResult> {
   }
 }
 
-async function probe(section: TestableSection): Promise<IntegrationTestResult> {
+/** Per-section options for a probe. Currently only email uses one. */
+export type IntegrationTestOptions = {
+  /** When set (email only), send a real test email to this address. */
+  testEmailTo?: string;
+};
+
+async function probe(
+  section: TestableSection,
+  opts: IntegrationTestOptions
+): Promise<IntegrationTestResult> {
   switch (section) {
     case "email":
-      return probeEmail();
+      return probeEmail(opts.testEmailTo);
     case "telegram":
       return probeTelegram();
     case "whatsapp":
@@ -167,9 +185,10 @@ async function probe(section: TestableSection): Promise<IntegrationTestResult> {
  */
 export async function runIntegrationTest(
   section: TestableSection,
-  actorUserId: number | null
+  actorUserId: number | null,
+  opts: IntegrationTestOptions = {}
 ): Promise<IntegrationTestRecord> {
-  const result = await probe(section);
+  const result = await probe(section, opts);
   const record: IntegrationTestRecord = {
     ...result,
     at: new Date().toISOString(),
