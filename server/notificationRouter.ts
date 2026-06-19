@@ -266,9 +266,18 @@ export const notificationRouter = router({
    * and the result. Returns the outcome for immediate display.
    */
   testIntegration: adminProcedure
-    .input(z.object({ section: integrationSectionEnum }))
+    .input(
+      z.object({
+        section: integrationSectionEnum,
+        // Email only: when present, send a real test message to this address as
+        // part of the SMTP validation (not just the handshake).
+        testEmailTo: z.string().email().optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      const record = await runIntegrationTest(input.section, ctx.user.id);
+      const record = await runIntegrationTest(input.section, ctx.user.id, {
+        testEmailTo: input.testEmailTo,
+      });
       await logAudit({
         actorUserId: ctx.user.id,
         action: "admin.integration.tested",
@@ -277,6 +286,9 @@ export const notificationRouter = router({
         metadata: {
           status: record.ok ? "ok" : "failed",
           detail: record.detail || null,
+          // Record that a real message was sent (never the address itself).
+          sentTestEmail:
+            input.section === "email" && Boolean(input.testEmailTo),
         },
       });
       return record;

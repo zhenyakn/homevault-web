@@ -33,8 +33,10 @@ vi.mock("../_core/integrationsConfig", () => ({
 }));
 
 const verifyEmailConnection = vi.fn(async () => {});
+const sendTestEmail = vi.fn(async (_to: string) => {});
 vi.mock("./channels/email", () => ({
   verifyEmailConnection: () => verifyEmailConnection(),
+  sendTestEmail: (to: string) => sendTestEmail(to),
 }));
 
 const notifyOwner = vi.fn(async () => true);
@@ -64,6 +66,7 @@ beforeEach(() => {
   forge.apiUrl = "";
   forge.apiKey = "";
   verifyEmailConnection.mockClear().mockResolvedValue(undefined);
+  sendTestEmail.mockClear().mockResolvedValue(undefined);
   notifyOwner.mockClear().mockResolvedValue(true);
   setVapidDetails.mockClear();
   vi.restoreAllMocks();
@@ -108,6 +111,30 @@ describe("runIntegrationTest — probes", () => {
     r = await runIntegrationTest("email", 1);
     expect(r.ok).toBe(false);
     expect(r.detail).toBe("ECONNREFUSED");
+  });
+
+  it("email: sends a real test message when a recipient is supplied", async () => {
+    configured.add("email");
+    const r = await runIntegrationTest("email", 1, { testEmailTo: "me@x.com" });
+    expect(r.ok).toBe(true);
+    expect(r.detail).toContain("me@x.com");
+    expect(verifyEmailConnection).toHaveBeenCalledOnce();
+    expect(sendTestEmail).toHaveBeenCalledWith("me@x.com");
+  });
+
+  it("email: a failed send is reported, not thrown", async () => {
+    configured.add("email");
+    sendTestEmail.mockRejectedValueOnce(new Error("550 relay denied"));
+    const r = await runIntegrationTest("email", 1, { testEmailTo: "me@x.com" });
+    expect(r.ok).toBe(false);
+    expect(r.detail).toBe("550 relay denied");
+  });
+
+  it("email: handshake-only when no recipient is supplied", async () => {
+    configured.add("email");
+    const r = await runIntegrationTest("email", 1);
+    expect(r.ok).toBe(true);
+    expect(sendTestEmail).not.toHaveBeenCalled();
   });
 
   it("push: maps the notifyOwner boolean to ok/failed", async () => {

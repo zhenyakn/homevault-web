@@ -37,6 +37,30 @@ export async function verifyEmailConnection(): Promise<void> {
   await getTransport().verify();
 }
 
+/**
+ * Send a real test email to `to` through the configured SMTP transport. Unlike
+ * {@link verifyEmailConnection}, this exercises the full send path (envelope,
+ * relay acceptance, `from` header) so an admin can confirm a message actually
+ * lands in an inbox — not just that the handshake succeeds. Throws with the SMTP
+ * error when the send is rejected.
+ */
+export async function sendTestEmail(to: string): Promise<void> {
+  const c = getNotificationConfig();
+  const payload = {
+    dedupeKey: "smtp-test",
+    category: "system" as const,
+    title: "HomeVault SMTP test",
+    body: "This is a test email confirming your HomeVault SMTP settings work. If you received it, outgoing email is configured correctly.",
+  };
+  await getTransport().sendMail({
+    from: c.smtpFrom || c.smtpUser,
+    to,
+    subject: formatEmailSubject(payload),
+    text: payload.body,
+    html: formatEmailHtml(payload, getPublicBaseUrl()),
+  });
+}
+
 /** Email via SMTP (nodemailer). Configured when a host + a from/user is set. */
 export const emailChannel: NotificationChannel = {
   key: "email",
