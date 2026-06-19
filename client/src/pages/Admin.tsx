@@ -130,16 +130,18 @@ function Overview() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3 sm:gap-4">
         {[
           ["Users", stats.data?.users],
           ["Workspaces", stats.data?.tenants],
           ["Properties", stats.data?.properties],
         ].map(([label, n]) => (
           <Card key={label as string}>
-            <CardContent className="py-6 text-center">
+            <CardContent className="px-2 py-6 text-center sm:px-6">
               <div className="text-3xl font-bold">{n ?? "—"}</div>
-              <div className="text-xs text-muted-foreground mt-1">{label}</div>
+              <div className="text-xs text-muted-foreground mt-1 truncate">
+                {label}
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -150,8 +152,8 @@ function Overview() {
           <CardTitle className="text-base">Server configuration</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="text-sm font-medium">Deployment mode</p>
               <p className="text-xs text-muted-foreground">
                 {mode === "saas"
@@ -162,7 +164,7 @@ function Overview() {
                   ` Overrides the APP_MODE env default (${config.data.appModeEnvDefault}).`}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Badge variant="secondary">{mode ?? "—"}</Badge>
               <Button
                 variant="outline"
@@ -183,8 +185,8 @@ function Overview() {
               </Button>
             </div>
           </div>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="text-sm font-medium">Open registration</p>
               <p className="text-xs text-muted-foreground">
                 Allow anyone to create an account. Invited users can always
@@ -194,6 +196,7 @@ function Overview() {
             <Button
               variant={config.data?.signupsEnabled ? "default" : "outline"}
               size="sm"
+              className="shrink-0 self-start sm:self-auto"
               disabled={setSignups.isPending || config.isLoading}
               onClick={() =>
                 setSignups.mutate({ enabled: !config.data?.signupsEnabled })
@@ -202,8 +205,8 @@ function Overview() {
               {config.data?.signupsEnabled ? "Enabled" : "Disabled"}
             </Button>
           </div>
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <p className="text-sm font-medium">Require email verification</p>
               <p className="text-xs text-muted-foreground">
                 Block sign-in until the address is confirmed
@@ -218,6 +221,7 @@ function Overview() {
                 config.data?.requireEmailVerification ? "default" : "outline"
               }
               size="sm"
+              className="shrink-0 self-start sm:self-auto"
               disabled={setEmailVerification.isPending || config.isLoading}
               onClick={() =>
                 setEmailVerification.mutate({
