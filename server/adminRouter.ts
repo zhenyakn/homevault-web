@@ -1,8 +1,11 @@
 import { z } from "zod";
+import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
 import { router, superAdminProcedure } from "./_core/trpc";
 import { ENV } from "./_core/env";
 import * as db from "./db";
+import { hashPassword } from "./auth/password";
+import { EMAIL_TAKEN_ERR_MSG } from "../shared/const";
 import { CAPABILITIES, sanitizeCapabilities } from "./billing/capabilities";
 import { purgeTenantFileObjects } from "./files";
 
@@ -44,6 +47,76 @@ export const adminRouter = router({
       )
       .query(async ({ input }) => {
         return db.listUsersForAdmin(input ?? {});
+      }),
+
+    // Directly provision a user with an email + password. This is the
+    // standalone counterpart to SAAS self-registration: standalone installs
+    // keep open signups off and may have no SMTP for invite links, so an admin
+    // needs a way to create accounts by hand. The account is created
+    // pre-verified (the admin vouches for it) so the email-verification gate
+    // never locks the new user out, and it lands in its own workspace — a named
+    // one if `tenantName` is given, otherwise a personal "<name>'s Home".
+    create: superAdminProcedure
+      .input(
+        z.object({
+          email: z.string().trim().toLowerCase().email().max(320),
+          password: z.string().min(8).max(200),
+          name: z.string().trim().min(1).max(100).optional(),
+          globalRole: z.enum(["user", "superadmin"]).default("user"),
+          tenantName: z.string().trim().min(1).max(200).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (await db.getCredentialByEmail(input.email)) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: EMAIL_TAKEN_ERR_MSG,
+          });
+        }
+
+        const openId = `local:${nanoid()}`;
+        const name = input.name ?? input.email.split("@")[0];
+        await db.upsertUser({
+          openId,
+          name,
+          email: input.email,
+          loginMethod: "email",
+          globalRole: input.globalRole,
+          lastSignedIn: new Date(),
+        });
+        const user = await db.getUserByOpenId(openId);
+        if (!user) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        }
+
+        await db.createCredential({
+          userId: user.id,
+          email: input.email,
+          passwordHash: await hashPassword(input.password),
+        });
+        // Admin-created accounts skip email verification — the admin is the
+        // authorization, and standalone installs may not have SMTP configured.
+        await db.markEmailVerified(user.id);
+
+        // Give the new user a workspace to land in.
+        if (input.tenantName) {
+          const tenantId = await db.createTenantWithOwner(
+            user.id,
+            input.tenantName
+          );
+          await db.setUserDefaultTenant(user.id, tenantId);
+        } else {
+          await db.ensurePersonalTenant(user.id, name);
+        }
+
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.user.created",
+          targetType: "user",
+          targetId: String(user.id),
+          metadata: { email: input.email, globalRole: input.globalRole },
+        });
+        return { success: true as const, userId: user.id };
       }),
 
     // Grant or revoke server-wide super-admin. Can't demote the last one.

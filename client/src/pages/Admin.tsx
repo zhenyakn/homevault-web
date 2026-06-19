@@ -5,6 +5,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useCapabilities } from "@/hooks/useCapabilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -221,6 +222,7 @@ function Overview() {
 function UsersTab() {
   const utils = trpc.useUtils();
   const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
   const users = trpc.admin.users.list.useQuery({ search: search || undefined });
   const setRole = trpc.admin.users.setGlobalRole.useMutation({
     onSuccess: () => utils.admin.users.list.invalidate(),
@@ -229,14 +231,19 @@ function UsersTab() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Users</CardTitle>
-        <Input
-          placeholder="Search by name or email…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="mt-2 max-w-sm"
-        />
+      <CardHeader className="flex-row items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <CardTitle className="text-base">Users</CardTitle>
+          <Input
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="mt-2 max-w-sm"
+          />
+        </div>
+        <Button size="sm" onClick={() => setCreating(true)}>
+          New user
+        </Button>
       </CardHeader>
       <CardContent className="divide-y">
         {users.isLoading && (
@@ -277,7 +284,135 @@ function UsersTab() {
           </div>
         ))}
       </CardContent>
+
+      {creating && (
+        <CreateUserDialog
+          onClose={() => setCreating(false)}
+          onCreated={() => {
+            utils.admin.users.list.invalidate();
+            utils.admin.stats.invalidate();
+          }}
+        />
+      )}
     </Card>
+  );
+}
+
+function CreateUserDialog({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [tenantName, setTenantName] = useState("");
+  const [superadmin, setSuperadmin] = useState(false);
+  const create = trpc.admin.users.create.useMutation({
+    onSuccess: () => {
+      toast.success(`Account created for ${email}`);
+      onCreated();
+      onClose();
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    create.mutate({
+      email: email.trim(),
+      password,
+      name: name.trim() || undefined,
+      globalRole: superadmin ? "superadmin" : "user",
+      tenantName: tenantName.trim() || undefined,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <form
+        onSubmit={submit}
+        className="bg-card w-full max-w-md rounded-xl border shadow-lg p-5 space-y-4 max-h-[90vh] overflow-auto"
+      >
+        <div>
+          <h3 className="text-base font-semibold">Create a user</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Provision an account directly. The user can sign in with this email
+            and password immediately — no verification email is required.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="new-user-email">Email</Label>
+          <Input
+            id="new-user-email"
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="new-user-name">Name (optional)</Label>
+          <Input
+            id="new-user-name"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Derived from the email if left blank"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="new-user-password">Password</Label>
+          <Input
+            id="new-user-password"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            minLength={8}
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            At least 8 characters.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="new-user-tenant">Workspace name (optional)</Label>
+          <Input
+            id="new-user-tenant"
+            value={tenantName}
+            onChange={e => setTenantName(e.target.value)}
+            placeholder="A personal workspace is created if left blank"
+          />
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={superadmin}
+            onChange={e => setSuperadmin(e.target.checked)}
+          />
+          Grant server-wide super-admin
+        </label>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={create.isPending}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={create.isPending}>
+            {create.isPending && (
+              <Loader2 className="w-4 h-4 me-2 animate-spin" />
+            )}
+            Create user
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 
