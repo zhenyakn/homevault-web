@@ -20,15 +20,13 @@ import * as db from "../db";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./env";
 import { logger } from "./logger";
-import { webhookCallback } from "grammy";
-import { getBot } from "../bot/telegram";
+import {
+  getTelegramWebhookHandler,
+  syncTelegramWebhook,
+} from "../bot/telegram";
 import { startReminderScheduler } from "../notifications/scheduler";
 import { loadNotificationConfig } from "../notifications/config";
-import {
-  loadIntegrationsConfig,
-  getPublicBaseUrl,
-  getTelegramWebhookSecret,
-} from "./integrationsConfig";
+import { loadIntegrationsConfig } from "./integrationsConfig";
 import { runMigrations } from "./migrate";
 
 // Rate limiters. NODE_ENV=test bypasses all of these so the test suite isn't
@@ -302,19 +300,20 @@ async function startServer() {
   app.use(storageRouter);
   app.use(exportRouter);
 
-  // Telegram bot webhook. Registered only when a bot token is configured; the
-  // secret token (when set) is verified by grammy against the
-  // X-Telegram-Bot-Api-Secret-Token header.
-  const telegramBot = getBot();
-  if (telegramBot) {
-    app.post(
-      "/api/bot/telegram",
-      webhookCallback(telegramBot, "express", {
-        secretToken: getTelegramWebhookSecret() || undefined,
-      })
-    );
-    logger.info("[telegram] webhook registered at /api/bot/telegram");
-  }
+  // Telegram bot webhook. The route is mounted unconditionally and resolves the
+  // current bot per request, so a token configured later via Settings works
+  // without a restart. When no bot is configured we ack with 200 (nothing should
+  // be posting then). The secret token (when set) is verified by grammy against
+  // the X-Telegram-Bot-Api-Secret-Token header.
+  app.post("/api/bot/telegram", (req, res, next) => {
+    const handler = getTelegramWebhookHandler();
+    if (!handler) {
+      res.sendStatus(200);
+      return;
+    }
+    handler(req, res, next);
+  });
+  logger.info("[telegram] webhook route mounted at /api/bot/telegram");
 
   // Dev-only login bypass — keeps existing dev-server behavior unchanged
   if (process.env.NODE_ENV === "development") {
@@ -418,16 +417,18 @@ async function startServer() {
     logger.info({ host, port }, "Server running");
     // Start the daily reminder sweep (no-op under NODE_ENV=test).
     startReminderScheduler();
-    // Best-effort: point Telegram at our webhook if a public URL is set.
-    const publicBaseUrl = getPublicBaseUrl();
-    if (telegramBot && publicBaseUrl) {
-      const url = `${publicBaseUrl}/api/bot/telegram`;
-      telegramBot.api
-        .setWebhook(url, {
-          secret_token: getTelegramWebhookSecret() || undefined,
-        })
-        .then(() => logger.info({ url }, "[telegram] webhook set"))
-        .catch(err => logger.warn({ err }, "[telegram] failed to set webhook"));
-    }
+    // Best-effort: point Telegram at our webhook if a token + public URL are
+    // already configured. Admins can also set both from Settings, which
+    // re-registers live without a restart.
+    void syncTelegramWebhook().then(r => {
+      if (r.ok) logger.info({ url: r.url }, "[telegram] webhook set");
+      else if (r.reason === "error")
+        logger.warn({ detail: r.detail }, "[telegram] failed to set webhook");
+      else
+        logger.info(
+          { reason: r.reason },
+          "[telegram] webhook not set — configure a bot token and public URL in Settings"
+        );
+    });
   });
 }

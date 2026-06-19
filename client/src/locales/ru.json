@@ -501,7 +501,9 @@
       "testTitle": "Тестовое уведомление — {{channel}}",
       "testBody": "Так будет выглядеть уведомление. (Только предпросмотр.)",
       "botTitle": "Telegram-бот",
-      "botInstructions": "Откройте @HomeVaultBot в Telegram и отправьте /link с этим кодом, чтобы подключить аккаунт.",
+      "botInstructions": "Откройте {{handle}} в Telegram и отправьте /link с этим кодом, чтобы подключить аккаунт.",
+      "botHandleFallback": "вашего Telegram-бота HomeVault",
+      "openInTelegram": "Открыть в Telegram",
       "copyCode": "Копировать код",
       "codeCopied": "Код для привязки скопирован",
       "connectedAs": "Подключено как {{handle}}",
@@ -734,8 +736,19 @@
       },
       "telegram": {
         "title": "Telegram-бот",
-        "desc": "Токен бота от @BotFather. Нужен и для двустороннего чата, и для исходящих оповещений. Вступает в силу после перезапуска.",
-        "token": "Токен бота"
+        "desc": "Вставьте токен бота от @BotFather. Сохранение проверяет его и автоматически регистрирует webhook — перезапуск не нужен. Telegram требует публичный HTTPS-адрес; если HomeVault недоступен по такому, задайте Публичный базовый URL в разделе «Общие» ниже. Затем привяжите аккаунт в разделе «Каналы уведомлений».",
+        "token": "Токен бота",
+        "webhookUrl": "Доставка на {{url}}",
+        "webhookActive": "Webhook активен — сообщения принимаются",
+        "webhookPending": "Webhook активен — {{count}} обновлений в очереди",
+        "webhookError": "Ошибка webhook: {{error}}",
+        "webhookInactive": "Webhook не зарегистрирован — команды не дойдут до сервера",
+        "registerWebhook": "Зарегистрировать webhook",
+        "webhookRegistered": "Webhook зарегистрирован в Telegram",
+        "webhookFailedNoUrl": "Не удалось определить публичный URL — задайте Публичный базовый URL в разделе «Общие»",
+        "webhookFailedNotHttps": "Telegram требует публичный HTTPS-URL — укажите https:// в Публичном базовом URL в разделе «Общие»",
+        "webhookFailedNoToken": "Сначала укажите токен бота",
+        "webhookFailed": "Не удалось зарегистрировать webhook: {{error}}"
       },
       "webpush": {
         "title": "Push в браузере (VAPID)",
