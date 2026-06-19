@@ -732,7 +732,7 @@
     "preparing": "Preparing…",
     "perModule": "Per module",
     "perModuleHint": "CSV available from each module page",
-    "dangerZone": "Danger zone",
+    "dangerZone": "Delete account",
     "deleteAll": "Delete all records",
     "deleteAllHint": "Permanently removes all financial data. Property settings preserved.",
     "deleteAllBtn": "Delete all…",
@@ -760,7 +760,15 @@
     "currentPassword": "Current password",
     "newPasswordLabel": "New password",
     "passwordChanged": "Password changed",
-    "updatePassword": "Update password"
+    "updatePassword": "Update password",
+    "changeEmail": "Change email",
+    "changeEmailDesc": "Current address: {{email}}. A new address must be re-verified.",
+    "newEmail": "New email",
+    "updateEmail": "Update email",
+    "emailChanged": "Email updated — check your inbox to verify it",
+    "deleteAccount": "Delete my account",
+    "deleteAccountDesc": "Permanently delete your account. Workspaces you solely own are deleted with it; shared workspaces simply lose your membership. This cannot be undone.",
+    "deleteAccountConfirm": "Permanently delete your account and any workspaces you solely own? This cannot be undone."
   },
   "repairs": {
     "title": "Repairs",
@@ -1399,7 +1407,8 @@
       "viewer": "viewer"
     },
     "you": "You",
-    "recentActivity": "Recent activity"
+    "recentActivity": "Recent activity",
+    "lastActive": "Last active {{when}}"
   },
   "plan": {
     "planUsage": "Plan & usage",
@@ -1581,6 +1590,8 @@
     "saved": "Saved",
     "name": "Name",
     "cancel": "Cancel",
-    "save": "Save"
+    "save": "Save",
+    "allowedDomains": "Allowed email domains",
+    "allowedDomainsDesc": "Limit open sign-ups to these domains (comma-separated). Leave empty to allow any; invited users always bypass this."
   }
 }

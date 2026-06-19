@@ -800,7 +800,9 @@ function HouseholdSection() {
         </Row>
       </Group>
 
+      {me?.loginMethod === "email" && <ChangeEmailGroup currentEmail={me?.email ?? ""} />}
       {me?.loginMethod === "email" && <ChangePasswordGroup />}
+      <DeleteAccountGroup isLocal={me?.loginMethod === "email"} />
 
       {(members?.length ?? 0) > 0 && (
         <Group label={`${t("settings.members")} · ${members?.length}`}>
@@ -882,6 +884,107 @@ function ChangePasswordGroup() {
           {t("settings.updatePassword")}
         </Button>
       </form>
+    </Group>
+  );
+}
+
+// Self-service email change for local accounts. The new address is marked
+// unverified and a verification email is sent.
+function ChangeEmailGroup({ currentEmail }: { currentEmail: string }) {
+  const { t } = useTranslation();
+  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const change = trpc.auth.changeEmail.useMutation({
+    onSuccess: () => {
+      toast.success(t("settings.emailChanged"));
+      setPassword("");
+      setEmail("");
+    },
+    onError: e => toast.error(e.message),
+  });
+  return (
+    <Group label={t("settings.changeEmail")}>
+      <form
+        className="space-y-3 py-1"
+        onSubmit={e => {
+          e.preventDefault();
+          change.mutate({ currentPassword: password, newEmail: email.trim() });
+        }}
+      >
+        <p className="text-sm text-muted-foreground">
+          {t("settings.changeEmailDesc", { email: currentEmail || "—" })}
+        </p>
+        <Input
+          type="email"
+          autoComplete="email"
+          placeholder={t("settings.newEmail")}
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          type="password"
+          autoComplete="current-password"
+          placeholder={t("settings.currentPassword")}
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          required
+        />
+        <Button
+          type="submit"
+          size="sm"
+          disabled={change.isPending || !email.trim() || !password}
+        >
+          {t("settings.updateEmail")}
+        </Button>
+      </form>
+    </Group>
+  );
+}
+
+// Irreversible self-service account deletion. Workspaces the user solely owns
+// are deleted with the account; shared ones just lose the membership.
+function DeleteAccountGroup({ isLocal }: { isLocal: boolean }) {
+  const { t } = useTranslation();
+  const [password, setPassword] = useState("");
+  const del = trpc.auth.deleteMe.useMutation({
+    onSuccess: () => {
+      // The account is gone — drop the session and bounce to the login screen.
+      window.location.href = "/";
+    },
+    onError: e => toast.error(e.message),
+  });
+  return (
+    <Group label={t("settings.dangerZone")}>
+      <div className="space-y-3 py-1">
+        <p className="text-sm text-muted-foreground">
+          {t("settings.deleteAccountDesc")}
+        </p>
+        {isLocal && (
+          <Input
+            type="password"
+            autoComplete="current-password"
+            placeholder={t("settings.currentPassword")}
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="destructive"
+          disabled={del.isPending || (isLocal && !password)}
+          onClick={() => {
+            if (window.confirm(t("settings.deleteAccountConfirm")))
+              del.mutate({
+                confirm: true,
+                password: isLocal ? password : undefined,
+              });
+          }}
+        >
+          {t("settings.deleteAccount")}
+        </Button>
+      </div>
     </Group>
   );
 }

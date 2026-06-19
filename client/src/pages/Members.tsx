@@ -275,6 +275,15 @@ function MemberList({ ownRole }: { ownRole: Role }) {
                   {m.email}
                 </p>
               )}
+              {m.lastSignedIn && (
+                <p className="text-xs text-muted-foreground/70 truncate">
+                  {t("members.lastActive", {
+                    when: new Date(
+                      m.lastSignedIn as unknown as string
+                    ).toLocaleDateString(),
+                  })}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Select

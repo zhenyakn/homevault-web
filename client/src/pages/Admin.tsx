@@ -113,6 +113,13 @@ function Overview() {
       onSuccess: () => utils.admin.config.get.invalidate(),
       onError: e => toast.error(errMessage(e)),
     });
+  const setDomains = trpc.admin.config.setAllowedEmailDomains.useMutation({
+    onSuccess: () => {
+      utils.admin.config.get.invalidate();
+      toast.success(t("admin.saved"));
+    },
+    onError: e => toast.error(errMessage(e)),
+  });
   const setLocalLogin = trpc.admin.config.setLocalLogin.useMutation({
     onSuccess: (_data, vars) => {
       if (vars.enabled) {
@@ -214,6 +221,11 @@ function Overview() {
                 : t("admin.disabled")}
             </Button>
           </div>
+          <AllowedDomainsEditor
+            value={config.data?.allowedEmailDomains ?? []}
+            disabled={setDomains.isPending || config.isLoading}
+            onSave={domains => setDomains.mutate({ domains })}
+          />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="text-sm font-medium">
@@ -309,6 +321,57 @@ function Overview() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// Comma/space/newline-separated email-domain allowlist for open registration.
+// Empty = no restriction.
+function AllowedDomainsEditor({
+  value,
+  disabled,
+  onSave,
+}: {
+  value: string[];
+  disabled: boolean;
+  onSave: (domains: string[]) => void;
+}) {
+  const { t } = useTranslation();
+  const joined = value.join(", ");
+  // Uncontrolled input seeded from the saved value; we read it on save.
+  const [text, setText] = useState(joined);
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{t("admin.allowedDomains")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("admin.allowedDomainsDesc")}
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Input
+          id="allowed-domains"
+          placeholder="acme.com, contoso.com"
+          defaultValue={joined}
+          onChange={e => setText(e.target.value)}
+          className="flex-1"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={disabled}
+          onClick={() =>
+            onSave(
+              text
+                .split(/[\s,]+/)
+                .map(d => d.trim())
+                .filter(Boolean)
+            )
+          }
+        >
+          {t("admin.save")}
+        </Button>
+      </div>
     </div>
   );
 }
