@@ -1710,6 +1710,86 @@ function SaveDeliveryButton({
   );
 }
 
+/** The persisted outcome of the last "Test connection" run for a section. */
+type LastTest = {
+  ok: boolean;
+  detail: string;
+  at: string;
+  actorUserId: number | null;
+} | null;
+
+/**
+ * "Test connection" control + the durable result of the most recent test
+ * (success/failure, when, and the reason). Shown on every server integration so
+ * an admin can verify a channel really works — including env-configured ones,
+ * whose forms are otherwise read-only.
+ */
+function TestConnectionRow({
+  configured,
+  lastTest,
+  onTest,
+  testing,
+}: {
+  configured: boolean;
+  lastTest: LastTest;
+  onTest: () => void;
+  testing: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-border pt-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={onTest}
+          disabled={testing || !configured}
+        >
+          {testing ? (
+            <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
+          ) : null}
+          {t("settings.delivery.test")}
+        </Button>
+        {lastTest ? (
+          <span
+            className={`inline-flex items-center gap-1 text-xs ${
+              lastTest.ok
+                ? "text-emerald-600 dark:text-emerald-400"
+                : "text-destructive"
+            }`}
+          >
+            {lastTest.ok ? (
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            ) : (
+              <AlertTriangle className="h-3.5 w-3.5" />
+            )}
+            <span>
+              {lastTest.ok
+                ? t("settings.delivery.lastTestOk")
+                : t("settings.delivery.lastTestFailed")}{" "}
+              · {new Date(lastTest.at).toLocaleString()}
+            </span>
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {t("settings.delivery.neverTested")}
+          </span>
+        )}
+      </div>
+      {lastTest?.detail ? (
+        <p
+          className={`text-xs ${
+            lastTest.ok ? "text-muted-foreground" : "text-destructive"
+          }`}
+        >
+          {lastTest.detail}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Admin-only server-side notification credential setup. Mirrors the storage
  * (S3) admin pattern: each channel's credentials resolve env-first, then the
@@ -1746,6 +1826,28 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
     onError: e => toast.error(e.message),
   });
 
+  // Which section is currently being tested (so only its button shows a spinner).
+  const [testingSection, setTestingSection] = useState<string | null>(null);
+  const testIntegration = trpc.notification.testIntegration.useMutation({
+    onMutate: v => setTestingSection(v.section),
+    onSuccess: async (res, v) => {
+      await u.notification.getChannelConfig.invalidate();
+      if (res.ok) {
+        toast.success(t("settings.delivery.testOk", { detail: res.detail }));
+      } else {
+        toast.error(t("settings.delivery.testFailed", { error: res.detail }));
+      }
+      void v;
+    },
+    onError: e => toast.error(e.message),
+    onSettled: () => setTestingSection(null),
+  });
+  const testProps = (section: string, lastTest: LastTest) => ({
+    lastTest,
+    testing: testingSection === section,
+    onTest: () => testIntegration.mutate({ section: section as never }),
+  });
+
   if (!isAdmin) return null;
 
   return (
@@ -1765,11 +1867,13 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
             status={cfg.email}
             pending={save.isPending}
             onSave={v => save.mutate({ email: v })}
+            {...testProps("email", cfg.lastTests?.email ?? null)}
           />
           <TelegramDeliveryForm
             status={cfg.telegram}
             pending={save.isPending}
             onSave={v => save.mutate({ telegram: v })}
+            {...testProps("telegram", cfg.lastTests?.telegram ?? null)}
           />
           <WebPushDeliveryForm
             status={cfg.webpush}
@@ -1777,16 +1881,19 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
             onSave={v => save.mutate({ webpush: v })}
             onGenerate={() => genVapid.mutate()}
             generating={genVapid.isPending}
+            {...testProps("webpush", cfg.lastTests?.webpush ?? null)}
           />
           <WhatsAppDeliveryForm
             status={cfg.whatsapp}
             pending={save.isPending}
             onSave={v => save.mutate({ whatsapp: v })}
+            {...testProps("whatsapp", cfg.lastTests?.whatsapp ?? null)}
           />
           <PushDeliveryForm
             status={cfg.push}
             pending={save.isPending}
             onSave={v => save.mutate({ push: v })}
+            {...testProps("push", cfg.lastTests?.push ?? null)}
           />
           <GeneralDeliveryForm
             status={cfg.general}
@@ -1799,15 +1906,25 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+/** Shared props every delivery form takes to render its Test connection row. */
+type DeliveryTestProps = {
+  lastTest: LastTest;
+  testing: boolean;
+  onTest: () => void;
+};
+
 function PushDeliveryForm({
   status,
   onSave,
   pending,
+  lastTest,
+  testing,
+  onTest,
 }: {
   status: any;
   onSave: (v: any) => void;
   pending: boolean;
-}) {
+} & DeliveryTestProps) {
   const { t } = useTranslation();
   const ro = Boolean(status.fromEnv);
   const [apiUrl, setApiUrl] = useState(status.apiUrl ?? "");
@@ -1819,37 +1936,45 @@ function PushDeliveryForm({
       description={t("settings.delivery.push.desc")}
       badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
       footer={
-        ro ? (
-          <p className="text-xs text-muted-foreground">
-            {t("settings.delivery.fromEnv")}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <DeliveryField
-              label={t("settings.delivery.push.apiUrl")}
-              value={apiUrl}
-              onChange={setApiUrl}
-              placeholder="https://api.forge.example.com"
-            />
-            <DeliveryField
-              label={t("settings.delivery.push.apiKey")}
-              value={apiKey}
-              onChange={setApiKey}
-              type="password"
-              placeholder={
-                status.apiKeySet
-                  ? t("settings.delivery.secretPlaceholder")
-                  : undefined
-              }
-            />
-            <SaveDeliveryButton
-              pending={pending}
-              onClick={() =>
-                onSave({ forgeApiUrl: apiUrl, forgeApiKey: apiKey })
-              }
-            />
-          </div>
-        )
+        <div className="flex flex-col gap-3">
+          {ro ? (
+            <p className="text-xs text-muted-foreground">
+              {t("settings.delivery.fromEnv")}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <DeliveryField
+                label={t("settings.delivery.push.apiUrl")}
+                value={apiUrl}
+                onChange={setApiUrl}
+                placeholder="https://api.forge.example.com"
+              />
+              <DeliveryField
+                label={t("settings.delivery.push.apiKey")}
+                value={apiKey}
+                onChange={setApiKey}
+                type="password"
+                placeholder={
+                  status.apiKeySet
+                    ? t("settings.delivery.secretPlaceholder")
+                    : undefined
+                }
+              />
+              <SaveDeliveryButton
+                pending={pending}
+                onClick={() =>
+                  onSave({ forgeApiUrl: apiUrl, forgeApiKey: apiKey })
+                }
+              />
+            </div>
+          )}
+          <TestConnectionRow
+            configured={Boolean(status.configured)}
+            lastTest={lastTest}
+            testing={testing}
+            onTest={onTest}
+          />
+        </div>
       }
     />
   );
@@ -1928,11 +2053,14 @@ function EmailDeliveryForm({
   status,
   onSave,
   pending,
+  lastTest,
+  testing,
+  onTest,
 }: {
   status: any;
   onSave: (v: any) => void;
   pending: boolean;
-}) {
+} & DeliveryTestProps) {
   const { t } = useTranslation();
   const ro = Boolean(status.fromEnv);
   const [host, setHost] = useState(status.host ?? "");
@@ -1947,62 +2075,70 @@ function EmailDeliveryForm({
       description={t("settings.delivery.email.desc")}
       badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
       footer={
-        ro ? (
-          <p className="text-xs text-muted-foreground">
-            {t("settings.delivery.fromEnv")}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <DeliveryField
-              label={t("settings.delivery.email.host")}
-              value={host}
-              onChange={setHost}
-              placeholder="smtp.example.com"
-            />
-            <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-3">
+          {ro ? (
+            <p className="text-xs text-muted-foreground">
+              {t("settings.delivery.fromEnv")}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
               <DeliveryField
-                label={t("settings.delivery.email.port")}
-                value={port}
-                onChange={setPort}
-                placeholder="587"
+                label={t("settings.delivery.email.host")}
+                value={host}
+                onChange={setHost}
+                placeholder="smtp.example.com"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <DeliveryField
+                  label={t("settings.delivery.email.port")}
+                  value={port}
+                  onChange={setPort}
+                  placeholder="587"
+                />
+                <DeliveryField
+                  label={t("settings.delivery.email.user")}
+                  value={user}
+                  onChange={setUser}
+                />
+              </div>
+              <DeliveryField
+                label={t("settings.delivery.email.pass")}
+                value={pass}
+                onChange={setPass}
+                type="password"
+                placeholder={
+                  status.passSet
+                    ? t("settings.delivery.secretPlaceholder")
+                    : undefined
+                }
               />
               <DeliveryField
-                label={t("settings.delivery.email.user")}
-                value={user}
-                onChange={setUser}
+                label={t("settings.delivery.email.from")}
+                value={from}
+                onChange={setFrom}
+                placeholder="HomeVault <noreply@example.com>"
+              />
+              <SaveDeliveryButton
+                pending={pending}
+                onClick={() =>
+                  onSave({
+                    smtpHost: host,
+                    smtpPort: port,
+                    smtpUser: user,
+                    smtpFrom: from,
+                    smtpPass: pass,
+                  })
+                }
               />
             </div>
-            <DeliveryField
-              label={t("settings.delivery.email.pass")}
-              value={pass}
-              onChange={setPass}
-              type="password"
-              placeholder={
-                status.passSet
-                  ? t("settings.delivery.secretPlaceholder")
-                  : undefined
-              }
-            />
-            <DeliveryField
-              label={t("settings.delivery.email.from")}
-              value={from}
-              onChange={setFrom}
-              placeholder="HomeVault <noreply@example.com>"
-            />
-            <SaveDeliveryButton
-              pending={pending}
-              onClick={() =>
-                onSave({
-                  smtpHost: host,
-                  smtpPort: port,
-                  smtpUser: user,
-                  smtpFrom: from,
-                  smtpPass: pass,
-                })
-              }
-            />
-          </div>
-        )
+          )}
+          <TestConnectionRow
+            configured={Boolean(status.configured)}
+            lastTest={lastTest}
+            testing={testing}
+            onTest={onTest}
+          />
+        </div>
       }
     />
   );
@@ -2012,11 +2148,14 @@ function TelegramDeliveryForm({
   status,
   onSave,
   pending,
+  lastTest,
+  testing,
+  onTest,
 }: {
   status: any;
   onSave: (v: any) => void;
   pending: boolean;
-}) {
+} & DeliveryTestProps) {
   const { t } = useTranslation();
   const ro = Boolean(status.fromEnv);
   const [token, setToken] = useState("");
@@ -2027,29 +2166,37 @@ function TelegramDeliveryForm({
       description={t("settings.delivery.telegram.desc")}
       badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
       footer={
-        ro ? (
-          <p className="text-xs text-muted-foreground">
-            {t("settings.delivery.fromEnv")}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <DeliveryField
-              label={t("settings.delivery.telegram.token")}
-              value={token}
-              onChange={setToken}
-              type="password"
-              placeholder={
-                status.tokenSet
-                  ? t("settings.delivery.secretPlaceholder")
-                  : "123456:ABC-DEF…"
-              }
-            />
-            <SaveDeliveryButton
-              pending={pending}
-              onClick={() => onSave({ telegramBotToken: token })}
-            />
-          </div>
-        )
+        <div className="flex flex-col gap-3">
+          {ro ? (
+            <p className="text-xs text-muted-foreground">
+              {t("settings.delivery.fromEnv")}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <DeliveryField
+                label={t("settings.delivery.telegram.token")}
+                value={token}
+                onChange={setToken}
+                type="password"
+                placeholder={
+                  status.tokenSet
+                    ? t("settings.delivery.secretPlaceholder")
+                    : "123456:ABC-DEF…"
+                }
+              />
+              <SaveDeliveryButton
+                pending={pending}
+                onClick={() => onSave({ telegramBotToken: token })}
+              />
+            </div>
+          )}
+          <TestConnectionRow
+            configured={Boolean(status.configured)}
+            lastTest={lastTest}
+            testing={testing}
+            onTest={onTest}
+          />
+        </div>
       }
     />
   );
@@ -2061,13 +2208,16 @@ function WebPushDeliveryForm({
   pending,
   onGenerate,
   generating,
+  lastTest,
+  testing,
+  onTest,
 }: {
   status: any;
   onSave: (v: any) => void;
   pending: boolean;
   onGenerate: () => void;
   generating: boolean;
-}) {
+} & DeliveryTestProps) {
   const { t } = useTranslation();
   const ro = Boolean(status.fromEnv);
   const [publicKey, setPublicKey] = useState(status.publicKey ?? "");
@@ -2081,61 +2231,69 @@ function WebPushDeliveryForm({
       description={t("settings.delivery.webpush.desc")}
       badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
       footer={
-        ro ? (
-          <p className="text-xs text-muted-foreground">
-            {t("settings.delivery.fromEnv")}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <DeliveryField
-              label={t("settings.delivery.webpush.publicKey")}
-              value={publicKey}
-              onChange={setPublicKey}
-            />
-            <DeliveryField
-              label={t("settings.delivery.webpush.privateKey")}
-              value={privateKey}
-              onChange={setPrivateKey}
-              type="password"
-              placeholder={
-                status.privateKeySet
-                  ? t("settings.delivery.secretPlaceholder")
-                  : undefined
-              }
-            />
-            <DeliveryField
-              label={t("settings.delivery.webpush.subject")}
-              value={subject}
-              onChange={setSubject}
-              placeholder="mailto:admin@example.com"
-            />
-            <div className="flex items-center gap-2">
-              <SaveDeliveryButton
-                pending={pending}
-                onClick={() =>
-                  onSave({
-                    vapidPublicKey: publicKey,
-                    vapidPrivateKey: privateKey,
-                    vapidSubject: subject,
-                  })
+        <div className="flex flex-col gap-3">
+          {ro ? (
+            <p className="text-xs text-muted-foreground">
+              {t("settings.delivery.fromEnv")}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <DeliveryField
+                label={t("settings.delivery.webpush.publicKey")}
+                value={publicKey}
+                onChange={setPublicKey}
+              />
+              <DeliveryField
+                label={t("settings.delivery.webpush.privateKey")}
+                value={privateKey}
+                onChange={setPrivateKey}
+                type="password"
+                placeholder={
+                  status.privateKeySet
+                    ? t("settings.delivery.secretPlaceholder")
+                    : undefined
                 }
               />
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                onClick={onGenerate}
-                disabled={generating}
-              >
-                {generating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  t("settings.delivery.webpush.generate")
-                )}
-              </Button>
+              <DeliveryField
+                label={t("settings.delivery.webpush.subject")}
+                value={subject}
+                onChange={setSubject}
+                placeholder="mailto:admin@example.com"
+              />
+              <div className="flex items-center gap-2">
+                <SaveDeliveryButton
+                  pending={pending}
+                  onClick={() =>
+                    onSave({
+                      vapidPublicKey: publicKey,
+                      vapidPrivateKey: privateKey,
+                      vapidSubject: subject,
+                    })
+                  }
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={onGenerate}
+                  disabled={generating}
+                >
+                  {generating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    t("settings.delivery.webpush.generate")
+                  )}
+                </Button>
+              </div>
             </div>
-          </div>
-        )
+          )}
+          <TestConnectionRow
+            configured={Boolean(status.configured)}
+            lastTest={lastTest}
+            testing={testing}
+            onTest={onTest}
+          />
+        </div>
       }
     />
   );
@@ -2145,11 +2303,14 @@ function WhatsAppDeliveryForm({
   status,
   onSave,
   pending,
+  lastTest,
+  testing,
+  onTest,
 }: {
   status: any;
   onSave: (v: any) => void;
   pending: boolean;
-}) {
+} & DeliveryTestProps) {
   const { t } = useTranslation();
   const ro = Boolean(status.fromEnv);
   const [phoneId, setPhoneId] = useState(status.phoneNumberId ?? "");
@@ -2162,46 +2323,54 @@ function WhatsAppDeliveryForm({
       description={t("settings.delivery.whatsapp.desc")}
       badge={<DeliveryStatusRow configured={status.configured} fromEnv={ro} />}
       footer={
-        ro ? (
-          <p className="text-xs text-muted-foreground">
-            {t("settings.delivery.fromEnv")}
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <DeliveryField
-              label={t("settings.delivery.whatsapp.phoneId")}
-              value={phoneId}
-              onChange={setPhoneId}
-            />
-            <DeliveryField
-              label={t("settings.delivery.whatsapp.token")}
-              value={token}
-              onChange={setToken}
-              type="password"
-              placeholder={
-                status.tokenSet
-                  ? t("settings.delivery.secretPlaceholder")
-                  : undefined
-              }
-            />
-            <DeliveryField
-              label={t("settings.delivery.whatsapp.apiVersion")}
-              value={apiVersion}
-              onChange={setApiVersion}
-              placeholder="v21.0"
-            />
-            <SaveDeliveryButton
-              pending={pending}
-              onClick={() =>
-                onSave({
-                  whatsappPhoneNumberId: phoneId,
-                  whatsappAccessToken: token,
-                  whatsappApiVersion: apiVersion,
-                })
-              }
-            />
-          </div>
-        )
+        <div className="flex flex-col gap-3">
+          {ro ? (
+            <p className="text-xs text-muted-foreground">
+              {t("settings.delivery.fromEnv")}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <DeliveryField
+                label={t("settings.delivery.whatsapp.phoneId")}
+                value={phoneId}
+                onChange={setPhoneId}
+              />
+              <DeliveryField
+                label={t("settings.delivery.whatsapp.token")}
+                value={token}
+                onChange={setToken}
+                type="password"
+                placeholder={
+                  status.tokenSet
+                    ? t("settings.delivery.secretPlaceholder")
+                    : undefined
+                }
+              />
+              <DeliveryField
+                label={t("settings.delivery.whatsapp.apiVersion")}
+                value={apiVersion}
+                onChange={setApiVersion}
+                placeholder="v21.0"
+              />
+              <SaveDeliveryButton
+                pending={pending}
+                onClick={() =>
+                  onSave({
+                    whatsappPhoneNumberId: phoneId,
+                    whatsappAccessToken: token,
+                    whatsappApiVersion: apiVersion,
+                  })
+                }
+              />
+            </div>
+          )}
+          <TestConnectionRow
+            configured={Boolean(status.configured)}
+            lastTest={lastTest}
+            testing={testing}
+            onTest={onTest}
+          />
+        </div>
       }
     />
   );

@@ -1148,6 +1148,13 @@ function AuditTab() {
               {a.tenantId ? ` · tenant ${a.tenantId}` : ""}
               {a.actorUserId ? ` · by user ${a.actorUserId}` : ""}
             </p>
+            {a.metadata ? (
+              <p className="mt-0.5 break-all font-mono text-[11px] text-muted-foreground">
+                {typeof a.metadata === "string"
+                  ? a.metadata
+                  : JSON.stringify(a.metadata)}
+              </p>
+            ) : null}
           </div>
         ))}
       </CardContent>

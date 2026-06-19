@@ -20,9 +20,20 @@ import {
   getIntegrationsConfigStatus,
   saveIntegrationsConfig,
 } from "./_core/integrationsConfig";
+import {
+  TESTABLE_SECTIONS,
+  getIntegrationTestResults,
+  runIntegrationTest,
+  type TestableSection,
+} from "./notifications/verify";
 import { hasCapability } from "./db/entitlements";
 import type { CapabilityKey } from "./billing/capabilities";
 import * as notif from "./db/notifications";
+import { logAudit } from "./db/audit";
+
+const integrationSectionEnum = z.enum(
+  TESTABLE_SECTIONS as unknown as [TestableSection, ...TestableSection[]]
+);
 
 const channelEnum = z.enum(
   CHANNEL_KEYS as unknown as [ChannelKey, ...ChannelKey[]]
@@ -168,9 +179,12 @@ export const notificationRouter = router({
 
   // ── Admin: server-side channel credentials (env-first, app_settings-backed) ─
   /** Masked status of every channel's server config for the admin Settings UI. */
-  getChannelConfig: adminProcedure.query(() => ({
+  getChannelConfig: adminProcedure.query(async () => ({
     ...getNotificationConfigStatus(),
     ...getIntegrationsConfigStatus(),
+    // Last "Test connection" outcome per section, so the UI shows a durable
+    // success/failure indicator (not just "credentials present").
+    lastTests: await getIntegrationTestResults(),
   })),
 
   /**
@@ -220,7 +234,7 @@ export const notificationRouter = router({
           .optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       await saveNotificationConfig({
         ...input.email,
         ...input.telegram,
@@ -231,7 +245,41 @@ export const notificationRouter = router({
         ...input.push,
         ...input.general,
       });
+      // Audit which integration sections were edited (never the values/secrets),
+      // so config changes are traceable in the admin audit log.
+      const sections = Object.keys(input).filter(
+        k => input[k as keyof typeof input]
+      );
+      await logAudit({
+        actorUserId: ctx.user.id,
+        action: "admin.integration.config_changed",
+        targetType: "integration",
+        targetId: sections.join(",") || null,
+        metadata: { sections },
+      });
       return { ok: true } as const;
+    }),
+
+  /**
+   * Actively test one integration's connection (real handshake / API call), then
+   * persist the outcome and write an audit entry recording who tested what, when,
+   * and the result. Returns the outcome for immediate display.
+   */
+  testIntegration: adminProcedure
+    .input(z.object({ section: integrationSectionEnum }))
+    .mutation(async ({ ctx, input }) => {
+      const record = await runIntegrationTest(input.section, ctx.user.id);
+      await logAudit({
+        actorUserId: ctx.user.id,
+        action: "admin.integration.tested",
+        targetType: "integration",
+        targetId: input.section,
+        metadata: {
+          status: record.ok ? "ok" : "failed",
+          detail: record.detail || null,
+        },
+      });
+      return record;
     }),
 
   /**
