@@ -537,7 +537,7 @@ export const appRouter = router({
     me: publicProcedure.query(async ({ ctx }) => {
       if (ctx.user) return ctx.user;
 
-      if (ENV.noAuth) {
+      if (await db.isAutoAdminActive()) {
         const openId = ENV.ownerOpenId || "owner";
         await db.upsertUser({
           openId,

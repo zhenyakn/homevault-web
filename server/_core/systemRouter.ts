@@ -26,8 +26,11 @@ export const systemRouter = router({
   // Exposes server-side runtime flags to the frontend.
   // Used by the client to detect NO_AUTH mode (HA addon) at runtime,
   // since VITE_* build-time vars are always empty in the pre-built image.
-  noAuth: publicProcedure.query(() => ({
-    noAuth: ENV.noAuth,
+  noAuth: publicProcedure.query(async () => ({
+    // The *effective* auto-admin state: false once an admin has switched a
+    // NO_AUTH install over to real per-user login, so the client renders the
+    // login screen instead of waiting for the auto-admin session.
+    noAuth: await db.isAutoAdminActive(),
   })),
 
   // Public bootstrap flags the signed-out client needs before there's a user:
@@ -35,7 +38,7 @@ export const systemRouter = router({
   // the pre-built image) and whether open self-registration is offered. Both
   // honour the admin-set app_settings override over the env default.
   config: publicProcedure.query(async () => ({
-    noAuth: ENV.noAuth,
+    noAuth: await db.isAutoAdminActive(),
     appMode: await db.getAppMode(),
     signupsEnabled: await db.getSignupsEnabled(),
   })),

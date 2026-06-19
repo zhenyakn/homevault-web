@@ -25,6 +25,10 @@ export type SessionPayload = {
   name: string;
 };
 
+// Synthetic app id for sessions minted by self-hosted / NO_AUTH installs, which
+// have no OAuth VITE_APP_ID. Lets native email/password sessions verify.
+const LOCAL_APP_ID = "local";
+
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
@@ -169,8 +173,13 @@ class SDKServer {
   ): Promise<string> {
     return this.signSession(
       {
+        // OAuth installs embed their Manus app id; self-hosted / NO_AUTH builds
+        // have no VITE_APP_ID, so fall back to a constant. verifySession only
+        // requires a non-empty appId (the shared JWT_SECRET already binds the
+        // token to this server), so native email/password logins work without
+        // an OAuth app id configured.
+        appId: ENV.appId || LOCAL_APP_ID,
         openId,
-        appId: ENV.appId,
         name: options.name || "",
       },
       options

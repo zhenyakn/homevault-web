@@ -23,8 +23,11 @@ export async function createContext(
 ): Promise<TrpcContext> {
   let user: User | null = null;
 
-  // NO_AUTH mode: always treat the owner as logged-in
-  if (ENV.noAuth) {
+  // NO_AUTH mode: treat the owner as logged-in — unless the admin has switched
+  // this install over to real per-user login, in which case we fall through to
+  // normal session-cookie auth below. Resolved once (cached) per request.
+  const autoAdmin = await autoAdminActive();
+  if (autoAdmin) {
     const openId = ENV.ownerOpenId || "owner";
 
     // Cache the upsert so it only runs once per server process, not per request.
@@ -57,7 +60,7 @@ export async function createContext(
   let tenantRole: TenantRole | null = null;
 
   if (user) {
-    if (ENV.noAuth && _noAuthTenantCache) {
+    if (autoAdmin && _noAuthTenantCache) {
       ({ tenantId, tenantRole } = {
         tenantId: _noAuthTenantCache.tenantId,
         tenantRole: _noAuthTenantCache.role,
@@ -72,7 +75,7 @@ export async function createContext(
       tenantId = active.tenantId;
       tenantRole = active.role;
       // NO_AUTH is single-user/single-tenant; cache to avoid per-request work.
-      if (ENV.noAuth) _noAuthTenantCache = active;
+      if (autoAdmin) _noAuthTenantCache = active;
     }
   }
 
@@ -119,6 +122,23 @@ function parseHeaderId(raw: string | string[] | undefined): number | null {
 let _noAuthUserCache: User | null = null;
 // Companion cache for the NO_AUTH user's active tenant.
 let _noAuthTenantCache: { tenantId: number; role: TenantRole } | null = null;
+// Cached resolution of whether the NO_AUTH auto-admin is active. Only the DB
+// override can change it, and that path calls clearNoAuthUserCache(), so this
+// avoids an app_settings read on every request in the common add-on case.
+let _autoAdminActive: boolean | null = null;
+
+/**
+ * Whether this request should be served as the NO_AUTH auto-admin. Short-circuits
+ * to false when the env flag is off; otherwise consults the (cached) runtime
+ * override that lets an admin switch the install to real per-user login.
+ */
+async function autoAdminActive(): Promise<boolean> {
+  if (!ENV.noAuth) return false;
+  if (_autoAdminActive === null) {
+    _autoAdminActive = !(await db.getLocalLoginEnabled());
+  }
+  return _autoAdminActive;
+}
 
 /**
  * Invalidate the cached NO_AUTH user so the next request re-reads it from the
@@ -129,4 +149,5 @@ let _noAuthTenantCache: { tenantId: number; role: TenantRole } | null = null;
 export function clearNoAuthUserCache(): void {
   _noAuthUserCache = null;
   _noAuthTenantCache = null;
+  _autoAdminActive = null;
 }

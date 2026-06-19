@@ -3,6 +3,7 @@ import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
 import { router, superAdminProcedure } from "./_core/trpc";
 import { ENV } from "./_core/env";
+import { clearNoAuthUserCache } from "./_core/context";
 import * as db from "./db";
 import { hashPassword } from "./auth/password";
 import { EMAIL_TAKEN_ERR_MSG } from "../shared/const";
@@ -397,11 +398,48 @@ export const adminRouter = router({
         // overridden) mode so the admin can see what a restart would revert to.
         appModeEnvDefault: ENV.appMode,
         noAuth: ENV.noAuth,
+        // Whether this NO_AUTH install has been switched to real per-user login,
+        // plus how many super-admins could actually sign in afterwards (the
+        // lockout guard surfaced in the UI).
+        localLoginEnabled: await db.getLocalLoginEnabled(),
+        credentialedSuperAdmins: await db.countCredentialedSuperAdmins(),
         signupsEnabled: await db.getSignupsEnabled(),
         requireEmailVerification: await db.getRequireEmailVerification(),
         emailVerificationGraceHours: await db.getEmailVerificationGraceHours(),
       };
     }),
+
+    // Switch a NO_AUTH install between the single auto-admin (admin@local, no
+    // login screen) and real per-user email/password login. Guarded so enabling
+    // login can't lock everyone out: at least one super-admin must already have a
+    // password credential. Clears the cached auto-admin resolution so the change
+    // takes effect on the next request.
+    setLocalLogin: superAdminProcedure
+      .input(z.object({ enabled: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+        if (!ENV.noAuth) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "This install already uses session login (NO_AUTH is off); there is no auto-admin to switch.",
+          });
+        }
+        if (input.enabled && (await db.countCredentialedSuperAdmins()) < 1) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Create a super-admin with an email and password first (Users → New user), or you'd be locked out.",
+          });
+        }
+        await db.setLocalLoginEnabled(input.enabled);
+        clearNoAuthUserCache();
+        await db.logAudit({
+          actorUserId: ctx.user.id,
+          action: "admin.config.local_login",
+          metadata: { enabled: input.enabled },
+        });
+        return { success: true as const };
+      }),
 
     // Switch deployment mode at runtime (app_settings override). SAAS requires
     // authenticated, tenant-scoped requests, so it's incompatible with NO_AUTH —
