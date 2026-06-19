@@ -20,8 +20,12 @@ export type TenantRole = TenantMember["role"];
 /** A tenant paired with the requesting user's role within it. */
 export type TenantWithRole = Tenant & { role: TenantRole };
 
-/** The active tenant for a request, with the user's role in it. */
-export type ActiveTenant = { tenantId: number; role: TenantRole };
+/** The active tenant for a request, with the user's role and the tenant status. */
+export type ActiveTenant = {
+  tenantId: number;
+  role: TenantRole;
+  status: Tenant["status"];
+};
 
 export async function getTenantById(
   tenantId: number
@@ -70,7 +74,11 @@ export async function getTenantsForUser(
   return rows.map(r => ({ ...r.tenant, role: r.role }));
 }
 
-/** Active members of a tenant joined with their user record. */
+/**
+ * Active members of a tenant joined with their user record. Removed (soft-
+ * deleted) memberships are excluded so they don't appear in the members UI or
+ * inflate the owner-count guards in the member-management mutations.
+ */
 export async function getMembersOfTenant(tenantId: number) {
   const db = await getDb();
   return db
@@ -85,7 +93,12 @@ export async function getMembersOfTenant(tenantId: number) {
     })
     .from(tenantMembers)
     .innerJoin(users, eq(users.id, tenantMembers.userId))
-    .where(eq(tenantMembers.tenantId, tenantId));
+    .where(
+      and(
+        eq(tenantMembers.tenantId, tenantId),
+        eq(tenantMembers.status, "active")
+      )
+    );
 }
 
 /**
@@ -189,12 +202,16 @@ export async function ensurePersonalTenant(
 ): Promise<ActiveTenant> {
   const existing = await getTenantsForUser(userId);
   if (existing.length > 0) {
-    return { tenantId: existing[0].id, role: existing[0].role };
+    return {
+      tenantId: existing[0].id,
+      role: existing[0].role,
+      status: existing[0].status,
+    };
   }
   const name = `${(displayName ?? "").trim() || "User"}'s Home`;
   const tenantId = await createTenantWithOwner(userId, name);
   await setUserDefaultTenant(userId, tenantId);
-  return { tenantId, role: "owner" };
+  return { tenantId, role: "owner", status: "active" };
 }
 
 /**
@@ -225,7 +242,7 @@ export async function resolveActiveTenant(
     pick(opts.defaultTenantId) ??
     memberships[0];
 
-  return { tenantId: chosen.id, role: chosen.role };
+  return { tenantId: chosen.id, role: chosen.role, status: chosen.status };
 }
 
 // ── Invites ───────────────────────────────────────────────────────────────────

@@ -47,6 +47,7 @@ export async function listUsersForAdmin(opts: {
       email: users.email,
       loginMethod: users.loginMethod,
       globalRole: users.globalRole,
+      status: users.status,
       defaultTenantId: users.defaultTenantId,
       createdAt: users.createdAt,
       lastSignedIn: users.lastSignedIn,

@@ -64,3 +64,16 @@ export const TENANT_MAX_REQUESTS = 600;
 // Per-IP on sensitive auth endpoints: tight — brute-force / abuse protection.
 export const AUTH_WINDOW_MS = 60_000;
 export const AUTH_MAX_ATTEMPTS = 10;
+
+/** Best-effort client IP (honours a single proxy hop) for per-IP throttling. */
+export function clientIp(req: {
+  headers: Record<string, unknown>;
+  socket?: unknown;
+}): string {
+  const fwd = req.headers["x-forwarded-for"];
+  if (typeof fwd === "string" && fwd.length > 0) {
+    return fwd.split(",")[0]!.trim();
+  }
+  const sock = req.socket as { remoteAddress?: string } | undefined;
+  return sock?.remoteAddress ?? "unknown";
+}

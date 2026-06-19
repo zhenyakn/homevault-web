@@ -30,6 +30,15 @@ export const users = mysqlTable(
     globalRole: mysqlEnum("globalRole", ["user", "superadmin"])
       .default("user")
       .notNull(),
+    // Account lifecycle. A `disabled` account is locked out of sign-in entirely
+    // (enforced in sdk.authenticateRequest) without deleting its data/attribution.
+    status: mysqlEnum("status", ["active", "disabled"])
+      .default("active")
+      .notNull(),
+    // Session-revocation epoch. Embedded in every issued JWT as `sv`; bumping it
+    // (password reset/change, "sign out everywhere", or disabling the account)
+    // invalidates all previously-issued session cookies on their next request.
+    sessionEpoch: int("sessionEpoch").default(0).notNull(),
     // The tenant selected at login when a user belongs to more than one. Soft
     // reference (no FK) to avoid a users<->tenants circular constraint.
     defaultTenantId: int("defaultTenantId"),

@@ -3,6 +3,8 @@ import {
   NOT_TENANT_ADMIN_ERR_MSG,
   NO_TENANT_ERR_MSG,
   UNAUTHED_ERR_MSG,
+  VIEWER_READONLY_ERR_MSG,
+  WORKSPACE_SUSPENDED_ERR_MSG,
 } from "@shared/const";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
@@ -94,6 +96,30 @@ export const tenantProcedure = protectedProcedure.use(async opts => {
     }
   }
 
+  // Write-time authorization, applied to *mutations* only so reads stay open to
+  // every member (including viewers and members of a suspended workspace, who
+  // can still view/export their data):
+  //  - `viewer` members are read-only.
+  //  - a `suspended` workspace is read-only until a super-admin reactivates it.
+  // This lives in tenantProcedure (rather than a separate procedure swapped in
+  // at 100+ call sites) so every tenant-scoped mutation is guarded by default;
+  // the only legitimate viewer-writable mutations (a member editing their own
+  // profile/language) deliberately use `protectedProcedure` instead.
+  if (opts.type === "mutation") {
+    if (ctx.tenantRole === "viewer") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: VIEWER_READONLY_ERR_MSG,
+      });
+    }
+    if (ctx.tenantStatus === "suspended") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: WORKSPACE_SUSPENDED_ERR_MSG,
+      });
+    }
+  }
+
   return next({
     ctx: {
       ...ctx,
@@ -102,6 +128,14 @@ export const tenantProcedure = protectedProcedure.use(async opts => {
     },
   });
 });
+
+/**
+ * Alias of {@link tenantProcedure} kept for call-site clarity: use it for
+ * entity-mutating procedures to signal "this is a guarded write". The actual
+ * viewer / suspended-workspace enforcement happens in tenantProcedure's
+ * mutation guard above.
+ */
+export const writeProcedure = tenantProcedure;
 
 /** Requires the active tenant role to be owner or admin (manage members/settings). */
 export const tenantAdminProcedure = tenantProcedure.use(async opts => {

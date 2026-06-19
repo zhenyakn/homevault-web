@@ -1,5 +1,11 @@
-import { eq } from "drizzle-orm";
-import { users, type InsertUser } from "../../drizzle/schema";
+import { and, eq, ne, sql } from "drizzle-orm";
+import {
+  users,
+  tenantMembers,
+  userCredentials,
+  emailTokens,
+  type InsertUser,
+} from "../../drizzle/schema";
 import { getDb } from "./client";
 import { ENV } from "../_core/env";
 
@@ -88,4 +94,82 @@ export async function getUserById(userId: number) {
 export async function getAllUsers() {
   const db = await getDb();
   return await db.select().from(users);
+}
+
+/** Enable/disable an account. A disabled user is locked out at the next request. */
+export async function setUserStatus(
+  userId: number,
+  status: "active" | "disabled"
+): Promise<void> {
+  const db = await getDb();
+  await db.update(users).set({ status }).where(eq(users.id, userId));
+}
+
+/**
+ * Invalidate every session previously issued to a user by advancing their
+ * session epoch (the JWT carries the epoch at mint time; a mismatch on the next
+ * request forces re-authentication). Called on password change/reset, account
+ * disable, and explicit "sign out everywhere".
+ */
+export async function bumpSessionEpoch(userId: number): Promise<void> {
+  const db = await getDb();
+  await db
+    .update(users)
+    .set({ sessionEpoch: sql`${users.sessionEpoch} + 1` })
+    .where(eq(users.id, userId));
+}
+
+/**
+ * Tenant ids where this user is the *only* active owner. Deleting such a user
+ * would orphan the workspace, so the admin must transfer ownership or delete the
+ * tenant first.
+ */
+export async function getSoleOwnerTenantIds(userId: number): Promise<number[]> {
+  const db = await getDb();
+  // Tenants this user owns…
+  const owned = await db
+    .select({ tenantId: tenantMembers.tenantId })
+    .from(tenantMembers)
+    .where(
+      and(
+        eq(tenantMembers.userId, userId),
+        eq(tenantMembers.role, "owner"),
+        eq(tenantMembers.status, "active")
+      )
+    );
+  const result: number[] = [];
+  for (const { tenantId } of owned) {
+    const [row] = await db
+      .select({ n: sql<number>`count(*)` })
+      .from(tenantMembers)
+      .where(
+        and(
+          eq(tenantMembers.tenantId, tenantId),
+          eq(tenantMembers.role, "owner"),
+          eq(tenantMembers.status, "active"),
+          ne(tenantMembers.userId, userId)
+        )
+      );
+    if (Number(row?.n ?? 0) === 0) result.push(tenantId);
+  }
+  return result;
+}
+
+/**
+ * Hard-delete a user account: their credentials, email tokens, and tenant
+ * memberships, then the user row itself. Data they authored (ownerId) is left
+ * intact for the tenant — attribution may dangle but the workspace's records
+ * survive. Callers must first ensure the user isn't the sole owner of any tenant
+ * (see {@link getSoleOwnerTenantIds}) and isn't the last super-admin.
+ */
+export async function deleteUserAccount(userId: number): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async tx => {
+    await tx.delete(emailTokens).where(eq(emailTokens.userId, userId));
+    await tx
+      .delete(userCredentials)
+      .where(eq(userCredentials.userId, userId));
+    await tx.delete(tenantMembers).where(eq(tenantMembers.userId, userId));
+    await tx.delete(users).where(eq(users.id, userId));
+  });
 }

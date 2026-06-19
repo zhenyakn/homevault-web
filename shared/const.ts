@@ -20,3 +20,10 @@ export const EMAIL_TAKEN_ERR_MSG =
 // period (if any) has lapsed. The client matches this to offer a resend link.
 export const EMAIL_NOT_VERIFIED_ERR_MSG =
   "Please verify your email address before signing in (10007)";
+// A viewer-role member attempted a mutation. Viewers have read-only access.
+export const VIEWER_READONLY_ERR_MSG =
+  "Your role is view-only in this workspace (10008)";
+// A mutation was attempted in a suspended workspace. Reads still work so data
+// remains visible/exportable; changes are blocked until it's reactivated.
+export const WORKSPACE_SUSPENDED_ERR_MSG =
+  "This workspace is suspended and is read-only (10009)";

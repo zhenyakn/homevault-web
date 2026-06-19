@@ -16,6 +16,9 @@ export type TrpcContext = {
   // it to be tenant-scoped happens in Phase 3.)
   tenantId: number | null;
   tenantRole: TenantRole | null;
+  // Status of the active tenant. A `suspended` workspace is read-only-blocked
+  // by tenantProcedure (its members can't operate until reactivated).
+  tenantStatus: "active" | "suspended" | null;
 };
 
 export async function createContext(
@@ -58,13 +61,13 @@ export async function createContext(
   // tenant. Users with no membership get a personal tenant provisioned.
   let tenantId: number | null = null;
   let tenantRole: TenantRole | null = null;
+  let tenantStatus: "active" | "suspended" | null = null;
 
   if (user) {
     if (autoAdmin && _noAuthTenantCache) {
-      ({ tenantId, tenantRole } = {
-        tenantId: _noAuthTenantCache.tenantId,
-        tenantRole: _noAuthTenantCache.role,
-      });
+      tenantId = _noAuthTenantCache.tenantId;
+      tenantRole = _noAuthTenantCache.role;
+      tenantStatus = _noAuthTenantCache.status;
     } else {
       const requestedTenantId = parseHeaderId(opts.req.headers["x-tenant-id"]);
       const active = await db.resolveActiveTenant(user.id, {
@@ -74,6 +77,7 @@ export async function createContext(
       });
       tenantId = active.tenantId;
       tenantRole = active.role;
+      tenantStatus = active.status;
       // NO_AUTH is single-user/single-tenant; cache to avoid per-request work.
       if (autoAdmin) _noAuthTenantCache = active;
     }
@@ -107,6 +111,7 @@ export async function createContext(
     propertyId,
     tenantId,
     tenantRole,
+    tenantStatus,
   };
 }
 
@@ -121,7 +126,11 @@ function parseHeaderId(raw: string | string[] | undefined): number | null {
 // on every single request when running as a Home Assistant addon.
 let _noAuthUserCache: User | null = null;
 // Companion cache for the NO_AUTH user's active tenant.
-let _noAuthTenantCache: { tenantId: number; role: TenantRole } | null = null;
+let _noAuthTenantCache: {
+  tenantId: number;
+  role: TenantRole;
+  status: "active" | "suspended";
+} | null = null;
 // Cached resolution of whether the NO_AUTH auto-admin is active. Only the DB
 // override can change it, and that path calls clearNoAuthUserCache(), so this
 // avoids an app_settings read on every request in the common add-on case.
