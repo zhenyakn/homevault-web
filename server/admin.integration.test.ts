@@ -104,6 +104,47 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     ).rejects.toThrow(/last super-admin/i);
   });
 
+  it("creates a user directly with a password and lets them sign in", async () => {
+    const sid = await mkUser("creator", "superadmin");
+    const caller = appRouter.createCaller(ctxFor(sid, "superadmin"));
+
+    const email = `made-${Date.now()}@example.com`;
+    const res = await caller.admin.users.create({
+      email,
+      password: "supersecret",
+      name: "Made By Admin",
+      tenantName: "Admin-Made Household",
+    });
+    expect(res.success).toBe(true);
+    expect(res.userId).toBeGreaterThan(0);
+
+    // The account is pre-verified and lands in the named workspace as owner.
+    const creds = await import("./db/credentials");
+    const cred = await creds.getCredentialByEmail(email);
+    expect(cred?.emailVerifiedAt).toBeTruthy();
+    const tenantsDb = await import("./db/tenants");
+    const tenants = await tenantsDb.getTenantsForUser(res.userId);
+    expect(tenants).toHaveLength(1);
+    expect(tenants[0].name).toBe("Admin-Made Household");
+    expect(tenants[0].role).toBe("owner");
+
+    // The user can immediately sign in with the issued password — even with the
+    // strict email-verification gate on, because the account is pre-verified.
+    const adminDb = await import("./db/admin");
+    await adminDb.setRequireEmailVerification(true);
+    await adminDb.setEmailVerificationGraceHours(0);
+    const login = await appRouter
+      .createCaller(anonCtx())
+      .auth.login({ email, password: "supersecret" });
+    expect(login.success).toBe(true);
+    await adminDb.setRequireEmailVerification(false);
+
+    // Duplicate email is rejected.
+    await expect(
+      caller.admin.users.create({ email, password: "anotherpw1" })
+    ).rejects.toThrow(/already exists/i);
+  });
+
   it("lists tenants and suspends / reactivates them", async () => {
     const sid = await mkUser("admin2", "superadmin");
     const tenantsDb = await import("./db/tenants");
