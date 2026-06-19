@@ -135,7 +135,11 @@ export function getTelegramWebhookHandler(): RequestHandler | null {
 
 export type WebhookSyncResult =
   | { ok: true; url: string }
-  | { ok: false; reason: "no-token" | "no-url" | "error"; detail?: string };
+  | {
+      ok: false;
+      reason: "no-token" | "no-url" | "not-https" | "error";
+      detail?: string;
+    };
 
 /**
  * Point Telegram at our webhook so it starts delivering updates. Resolves the
@@ -150,6 +154,9 @@ export async function syncTelegramWebhook(
   if (!b) return { ok: false, reason: "no-token" };
   const base = (baseUrl || getPublicBaseUrl()).replace(/\/+$/, "");
   if (!base) return { ok: false, reason: "no-url" };
+  // Telegram only delivers to a public HTTPS endpoint — reject http/localhost
+  // up front with a clear reason instead of surfacing a cryptic API error.
+  if (!/^https:\/\//i.test(base)) return { ok: false, reason: "not-https" };
   const url = `${base}/api/bot/telegram`;
   try {
     await b.api.setWebhook(url, {

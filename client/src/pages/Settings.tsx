@@ -2000,12 +2000,19 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
       u.notification.getChannelConfig.invalidate(),
       u.notification.getStatus.invalidate(),
       u.notification.getVapidPublicKey.invalidate(),
+      u.notification.getTelegramWebhookStatus.invalidate(),
     ]);
 
   const save = trpc.notification.saveChannelConfig.useMutation({
-    onSuccess: async () => {
+    onSuccess: async res => {
       await invalidate();
       toast.success(t("settings.delivery.saved"));
+      // Saving a Telegram token auto-registers the webhook; if that step
+      // failed (e.g. no public HTTPS URL), tell the admin how to fix it so the
+      // bot actually receives commands.
+      if (res.telegram && !res.telegram.ok) {
+        toast.warning(webhookErrorMessage(t, res.telegram));
+      }
     },
     onError: e => toast.error(e.message),
   });
@@ -2360,17 +2367,8 @@ function TelegramDeliveryForm({
   const register = trpc.notification.registerTelegramWebhook.useMutation({
     onSuccess: async r => {
       await u.notification.getTelegramWebhookStatus.invalidate();
-      if (r.ok) {
-        toast.success(t("settings.delivery.telegram.webhookRegistered"));
-      } else if (r.reason === "no-url") {
-        toast.error(t("settings.delivery.telegram.webhookFailedNoUrl"));
-      } else if (r.reason === "no-token") {
-        toast.error(t("settings.delivery.telegram.webhookFailedNoToken"));
-      } else {
-        toast.error(
-          t("settings.delivery.telegram.webhookFailed", { error: r.detail })
-        );
-      }
+      if (r.ok) toast.success(t("settings.delivery.telegram.webhookRegistered"));
+      else toast.error(webhookErrorMessage(t, r));
     },
     onError: e => toast.error(e.message),
   });
@@ -2435,7 +2433,26 @@ function TelegramDeliveryForm({
   );
 }
 
-/** One-line, color-coded summary of the Telegram webhook registration state. */
+/** Map a failed webhook-sync result to a user-facing, actionable message. */
+function webhookErrorMessage(
+  t: (k: string, o?: Record<string, unknown>) => string,
+  r: { reason: string; detail?: string }
+): string {
+  switch (r.reason) {
+    case "no-url":
+      return t("settings.delivery.telegram.webhookFailedNoUrl");
+    case "not-https":
+      return t("settings.delivery.telegram.webhookFailedNotHttps");
+    case "no-token":
+      return t("settings.delivery.telegram.webhookFailedNoToken");
+    default:
+      return t("settings.delivery.telegram.webhookFailed", {
+        error: r.detail,
+      });
+  }
+}
+
+/** Color-coded, live summary of the Telegram webhook registration state. */
 function WebhookStatusLine({
   webhook,
 }: {
@@ -2465,13 +2482,18 @@ function WebhookStatusLine({
     );
   }
   return (
-    <span className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-      {webhook.pendingUpdateCount > 0
-        ? t("settings.delivery.telegram.webhookPending", {
-            count: webhook.pendingUpdateCount,
-          })
-        : t("settings.delivery.telegram.webhookActive")}
+    <span className="flex flex-col gap-0.5 text-xs">
+      <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+        {webhook.pendingUpdateCount > 0
+          ? t("settings.delivery.telegram.webhookPending", {
+              count: webhook.pendingUpdateCount,
+            })
+          : t("settings.delivery.telegram.webhookActive")}
+      </span>
+      <span className="truncate font-mono text-[10px] text-muted-foreground">
+        {t("settings.delivery.telegram.webhookUrl", { url: webhook.url })}
+      </span>
     </span>
   );
 }
