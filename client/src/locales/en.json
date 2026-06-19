@@ -555,7 +555,7 @@
         "pass": "Password",
         "from": "From address",
         "sendTest": "Send test email",
-        "sendTestDesc": "Send a real message to confirm delivery end-to-end, not just the SMTP handshake.",
+        "sendTestDesc": "Send a real message to confirm delivery end-to-end, not just the SMTP handshake. This validates the same transport used for account emails (verification, invitations, password resets).",
         "testRecipient": "Test recipient"
       },
       "telegram": {
