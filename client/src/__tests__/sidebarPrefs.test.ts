@@ -1,95 +1,91 @@
 import { describe, it, expect } from "vitest";
 import {
-  ALWAYS_VISIBLE_NAV_KEYS,
-  isNavKeyLocked,
-  isNavKeyVisible,
-  parseHiddenKeys,
+  ALWAYS_VISIBLE_NAV_PATHS,
+  isNavPathLocked,
+  isNavPathVisible,
+  parseHiddenPaths,
   nextHiddenSet,
   filterNavGroups,
 } from "@/lib/sidebarPrefs";
 
-describe("isNavKeyLocked", () => {
-  it("locks every always-visible key", () => {
-    for (const key of ALWAYS_VISIBLE_NAV_KEYS) {
-      expect(isNavKeyLocked(key)).toBe(true);
+describe("isNavPathLocked", () => {
+  it("locks every always-visible path", () => {
+    for (const path of ALWAYS_VISIBLE_NAV_PATHS) {
+      expect(isNavPathLocked(path)).toBe(true);
     }
   });
 
   it("pins Settings so it can never be hidden", () => {
     // The whole point of the feature: Settings stays reachable.
-    expect(isNavKeyLocked("nav.settings")).toBe(true);
+    expect(isNavPathLocked("/settings")).toBe(true);
   });
 
-  it("does not lock ordinary nav items", () => {
-    expect(isNavKeyLocked("nav.loans")).toBe(false);
-    expect(isNavKeyLocked("nav.expenses")).toBe(false);
-  });
-});
-
-describe("isNavKeyVisible", () => {
-  it("shows items that are not in the hidden set", () => {
-    expect(isNavKeyVisible(new Set(), "nav.loans")).toBe(true);
-    expect(isNavKeyVisible(new Set(["nav.expenses"]), "nav.loans")).toBe(true);
-  });
-
-  it("hides items present in the hidden set", () => {
-    expect(isNavKeyVisible(new Set(["nav.loans"]), "nav.loans")).toBe(false);
-  });
-
-  it("keeps locked items visible even if they are in the hidden set", () => {
-    expect(isNavKeyVisible(new Set(["nav.settings"]), "nav.settings")).toBe(
-      true
-    );
+  it("does not lock ordinary nav routes", () => {
+    expect(isNavPathLocked("/loans")).toBe(false);
+    expect(isNavPathLocked("/expenses")).toBe(false);
   });
 });
 
-describe("parseHiddenKeys", () => {
+describe("isNavPathVisible", () => {
+  it("shows routes that are not in the hidden set", () => {
+    expect(isNavPathVisible(new Set(), "/loans")).toBe(true);
+    expect(isNavPathVisible(new Set(["/expenses"]), "/loans")).toBe(true);
+  });
+
+  it("hides routes present in the hidden set", () => {
+    expect(isNavPathVisible(new Set(["/loans"]), "/loans")).toBe(false);
+  });
+
+  it("keeps locked routes visible even if they are in the hidden set", () => {
+    expect(isNavPathVisible(new Set(["/settings"]), "/settings")).toBe(true);
+  });
+});
+
+describe("parseHiddenPaths", () => {
   it("returns an empty list for missing/empty input", () => {
-    expect(parseHiddenKeys(null)).toEqual([]);
-    expect(parseHiddenKeys(undefined)).toEqual([]);
-    expect(parseHiddenKeys("")).toEqual([]);
+    expect(parseHiddenPaths(null)).toEqual([]);
+    expect(parseHiddenPaths(undefined)).toEqual([]);
+    expect(parseHiddenPaths("")).toEqual([]);
   });
 
   it("parses a valid JSON array of strings", () => {
-    expect(parseHiddenKeys('["nav.loans","nav.wishlist"]')).toEqual([
-      "nav.loans",
-      "nav.wishlist",
+    expect(parseHiddenPaths('["/loans","/wishlist"]')).toEqual([
+      "/loans",
+      "/wishlist",
     ]);
   });
 
   it("tolerates corrupt JSON without throwing", () => {
-    expect(parseHiddenKeys("{not json")).toEqual([]);
+    expect(parseHiddenPaths("{not json")).toEqual([]);
   });
 
   it("drops non-string entries and non-array payloads", () => {
-    expect(parseHiddenKeys('["nav.loans", 5, null, true]')).toEqual([
-      "nav.loans",
-    ]);
-    expect(parseHiddenKeys('{"a":1}')).toEqual([]);
-    expect(parseHiddenKeys("42")).toEqual([]);
+    expect(parseHiddenPaths('["/loans", 5, null, true]')).toEqual(["/loans"]);
+    expect(parseHiddenPaths('{"a":1}')).toEqual([]);
+    expect(parseHiddenPaths("42")).toEqual([]);
   });
 });
 
 describe("nextHiddenSet", () => {
-  it("adds a key when hiding it", () => {
-    const next = nextHiddenSet(new Set(), "nav.loans", false);
-    expect([...next]).toEqual(["nav.loans"]);
+  it("adds a path when hiding it", () => {
+    const next = nextHiddenSet(new Set(), "/loans", false);
+    expect([...next]).toEqual(["/loans"]);
   });
 
-  it("removes a key when showing it", () => {
-    const next = nextHiddenSet(new Set(["nav.loans"]), "nav.loans", true);
+  it("removes a path when showing it", () => {
+    const next = nextHiddenSet(new Set(["/loans"]), "/loans", true);
     expect([...next]).toEqual([]);
   });
 
-  it("ignores attempts to hide a locked key", () => {
-    const next = nextHiddenSet(new Set(), "nav.settings", false);
-    expect(next.has("nav.settings")).toBe(false);
+  it("ignores attempts to hide a locked path", () => {
+    const next = nextHiddenSet(new Set(), "/settings", false);
+    expect(next.has("/settings")).toBe(false);
   });
 
   it("does not mutate the input set", () => {
-    const original = new Set(["nav.loans"]);
-    nextHiddenSet(original, "nav.wishlist", false);
-    expect([...original]).toEqual(["nav.loans"]);
+    const original = new Set(["/loans"]);
+    nextHiddenSet(original, "/wishlist", false);
+    expect([...original]).toEqual(["/loans"]);
   });
 });
 
@@ -111,20 +107,20 @@ describe("filterNavGroups", () => {
     },
   ];
 
-  it("removes hidden items from their group", () => {
-    const hidden = new Set(["nav.loans"]);
-    const result = filterNavGroups(groups, k => isNavKeyVisible(hidden, k));
+  it("removes hidden routes from their group", () => {
+    const hidden = new Set(["/loans"]);
+    const result = filterNavGroups(groups, p => isNavPathVisible(hidden, p));
     const finances = result.find(g => g.labelKey === "nav.group.finances");
-    expect(finances?.items.map(i => i.key)).toEqual(["nav.expenses"]);
+    expect(finances?.items.map(i => i.path)).toEqual(["/expenses"]);
   });
 
   it("drops a group once all of its items are hidden", () => {
-    const hidden = new Set(["nav.expenses", "nav.loans"]);
-    const result = filterNavGroups(groups, k => isNavKeyVisible(hidden, k));
+    const hidden = new Set(["/expenses", "/loans"]);
+    const result = filterNavGroups(groups, p => isNavPathVisible(hidden, p));
     expect(result.map(g => g.labelKey)).toEqual(["nav.group.overview"]);
   });
 
-  it("keeps a group containing a locked item even if its others are hidden", () => {
+  it("keeps a group containing a locked route even if its others are hidden", () => {
     const account = {
       labelKey: "nav.group.account",
       items: [
@@ -132,10 +128,10 @@ describe("filterNavGroups", () => {
         { key: "nav.settings", path: "/settings" },
       ],
     };
-    const hidden = new Set(["nav.members", "nav.settings"]);
-    const result = filterNavGroups([account], k => isNavKeyVisible(hidden, k));
+    const hidden = new Set(["/members", "/settings"]);
+    const result = filterNavGroups([account], p => isNavPathVisible(hidden, p));
     expect(result).toHaveLength(1);
-    expect(result[0].items.map(i => i.key)).toEqual(["nav.settings"]);
+    expect(result[0].items.map(i => i.path)).toEqual(["/settings"]);
   });
 
   it("leaves everything intact when nothing is hidden", () => {
@@ -144,11 +140,8 @@ describe("filterNavGroups", () => {
   });
 
   it("does not mutate the input groups", () => {
-    const hidden = new Set(["nav.loans"]);
-    filterNavGroups(groups, k => isNavKeyVisible(hidden, k));
-    expect(groups[1].items.map(i => i.key)).toEqual([
-      "nav.expenses",
-      "nav.loans",
-    ]);
+    const hidden = new Set(["/loans"]);
+    filterNavGroups(groups, p => isNavPathVisible(hidden, p));
+    expect(groups[1].items.map(i => i.path)).toEqual(["/expenses", "/loans"]);
   });
 });

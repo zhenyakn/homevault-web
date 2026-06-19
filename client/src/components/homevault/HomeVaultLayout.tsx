@@ -28,6 +28,7 @@ import MobileTabBar from "@/components/homevault/HomeVaultMobileNav";
 import MobilePropertySwitcher from "@/components/MobilePropertySwitcher";
 import AddPropertyWizard from "@/components/AddPropertyWizard";
 import { useProperty } from "@/contexts/PropertyContext";
+import { useSidebarPrefs } from "@/contexts/SidebarPrefsContext";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useCapabilities } from "@/hooks/useCapabilities";
 import { trpc } from "@/lib/trpc";
@@ -377,6 +378,9 @@ function DashboardLayoutContent({
   const { data: profiles } = trpc.profiles.list.useQuery();
   const { data: docSummary } = trpc.documents.summary.useQuery();
   const { isSaas } = useCapabilities();
+  // Per-route sidebar visibility prefs (Settings → Appearance), shared with the
+  // default layout and keyed by path so both sidebars honor the same choices.
+  const { isVisible } = useSidebarPrefs();
 
   // Portfolio is the home for all property settings, so it's always in the nav.
   // The Plan entry is hosted-only — hidden on standalone (e.g. HA add-on).
@@ -385,7 +389,7 @@ function DashboardLayoutContent({
     { icon: LayoutGrid, key: "nav.portfolio", path: "/portfolio" },
     ...(isSaas ? [{ icon: CreditCard, key: "nav.plan", path: "/plan" }] : []),
     { icon: Settings, key: "nav.settings", path: "/settings" },
-  ];
+  ].filter(item => isVisible(item.path));
 
   const handleSearchOpen = () => {
     onSearchOpen?.();
