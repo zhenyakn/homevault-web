@@ -87,7 +87,7 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
     const email = `newtenant-${Date.now()}@example.com`;
     await appRouter.createCaller(anonCtx()).auth.register({
       email,
-      password: "supersecret",
+      password: "supersecret1",
       tenantName: "The Smith Household",
     });
     const cred = await creds.getCredentialByEmail(email);
@@ -102,7 +102,7 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
     const ownerEmail = `owner-${Date.now()}@example.com`;
     await appRouter.createCaller(anonCtx()).auth.register({
       email: ownerEmail,
-      password: "supersecret",
+      password: "supersecret1",
       tenantName: "Shared Co",
     });
     const owner = await creds.getCredentialByEmail(ownerEmail);
@@ -119,7 +119,7 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
 
     await appRouter.createCaller(anonCtx()).auth.register({
       email: inviteeEmail,
-      password: "supersecret",
+      password: "supersecret1",
       inviteToken: token,
     });
 
@@ -135,7 +135,7 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
     await expect(
       appRouter.createCaller(anonCtx()).auth.register({
         email: `late-${Date.now()}@example.com`,
-        password: "supersecret",
+        password: "supersecret1",
         inviteToken: token,
       })
     ).rejects.toThrow(/invalid or has expired/i);
@@ -145,7 +145,7 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
     const ownerEmail = `owner2-${Date.now()}@example.com`;
     await appRouter.createCaller(anonCtx()).auth.register({
       email: ownerEmail,
-      password: "supersecret",
+      password: "supersecret1",
       tenantName: "Team Two",
     });
     const owner = await creds.getCredentialByEmail(ownerEmail);
@@ -155,7 +155,7 @@ describe.skipIf(!TEST_DB)("registration flow + invites (real MySQL)", () => {
     const joinerEmail = `joiner-${Date.now()}@example.com`;
     await appRouter
       .createCaller(anonCtx())
-      .auth.register({ email: joinerEmail, password: "supersecret" });
+      .auth.register({ email: joinerEmail, password: "supersecret1" });
     const joiner = await creds.getCredentialByEmail(joinerEmail);
 
     const { token } = await createInviteWithToken(

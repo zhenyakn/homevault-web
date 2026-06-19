@@ -111,7 +111,7 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     const email = `made-${Date.now()}@example.com`;
     const res = await caller.admin.users.create({
       email,
-      password: "supersecret",
+      password: "supersecret1",
       name: "Made By Admin",
       tenantName: "Admin-Made Household",
     });
@@ -135,7 +135,7 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     await adminDb.setEmailVerificationGraceHours(0);
     const login = await appRouter
       .createCaller(anonCtx())
-      .auth.login({ email, password: "supersecret" });
+      .auth.login({ email, password: "supersecret1" });
     expect(login.success).toBe(true);
     await adminDb.setRequireEmailVerification(false);
 
@@ -175,7 +175,7 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     await expect(
       appRouter.createCaller(anonCtx()).auth.register({
         email: `blocked-${Date.now()}@example.com`,
-        password: "supersecret",
+        password: "supersecret1",
       })
     ).rejects.toThrow(/registration is currently disabled/i);
 
@@ -183,7 +183,7 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     await admin.admin.config.setSignupsEnabled({ enabled: true });
     const out = await appRouter.createCaller(anonCtx()).auth.register({
       email: `allowed-${Date.now()}@example.com`,
-      password: "supersecret",
+      password: "supersecret1",
     });
     expect(out.success).toBe(true);
   });
@@ -251,9 +251,12 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     });
 
     const known = generateToken();
+    // Invite and register under the same address — the invite is bound to its
+    // target email, so a mismatch would trip that guard before the quota check.
+    const joinEmail = `seat-${Date.now()}@example.com`;
     await tenantsDb.createInvite({
       tenantId: tid,
-      email: `seat-${Date.now()}@example.com`,
+      email: joinEmail,
       role: "member",
       tokenHash: known.hash,
       invitedByUserId: sid,
@@ -262,8 +265,8 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
 
     await expect(
       appRouter.createCaller(anonCtx()).auth.register({
-        email: `joiner-${Date.now()}@example.com`,
-        password: "supersecret",
+        email: joinEmail,
+        password: "supersecret1",
         inviteToken: known.raw,
       })
     ).rejects.toThrow(/limit of 1 member/i);
@@ -504,5 +507,197 @@ describe.skipIf(!TEST_DB)("admin console (real MySQL)", () => {
     } finally {
       await admin.admin.config.setAppMode({ mode: "standalone" });
     }
+  });
+
+  // ── User-management hardening (security review) ───────────────────────────────
+
+  // A read-only member context, and a suspended-workspace owner context.
+  const viewerCtx = (userId: number, tenantId: number) =>
+    ({
+      user: { id: userId, globalRole: "user" },
+      propertyId: 1,
+      tenantId,
+      tenantRole: "viewer",
+      tenantStatus: "active",
+      req: { headers: {}, protocol: "https" },
+      res: { cookie: () => {}, clearCookie: () => {} },
+    }) as any;
+
+  const suspendedOwnerCtx = (userId: number, tenantId: number) =>
+    ({
+      user: { id: userId, globalRole: "user" },
+      propertyId: 1,
+      tenantId,
+      tenantRole: "owner",
+      tenantStatus: "suspended",
+      req: { headers: {}, protocol: "https" },
+      res: { cookie: () => {}, clearCookie: () => {} },
+    }) as any;
+
+  it("blocks viewers from mutations but allows reads", async () => {
+    const uid = await mkUser("viewer", "user");
+    const tenantsDb = await import("./db/tenants");
+    const tid = await tenantsDb.createTenantWithOwner(uid, "VWS");
+    await tenantsDb.setMemberRole(tid, uid, "viewer");
+    const caller = appRouter.createCaller(viewerCtx(uid, tid));
+
+    // A write is rejected with the view-only message…
+    await expect(caller.onboarding.ensureProperty()).rejects.toThrow(
+      /view-only/i
+    );
+    // …but a read still resolves.
+    await expect(caller.tenant.list()).resolves.toBeDefined();
+  });
+
+  it("makes a suspended workspace read-only", async () => {
+    const uid = await mkUser("susp-owner", "user");
+    const tenantsDb = await import("./db/tenants");
+    const tid = await tenantsDb.createTenantWithOwner(uid, "Suspended");
+    const caller = appRouter.createCaller(suspendedOwnerCtx(uid, tid));
+
+    await expect(caller.onboarding.ensureProperty()).rejects.toThrow(
+      /suspended/i
+    );
+    await expect(caller.tenant.list()).resolves.toBeDefined();
+  });
+
+  it("disabling an account revokes sessions and is guarded", async () => {
+    const db = await getDb();
+    await db.update(schema.users).set({ globalRole: "user" });
+    const actor = await mkUser("disabler", "superadmin");
+    const caller = appRouter.createCaller(ctxFor(actor, "superadmin"));
+    const target = await mkUser("victim", "user");
+
+    await caller.admin.users.setStatus({ userId: target, status: "disabled" });
+    const [row] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, target));
+    expect(row.status).toBe("disabled");
+    expect(row.sessionEpoch).toBeGreaterThan(0); // sessions revoked
+
+    // Can't disable yourself, nor the last super-admin.
+    await expect(
+      caller.admin.users.setStatus({ userId: actor, status: "disabled" })
+    ).rejects.toThrow(/your own account/i);
+  });
+
+  it("refuses to delete the sole owner of a workspace", async () => {
+    const actor = await mkUser("deleter", "superadmin");
+    const caller = appRouter.createCaller(ctxFor(actor, "superadmin"));
+    const tenantsDb = await import("./db/tenants");
+    const victim = await mkUser("sole-owner", "user");
+    await tenantsDb.createTenantWithOwner(victim, "OwnedSolely");
+
+    await expect(
+      caller.admin.users.delete({ userId: victim, confirm: true })
+    ).rejects.toThrow(/only owner/i);
+  });
+
+  it("admin-resets a password and revokes the user's sessions", async () => {
+    const actor = await mkUser("pw-admin", "superadmin");
+    const caller = appRouter.createCaller(ctxFor(actor, "superadmin"));
+    const email = `pwreset-${Date.now()}@example.com`;
+    const { userId } = await caller.admin.users.create({
+      email,
+      password: "initialpw1",
+    });
+
+    await caller.admin.users.resetPassword({ userId, password: "brandnewpw2" });
+
+    const db = await getDb();
+    const [row] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, userId));
+    expect(row.sessionEpoch).toBeGreaterThan(0);
+
+    // The new password authenticates.
+    await expect(
+      appRouter.createCaller(anonCtx()).auth.login({
+        email,
+        password: "brandnewpw2",
+      })
+    ).resolves.toEqual({ success: true });
+  });
+
+  it("stops a tenant admin from granting or seizing ownership", async () => {
+    const tenantsDb = await import("./db/tenants");
+    const ownerId = await mkUser("esc-owner", "user");
+    const adminId = await mkUser("esc-admin", "user");
+    const memberId = await mkUser("esc-member", "user");
+    const tid = await tenantsDb.createTenantWithOwner(ownerId, "Escalate");
+    await tenantsDb.addMember({ tenantId: tid, userId: adminId, role: "admin" });
+    await tenantsDb.addMember({
+      tenantId: tid,
+      userId: memberId,
+      role: "member",
+    });
+
+    const adminCtx = {
+      user: { id: adminId, globalRole: "user" },
+      propertyId: 1,
+      tenantId: tid,
+      tenantRole: "admin",
+      tenantStatus: "active",
+      req: { headers: {}, protocol: "https" },
+      res: { cookie: () => {}, clearCookie: () => {} },
+    } as any;
+    const caller = appRouter.createCaller(adminCtx);
+
+    // An admin can't promote anyone to owner…
+    await expect(
+      caller.tenant.setMemberRole({ userId: memberId, role: "owner" })
+    ).rejects.toThrow(/only an owner/i);
+    // …nor demote/alter the existing owner.
+    await expect(
+      caller.tenant.setMemberRole({ userId: ownerId, role: "member" })
+    ).rejects.toThrow(/only an owner/i);
+    // …nor remove an owner.
+    await expect(
+      caller.tenant.removeMember({ userId: ownerId })
+    ).rejects.toThrow(/only an owner/i);
+
+    // But an admin can still manage non-owner roles.
+    await expect(
+      caller.tenant.setMemberRole({ userId: memberId, role: "viewer" })
+    ).resolves.toEqual({ success: true });
+  });
+
+  it("binds an invite to its target email on accept", async () => {
+    const tenantsDb = await import("./db/tenants");
+    const { generateToken } = await import("./auth/password");
+    const ownerId = await mkUser("inv-owner", "user");
+    const tid = await tenantsDb.createTenantWithOwner(ownerId, "Bound");
+
+    const tok = generateToken();
+    await tenantsDb.createInvite({
+      tenantId: tid,
+      email: "invited@example.com",
+      role: "member",
+      tokenHash: tok.hash,
+      invitedByUserId: ownerId,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    // A signed-in user whose email differs is refused.
+    const wrongId = await mkUser("wrong", "user");
+    const db = await getDb();
+    await db
+      .update(schema.users)
+      .set({ email: "someone-else@example.com" })
+      .where(eq(schema.users.id, wrongId));
+    const wrongCtx = {
+      user: { id: wrongId, email: "someone-else@example.com", globalRole: "user" },
+      propertyId: 1,
+      tenantId: tid,
+      tenantRole: "member",
+      tenantStatus: "active",
+      req: { headers: {}, protocol: "https" },
+      res: { cookie: () => {}, clearCookie: () => {} },
+    } as any;
+    await expect(
+      appRouter.createCaller(wrongCtx).tenant.invites.accept({ token: tok.raw })
+    ).rejects.toThrow(/different email/i);
   });
 });
