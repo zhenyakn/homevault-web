@@ -4,7 +4,7 @@
  *     query: { gl: "US", hl: "en", q: "example" },
  *   })
  */
-import { ENV } from "./env";
+import { getForgeConfig } from "./integrationsConfig";
 
 export type DataApiCallOptions = {
   query?: Record<string, unknown>;
@@ -17,17 +17,17 @@ export async function callDataApi(
   apiId: string,
   options: DataApiCallOptions = {}
 ): Promise<unknown> {
-  if (!ENV.forgeApiUrl) {
+  if (!getForgeConfig().apiUrl) {
     throw new Error("BUILT_IN_FORGE_API_URL is not configured");
   }
-  if (!ENV.forgeApiKey) {
+  if (!getForgeConfig().apiKey) {
     throw new Error("BUILT_IN_FORGE_API_KEY is not configured");
   }
 
   // Build the full URL by appending the service path to the base URL
-  const baseUrl = ENV.forgeApiUrl.endsWith("/")
-    ? ENV.forgeApiUrl
-    : `${ENV.forgeApiUrl}/`;
+  const baseUrl = getForgeConfig().apiUrl.endsWith("/")
+    ? getForgeConfig().apiUrl
+    : `${getForgeConfig().apiUrl}/`;
   const fullUrl = new URL(
     "webdevtoken.v1.WebDevService/CallApi",
     baseUrl
@@ -39,7 +39,7 @@ export async function callDataApi(
       accept: "application/json",
       "content-type": "application/json",
       "connect-protocol-version": "1",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${getForgeConfig().apiKey}`,
     },
     body: JSON.stringify({
       apiId,

@@ -1,5 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
-import { ENV } from "../../_core/env";
+import { getPublicBaseUrl } from "../../_core/integrationsConfig";
 import { getNotificationConfig, isSectionConfigured } from "../config";
 import { formatEmailHtml, formatEmailSubject } from "../format";
 import type { NotificationChannel } from "../types";
@@ -38,7 +38,7 @@ export const emailChannel: NotificationChannel = {
       to: recipient.email!,
       subject: formatEmailSubject(payload),
       text: payload.body,
-      html: formatEmailHtml(payload, ENV.publicBaseUrl),
+      html: formatEmailHtml(payload, getPublicBaseUrl()),
     });
   },
 };
