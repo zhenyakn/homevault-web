@@ -1,17 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
-  isNavKeyVisible,
+  isNavPathVisible,
   nextHiddenSet,
-  parseHiddenKeys,
+  parseHiddenPaths,
 } from "@/lib/sidebarPrefs";
 
-export { ALWAYS_VISIBLE_NAV_KEYS } from "@/lib/sidebarPrefs";
+export { ALWAYS_VISIBLE_NAV_PATHS } from "@/lib/sidebarPrefs";
 
 interface SidebarPrefsContextType {
-  /** Whether a nav item (by its i18n key) should appear in the sidebar. */
-  isVisible: (key: string) => boolean;
-  /** Show/hide a nav item. No-op for always-visible items. */
-  setVisible: (key: string, visible: boolean) => void;
+  /** Whether a nav route (by its path) should appear in the sidebar. */
+  isVisible: (path: string) => boolean;
+  /** Show/hide a nav route. No-op for always-visible routes. */
+  setVisible: (path: string, visible: boolean) => void;
 }
 
 const SidebarPrefsContext = createContext<SidebarPrefsContextType | undefined>(
@@ -25,11 +25,11 @@ export function SidebarPrefsProvider({
 }: {
   children: React.ReactNode;
 }) {
-  // Stores the set of *hidden* nav keys; everything else is visible by default
-  // so new sections show up automatically without a migration.
+  // Stores the set of *hidden* route paths; everything else is visible by
+  // default so new sections show up automatically without a migration.
   const [hidden, setHidden] = useState<Set<string>>(() => {
     try {
-      return new Set(parseHiddenKeys(localStorage.getItem(STORAGE_KEY)));
+      return new Set(parseHiddenPaths(localStorage.getItem(STORAGE_KEY)));
     } catch {
       return new Set();
     }
@@ -43,10 +43,10 @@ export function SidebarPrefsProvider({
     }
   }, [hidden]);
 
-  const isVisible = (key: string) => isNavKeyVisible(hidden, key);
+  const isVisible = (path: string) => isNavPathVisible(hidden, path);
 
-  const setVisible = (key: string, visible: boolean) =>
-    setHidden(prev => nextHiddenSet(prev, key, visible));
+  const setVisible = (path: string, visible: boolean) =>
+    setHidden(prev => nextHiddenSet(prev, path, visible));
 
   return (
     <SidebarPrefsContext.Provider value={{ isVisible, setVisible }}>

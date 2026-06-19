@@ -27,7 +27,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useProperty } from "@/contexts/PropertyContext";
 import { useHomeVaultUI } from "@/contexts/HomeVaultUIContext";
 import { useSidebarPrefs } from "@/contexts/SidebarPrefsContext";
-import { isNavKeyLocked } from "@/lib/sidebarPrefs";
+import { isNavPathLocked } from "@/lib/sidebarPrefs";
 import { NAV_GROUPS as SIDEBAR_NAV_GROUPS } from "@/components/DashboardLayout";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
@@ -2877,17 +2877,17 @@ function AppearanceSection() {
           {SIDEBAR_NAV_GROUPS.map(group => (
             <Group key={group.labelKey} label={t(group.labelKey)}>
               {group.items.map(item => {
-                const locked = isNavKeyLocked(item.key);
+                const locked = isNavPathLocked(item.path);
                 return (
                   <Row
-                    key={item.key}
+                    key={item.path}
                     label={t(item.key)}
                     hint={locked ? t("settings.sidebarAlwaysOn") : undefined}
                   >
                     <Switch
-                      checked={isVisible(item.key)}
+                      checked={isVisible(item.path)}
                       disabled={locked}
-                      onCheckedChange={v => setVisible(item.key, v)}
+                      onCheckedChange={v => setVisible(item.path, v)}
                     />
                   </Row>
                 );
