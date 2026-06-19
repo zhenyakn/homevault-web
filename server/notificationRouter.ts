@@ -45,7 +45,9 @@ import {
  * proxy's X-Forwarded-Proto/Host via `trust proxy`). Lets the bot self-register
  * without the admin having to fill in a public URL on typical setups.
  */
-function resolveWebhookBaseUrl(req: CreateExpressContextOptions["req"]): string {
+function resolveWebhookBaseUrl(
+  req: CreateExpressContextOptions["req"]
+): string {
   const configured = getPublicBaseUrl();
   if (configured) return configured;
   const host = req.get("host");

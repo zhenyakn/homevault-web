@@ -1479,7 +1479,11 @@ function TelegramConnectCard() {
                       size="sm"
                       className="h-8 w-full text-xs"
                     >
-                      <a href={deepLink} target="_blank" rel="noopener noreferrer">
+                      <a
+                        href={deepLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         <Send className="me-1.5 h-3.5 w-3.5" />
                         {t("settings.ch.openInTelegram")}
                       </a>
@@ -2407,7 +2411,8 @@ function TelegramDeliveryForm({
   const register = trpc.notification.registerTelegramWebhook.useMutation({
     onSuccess: async r => {
       await u.notification.getTelegramWebhookStatus.invalidate();
-      if (r.ok) toast.success(t("settings.delivery.telegram.webhookRegistered"));
+      if (r.ok)
+        toast.success(t("settings.delivery.telegram.webhookRegistered"));
       else toast.error(webhookErrorMessage(t, r));
     },
     onError: e => toast.error(e.message),
