@@ -11,14 +11,14 @@ commands remain for power users.
 
 Every action is one tap away:
 
-| Button | What it does |
-| --- | --- |
+| Button             | What it does                                                                           |
+| ------------------ | -------------------------------------------------------------------------------------- |
 | 💸 **Add expense** | Prompts you to type the amount + name (e.g. `50 groceries`), then a **Confirm** button |
-| ✅ **Pay a bill** | Lists your **unpaid bills as buttons** — tap the one you paid; no id needed |
-| ⚠️ **Overdue** | Items needing attention |
-| 📊 **This month** | Dashboard at a glance |
-| 📅 **Upcoming** | Events & due dates |
-| ⬅️ **Menu** | Appears on every screen to go back |
+| ✅ **Pay a bill**  | Lists your **unpaid bills as buttons** — tap the one you paid; no id needed            |
+| ⚠️ **Overdue**     | Items needing attention                                                                |
+| 📊 **This month**  | Dashboard at a glance                                                                  |
+| 📅 **Upcoming**    | Events & due dates                                                                     |
+| ⬅️ **Menu**        | Appears on every screen to go back                                                     |
 
 ## Paying a bill — the important part
 
@@ -30,8 +30,8 @@ you'd never know the id. Now:
 3. **Tap the bill you paid** → it's marked paid instantly, and the bot offers to
    pay another or go back to the menu.
 
-| Menu → pick a bill | Tap it → done + reads | Add expense by typing |
-| --- | --- | --- |
+| Menu → pick a bill               | Tap it → done + reads              | Add expense by typing               |
+| -------------------------------- | ---------------------------------- | ----------------------------------- |
 | ![](./enhanced-bot-menu-pay.png) | ![](./enhanced-bot-paid-reads.png) | ![](./enhanced-bot-add-expense.png) |
 
 ## You can also just type (optional shortcut)
