@@ -1979,7 +1979,11 @@ function TestConnectionRow({
           variant="outline"
           size="sm"
           className="h-8 text-xs"
-          onClick={onTest}
+          // Wrap so the click MouseEvent isn't forwarded as `onTest`'s argument:
+          // the real handler spreads that arg into the tRPC input, and a synthetic
+          // event is cyclic — serializing it throws "cannot serialize cyclic
+          // structures" and the test never fires.
+          onClick={() => onTest()}
           disabled={testing || !configured}
         >
           {testing ? (
