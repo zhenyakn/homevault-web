@@ -183,7 +183,8 @@ export function getIntegrationsConfigStatus(): IntegrationsConfigStatus {
     push: {
       configured: Boolean(c.forgeApiUrl && c.forgeApiKey),
       fromEnv: isFromEnv("forgeApiUrl"),
-      apiKeyUnreadable: !isFromEnv("forgeApiKey") && unreadable.has("forgeApiKey"),
+      apiKeyUnreadable:
+        !isFromEnv("forgeApiKey") && unreadable.has("forgeApiKey"),
       apiUrl: c.forgeApiUrl || null,
       apiKeySet: Boolean(c.forgeApiKey),
     },
