@@ -275,7 +275,9 @@ export const notificationRouter = router({
         | undefined;
       if (input.telegram || input.general) {
         resetBot();
-        telegram = await syncTelegramDelivery();
+        // Deliberate setup → drop the pre-setup backlog so the bot doesn't
+        // replay old messages and answer them.
+        telegram = await syncTelegramDelivery({ dropPending: true });
       }
       return { ok: true, telegram } as const;
     }),
@@ -293,7 +295,7 @@ export const notificationRouter = router({
    */
   reconnectTelegram: adminProcedure.mutation(async ({ ctx }) => {
     resetBot();
-    const result = await syncTelegramDelivery();
+    const result = await syncTelegramDelivery({ dropPending: true });
     await logAudit({
       actorUserId: ctx.user.id,
       action: "admin.integration.config_changed",
