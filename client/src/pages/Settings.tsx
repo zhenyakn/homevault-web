@@ -1879,6 +1879,17 @@ function DeliveryStatusRow({
   );
 }
 
+/** Warns that a stored credential couldn't be decrypted (the at-rest key
+ *  changed) and must be re-entered. Shown inline above the affected fields. */
+function CredentialUnreadableNotice() {
+  const { t } = useTranslation();
+  return (
+    <Callout variant="warning">
+      {t("settings.delivery.credentialUnreadable")}
+    </Callout>
+  );
+}
+
 /** Labelled input row used by the delivery-setup forms. */
 function DeliveryField({
   label,
@@ -2181,6 +2192,7 @@ function PushDeliveryForm({
             </p>
           ) : (
             <div className="flex flex-col gap-2">
+              {status.apiKeyUnreadable && <CredentialUnreadableNotice />}
               <DeliveryField
                 label={t("settings.delivery.push.apiUrl")}
                 value={apiUrl}
@@ -2258,17 +2270,20 @@ function GeneralDeliveryForm({
               {t("settings.delivery.fromEnv")}
             </p>
           ) : (
-            <DeliveryField
-              label={t("settings.delivery.general.webhookSecret")}
-              value={secret}
-              onChange={setSecret}
-              type="password"
-              placeholder={
-                status.webhookSecretSet
-                  ? t("settings.delivery.secretPlaceholder")
-                  : undefined
-              }
-            />
+            <>
+              {status.webhookSecretUnreadable && <CredentialUnreadableNotice />}
+              <DeliveryField
+                label={t("settings.delivery.general.webhookSecret")}
+                value={secret}
+                onChange={setSecret}
+                type="password"
+                placeholder={
+                  status.webhookSecretSet
+                    ? t("settings.delivery.secretPlaceholder")
+                    : undefined
+                }
+              />
+            </>
           )}
           {(!baseRo || !secretRo) && (
             <SaveDeliveryButton
@@ -2323,6 +2338,7 @@ function EmailDeliveryForm({
             </p>
           ) : (
             <div className="flex flex-col gap-2">
+              {status.credentialUnreadable && <CredentialUnreadableNotice />}
               <DeliveryField
                 label={t("settings.delivery.email.host")}
                 value={host}
@@ -2492,6 +2508,7 @@ function TelegramDeliveryForm({
             </p>
           ) : (
             <div className="flex flex-col gap-2">
+              {status.credentialUnreadable && <CredentialUnreadableNotice />}
               <DeliveryField
                 label={t("settings.delivery.telegram.token")}
                 value={token}
@@ -2772,6 +2789,7 @@ function WebPushDeliveryForm({
             </p>
           ) : (
             <div className="flex flex-col gap-2">
+              {status.credentialUnreadable && <CredentialUnreadableNotice />}
               <DeliveryField
                 label={t("settings.delivery.webpush.publicKey")}
                 value={publicKey}
@@ -2864,6 +2882,7 @@ function WhatsAppDeliveryForm({
             </p>
           ) : (
             <div className="flex flex-col gap-2">
+              {status.credentialUnreadable && <CredentialUnreadableNotice />}
               <DeliveryField
                 label={t("settings.delivery.whatsapp.phoneId")}
                 value={phoneId}
