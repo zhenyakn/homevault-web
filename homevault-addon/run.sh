@@ -52,9 +52,32 @@ else
   export SEED_MOCK_DATA="false"
 fi
 
+# JWT_SECRET is more than a session-signing key: it also derives the AES-256-GCM
+# key that encrypts every credential stored from the Settings UI (SMTP password,
+# Telegram bot token, VAPID private key, WhatsApp token — see
+# server/_core/secrets.ts). If it changes between boots, those ciphertexts become
+# undecryptable and the user is forced to re-enter email/Telegram settings after
+# every restart or upgrade. So when the admin hasn't pinned one in the add-on
+# options, generate it ONCE and persist it under /data, which Home Assistant
+# preserves across add-on restarts and upgrades — instead of minting a fresh
+# random secret on every boot (the previous behaviour).
+PERSISTED_JWT_SECRET="/data/jwt_secret"
 if [ -z "$JWT_SECRET" ]; then
-    echo "[INFO] Generating random JWT_SECRET..."
-    export JWT_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    if [ -s "$PERSISTED_JWT_SECRET" ]; then
+        export JWT_SECRET=$(cat "$PERSISTED_JWT_SECRET")
+        echo "[INFO] Loaded persisted JWT_SECRET from ${PERSISTED_JWT_SECRET}."
+    else
+        echo "[INFO] Generating and persisting a new JWT_SECRET..."
+        JWT_SECRET=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+        export JWT_SECRET
+        # Master secret — write with owner-only permissions.
+        if (umask 077; printf '%s' "$JWT_SECRET" > "$PERSISTED_JWT_SECRET"); then
+            echo "[INFO] Persisted JWT_SECRET to ${PERSISTED_JWT_SECRET}."
+        else
+            echo "[WARN] Could not persist JWT_SECRET to ${PERSISTED_JWT_SECRET} —" \
+                 "stored credentials may not survive a restart."
+        fi
+    fi
 fi
 
 echo "[INFO] Starting HomeVault Add-on on port ${PORT}..."
