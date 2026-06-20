@@ -110,7 +110,10 @@ export async function getBotUsername(): Promise<string | null> {
     cachedUsername = me.username ?? null;
     return cachedUsername;
   } catch (err) {
-    logger.warn({ err }, "[telegram] failed to resolve bot username");
+    logger.warn(
+      { err: errText(err) },
+      "[telegram] failed to resolve bot username"
+    );
     return null;
   }
 }
@@ -193,23 +196,27 @@ export async function syncTelegramDelivery(): Promise<DeliverySyncResult> {
       return { ok: true, mode: "webhook", url };
     }
     // Polling mode: drop any webhook (else getUpdates returns 409), then start
-    // the loop unless this exact bot is already polling.
+    // the loop unless this exact bot is already polling. drop_pending_updates
+    // skips the backlog Telegram queued while we were offline / on a webhook —
+    // without it, starting polling replays old messages and the bot answers
+    // them (e.g. "not linked"), which looks like spam right after setup.
     if (pollingBot !== b) {
       stopPolling();
-      await b.api.deleteWebhook();
+      await b.api.deleteWebhook({ drop_pending_updates: true });
       pollingBot = b;
       void b
         .start({
+          drop_pending_updates: true,
           onStart: () => logger.info("[telegram] long-polling started"),
         })
         .catch(err => {
-          logger.warn({ err }, "[telegram] polling loop ended");
+          logger.warn({ err: errText(err) }, "[telegram] polling loop ended");
           if (pollingBot === b) pollingBot = null;
         });
     }
     return { ok: true, mode: "polling" };
   } catch (err) {
-    logger.warn({ err }, "[telegram] failed to connect bot");
+    logger.warn({ err: errText(err) }, "[telegram] failed to connect bot");
     return { ok: false, reason: "error", detail: errText(err) };
   }
 }
@@ -253,7 +260,10 @@ export async function getTelegramDeliveryStatus(): Promise<DeliveryStatus> {
       lastErrorMessage: info.last_error_message || null,
     };
   } catch (err) {
-    logger.warn({ err }, "[telegram] failed to read delivery status");
+    logger.warn(
+      { err: errText(err) },
+      "[telegram] failed to read delivery status"
+    );
     return {
       mode: "none",
       url: null,
@@ -458,5 +468,10 @@ function registerHandlers(b: Bot) {
     }
   });
 
-  b.catch(err => logger.error({ err }, "[telegram] handler error"));
+  // grammy wraps handler failures in a BotError that carries the whole Context
+  // (deeply self-referential). Log only its message — never the object — so a
+  // cyclic structure can't reach a JSON serializer.
+  b.catch(err =>
+    logger.error({ err: errText(err) }, "[telegram] handler error")
+  );
 }
