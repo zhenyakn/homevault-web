@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import ObservabilityTab from "./admin/ObservabilityTab";
 
 function errMessage(e: unknown): string {
   return e && typeof e === "object" && "message" in e
@@ -31,8 +32,21 @@ function errMessage(e: unknown): string {
     : "Something went wrong";
 }
 
-type Tab = "overview" | "users" | "tenants" | "plans" | "audit";
-const TAB_KEYS: Tab[] = ["overview", "users", "tenants", "plans", "audit"];
+type Tab =
+  | "overview"
+  | "users"
+  | "tenants"
+  | "plans"
+  | "audit"
+  | "observability";
+const TAB_KEYS: Tab[] = [
+  "overview",
+  "users",
+  "tenants",
+  "plans",
+  "audit",
+  "observability",
+];
 
 export default function Admin() {
   const { t } = useTranslation();
@@ -88,6 +102,7 @@ export default function Admin() {
       {tab === "tenants" && <TenantsTab />}
       {tab === "plans" && isSaas && <PlansTab />}
       {tab === "audit" && <AuditTab />}
+      {tab === "observability" && <ObservabilityTab />}
     </div>
   );
 }
@@ -1403,10 +1418,38 @@ function PlanEditor({
 function AuditTab() {
   const { t } = useTranslation();
   const audit = trpc.admin.audit.list.useQuery({ limit: 100 });
+  const verify = trpc.admin.audit.verify.useQuery(undefined, {
+    enabled: false,
+  });
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex-row items-center justify-between gap-2">
         <CardTitle className="text-base">{t("admin.recentActivity")}</CardTitle>
+        <div className="flex items-center gap-2">
+          {verify.data &&
+            (verify.data.ok ? (
+              <Badge className="bg-green-500/15 text-green-600 dark:text-green-400">
+                {t("admin.auditVerifiedOk", { count: verify.data.verified })}
+              </Badge>
+            ) : (
+              <Badge className="bg-red-500/15 text-red-600 dark:text-red-400">
+                {t("admin.auditVerifiedBroken", {
+                  id: verify.data.brokenAtId ?? "?",
+                })}
+              </Badge>
+            ))}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => verify.refetch()}
+            disabled={verify.isFetching}
+          >
+            {verify.isFetching && (
+              <Loader2 className="w-4 h-4 me-1 animate-spin" />
+            )}
+            {t("admin.verifyIntegrity")}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="divide-y">
         {audit.isLoading && (

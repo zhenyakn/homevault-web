@@ -8,6 +8,7 @@ import {
   tenantAdminProcedure,
 } from "./_core/trpc";
 import * as db from "./db";
+import { tenantLogsRouter } from "./observabilityRouter";
 import { generateToken, hashToken } from "./auth/password";
 import { sendInviteEmail } from "./auth/email";
 import {
@@ -52,6 +53,10 @@ function assertInviteRateLimit(req: {
  * Member-management mutations land with the in-app tenant settings UI.
  */
 export const tenantRouter = router({
+  // Tenant-scoped server-log viewer (tenant admins). Hard-filtered to the
+  // active tenant inside the router.
+  logs: tenantLogsRouter,
+
   // The tenants the current user belongs to, with their role in each.
   list: tenantProcedure.query(async ({ ctx }) => {
     return db.getTenantsForUser(ctx.user.id);

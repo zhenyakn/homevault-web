@@ -1505,7 +1505,8 @@
       "users": "Users",
       "tenants": "Tenants",
       "plans": "Plans",
-      "audit": "Audit log"
+      "audit": "Audit log",
+      "observability": "Observability"
     },
     "statUsers": "Users",
     "statWorkspaces": "Workspaces",
@@ -1614,6 +1615,41 @@
     "cancel": "Cancel",
     "save": "Save",
     "allowedDomains": "Allowed email domains",
-    "allowedDomainsDesc": "Limit open sign-ups to these domains (comma-separated). Leave empty to allow any; invited users always bypass this."
+    "allowedDomainsDesc": "Limit open sign-ups to these domains (comma-separated). Leave empty to allow any; invited users always bypass this.",
+    "verifyIntegrity": "Verify integrity",
+    "auditVerifiedOk": "Integrity OK ({{count}} entries)",
+    "auditVerifiedBroken": "Tampering detected at #{{id}}",
+    "observability": {
+      "logs": "Logs",
+      "traces": "Traces",
+      "metrics": "Metrics",
+      "minLevel": "Min level",
+      "namespace": "Namespace",
+      "search": "Search",
+      "searchPlaceholder": "Filter message or fields…",
+      "all": "All",
+      "live": "Live",
+      "paused": "Paused",
+      "globalLevel": "Global level",
+      "sampling": "Sampling",
+      "buffered": "Buffered",
+      "dropped": "Dropped",
+      "levelUpdated": "Log level updated",
+      "noLogs": "No log entries match.",
+      "logFiles": "Log files",
+      "fileLoggingDisabled": "File logging is disabled.",
+      "noFiles": "No log files yet.",
+      "recentTraces": "Recent traces",
+      "noTraces": "No traces captured yet.",
+      "traceDetail": "Trace detail",
+      "selectTrace": "Select a trace to inspect its spans.",
+      "spansSuffix": " spans",
+      "correlatedLogs": "Correlated logs",
+      "totalRequests": "Total requests",
+      "errorRate": "Error rate",
+      "topRoutes": "Top routes",
+      "noData": "No data yet.",
+      "metricsEndpointHint": "Prometheus /metrics endpoint is disabled (set METRICS_ENDPOINT_ENABLED=true to enable)."
+    }
   }
 }

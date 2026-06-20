@@ -13,6 +13,7 @@ import { googleDriveRouter } from "../googleDriveRoute";
 import { storageRouter } from "../storageRoute";
 import { exportRouter } from "../exportRoute";
 import { metricsRouter } from "../metricsRoute";
+import { logsRouter } from "../logsRoute";
 import { createContext } from "./context";
 import { sdk } from "./sdk";
 import { getSessionCookieOptions } from "./cookies";
@@ -336,6 +337,7 @@ async function startServer() {
   app.use(googleDriveRouter);
   app.use(storageRouter);
   app.use(exportRouter);
+  app.use(logsRouter);
 
   // Telegram bot webhook. The route is mounted unconditionally and resolves the
   // current bot per request, so a token configured later via Settings works
