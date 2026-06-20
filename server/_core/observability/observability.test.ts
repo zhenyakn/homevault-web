@@ -13,11 +13,7 @@ import {
   generateTraceId,
   generateSpanId,
 } from "./ids";
-import {
-  levelFromValue,
-  meetsThreshold,
-  SEVERITY_NUMBER,
-} from "./levels";
+import { levelFromValue, meetsThreshold, SEVERITY_NUMBER } from "./levels";
 import { REDACT_PATHS } from "./redact";
 import {
   runWithContext,
@@ -255,7 +251,8 @@ describe("RotatingFileSink", () => {
       compress: false,
     });
     // Force a rotation so a .1 file exists.
-    for (let i = 0; i < 20; i++) sink.write(JSON.stringify({ pad: "z".repeat(40) }));
+    for (let i = 0; i < 20; i++)
+      sink.write(JSON.stringify({ pad: "z".repeat(40) }));
     await sink.flush();
     const rotated = path.join(dir, "homevault.log.1");
     expect(existsSync(rotated)).toBe(true);

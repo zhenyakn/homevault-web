@@ -68,7 +68,11 @@ class Histogram {
     const key = labelKey(labels);
     let s = this.series.get(key);
     if (!s) {
-      s = { buckets: new Array(this.bounds.length + 1).fill(0), sum: 0, count: 0 };
+      s = {
+        buckets: new Array(this.bounds.length + 1).fill(0),
+        sum: 0,
+        count: 0,
+      };
       this.series.set(key, s);
     }
     let i = 0;
@@ -219,7 +223,8 @@ function globalQuantile(q: number): number {
   const merged = new Array(DURATION_BUCKETS_MS.length + 1).fill(0);
   let count = 0;
   for (const { series } of requestDuration.seriesEntries()) {
-    for (let i = 0; i < series.buckets.length; i++) merged[i] += series.buckets[i];
+    for (let i = 0; i < series.buckets.length; i++)
+      merged[i] += series.buckets[i];
     count += series.count;
   }
   if (count === 0) return 0;

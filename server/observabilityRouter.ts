@@ -122,7 +122,11 @@ export const observabilityRouter = router({
   // ── Traces ──────────────────────────────────────────────────────────────
   traces: router({
     list: superAdminProcedure
-      .input(z.object({ limit: z.number().int().min(1).max(500).optional() }).optional())
+      .input(
+        z
+          .object({ limit: z.number().int().min(1).max(500).optional() })
+          .optional()
+      )
       .query(({ input }) => recentTraces(input?.limit ?? 100)),
 
     // One trace's spans + the log lines correlated to it (the drill-down view).

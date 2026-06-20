@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  recordRequest,
-  metricsSummary,
-  renderPrometheus,
-} from "./metrics";
+import { recordRequest, metricsSummary, renderPrometheus } from "./metrics";
 
 describe("metrics (RED)", () => {
   it("aggregates rate, errors and latency percentiles", () => {

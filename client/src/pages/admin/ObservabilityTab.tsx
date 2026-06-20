@@ -135,7 +135,9 @@ function LogsPanel() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all">{t("admin.observability.all")}</SelectItem>
+              <SelectItem value="__all">
+                {t("admin.observability.all")}
+              </SelectItem>
               {(levels.data?.namespaces ?? []).map(ns => (
                 <SelectItem key={ns} value={ns}>
                   {ns}
@@ -165,7 +167,9 @@ function LogsPanel() {
             ) : (
               <Play className="w-4 h-4 me-1" />
             )}
-            {live ? t("admin.observability.live") : t("admin.observability.paused")}
+            {live
+              ? t("admin.observability.live")
+              : t("admin.observability.paused")}
           </Button>
           <Button
             variant="outline"
@@ -454,7 +458,10 @@ function MetricsPanel() {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Stat label={t("admin.observability.totalRequests")} value={d.totalRequests} />
+        <Stat
+          label={t("admin.observability.totalRequests")}
+          value={d.totalRequests}
+        />
         <Stat
           label={t("admin.observability.errorRate")}
           value={`${(d.errorRate * 100).toFixed(1)}%`}
@@ -530,9 +537,7 @@ function Stat({
     <Card>
       <CardContent className="py-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p
-          className={`text-2xl font-semibold ${warn ? "text-red-600" : ""}`}
-        >
+        <p className={`text-2xl font-semibold ${warn ? "text-red-600" : ""}`}>
           {value}
         </p>
       </CardContent>

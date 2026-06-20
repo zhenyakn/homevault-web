@@ -171,7 +171,10 @@ export interface LogFileInfo {
   compressed: boolean;
 }
 
-export function listLogFiles(dir: string, baseName = "homevault"): LogFileInfo[] {
+export function listLogFiles(
+  dir: string,
+  baseName = "homevault"
+): LogFileInfo[] {
   if (!existsSync(dir)) return [];
   const rx = new RegExp(`^${escapeRx(baseName)}\\.log(\\.\\d+)?(\\.gz)?$`);
   const out: LogFileInfo[] = [];

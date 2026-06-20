@@ -37,7 +37,9 @@ router.get("/api/admin/logs/download", async (req: Request, res: Response) => {
 
   const requested = String(req.query.file ?? "");
   // Only names the listing actually reports are valid — defeats traversal.
-  const allowed = listLogFiles(obsConfig.file.dir).some(f => f.name === requested);
+  const allowed = listLogFiles(obsConfig.file.dir).some(
+    f => f.name === requested
+  );
   if (!allowed) {
     res.status(404).json({ error: "Log file not found" });
     return;
@@ -56,7 +58,10 @@ router.get("/api/admin/logs/download", async (req: Request, res: Response) => {
 
   const stream = createReadStream(fullPath);
   stream.on("error", err => {
-    log.warn({ err: err.message, file: requested }, "log download stream error");
+    log.warn(
+      { err: err.message, file: requested },
+      "log download stream error"
+    );
     if (!res.headersSent) res.status(500).json({ error: "Download failed" });
     else res.destroy();
   });

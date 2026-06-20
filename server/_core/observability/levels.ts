@@ -60,7 +60,10 @@ export function levelFromValue(value: number): LogLevel {
 }
 
 /** Whether `level` is at or above the `threshold` (i.e. would be emitted). */
-export function meetsThreshold(level: LogLevel, threshold: LevelSetting): boolean {
+export function meetsThreshold(
+  level: LogLevel,
+  threshold: LevelSetting
+): boolean {
   if (threshold === "silent") return false;
   return LEVEL_VALUES[level] >= LEVEL_VALUES[threshold];
 }

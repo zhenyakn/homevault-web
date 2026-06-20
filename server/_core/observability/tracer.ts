@@ -111,7 +111,10 @@ export interface StartSpanOptions {
  * becomes the active one until `end()`. Returns a no-op span when tracing is
  * disabled or there is no request context.
  */
-export function startSpan(name: string, opts: StartSpanOptions = {}): ActiveSpan {
+export function startSpan(
+  name: string,
+  opts: StartSpanOptions = {}
+): ActiveSpan {
   const ctx = getContext();
   if (!cfg.trace.enabled || !ctx) {
     return new NoopSpan({
@@ -261,9 +264,7 @@ export function recentTraces(limit = 100): TraceSummary[] {
           : undefined,
     });
   }
-  return summaries
-    .sort((a, b) => b.startTime - a.startTime)
-    .slice(0, limit);
+  return summaries.sort((a, b) => b.startTime - a.startTime).slice(0, limit);
 }
 
 /** Re-export so callers can open a fresh root context + run within it. */
