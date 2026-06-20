@@ -1599,6 +1599,11 @@ function NotificationChannelsIntegration() {
       icon={<Bell className="h-4 w-4" />}
       title={t("settings.ch.integrationsTitle")}
       description={t("settings.cat.channelsDesc")}
+      // Open by default: the Telegram bot's "not linked" reply sends users here
+      // to "create a Telegram link code", and the Generate button lives inside
+      // this section. Collapsed-by-default left users staring at a header with
+      // no visible way to get a code.
+      defaultOpen
     >
       {isLoading ? (
         <div className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-6 text-xs text-muted-foreground">
