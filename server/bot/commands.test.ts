@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseCommand } from "./commands";
+import {
+  parseCommand,
+  parseCallback,
+  menuCallback,
+  payCallback,
+  addExpenseCallback,
+} from "./commands";
 
 describe("parseCommand — simple commands", () => {
   it("parses bare read commands case-insensitively", () => {
@@ -72,17 +78,211 @@ describe("parseCommand — addexpense", () => {
   });
 });
 
+describe("parseCommand — addexpense currency", () => {
+  it("accepts a currency-prefixed amount", () => {
+    expect(parseCommand("/addexpense $100 Water bill")).toEqual({
+      type: "addexpense",
+      amount: 100,
+      name: "Water bill",
+    });
+  });
+  it("accepts the /expense alias", () => {
+    expect(parseCommand("/expense 40 Gas")).toEqual({
+      type: "addexpense",
+      amount: 40,
+      name: "Gas",
+    });
+  });
+});
+
 describe("parseCommand — fallbacks", () => {
   it("returns unknown for unrecognized commands", () => {
     expect(parseCommand("/wat")).toEqual({ type: "unknown", command: "wat" });
   });
-  it("returns text for non-command input", () => {
-    expect(parseCommand("hello there")).toEqual({
-      type: "text",
-      text: "hello there",
-    });
-  });
   it("returns unknown for empty input", () => {
     expect(parseCommand("   ").type).toBe("unknown");
+  });
+});
+
+describe("natural language — log an expense without a slash", () => {
+  it("parses 'spent <amount> on <name>'", () => {
+    expect(parseCommand("spent 50 on groceries")).toEqual({
+      type: "addexpense",
+      amount: 50,
+      name: "groceries",
+    });
+  });
+
+  it("parses 'add expense <amount> <name>'", () => {
+    expect(parseCommand("add expense 100 water bill")).toEqual({
+      type: "addexpense",
+      amount: 100,
+      name: "water bill",
+    });
+  });
+
+  it("parses a bare '<amount> <name>'", () => {
+    expect(parseCommand("100 water bill")).toEqual({
+      type: "addexpense",
+      amount: 100,
+      name: "water bill",
+    });
+  });
+
+  it("parses 'paid <amount> for <name>' as an expense (amount, not an id)", () => {
+    expect(parseCommand("paid 30 for gas")).toEqual({
+      type: "addexpense",
+      amount: 30,
+      name: "gas",
+    });
+  });
+
+  it("handles currency symbols and decimals", () => {
+    expect(parseCommand("bought coffee $4.50")).toEqual({
+      type: "addexpense",
+      amount: 4.5,
+      name: "coffee",
+    });
+    expect(parseCommand("12,5 gas")).toEqual({
+      type: "addexpense",
+      amount: 12.5,
+      name: "gas",
+    });
+  });
+
+  it("parses Russian phrasing", () => {
+    expect(parseCommand("потратил 50 на продукты")).toEqual({
+      type: "addexpense",
+      amount: 50,
+      name: "продукты",
+    });
+  });
+
+  it("parses Hebrew phrasing", () => {
+    expect(parseCommand("שילמתי 80 על חשמל")).toEqual({
+      type: "addexpense",
+      amount: 80,
+      name: "חשמל",
+    });
+  });
+
+  it("is invalid when a verb signals an expense but no name is given", () => {
+    expect(parseCommand("spent 50").type).toBe("invalid");
+  });
+});
+
+describe("natural language — mark an expense paid", () => {
+  it("parses 'paid <id>' with a non-numeric id", () => {
+    expect(parseCommand("paid exp-7")).toEqual({ type: "paid", id: "exp-7" });
+  });
+  it("parses 'mark <id> as paid'", () => {
+    expect(parseCommand("mark exp-12 as paid")).toEqual({
+      type: "paid",
+      id: "exp-12",
+    });
+  });
+  it("parses '<id> is paid'", () => {
+    expect(parseCommand("exp-9 is paid")).toEqual({
+      type: "paid",
+      id: "exp-9",
+    });
+  });
+  it("does not treat plain words as an id", () => {
+    // "what is paid" must not be mistaken for marking an id paid.
+    expect(parseCommand("what is paid").type).not.toBe("paid");
+  });
+});
+
+describe("natural language — read intents", () => {
+  it.each([
+    ["what's overdue?", "overdue"],
+    ["anything that needs attention", "overdue"],
+    ["что просрочено?", "overdue"],
+    ["how's this month going", "dashboard"],
+    ["give me a summary", "dashboard"],
+    ["сколько я потратил", "dashboard"],
+    ["what's upcoming", "upcoming"],
+    ["show me the calendar", "upcoming"],
+    ["what can you do", "help"],
+    ["help", "help"],
+  ])("maps %j to %s", (input, expected) => {
+    expect(parseCommand(input).type).toBe(expected);
+  });
+
+  it("prefers an expense when an amount is present", () => {
+    // Even with words around it, a money amount means 'log an expense'.
+    expect(parseCommand("add 25 for the calendar wall planner").type).toBe(
+      "addexpense"
+    );
+  });
+});
+
+describe("natural language — pay a bill (no id needed)", () => {
+  it.each(["pay", "pay a bill", "I want to pay a bill", "mark paid", "/pay"])(
+    "maps %j to the pay list",
+    input => {
+      expect(parseCommand(input).type).toBe("paylist");
+    }
+  );
+  it("maps Russian/Hebrew pay phrasings to the pay list", () => {
+    expect(parseCommand("оплатить").type).toBe("paylist");
+    expect(parseCommand("לשלם").type).toBe("paylist");
+  });
+  it("still treats a paid amount as an expense, not a pay-list request", () => {
+    expect(parseCommand("paid 30 for gas").type).toBe("addexpense");
+  });
+});
+
+describe("natural language — menu", () => {
+  it.each(["menu", "/menu", "main menu", "меню"])(
+    "maps %j to the menu",
+    input => {
+      expect(parseCommand(input).type).toBe("menu");
+    }
+  );
+});
+
+describe("natural language — fallback", () => {
+  it("returns unknown (carrying the text) for unrecognized chatter", () => {
+    expect(parseCommand("hello there")).toEqual({
+      type: "unknown",
+      command: "hello there",
+    });
+  });
+});
+
+describe("inline-button callbacks", () => {
+  it("round-trips menu callbacks", () => {
+    expect(parseCallback(menuCallback("home"))).toEqual({
+      kind: "menu",
+      action: "home",
+    });
+    expect(parseCallback(menuCallback("pay"))).toEqual({
+      kind: "menu",
+      action: "pay",
+    });
+  });
+
+  it("round-trips a pay callback carrying the expense id", () => {
+    expect(parseCallback(payCallback("abc123xyz"))).toEqual({
+      kind: "pay",
+      id: "abc123xyz",
+    });
+  });
+
+  it("round-trips an add-expense callback", () => {
+    expect(parseCallback(addExpenseCallback(50, "water bill"))).toEqual({
+      kind: "addexpense",
+      amount: 50,
+      name: "water bill",
+    });
+  });
+
+  it("parses cancel and rejects junk", () => {
+    expect(parseCallback("cancel")).toEqual({ kind: "cancel" });
+    expect(parseCallback("menu:bogus").kind).toBe("unknown");
+    expect(parseCallback("pay:").kind).toBe("unknown");
+    expect(parseCallback("ax|0|x").kind).toBe("unknown");
+    expect(parseCallback("garbage").kind).toBe("unknown");
   });
 });
