@@ -46,6 +46,11 @@ export type EffectiveIntegrationsConfig = Record<IntegrationField, string>;
 
 const overlay: Partial<Record<IntegrationField, string>> = {};
 
+// Secret fields whose stored ciphertext was present but could NOT be decrypted
+// on load (the at-rest key, derived from JWT_SECRET, changed since the value was
+// saved). Surfaced to the admin UI so it can prompt a re-entry.
+const unreadable = new Set<IntegrationField>();
+
 function envValue(field: IntegrationField): string {
   return process.env[ENV_VAR[field]] ?? "";
 }
@@ -87,17 +92,30 @@ export function getTelegramWebhookSecret(): string {
 export async function loadIntegrationsConfig(): Promise<void> {
   await Promise.all(
     FIELDS.map(async field => {
+      let raw: string | null;
       try {
-        const raw = await getSetting(INTEGRATION_SETTING_KEYS[field]);
-        if (raw == null) {
-          delete overlay[field];
-          return;
-        }
-        overlay[field] = SECRET_FIELDS.has(field)
-          ? (readMaybeEncrypted(raw) ?? "")
-          : raw;
+        raw = await getSetting(INTEGRATION_SETTING_KEYS[field]);
       } catch {
-        // DB unreachable — behave as if unset for this field.
+        // DB unreachable — keep whatever we already have for this field.
+        return;
+      }
+      if (raw == null) {
+        delete overlay[field];
+        unreadable.delete(field);
+        return;
+      }
+      if (SECRET_FIELDS.has(field)) {
+        try {
+          overlay[field] = readMaybeEncrypted(raw) ?? "";
+          unreadable.delete(field);
+        } catch {
+          // Ciphertext present but undecryptable (JWT_SECRET changed/rotated).
+          delete overlay[field];
+          unreadable.add(field);
+        }
+      } else {
+        overlay[field] = raw;
+        unreadable.delete(field);
       }
     })
   );
@@ -122,6 +140,7 @@ export async function saveIntegrationsConfig(
       if (trimmed === "") continue; // keep existing secret
       await setSetting(key, encryptSecret(trimmed));
       overlay[field] = trimmed;
+      unreadable.delete(field); // freshly re-encrypted → readable again
       continue;
     }
 
@@ -138,6 +157,8 @@ export async function saveIntegrationsConfig(
 export type PushStatus = {
   configured: boolean;
   fromEnv: boolean;
+  /** API key stored but undecryptable (at-rest key changed) — re-entry needed. */
+  apiKeyUnreadable: boolean;
   apiUrl: string | null;
   apiKeySet: boolean;
 };
@@ -146,6 +167,8 @@ export type GeneralStatus = {
   publicBaseUrlFromEnv: boolean;
   webhookSecretSet: boolean;
   webhookSecretFromEnv: boolean;
+  /** Webhook secret stored but undecryptable — re-entry needed. */
+  webhookSecretUnreadable: boolean;
 };
 
 export type IntegrationsConfigStatus = {
@@ -160,6 +183,7 @@ export function getIntegrationsConfigStatus(): IntegrationsConfigStatus {
     push: {
       configured: Boolean(c.forgeApiUrl && c.forgeApiKey),
       fromEnv: isFromEnv("forgeApiUrl"),
+      apiKeyUnreadable: !isFromEnv("forgeApiKey") && unreadable.has("forgeApiKey"),
       apiUrl: c.forgeApiUrl || null,
       apiKeySet: Boolean(c.forgeApiKey),
     },
@@ -168,6 +192,9 @@ export function getIntegrationsConfigStatus(): IntegrationsConfigStatus {
       publicBaseUrlFromEnv: isFromEnv("publicBaseUrl"),
       webhookSecretSet: Boolean(c.telegramWebhookSecret),
       webhookSecretFromEnv: isFromEnv("telegramWebhookSecret"),
+      webhookSecretUnreadable:
+        !isFromEnv("telegramWebhookSecret") &&
+        unreadable.has("telegramWebhookSecret"),
     },
   };
 }
@@ -175,4 +202,5 @@ export function getIntegrationsConfigStatus(): IntegrationsConfigStatus {
 /** Test hook — clears the overlay so each test starts from env-only. */
 export function _resetIntegrationsConfigForTests(): void {
   for (const field of FIELDS) delete overlay[field];
+  unreadable.clear();
 }

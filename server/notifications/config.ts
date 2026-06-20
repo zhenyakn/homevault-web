@@ -80,6 +80,27 @@ export type EffectiveNotificationConfig = Record<NotificationField, string>;
 // by saveNotificationConfig(). Absent until a value is stored.
 const overlay: Partial<Record<NotificationField, string>> = {};
 
+// Secret fields whose stored ciphertext was present but could NOT be decrypted
+// on load — almost always because JWT_SECRET (which derives the at-rest key)
+// changed since the value was saved. Tracked so the admin UI can prompt a
+// re-entry instead of silently showing the channel as unconfigured.
+const unreadable = new Set<NotificationField>();
+
+/** The single secret field backing each section's "needs re-entry" check. */
+const SECTION_SECRET_FIELDS: Record<NotificationSection, NotificationField[]> = {
+  email: ["smtpPass"],
+  telegram: ["telegramBotToken"],
+  webpush: ["vapidPrivateKey"],
+  whatsapp: ["whatsappAccessToken"],
+};
+
+/** True when a section's secret is stored but can't be decrypted (key changed). */
+export function isSectionCredentialUnreadable(
+  section: NotificationSection
+): boolean {
+  return SECTION_SECRET_FIELDS[section].some(f => unreadable.has(f));
+}
+
 /** Raw env value for a field (empty string when unset). */
 function envValue(field: NotificationField): string {
   return process.env[ENV_VAR[field]] ?? "";
@@ -129,17 +150,32 @@ export function isSectionConfigured(section: NotificationSection): boolean {
 export async function loadNotificationConfig(): Promise<void> {
   await Promise.all(
     FIELDS.map(async field => {
+      let raw: string | null;
       try {
-        const raw = await getSetting(NOTIFICATION_SETTING_KEYS[field]);
-        if (raw == null) {
-          delete overlay[field];
-          return;
-        }
-        overlay[field] = SECRET_FIELDS.has(field)
-          ? (readMaybeEncrypted(raw) ?? "")
-          : raw;
+        raw = await getSetting(NOTIFICATION_SETTING_KEYS[field]);
       } catch {
-        // DB unreachable — behave as if unset for this field.
+        // DB unreachable — keep whatever we already have for this field.
+        return;
+      }
+      if (raw == null) {
+        delete overlay[field];
+        unreadable.delete(field);
+        return;
+      }
+      if (SECRET_FIELDS.has(field)) {
+        try {
+          overlay[field] = readMaybeEncrypted(raw) ?? "";
+          unreadable.delete(field);
+        } catch {
+          // Ciphertext present but undecryptable (JWT_SECRET changed/rotated).
+          // Drop it so the channel degrades gracefully, but flag it so the UI
+          // can ask the admin to re-enter the credential.
+          delete overlay[field];
+          unreadable.add(field);
+        }
+      } else {
+        overlay[field] = raw;
+        unreadable.delete(field);
       }
     })
   );
@@ -169,6 +205,7 @@ export async function saveNotificationConfig(
       if (trimmed === "") continue; // keep existing secret
       await setSetting(key, encryptSecret(trimmed));
       overlay[field] = trimmed;
+      unreadable.delete(field); // freshly re-encrypted → readable again
       continue;
     }
 
@@ -186,6 +223,12 @@ export type SectionStatus = {
   configured: boolean;
   /** Credentials come from env vars (read-only from the UI's perspective). */
   fromEnv: boolean;
+  /**
+   * A secret was stored for this section but could not be decrypted on load
+   * (the at-rest key changed). The admin must re-enter it. Always false when
+   * `fromEnv`, since env values don't depend on the at-rest key.
+   */
+  credentialUnreadable: boolean;
 };
 
 export type EmailStatus = SectionStatus & {
@@ -225,6 +268,8 @@ export function getNotificationConfigStatus(): NotificationConfigStatus {
     email: {
       configured: isSectionConfigured("email"),
       fromEnv: isFromEnv("smtpHost"),
+      credentialUnreadable:
+        !isFromEnv("smtpHost") && isSectionCredentialUnreadable("email"),
       host: c.smtpHost || null,
       port: c.smtpPort || null,
       user: c.smtpUser || null,
@@ -234,11 +279,17 @@ export function getNotificationConfigStatus(): NotificationConfigStatus {
     telegram: {
       configured: isSectionConfigured("telegram"),
       fromEnv: isFromEnv("telegramBotToken"),
+      credentialUnreadable:
+        !isFromEnv("telegramBotToken") &&
+        isSectionCredentialUnreadable("telegram"),
       tokenSet: Boolean(c.telegramBotToken),
     },
     webpush: {
       configured: isSectionConfigured("webpush"),
       fromEnv: isFromEnv("vapidPublicKey"),
+      credentialUnreadable:
+        !isFromEnv("vapidPublicKey") &&
+        isSectionCredentialUnreadable("webpush"),
       publicKey: c.vapidPublicKey || null,
       subject: c.vapidSubject || null,
       privateKeySet: Boolean(c.vapidPrivateKey),
@@ -246,6 +297,9 @@ export function getNotificationConfigStatus(): NotificationConfigStatus {
     whatsapp: {
       configured: isSectionConfigured("whatsapp"),
       fromEnv: isFromEnv("whatsappPhoneNumberId"),
+      credentialUnreadable:
+        !isFromEnv("whatsappPhoneNumberId") &&
+        isSectionCredentialUnreadable("whatsapp"),
       phoneNumberId: c.whatsappPhoneNumberId || null,
       apiVersion: c.whatsappApiVersion || null,
       tokenSet: Boolean(c.whatsappAccessToken),
@@ -256,4 +310,5 @@ export function getNotificationConfigStatus(): NotificationConfigStatus {
 /** Test hook — clears the overlay so each test starts from env-only. */
 export function _resetNotificationConfigForTests(): void {
   for (const field of FIELDS) delete overlay[field];
+  unreadable.clear();
 }

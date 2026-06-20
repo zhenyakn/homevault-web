@@ -200,6 +200,60 @@ describe("loadNotificationConfig", () => {
   });
 });
 
+describe("credentialUnreadable — at-rest key changed", () => {
+  it("flags a section whose secret can't be decrypted after the key changes", async () => {
+    // Saved under the original key…
+    await saveNotificationConfig({
+      smtpHost: "smtp.example.com",
+      smtpFrom: "a@b.c",
+      smtpPass: "hunter2",
+      telegramBotToken: "bot-token",
+    });
+    // …then the at-rest key (derived from JWT_SECRET) changes, as happens on a
+    // rotation or when an ephemeral secret is regenerated at boot.
+    process.env.JWT_SECRET = "a-totally-different-secret-0987654321";
+    _resetNotificationConfigForTests();
+    await loadNotificationConfig();
+
+    const s = getNotificationConfigStatus();
+    expect(s.email.credentialUnreadable).toBe(true);
+    expect(s.telegram.credentialUnreadable).toBe(true);
+    // Undecryptable secrets are dropped, so the secret no longer resolves.
+    expect(getNotificationConfig().smtpPass).toBe("");
+    // Sections without a stored secret are not flagged.
+    expect(s.webpush.credentialUnreadable).toBe(false);
+    expect(s.whatsapp.credentialUnreadable).toBe(false);
+  });
+
+  it("clears the flag once the secret is re-entered", async () => {
+    await saveNotificationConfig({ telegramBotToken: "old-token" });
+    process.env.JWT_SECRET = "a-totally-different-secret-0987654321";
+    _resetNotificationConfigForTests();
+    await loadNotificationConfig();
+    expect(getNotificationConfigStatus().telegram.credentialUnreadable).toBe(
+      true
+    );
+
+    await saveNotificationConfig({ telegramBotToken: "new-token" });
+    expect(getNotificationConfigStatus().telegram.credentialUnreadable).toBe(
+      false
+    );
+    expect(getNotificationConfig().telegramBotToken).toBe("new-token");
+  });
+
+  it("does not flag when env supplies the credential", async () => {
+    await saveNotificationConfig({ telegramBotToken: "old-token" });
+    process.env.JWT_SECRET = "a-totally-different-secret-0987654321";
+    _resetNotificationConfigForTests();
+    await loadNotificationConfig();
+    // Env wins and doesn't depend on the at-rest key, so no re-entry prompt.
+    process.env.TELEGRAM_BOT_TOKEN = "env-token";
+    expect(getNotificationConfigStatus().telegram.credentialUnreadable).toBe(
+      false
+    );
+  });
+});
+
 describe("getNotificationConfigStatus — masked view", () => {
   it("never leaks secrets, only whether they exist", async () => {
     await saveNotificationConfig({

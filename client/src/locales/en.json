@@ -542,6 +542,7 @@
       "saving": "Saving…",
       "secretPlaceholder": "•••••••• (unchanged)",
       "secretSet": "A value is saved. Leave blank to keep it.",
+      "credentialUnreadable": "A saved credential here could not be read because the encryption key changed (e.g. JWT_SECRET was rotated or regenerated). Please re-enter it below to restore this channel.",
       "test": "Test connection",
       "testOk": "Connection OK — {{detail}}",
       "testFailed": "Test failed: {{error}}",
