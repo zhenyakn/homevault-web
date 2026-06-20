@@ -1217,6 +1217,13 @@ export const auditLog = mysqlTable(
     targetType: varchar("targetType", { length: 64 }),
     targetId: varchar("targetId", { length: 64 }),
     metadata: json("metadata").$type<Record<string, unknown>>(),
+    // Correlation id of the request that produced this entry (links the audit
+    // log to the operational logs / traces for the same action).
+    requestId: varchar("requestId", { length: 48 }),
+    // Tamper-evidence hash chain: entryHash = sha256(prevHash + canonical(row)).
+    // prevHash points at the previous entry's hash; a break reveals tampering.
+    prevHash: varchar("prevHash", { length: 64 }),
+    entryHash: varchar("entryHash", { length: 64 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => ({

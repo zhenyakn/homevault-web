@@ -1333,6 +1333,9 @@ async function main() {
       \`targetType\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`targetId\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`metadata\` json DEFAULT NULL,
+      \`requestId\` varchar(48) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`prevHash\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+      \`entryHash\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (\`id\`),
       KEY \`audit_actor_idx\` (\`actorUserId\`),
@@ -1340,6 +1343,20 @@ async function main() {
       KEY \`audit_created_idx\` (\`createdAt\`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     "audit_log"
+  );
+
+  // Tamper-evidence + correlation columns on audit_log (existing installs).
+  await run(
+    `ALTER TABLE \`audit_log\` ADD COLUMN \`requestId\` varchar(48) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "audit_log.requestId"
+  );
+  await run(
+    `ALTER TABLE \`audit_log\` ADD COLUMN \`prevHash\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "audit_log.prevHash"
+  );
+  await run(
+    `ALTER TABLE \`audit_log\` ADD COLUMN \`entryHash\` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL`,
+    "audit_log.entryHash"
   );
 
   // New columns on users.

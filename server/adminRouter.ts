@@ -532,6 +532,12 @@ export const adminRouter = router({
       .query(async ({ input }) => {
         return db.getRecentAudit(input?.limit ?? 100);
       }),
+
+    // Verify the tamper-evident hash chain across the whole audit log. Returns
+    // ok=false plus the offending entry id if any row was modified or deleted.
+    verify: superAdminProcedure.query(async () => {
+      return db.verifyAuditIntegrity();
+    }),
   }),
 
   config: router({
