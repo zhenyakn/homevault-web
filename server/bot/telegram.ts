@@ -48,12 +48,16 @@ async function resolveLang(chatId: string): Promise<string> {
 }
 
 let bot: Bot | null = null;
+// The bot instance currently running a long-polling loop (null when not
+// polling). Tracked so we never call bot.start() twice and can stop it when the
+// token changes or we switch to webhook mode.
+let pollingBot: Bot | null = null;
 
 /**
  * Lazily construct the bot. Returns null when no token is configured. The token
  * is resolved from the runtime notification config (env-first, then the
- * admin-set override loaded at boot), so a token pasted into Settings is honoured
- * after the next restart — the same lifecycle as the webhook registration.
+ * admin-set override). resetBot() clears the cache so a token saved in Settings
+ * takes effect without a restart.
  */
 export function getBot(): Bot | null {
   if (bot) return bot;
@@ -64,12 +68,21 @@ export function getBot(): Bot | null {
   return bot;
 }
 
+/** Stop the long-polling loop if one is running. Best-effort, never throws. */
+function stopPolling(): void {
+  if (!pollingBot) return;
+  const stopping = pollingBot;
+  pollingBot = null;
+  void stopping.stop().catch(() => {});
+}
+
 /**
- * Drop the cached bot, username, and webhook handler so the next getBot() picks
- * up a freshly-configured token. Called after an admin saves the token in
- * Settings, letting a new bot take effect without a server restart.
+ * Drop the cached bot, username, webhook handler, and any polling loop so the
+ * next getBot() picks up a freshly-configured token. Called after an admin saves
+ * the token in Settings, letting a new bot take effect without a server restart.
  */
 export function resetBot(): void {
+  stopPolling();
   bot = null;
   cachedUsername = null;
   webhookHandler = null;
@@ -133,63 +146,104 @@ export function getTelegramWebhookHandler(): RequestHandler | null {
   return webhookHandler;
 }
 
-export type WebhookSyncResult =
-  | { ok: true; url: string }
-  | {
-      ok: false;
-      reason: "no-token" | "no-url" | "not-https" | "error";
-      detail?: string;
-    };
+export type DeliveryMode = "webhook" | "polling";
+
+export type DeliverySyncResult =
+  | { ok: true; mode: "webhook"; url: string }
+  | { ok: true; mode: "polling" }
+  | { ok: false; reason: "no-token" | "error"; detail?: string };
 
 /**
- * Point Telegram at our webhook so it starts delivering updates. Resolves the
- * base URL from the argument, else the configured public base URL. Best-effort:
- * returns a typed reason instead of throwing so callers (boot, the Settings
+ * Choose how the bot receives updates:
+ *  - **webhook** when an explicit public HTTPS base URL is configured (Telegram
+ *    pushes to us — efficient, the right choice for a public deployment);
+ *  - **polling** otherwise (we pull from Telegram — needs no inbound URL, so it
+ *    works out of the box on localhost / LAN / Home Assistant ingress).
+ *
+ * Pure + exported so the decision is unit-testable.
+ */
+export function chooseDeliveryMode(publicBaseUrl: string): DeliveryMode {
+  const base = publicBaseUrl.trim().replace(/\/+$/, "");
+  return /^https:\/\//i.test(base) ? "webhook" : "polling";
+}
+
+/**
+ * Connect the bot so it actually receives commands, picking webhook or polling
+ * automatically (see chooseDeliveryMode). Idempotent: re-running in the same
+ * mode is a no-op; switching modes tears down the old one first. Best-effort —
+ * returns a typed result instead of throwing so callers (boot, the Settings
  * mutation) can log or surface it without failing the surrounding operation.
  */
-export async function syncTelegramWebhook(
-  baseUrl?: string
-): Promise<WebhookSyncResult> {
+export async function syncTelegramDelivery(): Promise<DeliverySyncResult> {
   const b = getBot();
-  if (!b) return { ok: false, reason: "no-token" };
-  const base = (baseUrl || getPublicBaseUrl()).replace(/\/+$/, "");
-  if (!base) return { ok: false, reason: "no-url" };
-  // Telegram only delivers to a public HTTPS endpoint — reject http/localhost
-  // up front with a clear reason instead of surfacing a cryptic API error.
-  if (!/^https:\/\//i.test(base)) return { ok: false, reason: "not-https" };
-  const url = `${base}/api/bot/telegram`;
+  if (!b) {
+    stopPolling();
+    return { ok: false, reason: "no-token" };
+  }
+  const base = getPublicBaseUrl().replace(/\/+$/, "");
   try {
-    await b.api.setWebhook(url, {
-      secret_token: getTelegramWebhookSecret() || undefined,
-    });
-    return { ok: true, url };
+    if (chooseDeliveryMode(base) === "webhook") {
+      // Switching to webhook — make sure no polling loop is competing for
+      // getUpdates (Telegram allows only one).
+      stopPolling();
+      const url = `${base}/api/bot/telegram`;
+      await b.api.setWebhook(url, {
+        secret_token: getTelegramWebhookSecret() || undefined,
+      });
+      return { ok: true, mode: "webhook", url };
+    }
+    // Polling mode: drop any webhook (else getUpdates returns 409), then start
+    // the loop unless this exact bot is already polling.
+    if (pollingBot !== b) {
+      stopPolling();
+      await b.api.deleteWebhook();
+      pollingBot = b;
+      void b
+        .start({
+          onStart: () => logger.info("[telegram] long-polling started"),
+        })
+        .catch(err => {
+          logger.warn({ err }, "[telegram] polling loop ended");
+          if (pollingBot === b) pollingBot = null;
+        });
+    }
+    return { ok: true, mode: "polling" };
   } catch (err) {
-    logger.warn({ err, url }, "[telegram] failed to set webhook");
+    logger.warn({ err }, "[telegram] failed to connect bot");
     return { ok: false, reason: "error", detail: errText(err) };
   }
 }
 
-export type WebhookInfo = {
-  /** The URL Telegram is currently delivering to, or null when unset. */
+export type DeliveryStatus = {
+  /** "none" when no bot / unreachable. */
+  mode: DeliveryMode | "none";
+  /** The webhook URL Telegram delivers to (webhook mode only). */
   url: string | null;
   pendingUpdateCount: number;
   lastErrorMessage: string | null;
 };
 
-/** Live webhook registration state from Telegram (null when no bot / on error). */
-export async function getTelegramWebhookInfo(): Promise<WebhookInfo | null> {
+/**
+ * Live delivery state for the Settings UI: whether the bot is connected and how.
+ * A running polling loop is authoritative; otherwise we ask Telegram for the
+ * webhook registration via getWebhookInfo.
+ */
+export async function getTelegramDeliveryStatus(): Promise<DeliveryStatus> {
   const b = getBot();
-  if (!b) return null;
+  if (!b) return { mode: "none", url: null, pendingUpdateCount: 0, lastErrorMessage: null };
+  if (pollingBot === b)
+    return { mode: "polling", url: null, pendingUpdateCount: 0, lastErrorMessage: null };
   try {
     const info = await b.api.getWebhookInfo();
     return {
+      mode: info.url ? "webhook" : "none",
       url: info.url || null,
       pendingUpdateCount: info.pending_update_count ?? 0,
       lastErrorMessage: info.last_error_message || null,
     };
   } catch (err) {
-    logger.warn({ err }, "[telegram] failed to read webhook info");
-    return null;
+    logger.warn({ err }, "[telegram] failed to read delivery status");
+    return { mode: "none", url: null, pendingUpdateCount: 0, lastErrorMessage: null };
   }
 }
 

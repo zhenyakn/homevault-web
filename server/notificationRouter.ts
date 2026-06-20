@@ -19,9 +19,7 @@ import {
 import {
   getIntegrationsConfigStatus,
   saveIntegrationsConfig,
-  getPublicBaseUrl,
 } from "./_core/integrationsConfig";
-import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import {
   TESTABLE_SECTIONS,
   getIntegrationTestResults,
@@ -35,24 +33,9 @@ import { logAudit } from "./db/audit";
 import {
   getBotUsername,
   resetBot,
-  syncTelegramWebhook,
-  getTelegramWebhookInfo,
+  syncTelegramDelivery,
+  getTelegramDeliveryStatus,
 } from "./bot/telegram";
-
-/**
- * Best-effort absolute origin for building the Telegram webhook URL: the
- * configured public base URL, else derived from the inbound request (honours the
- * proxy's X-Forwarded-Proto/Host via `trust proxy`). Lets the bot self-register
- * without the admin having to fill in a public URL on typical setups.
- */
-function resolveWebhookBaseUrl(
-  req: CreateExpressContextOptions["req"]
-): string {
-  const configured = getPublicBaseUrl();
-  if (configured) return configured;
-  const host = req.get("host");
-  return host ? `${req.protocol}://${host}` : "";
-}
 
 const integrationSectionEnum = z.enum(
   TESTABLE_SECTIONS as unknown as [TestableSection, ...TestableSection[]]
@@ -283,36 +266,40 @@ export const notificationRouter = router({
         targetId: sections.join(",") || null,
         metadata: { sections },
       });
-      // When the Telegram token or webhook settings change, re-register the
-      // webhook live so the bot works without a restart. Reset the cached bot
-      // first so a new token takes effect. Best-effort — never fails the save.
-      let telegram: Awaited<ReturnType<typeof syncTelegramWebhook>> | undefined;
+      // When the Telegram token or webhook settings change, reconnect the bot
+      // live (webhook or polling) so it works without a restart. Reset the
+      // cached bot first so a new token takes effect. Best-effort — never fails
+      // the save.
+      let telegram: Awaited<ReturnType<typeof syncTelegramDelivery>> | undefined;
       if (input.telegram || input.general) {
         resetBot();
-        telegram = await syncTelegramWebhook(resolveWebhookBaseUrl(ctx.req));
+        telegram = await syncTelegramDelivery();
       }
       return { ok: true, telegram } as const;
     }),
 
-  /** Live Telegram webhook registration state, for the admin Settings UI. */
-  getTelegramWebhookStatus: adminProcedure.query(() =>
-    getTelegramWebhookInfo()
+  /** Live Telegram delivery state (webhook / polling / none) for the Settings UI. */
+  getTelegramDeliveryStatus: adminProcedure.query(() =>
+    getTelegramDeliveryStatus()
   ),
 
   /**
-   * Manually (re)register the Telegram webhook — for when a token came from env
-   * or the public URL changed after boot. Resets the cached bot so the current
-   * token is used, then points Telegram at this server.
+   * Manually reconnect the bot — for when a token came from env or the public
+   * URL changed after boot. Resets the cached bot so the current token is used,
+   * then connects via webhook or polling depending on whether a public HTTPS URL
+   * is configured.
    */
-  registerTelegramWebhook: adminProcedure.mutation(async ({ ctx }) => {
+  reconnectTelegram: adminProcedure.mutation(async ({ ctx }) => {
     resetBot();
-    const result = await syncTelegramWebhook(resolveWebhookBaseUrl(ctx.req));
+    const result = await syncTelegramDelivery();
     await logAudit({
       actorUserId: ctx.user.id,
       action: "admin.integration.config_changed",
       targetType: "integration",
-      targetId: "telegram.webhook",
-      metadata: { result: result.ok ? "ok" : result.reason },
+      targetId: "telegram.delivery",
+      metadata: {
+        result: result.ok ? result.mode : result.reason,
+      },
     });
     return result;
   }),

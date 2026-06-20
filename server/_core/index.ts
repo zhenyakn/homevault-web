@@ -22,7 +22,7 @@ import { ENV } from "./env";
 import { logger } from "./logger";
 import {
   getTelegramWebhookHandler,
-  syncTelegramWebhook,
+  syncTelegramDelivery,
 } from "../bot/telegram";
 import { startReminderScheduler } from "../notifications/scheduler";
 import { loadNotificationConfig } from "../notifications/config";
@@ -417,17 +417,19 @@ async function startServer() {
     logger.info({ host, port }, "Server running");
     // Start the daily reminder sweep (no-op under NODE_ENV=test).
     startReminderScheduler();
-    // Best-effort: point Telegram at our webhook if a token + public URL are
-    // already configured. Admins can also set both from Settings, which
-    // re-registers live without a restart.
-    void syncTelegramWebhook().then(r => {
-      if (r.ok) logger.info({ url: r.url }, "[telegram] webhook set");
+    // Best-effort: connect the bot so it receives commands. Uses a webhook when
+    // a public HTTPS URL is configured, else long-polling (works with no inbound
+    // URL). Admins can (re)connect from Settings without a restart.
+    void syncTelegramDelivery().then(r => {
+      if (r.ok && r.mode === "webhook")
+        logger.info({ url: r.url }, "[telegram] connected via webhook");
+      else if (r.ok)
+        logger.info("[telegram] connected via long-polling");
       else if (r.reason === "error")
-        logger.warn({ detail: r.detail }, "[telegram] failed to set webhook");
+        logger.warn({ detail: r.detail }, "[telegram] failed to connect bot");
       else
         logger.info(
-          { reason: r.reason },
-          "[telegram] webhook not set — configure a bot token and public URL in Settings"
+          "[telegram] no bot token configured — add one in Settings to enable the bot"
         );
     });
   });
