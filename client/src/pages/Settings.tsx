@@ -56,6 +56,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -1320,6 +1327,7 @@ function IntegrationCard({
   badge,
   action,
   footer,
+  plain = false,
 }: {
   icon: ReactNode;
   name: string;
@@ -1327,14 +1335,24 @@ function IntegrationCard({
   badge?: ReactNode;
   action?: ReactNode;
   footer?: ReactNode;
+  /** Drop the bordered box + leading icon so the card can be embedded inside a
+   *  dialog or another section that already supplies the chrome (used by the
+   *  per-channel config dialogs that merge personal + admin setup). */
+  plain?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border p-4 space-y-3">
+    <div
+      className={
+        plain ? "space-y-3" : "rounded-lg border border-border p-4 space-y-3"
+      }
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
-            {icon}
-          </div>
+          {!plain && (
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+              {icon}
+            </div>
+          )}
           <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium">{name}</p>
@@ -1395,7 +1413,7 @@ function ChannelStatusBadge({ configured }: { configured: boolean }) {
  * the user sends "/link <code>" to the bot which binds their chat. Shows the
  * connected state from notification.getStatus, plus the bot preview.
  */
-function TelegramConnectCard() {
+function TelegramConnectCard({ plain = false }: { plain?: boolean } = {}) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const [, setLocation] = useLocation();
@@ -1437,6 +1455,7 @@ function TelegramConnectCard() {
 
   return (
     <IntegrationCard
+      plain={plain}
       icon={<Send className="h-4 w-4" />}
       name={t("settings.ch.botTitle")}
       description={t("settings.ch.telegramHint")}
@@ -1565,15 +1584,283 @@ function DestinationInput({
   );
 }
 
+/** Notification channels this directory knows how to configure. */
+type NotifChannel = "telegram" | "email" | "whatsapp" | "webpush" | "push";
+
+/** Shared "loading…" placeholder for the channel grid / admin forms. */
+function LoadingRow() {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-6 text-xs text-muted-foreground">
+      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      {t("settings.ch.loading")}
+    </div>
+  );
+}
+
+/** A single clickable tile in the integrations directory: icon, name and a
+ *  status pill stacked beneath it. Clicking opens its config dialog; tiles with
+ *  no onClick (e.g. "coming soon") render as a non-interactive card. The name
+ *  gets the full width (status sits on its own line) so labels never truncate
+ *  awkwardly in the two-column grid. */
+function IntegrationTile({
+  icon,
+  name,
+  badge,
+  onClick,
+  disabled,
+}: {
+  icon: ReactNode;
+  name: string;
+  badge?: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  const clickable = Boolean(onClick) && !disabled;
+  return (
+    <button
+      type="button"
+      onClick={clickable ? onClick : undefined}
+      disabled={disabled}
+      aria-disabled={disabled}
+      className={cn(
+        "flex items-center gap-3 rounded-lg border border-border bg-card p-3 text-start transition-colors",
+        clickable
+          ? "hover:border-foreground/25 hover:bg-muted/40"
+          : "cursor-default",
+        disabled && "opacity-60"
+      )}
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1 space-y-1">
+        <p className="truncate text-sm font-medium leading-none">{name}</p>
+        {badge}
+      </div>
+      {clickable && (
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60 rtl:rotate-180" />
+      )}
+    </button>
+  );
+}
+
 /**
- * Notification channels under Integrations — the "plumbing": connect the
- * Telegram bot, set email / WhatsApp destinations, enable browser push. Whether
- * each channel actually delivers is toggled under Notifications.
+ * Notifications category of the Integrations directory. Renders every delivery
+ * channel as a scannable tile; clicking one opens a dialog that merges the
+ * user's own setup (destination / connection) with the admin server-side
+ * credentials for that same channel — so a channel lives in exactly one place
+ * instead of being split across two look-alike sections.
  */
-function NotificationChannelsIntegration() {
+function NotificationsCategory({ isAdmin }: { isAdmin: boolean }) {
+  const { t } = useTranslation();
+  const { data: status, isLoading } = trpc.notification.getStatus.useQuery();
+  const server = useChannelServerConfig(isAdmin);
+  const [open, setOpen] = useState<NotifChannel | null>(null);
+
+  const webPushGranted =
+    typeof Notification !== "undefined" &&
+    Notification.permission === "granted";
+
+  const tiles: {
+    key: NotifChannel;
+    icon: ReactNode;
+    name: string;
+    badge: ReactNode;
+  }[] = [
+    {
+      key: "telegram",
+      icon: <Send className="h-4 w-4" />,
+      name: t("settings.ch.telegram"),
+      badge: (
+        <ChannelStatusBadge configured={Boolean(status?.telegramLinked)} />
+      ),
+    },
+    {
+      key: "email",
+      icon: <Mail className="h-4 w-4" />,
+      name: t("settings.ch.email"),
+      badge: <ChannelStatusBadge configured={Boolean(status?.email)} />,
+    },
+    {
+      key: "whatsapp",
+      icon: <MessageCircle className="h-4 w-4" />,
+      name: t("settings.ch.whatsapp"),
+      badge: <ChannelStatusBadge configured={Boolean(status?.whatsappPhone)} />,
+    },
+    {
+      key: "webpush",
+      icon: <Globe className="h-4 w-4" />,
+      name: t("settings.ch.webpush"),
+      badge: <ChannelStatusBadge configured={webPushGranted} />,
+    },
+    {
+      key: "push",
+      icon: <Smartphone className="h-4 w-4" />,
+      name: t("settings.ch.push"),
+      badge: <StatusBadge tone="on" label={t("settings.ch.builtIn")} />,
+    },
+  ];
+
+  return (
+    <section className="space-y-3">
+      <CategoryHeader
+        icon={<Bell className="h-4 w-4" />}
+        title={t("settings.ch.integrationsTitle")}
+        description={t("settings.cat.channelsDesc")}
+      />
+      {isLoading ? (
+        <LoadingRow />
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {tiles.map(tile => (
+            <IntegrationTile
+              key={tile.key}
+              icon={tile.icon}
+              name={tile.name}
+              badge={tile.badge}
+              onClick={() => setOpen(tile.key)}
+            />
+          ))}
+        </div>
+      )}
+      <ChannelConfigDialog
+        channel={open}
+        onOpenChange={o => !o && setOpen(null)}
+        isAdmin={isAdmin}
+        server={server}
+      />
+    </section>
+  );
+}
+
+/** Icon + title shown in a channel's config dialog header. */
+function channelMeta(
+  channel: NotifChannel,
+  t: (k: string) => string
+): { icon: ReactNode; title: string } {
+  switch (channel) {
+    case "telegram":
+      return {
+        icon: <Send className="h-4 w-4" />,
+        title: t("settings.ch.telegram"),
+      };
+    case "email":
+      return {
+        icon: <Mail className="h-4 w-4" />,
+        title: t("settings.ch.email"),
+      };
+    case "whatsapp":
+      return {
+        icon: <MessageCircle className="h-4 w-4" />,
+        title: t("settings.ch.whatsapp"),
+      };
+    case "webpush":
+      return {
+        icon: <Globe className="h-4 w-4" />,
+        title: t("settings.ch.webpush"),
+      };
+    case "push":
+      return {
+        icon: <Smartphone className="h-4 w-4" />,
+        title: t("settings.ch.push"),
+      };
+  }
+}
+
+/**
+ * Per-channel config dialog. Top half is the user's own setup; below it (admins
+ * only) the server-side credentials for the same channel, so everything about a
+ * channel is reachable from its single tile.
+ */
+function ChannelConfigDialog({
+  channel,
+  onOpenChange,
+  isAdmin,
+  server,
+}: {
+  channel: NotifChannel | null;
+  onOpenChange: (open: boolean) => void;
+  isAdmin: boolean;
+  server: ReturnType<typeof useChannelServerConfig>;
+}) {
+  const { t } = useTranslation();
+  if (!channel) return null;
+  const meta = channelMeta(channel, t);
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+              {meta.icon}
+            </span>
+            {meta.title}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5">
+          <ChannelPersonal channel={channel} />
+          {isAdmin && (
+            <div className="space-y-3 border-t border-border pt-4">
+              <div className="space-y-0.5">
+                <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {t("settings.ig.serverSetup")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t("settings.ig.serverSetupHint")}
+                </p>
+              </div>
+              <ChannelAdmin channel={channel} server={server} />
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The user's own setup for a channel (destination / connection / enable). */
+function ChannelPersonal({ channel }: { channel: NotifChannel }) {
+  const { t } = useTranslation();
+  const { data: status } = trpc.notification.getStatus.useQuery();
+
+  if (channel === "telegram") return <TelegramConnectCard plain />;
+  if (channel === "webpush") return <WebPushPersonal />;
+  if (channel === "push")
+    return (
+      <p className="text-sm leading-snug text-muted-foreground">
+        {t("settings.ig.builtInNote")}
+      </p>
+    );
+
+  const isEmail = channel === "email";
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {t("settings.ig.yourSetup")}
+      </p>
+      <DestinationInput
+        field={isEmail ? "email" : "whatsappPhone"}
+        value={(isEmail ? status?.email : status?.whatsappPhone) ?? ""}
+        placeholder={
+          isEmail ? t("settings.ch.emailDest") : t("settings.ch.whatsappDest")
+        }
+      />
+      <p className="text-xs leading-snug text-muted-foreground">
+        {isEmail
+          ? t("settings.ch.emailCardDesc")
+          : t("settings.ch.whatsappCardDesc")}
+      </p>
+    </div>
+  );
+}
+
+/** The "enable browser push on this device" control (per-user web push). */
+function WebPushPersonal() {
   const { t } = useTranslation();
   const u = trpc.useUtils();
-  const { data: status, isLoading } = trpc.notification.getStatus.useQuery();
+  const { data: status } = trpc.notification.getStatus.useQuery();
   const { data: vapid } = trpc.notification.getVapidPublicKey.useQuery();
 
   const subscribe = trpc.notification.subscribeWebPush.useMutation({
@@ -1607,102 +1894,109 @@ function NotificationChannelsIntegration() {
   const webPushGranted =
     typeof Notification !== "undefined" &&
     Notification.permission === "granted";
-
-  // Web Push needs a supported browser in a secure (HTTPS/localhost) context
-  // AND server-side VAPID keys. Surface whichever is missing instead of a
-  // silently-greyed button.
+  // Web Push needs a supported browser in a secure (HTTPS/localhost) context AND
+  // server-side VAPID keys. Surface whichever is missing.
   const browserSupportsWebPush = webPushSupported();
   const serverWebPushReady = Boolean(status?.webPushAvailable);
-  const webPushReason = !browserSupportsWebPush
+  const reason = !browserSupportsWebPush
     ? t("settings.ch.webpushNeedsSecure")
     : !serverWebPushReady
       ? t("settings.ch.webpushNeedsKeys")
       : t("settings.ch.webpushCardDesc");
 
   return (
-    <CollapsibleCategory
-      icon={<Bell className="h-4 w-4" />}
-      title={t("settings.ch.integrationsTitle")}
-      description={t("settings.cat.channelsDesc")}
-      // Open by default: the Telegram bot's "not linked" reply sends users here
-      // to "create a Telegram link code", and the Generate button lives inside
-      // this section. Collapsed-by-default left users staring at a header with
-      // no visible way to get a code.
-      defaultOpen
-    >
-      {isLoading ? (
-        <div className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-6 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          {t("settings.ch.loading")}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <TelegramConnectCard />
-
-          <IntegrationCard
-            icon={<Mail className="h-4 w-4" />}
-            name={t("settings.ch.email")}
-            description={t("settings.ch.emailCardDesc")}
-            badge={<ChannelStatusBadge configured={Boolean(status?.email)} />}
-            footer={
-              <DestinationInput
-                field="email"
-                value={status?.email ?? ""}
-                placeholder={t("settings.ch.emailDest")}
-              />
-            }
-          />
-
-          <IntegrationCard
-            icon={<MessageCircle className="h-4 w-4" />}
-            name={t("settings.ch.whatsapp")}
-            description={t("settings.ch.whatsappCardDesc")}
-            badge={
-              <ChannelStatusBadge configured={Boolean(status?.whatsappPhone)} />
-            }
-            footer={
-              <DestinationInput
-                field="whatsappPhone"
-                value={status?.whatsappPhone ?? ""}
-                placeholder={t("settings.ch.whatsappDest")}
-              />
-            }
-          />
-
-          <IntegrationCard
-            icon={<Globe className="h-4 w-4" />}
-            name={t("settings.ch.webpush")}
-            description={webPushReason}
-            badge={<ChannelStatusBadge configured={webPushGranted} />}
-            action={
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs"
-                disabled={
-                  subscribe.isPending ||
-                  !browserSupportsWebPush ||
-                  !serverWebPushReady
-                }
-                onClick={enableWebPush}
-              >
-                {webPushGranted
-                  ? t("settings.ch.reEnable")
-                  : t("settings.ch.enableWebpush")}
-              </Button>
-            }
-          />
-
-          <IntegrationCard
-            icon={<Smartphone className="h-4 w-4" />}
-            name={t("settings.ch.push")}
-            description={t("settings.ch.pushCardDesc")}
-            badge={<StatusBadge tone="on" label={t("settings.ch.builtIn")} />}
-          />
-        </div>
-      )}
-    </CollapsibleCategory>
+    <div className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {t("settings.ig.yourSetup")}
+      </p>
+      <p className="text-sm leading-snug text-muted-foreground">{reason}</p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 text-xs"
+        disabled={
+          subscribe.isPending || !browserSupportsWebPush || !serverWebPushReady
+        }
+        onClick={enableWebPush}
+      >
+        {webPushGranted
+          ? t("settings.ch.reEnable")
+          : t("settings.ch.enableWebpush")}
+      </Button>
+    </div>
   );
+}
+
+/** Admin server-side credentials for a channel, rendered inside its dialog. */
+function ChannelAdmin({
+  channel,
+  server,
+}: {
+  channel: NotifChannel;
+  server: ReturnType<typeof useChannelServerConfig>;
+}) {
+  const { cfg, isLoading, save, genVapid, testProps, defaultTestEmail } =
+    server;
+  if (isLoading || !cfg) return <LoadingRow />;
+  const pending = save.isPending;
+
+  switch (channel) {
+    case "email":
+      return (
+        <EmailDeliveryForm
+          status={cfg.email}
+          pending={pending}
+          onSave={v => save.mutate({ email: v })}
+          defaultTestEmail={defaultTestEmail}
+          {...testProps("email", cfg.lastTests?.email ?? null)}
+        />
+      );
+    case "telegram":
+      return (
+        <div className="space-y-2">
+          <TelegramDeliveryForm
+            status={cfg.telegram}
+            pending={pending}
+            onSave={v => save.mutate({ telegram: v })}
+            {...testProps("telegram", cfg.lastTests?.telegram ?? null)}
+          />
+          <GeneralDeliveryForm
+            status={cfg.general}
+            pending={pending}
+            onSave={v => save.mutate({ general: v })}
+          />
+        </div>
+      );
+    case "whatsapp":
+      return (
+        <WhatsAppDeliveryForm
+          status={cfg.whatsapp}
+          pending={pending}
+          onSave={v => save.mutate({ whatsapp: v })}
+          {...testProps("whatsapp", cfg.lastTests?.whatsapp ?? null)}
+        />
+      );
+    case "webpush":
+      return (
+        <WebPushDeliveryForm
+          status={cfg.webpush}
+          pending={pending}
+          onSave={v => save.mutate({ webpush: v })}
+          onGenerate={() => genVapid.mutate()}
+          generating={genVapid.isPending}
+          {...testProps("webpush", cfg.lastTests?.webpush ?? null)}
+        />
+      );
+    case "push":
+      return (
+        <PushDeliveryForm
+          status={cfg.push}
+          pending={pending}
+          onSave={v => save.mutate({ push: v })}
+          {...testProps("push", cfg.lastTests?.push ?? null)}
+        />
+      );
+  }
 }
 
 /**
@@ -2027,12 +2321,14 @@ function TestConnectionRow({
 }
 
 /**
- * Admin-only server-side notification credential setup. Mirrors the storage
- * (S3) admin pattern: each channel's credentials resolve env-first, then the
- * values saved here (stored encrypted in app_settings). When a channel is
- * supplied by the environment its form is read-only.
+ * Admin-only server-side notification credentials, exposed as a hook so each
+ * channel's config can be merged into that channel's own dialog (instead of
+ * living in a separate look-alike "Delivery setup" section). Mirrors the storage
+ * (S3) admin pattern: credentials resolve env-first, then the values saved here
+ * (stored encrypted in app_settings); env-supplied channels render read-only.
+ * Queries are gated on `isAdmin`, so calling this for a non-admin is inert.
  */
-function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
+function useChannelServerConfig(isAdmin: boolean) {
   const { t } = useTranslation();
   const u = trpc.useUtils();
   const { data: cfg, isLoading } = trpc.notification.getChannelConfig.useQuery(
@@ -2096,63 +2392,14 @@ function NotificationServerSetup({ isAdmin }: { isAdmin: boolean }) {
       testIntegration.mutate({ section: section as never, ...opts }),
   });
 
-  if (!isAdmin) return null;
-
-  return (
-    <CollapsibleCategory
-      icon={<Bell className="h-4 w-4" />}
-      title={t("settings.delivery.title")}
-      description={t("settings.delivery.desc")}
-    >
-      {isLoading || !cfg ? (
-        <div className="flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-6 text-xs text-muted-foreground">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          {t("settings.ch.loading")}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <EmailDeliveryForm
-            status={cfg.email}
-            pending={save.isPending}
-            onSave={v => save.mutate({ email: v })}
-            defaultTestEmail={myStatus?.email ?? ""}
-            {...testProps("email", cfg.lastTests?.email ?? null)}
-          />
-          <TelegramDeliveryForm
-            status={cfg.telegram}
-            pending={save.isPending}
-            onSave={v => save.mutate({ telegram: v })}
-            {...testProps("telegram", cfg.lastTests?.telegram ?? null)}
-          />
-          <WebPushDeliveryForm
-            status={cfg.webpush}
-            pending={save.isPending}
-            onSave={v => save.mutate({ webpush: v })}
-            onGenerate={() => genVapid.mutate()}
-            generating={genVapid.isPending}
-            {...testProps("webpush", cfg.lastTests?.webpush ?? null)}
-          />
-          <WhatsAppDeliveryForm
-            status={cfg.whatsapp}
-            pending={save.isPending}
-            onSave={v => save.mutate({ whatsapp: v })}
-            {...testProps("whatsapp", cfg.lastTests?.whatsapp ?? null)}
-          />
-          <PushDeliveryForm
-            status={cfg.push}
-            pending={save.isPending}
-            onSave={v => save.mutate({ push: v })}
-            {...testProps("push", cfg.lastTests?.push ?? null)}
-          />
-          <GeneralDeliveryForm
-            status={cfg.general}
-            pending={save.isPending}
-            onSave={v => save.mutate({ general: v })}
-          />
-        </div>
-      )}
-    </CollapsibleCategory>
-  );
+  return {
+    cfg,
+    isLoading,
+    save,
+    genVapid,
+    testProps,
+    defaultTestEmail: myStatus?.email ?? "",
+  };
 }
 
 /** Shared props every delivery form takes to render its Test connection row. */
@@ -2929,6 +3176,83 @@ function WhatsAppDeliveryForm({
   );
 }
 
+/**
+ * Services category: third-party providers (Maps now, more later). Each is a
+ * tile that opens its own config dialog; roadmap items render as disabled tiles.
+ */
+function ServicesCategory({
+  isAdmin,
+  mapsProvider,
+  onProvider,
+}: {
+  isAdmin: boolean;
+  mapsProvider: string;
+  onProvider: (v: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [openMaps, setOpenMaps] = useState(false);
+  const mapsLabel = mapsProvider === "google" ? "Google Maps" : "OpenStreetMap";
+
+  return (
+    <section className="space-y-3">
+      <CategoryHeader
+        icon={<Blocks className="h-4 w-4" />}
+        title={t("settings.cat.services")}
+        description={t("settings.cat.servicesDesc")}
+      />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <IntegrationTile
+          icon={<MapIcon className="h-4 w-4" />}
+          name={t("settings.maps")}
+          badge={<StatusBadge tone="active" label={mapsLabel} />}
+          onClick={() => setOpenMaps(true)}
+        />
+        <IntegrationTile
+          icon={<CalendarIcon className="h-4 w-4" />}
+          name={t("settings.calendar")}
+          badge={<StatusBadge tone="muted" label={t("settings.comingSoon")} />}
+          disabled
+        />
+      </div>
+
+      <Dialog open={openMaps} onOpenChange={setOpenMaps}>
+        <DialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md border bg-muted/40 text-muted-foreground">
+                <MapIcon className="h-4 w-4" />
+              </span>
+              {t("settings.maps")}
+            </DialogTitle>
+            <DialogDescription>{t("settings.mapsHint")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {t("settings.ig.yourSetup")}
+              </p>
+              <ToggleGroup
+                type="single"
+                value={mapsProvider}
+                className="justify-start"
+                onValueChange={v => v && onProvider(v)}
+              >
+                <ToggleGroupItem value="google" className="h-8 px-4 text-xs">
+                  Google
+                </ToggleGroupItem>
+                <ToggleGroupItem value="osm" className="h-8 px-4 text-xs">
+                  OpenStreetMap
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            {mapsProvider === "google" && <MapsKeyConfig isAdmin={isAdmin} />}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}
+
 function IntegrationsSection({ p }: { p: any }) {
   const { t } = useTranslation();
   const { save, isPending } = usePropertyAutosave();
@@ -2949,63 +3273,19 @@ function IntegrationsSection({ p }: { p: any }) {
         pending={isPending}
       />
 
-      {/* Notification channels — relevant to every user, so it leads. */}
-      <NotificationChannelsIntegration />
+      {/* Notifications — every delivery channel as a tile; one dialog per channel
+          merges the user's own setup with admin server credentials. */}
+      <NotificationsCategory isAdmin={isAdmin} />
 
-      {/* Server-side delivery credentials (admin only; self-gates). */}
-      <NotificationServerSetup isAdmin={isAdmin} />
-
-      {/* Connected services — live integrations first, roadmap clearly apart. */}
-      <CollapsibleCategory
-        icon={<Blocks className="h-4 w-4" />}
-        title={t("settings.cat.services")}
-        description={t("settings.cat.servicesDesc")}
-      >
-        <div className="space-y-2">
-          <IntegrationCard
-            icon={<MapIcon className="h-4 w-4" />}
-            name={t("settings.maps")}
-            description={t("settings.mapsHint")}
-            action={
-              <ToggleGroup
-                type="single"
-                value={mapsProvider}
-                className="h-8"
-                onValueChange={v => v && save({ mapsProvider: v as any })}
-              >
-                <ToggleGroupItem value="google" className="text-xs h-8 px-4">
-                  Google
-                </ToggleGroupItem>
-                <ToggleGroupItem value="osm" className="text-xs h-8 px-4">
-                  OpenStreetMap
-                </ToggleGroupItem>
-              </ToggleGroup>
-            }
-            footer={
-              mapsProvider === "google" ? (
-                <MapsKeyConfig isAdmin={isAdmin} />
-              ) : undefined
-            }
-          />
-
-          <p className="px-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            {t("settings.cat.comingSoon")}
-          </p>
-          <div className="opacity-60">
-            <IntegrationCard
-              icon={<CalendarIcon className="h-4 w-4" />}
-              name={t("settings.calendar")}
-              description={t("settings.syncEventsHint")}
-              badge={
-                <StatusBadge tone="muted" label={t("settings.comingSoon")} />
-              }
-            />
-          </div>
-        </div>
-      </CollapsibleCategory>
+      {/* Third-party services (Maps, …). */}
+      <ServicesCategory
+        isAdmin={isAdmin}
+        mapsProvider={mapsProvider}
+        onProvider={v => save({ mapsProvider: v as any })}
+      />
 
       {/* Storage & files — admin config self-gates; the file browser shows for
-          everyone, so this category always has content and never an empty top. */}
+          everyone. Kept foldable since its forms are long. */}
       <CollapsibleCategory
         icon={<HardDrive className="h-4 w-4" />}
         title={t("settings.cat.storage")}

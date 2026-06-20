@@ -24,10 +24,11 @@ export class SettingsPage extends BasePage {
     await this.app.settle();
   }
 
-  /** Expand a collapsible category by its header (e.g. "Connected services",
-   *  "Notification channels"). These categories collapse by default, so their
-   *  inner controls aren't in the DOM until the header is toggled open. No-op if
-   *  already expanded. */
+  /** Expand a collapsible category by its header (e.g. "Storage & files"). Such
+   *  categories collapse by default, so their inner controls aren't in the DOM
+   *  until the header is toggled open. No-op if already expanded. (Notifications
+   *  and Connected services are now always-open tile grids — open a tile's
+   *  dialog directly instead.) */
   async expandCategory(label: string | RegExp): Promise<void> {
     const header = this.page
       .locator("#main-content")

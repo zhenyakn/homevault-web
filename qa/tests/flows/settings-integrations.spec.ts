@@ -3,9 +3,9 @@ import { test, expect } from "../../fixtures";
 /**
  * Settings → Integrations — local-only integration controls (no external
  * services touched):
- *  - the collapsible category headers fold/unfold their content,
- *  - the Maps provider segmented control switches Google ↔ OpenStreetMap and
- *    persists (restored to the original in a finally).
+ *  - the Storage & files category header folds/unfolds its content,
+ *  - the Maps provider segmented control (inside the Maps dialog) switches
+ *    Google ↔ OpenStreetMap and persists (restored to the original in a finally).
  */
 test.describe("Settings — integrations chrome", () => {
   test("a category header collapses and expands its content", async ({
@@ -15,9 +15,9 @@ test.describe("Settings — integrations chrome", () => {
     await settings.open();
     await settings.openSection("Integrations");
 
-    const header = app.page.getByRole("button", {
-      name: /Connected services/i,
-    });
+    const header = app.page
+      .locator("#main-content")
+      .getByRole("button", { name: /Storage & files/i });
     await expect(header).toBeVisible();
 
     const before = await header.getAttribute("aria-expanded");
@@ -36,11 +36,17 @@ test.describe("Settings — integrations chrome", () => {
   }) => {
     await settings.open();
     await settings.openSection("Integrations");
-    // The Maps control sits inside the (collapsed-by-default) services group.
-    await settings.expandCategory(/Connected services/i);
+    // The Maps control now lives in a dialog opened from its services tile.
+    await app.page
+      .locator("#main-content")
+      .getByRole("button", { name: /^Maps/ })
+      .first()
+      .click();
+    const dialog = app.page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
 
     // The only toggle-group containing "OpenStreetMap" is the Maps control.
-    const maps = app.page
+    const maps = dialog
       .locator('[data-slot="toggle-group"]')
       .filter({ hasText: "OpenStreetMap" });
     await expect(maps).toBeVisible();
