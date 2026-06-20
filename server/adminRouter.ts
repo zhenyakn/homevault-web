@@ -9,6 +9,7 @@ import { hashPassword } from "./auth/password";
 import { EMAIL_TAKEN_ERR_MSG } from "../shared/const";
 import { CAPABILITIES, sanitizeCapabilities } from "./billing/capabilities";
 import { purgeTenantFileObjects } from "./files";
+import { observabilityRouter } from "./observabilityRouter";
 
 const planInputSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -30,6 +31,9 @@ const planInputSchema = z.object({
  * transition). Distinct from per-tenant admin (tenantAdminProcedure).
  */
 export const adminRouter = router({
+  // Logs / traces / metrics console (super-admin).
+  observability: observabilityRouter,
+
   stats: superAdminProcedure.query(async () => {
     const stats = await db.getServerStats();
     return { ...stats, appMode: await db.getAppMode() };
@@ -532,6 +536,12 @@ export const adminRouter = router({
       .query(async ({ input }) => {
         return db.getRecentAudit(input?.limit ?? 100);
       }),
+
+    // Verify the tamper-evident hash chain across the whole audit log. Returns
+    // ok=false plus the offending entry id if any row was modified or deleted.
+    verify: superAdminProcedure.query(async () => {
+      return db.verifyAuditIntegrity();
+    }),
   }),
 
   config: router({

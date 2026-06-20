@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { obsConfig } from "./observability/config";
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
@@ -69,7 +70,42 @@ const envSchema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: z.string().default(""),
   WHATSAPP_ACCESS_TOKEN: z.string().default(""),
   WHATSAPP_API_VERSION: z.string().default("v21.0"),
+  // ── Observability (logging / tracing / metrics) ──────────────────────────
+  // Service identity stamped onto every log line and span (OTel resource attrs).
+  SERVICE_NAME: z.string().default("homevault"),
+  SERVICE_VERSION: z.string().default("1.0.0"),
+  // Minimum level emitted. Empty → derived from NODE_ENV (debug in dev, info in
+  // prod, silent under test). One of: trace|debug|info|warn|error|fatal|silent.
+  LOG_LEVEL: z.string().default(""),
+  // Console format. Empty → pretty in dev, json in prod.
+  LOG_FORMAT: z.enum(["json", "pretty", ""]).default(""),
+  // Rotating local log files. Disabled automatically under NODE_ENV=test.
+  LOG_FILE_ENABLED: z.string().default("true"),
+  LOG_DIR: z.string().default("logs"),
+  LOG_MAX_FILE_SIZE: z.string().default("10MB"),
+  LOG_MAX_FILES: z.string().default("10"),
+  LOG_RETENTION_DAYS: z.string().default("30"),
+  LOG_COMPRESS: z.string().default("true"),
+  // In-memory ring buffer size that backs the in-app log viewer.
+  LOG_BUFFER_SIZE: z.string().default("2000"),
+  // Access-log sampling: fraction (0..1) of successful, low-value HTTP/RPC
+  // access logs to keep. 1 = keep everything. Errors are never sampled out.
+  LOG_SAMPLE_RATE: z.string().default("1"),
+  // Distributed tracing (in-process spans, OTel-shaped).
+  TRACE_ENABLED: z.string().default("true"),
+  TRACE_BUFFER_SIZE: z.string().default("500"),
+  // RED metrics + optional Prometheus endpoint (off by default; expose
+  // deliberately behind your own auth/network policy).
+  METRICS_ENABLED: z.string().default("true"),
+  METRICS_ENDPOINT_ENABLED: z.string().default("false"),
+  // Optional bearer token guarding /metrics (recommended when the endpoint is
+  // reachable beyond a trusted scrape network). Empty = no token required.
+  METRICS_TOKEN: z.string().default(""),
+  // Reserved seam for remote export (OTLP/Loki/Datadog/…). Empty = disabled;
+  // wiring an exporter to this endpoint is the "pluggable later" step.
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(""),
 });
+
 
 const parsed = envSchema.safeParse(process.env);
 
@@ -191,4 +227,8 @@ export const ENV = {
   whatsappPhoneNumberId: raw.WHATSAPP_PHONE_NUMBER_ID,
   whatsappAccessToken: raw.WHATSAPP_ACCESS_TOKEN,
   whatsappApiVersion: raw.WHATSAPP_API_VERSION,
+  // Parsed, typed observability configuration. Built in observability/config.ts
+  // (self-contained, process.env-driven) so the logging stack never depends on
+  // ENV being fully constructed. The zod fields above validate/document them.
+  observability: obsConfig,
 };

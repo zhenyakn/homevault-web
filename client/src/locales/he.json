@@ -1504,7 +1504,8 @@
       "users": "משתמשים",
       "tenants": "סביבות עבודה",
       "plans": "תוכניות",
-      "audit": "יומן ביקורת"
+      "audit": "יומן ביקורת",
+      "observability": "תצפית"
     },
     "statUsers": "משתמשים",
     "statWorkspaces": "סביבות עבודה",
@@ -1613,6 +1614,41 @@
     "cancel": "ביטול",
     "save": "שמירה",
     "allowedDomains": "דומייני אימייל מורשים",
-    "allowedDomainsDesc": "הגבלת הרשמה פתוחה לדומיינים אלה (מופרדים בפסיקים). השאירו ריק כדי לאפשר הכול; משתמשים מוזמנים תמיד עוקפים זאת."
+    "allowedDomainsDesc": "הגבלת הרשמה פתוחה לדומיינים אלה (מופרדים בפסיקים). השאירו ריק כדי לאפשר הכול; משתמשים מוזמנים תמיד עוקפים זאת.",
+    "verifyIntegrity": "אימות שלמות",
+    "auditVerifiedOk": "השלמות תקינה ({{count}} רשומות)",
+    "auditVerifiedBroken": "זוהה שיבוש ברשומה ‎#{{id}}",
+    "observability": {
+      "logs": "יומנים",
+      "traces": "מעקבים",
+      "metrics": "מדדים",
+      "minLevel": "רמה מינ׳",
+      "namespace": "מרחב שם",
+      "search": "חיפוש",
+      "searchPlaceholder": "סינון לפי הודעה או שדות…",
+      "all": "הכול",
+      "live": "חי",
+      "paused": "מושהה",
+      "globalLevel": "רמה גלובלית",
+      "sampling": "דגימה",
+      "buffered": "במאגר",
+      "dropped": "נשמטו",
+      "levelUpdated": "רמת היומן עודכנה",
+      "noLogs": "אין רשומות יומן תואמות.",
+      "logFiles": "קובצי יומן",
+      "fileLoggingDisabled": "רישום לקובץ מושבת.",
+      "noFiles": "אין עדיין קובצי יומן.",
+      "recentTraces": "מעקבים אחרונים",
+      "noTraces": "לא נלכדו מעקבים עדיין.",
+      "traceDetail": "פרטי מעקב",
+      "selectTrace": "בחר מעקב כדי לבחון את מקטעיו.",
+      "spansSuffix": " מקטעים",
+      "correlatedLogs": "יומנים מתואמים",
+      "totalRequests": "סה״כ בקשות",
+      "errorRate": "שיעור שגיאות",
+      "topRoutes": "נתיבים מובילים",
+      "noData": "אין עדיין נתונים.",
+      "metricsEndpointHint": "נקודת הקצה Prometheus ‎/metrics מושבתת (הגדר METRICS_ENDPOINT_ENABLED=true כדי להפעיל)."
+    }
   }
 }

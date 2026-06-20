@@ -1506,7 +1506,8 @@
       "users": "Пользователи",
       "tenants": "Пространства",
       "plans": "Тарифы",
-      "audit": "Журнал аудита"
+      "audit": "Журнал аудита",
+      "observability": "Наблюдаемость"
     },
     "statUsers": "Пользователи",
     "statWorkspaces": "Пространства",
@@ -1615,6 +1616,41 @@
     "cancel": "Отмена",
     "save": "Сохранить",
     "allowedDomains": "Разрешённые домены эл. почты",
-    "allowedDomainsDesc": "Ограничить открытую регистрацию этими доменами (через запятую). Пусто — любой; приглашённые пользователи всегда в обход."
+    "allowedDomainsDesc": "Ограничить открытую регистрацию этими доменами (через запятую). Пусто — любой; приглашённые пользователи всегда в обход.",
+    "verifyIntegrity": "Проверить целостность",
+    "auditVerifiedOk": "Целостность в порядке ({{count}} записей)",
+    "auditVerifiedBroken": "Обнаружено вмешательство в #{{id}}",
+    "observability": {
+      "logs": "Логи",
+      "traces": "Трейсы",
+      "metrics": "Метрики",
+      "minLevel": "Мин. уровень",
+      "namespace": "Пространство",
+      "search": "Поиск",
+      "searchPlaceholder": "Фильтр по сообщению или полям…",
+      "all": "Все",
+      "live": "В реальном времени",
+      "paused": "Пауза",
+      "globalLevel": "Глобальный уровень",
+      "sampling": "Сэмплирование",
+      "buffered": "В буфере",
+      "dropped": "Потеряно",
+      "levelUpdated": "Уровень логирования обновлён",
+      "noLogs": "Нет записей по фильтру.",
+      "logFiles": "Файлы логов",
+      "fileLoggingDisabled": "Запись в файл отключена.",
+      "noFiles": "Пока нет файлов логов.",
+      "recentTraces": "Недавние трейсы",
+      "noTraces": "Трейсы ещё не собраны.",
+      "traceDetail": "Детали трейса",
+      "selectTrace": "Выберите трейс для просмотра спанов.",
+      "spansSuffix": " спанов",
+      "correlatedLogs": "Связанные логи",
+      "totalRequests": "Всего запросов",
+      "errorRate": "Доля ошибок",
+      "topRoutes": "Топ маршрутов",
+      "noData": "Пока нет данных.",
+      "metricsEndpointHint": "Эндпоинт Prometheus /metrics отключён (установите METRICS_ENDPOINT_ENABLED=true)."
+    }
   }
 }

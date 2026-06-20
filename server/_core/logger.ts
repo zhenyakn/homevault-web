@@ -1,18 +1,10 @@
-import pino from "pino";
+/**
+ * Backwards-compatible entry point. The logger now lives in the observability
+ * module (`./observability`), which wires pino to the console + rotating files
+ * + in-memory viewer buffer and auto-stamps the request-correlation context.
+ *
+ * Existing call sites keep importing `{ logger }` from here unchanged; new code
+ * should prefer `createLogger("<namespace>")` for a namespaced child logger.
+ */
 
-export const logger = pino({
-  level:
-    process.env.LOG_LEVEL ??
-    (process.env.NODE_ENV === "production" ? "info" : "debug"),
-  transport:
-    process.env.NODE_ENV !== "production"
-      ? {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            translateTime: "SYS:HH:MM:ss",
-            ignore: "pid,hostname",
-          },
-        }
-      : undefined,
-});
+export { logger, createLogger } from "./observability/logger";

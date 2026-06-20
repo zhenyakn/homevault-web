@@ -12,6 +12,8 @@ import { filesRouter } from "../filesRoute";
 import { googleDriveRouter } from "../googleDriveRoute";
 import { storageRouter } from "../storageRoute";
 import { exportRouter } from "../exportRoute";
+import { metricsRouter } from "../metricsRoute";
+import { logsRouter } from "../logsRoute";
 import { createContext } from "./context";
 import { sdk } from "./sdk";
 import { getSessionCookieOptions } from "./cookies";
@@ -20,6 +22,12 @@ import * as db from "../db";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { ENV } from "./env";
 import { logger } from "./logger";
+import {
+  httpObservabilityMiddleware,
+  installProcessHandlers,
+  startRetentionSweep,
+  shutdownObservability,
+} from "./observability";
 import {
   getTelegramWebhookHandler,
   syncTelegramDelivery,
@@ -164,6 +172,27 @@ async function findAvailablePort(startPort: number = 3005): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+/**
+ * Flush + close telemetry sinks (and the HTTP server) on SIGTERM/SIGINT so no
+ * buffered log line is lost when the container is stopped. Forced exit after a
+ * timeout guards against a hung connection holding shutdown open.
+ */
+function installGracefulShutdown(server: ReturnType<typeof createServer>): void {
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info({ signal }, "shutting down");
+    const force = setTimeout(() => process.exit(0), 5000);
+    force.unref();
+    server.close(() => {
+      void shutdownObservability().finally(() => process.exit(0));
+    });
+  };
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
+}
+
 function hasSessionCookie(cookieHeader?: string): boolean {
   if (!cookieHeader) return false;
   return cookieHeader
@@ -172,6 +201,10 @@ function hasSessionCookie(cookieHeader?: string): boolean {
 }
 
 async function startServer() {
+  // Capture uncaught exceptions / unhandled rejections as structured, flushed
+  // fatal logs before anything else can throw.
+  installProcessHandlers();
+
   // Apply pending DB migrations before serving, so every deployment converges
   // on the current schema with no manual step. Skipped under test, and opt-out
   // via AUTO_MIGRATE=false (the HA add-on migrates in run.sh instead). Fail fast
@@ -212,6 +245,11 @@ async function startServer() {
   // setting `true` would let a malicious client chain its own XFF values to
   // forge an arbitrary source IP.
   app.set("trust proxy", 1);
+
+  // First in the chain (after trust proxy so req.ip is correct): open the
+  // observability context for every request, so all downstream middleware,
+  // body parsing, routes, and tRPC procedures emit correlated, traced logs.
+  app.use(httpObservabilityMiddleware);
 
   // Tight body limits — none of HomeVault's JSON endpoints need more than
   // a few KB. File uploads go through multer (multipart) and don't traverse
@@ -299,6 +337,7 @@ async function startServer() {
   app.use(googleDriveRouter);
   app.use(storageRouter);
   app.use(exportRouter);
+  app.use(logsRouter);
 
   // Telegram bot webhook. The route is mounted unconditionally and resolves the
   // current bot per request, so a token configured later via Settings works
@@ -382,6 +421,9 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Prometheus scrape endpoint (no-op 404 unless METRICS_ENDPOINT_ENABLED).
+  app.use(metricsRouter);
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({
@@ -413,18 +455,21 @@ async function startServer() {
     );
   }
 
+  installGracefulShutdown(server);
+
   server.listen(port, host, () => {
     logger.info({ host, port }, "Server running");
     // Start the daily reminder sweep (no-op under NODE_ENV=test).
     startReminderScheduler();
+    // Daily log-retention prune (drops rotated files past the age window).
+    startRetentionSweep();
     // Best-effort: connect the bot so it receives commands. Uses a webhook when
     // a public HTTPS URL is configured, else long-polling (works with no inbound
     // URL). Admins can (re)connect from Settings without a restart.
     void syncTelegramDelivery().then(r => {
       if (r.ok && r.mode === "webhook")
         logger.info({ url: r.url }, "[telegram] connected via webhook");
-      else if (r.ok)
-        logger.info("[telegram] connected via long-polling");
+      else if (r.ok) logger.info("[telegram] connected via long-polling");
       else if (r.reason === "error")
         logger.warn({ detail: r.detail }, "[telegram] failed to connect bot");
       else
