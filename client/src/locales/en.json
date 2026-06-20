@@ -800,7 +800,17 @@
     "emailChanged": "Email updated — check your inbox to verify it",
     "deleteAccount": "Delete my account",
     "deleteAccountDesc": "Permanently delete your account. Workspaces you solely own are deleted with it; shared workspaces simply lose your membership. This cannot be undone.",
-    "deleteAccountConfirm": "Permanently delete your account and any workspaces you solely own? This cannot be undone."
+    "deleteAccountConfirm": "Permanently delete your account and any workspaces you solely own? This cannot be undone.",
+    "ig": {
+      "yourSetup": "Your setup",
+      "serverSetup": "Server setup",
+      "serverSetupHint": "Admin only — the credentials HomeVault uses to deliver this channel.",
+      "builtInNote": "Mobile push works out of the box through the built-in service — nothing to configure here.",
+      "configure": "Configure",
+      "manage": "Manage",
+      "connectedCount": "{{count}} connected",
+      "needsSetup": "Needs setup"
+    }
   },
   "repairs": {
     "title": "Repairs",
