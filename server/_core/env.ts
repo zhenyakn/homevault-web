@@ -106,7 +106,6 @@ const envSchema = z.object({
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(""),
 });
 
-
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {

@@ -2495,7 +2495,11 @@ type TelegramDelivery = {
 };
 
 /** Color-coded, live summary of how the bot is connected (webhook / polling). */
-function DeliveryStatusLine({ delivery }: { delivery: TelegramDelivery | null }) {
+function DeliveryStatusLine({
+  delivery,
+}: {
+  delivery: TelegramDelivery | null;
+}) {
   const { t } = useTranslation();
   // A webhook with a recorded last error is broken even if a URL is set.
   if (delivery?.mode === "webhook" && delivery.lastErrorMessage) {
@@ -2529,7 +2533,9 @@ function DeliveryStatusLine({ delivery }: { delivery: TelegramDelivery | null })
         </span>
         {delivery.url && (
           <span className="truncate font-mono text-[10px] text-muted-foreground">
-            {t("settings.delivery.telegram.deliveringTo", { url: delivery.url })}
+            {t("settings.delivery.telegram.deliveringTo", {
+              url: delivery.url,
+            })}
           </span>
         )}
       </span>

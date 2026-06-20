@@ -177,7 +177,9 @@ async function findAvailablePort(startPort: number = 3005): Promise<number> {
  * buffered log line is lost when the container is stopped. Forced exit after a
  * timeout guards against a hung connection holding shutdown open.
  */
-function installGracefulShutdown(server: ReturnType<typeof createServer>): void {
+function installGracefulShutdown(
+  server: ReturnType<typeof createServer>
+): void {
   let shuttingDown = false;
   const shutdown = (signal: string) => {
     if (shuttingDown) return;
