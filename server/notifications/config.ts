@@ -87,12 +87,13 @@ const overlay: Partial<Record<NotificationField, string>> = {};
 const unreadable = new Set<NotificationField>();
 
 /** The single secret field backing each section's "needs re-entry" check. */
-const SECTION_SECRET_FIELDS: Record<NotificationSection, NotificationField[]> = {
-  email: ["smtpPass"],
-  telegram: ["telegramBotToken"],
-  webpush: ["vapidPrivateKey"],
-  whatsapp: ["whatsappAccessToken"],
-};
+const SECTION_SECRET_FIELDS: Record<NotificationSection, NotificationField[]> =
+  {
+    email: ["smtpPass"],
+    telegram: ["telegramBotToken"],
+    webpush: ["vapidPrivateKey"],
+    whatsapp: ["whatsappAccessToken"],
+  };
 
 /** True when a section's secret is stored but can't be decrypted (key changed). */
 export function isSectionCredentialUnreadable(
