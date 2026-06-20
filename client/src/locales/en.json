@@ -529,7 +529,8 @@
       "generateCode": "Generate link code",
       "testFailed": "Test to {{channel}} failed: {{reason}}",
       "loading": "Loading channels…",
-      "upgrade": "Upgrade"
+      "upgrade": "Upgrade",
+      "telegramLocked": "Telegram notifications aren't included in your current plan. Upgrade to connect the bot and link your chat."
     },
     "delivery": {
       "title": "Notification delivery setup",

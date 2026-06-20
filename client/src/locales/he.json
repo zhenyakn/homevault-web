@@ -520,7 +520,8 @@
       "generateCode": "צור קוד קישור",
       "testFailed": "הבדיקה ל-{{channel}} נכשלה: {{reason}}",
       "loading": "טוען ערוצים…",
-      "upgrade": "שדרוג"
+      "upgrade": "שדרוג",
+      "telegramLocked": "התראות טלגרם אינן כלולות בתוכנית הנוכחית שלך. שדרג כדי לחבר את הבוט ולקשר את הצ׳אט שלך."
     },
     "syncEvents": "סנכרן אירועים",
     "syncEventsHint": "שלח אירועי HomeVault ל-Google Calendar",
