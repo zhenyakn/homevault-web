@@ -29,11 +29,13 @@ vi.mock("./_core/integrationsConfig", () => ({
 vi.mock("./bot/telegram", () => ({
   getBotUsername: vi.fn(async () => null),
   resetBot: vi.fn(),
-  syncTelegramWebhook: vi.fn(async () => ({
-    ok: true,
-    url: "https://home/api/bot/telegram",
+  syncTelegramDelivery: vi.fn(async () => ({ ok: true, mode: "polling" })),
+  getTelegramDeliveryStatus: vi.fn(async () => ({
+    mode: "none",
+    url: null,
+    pendingUpdateCount: 0,
+    lastErrorMessage: null,
   })),
-  getTelegramWebhookInfo: vi.fn(async () => null),
 }));
 vi.mock("web-push", () => ({
   default: {
@@ -66,13 +68,11 @@ import {
   getIntegrationsConfigStatus,
   saveIntegrationsConfig,
 } from "./_core/integrationsConfig";
-import { resetBot, syncTelegramWebhook } from "./bot/telegram";
+import { resetBot, syncTelegramDelivery } from "./bot/telegram";
 
 const adminCtx = {
   user: { id: 1, globalRole: "superadmin" },
   tenantId: null,
-  // Used to derive the webhook base URL when no public URL is configured.
-  req: { protocol: "https", get: () => "home" },
 } as any;
 const userCtx = {
   user: { id: 2, globalRole: "user" },
@@ -120,9 +120,9 @@ describe("notificationRouter admin config endpoints", () => {
       forgeApiKey: "fk",
       publicBaseUrl: "https://home",
     });
-    // Telegram section changed → bot reset + webhook re-registered live.
+    // Telegram section changed → bot reset + reconnected live.
     expect(resetBot).toHaveBeenCalledOnce();
-    expect(syncTelegramWebhook).toHaveBeenCalledWith("https://home");
+    expect(syncTelegramDelivery).toHaveBeenCalledOnce();
   });
 
   it("saveChannelConfig is forbidden for a non-admin", async () => {
