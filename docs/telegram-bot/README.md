@@ -1,49 +1,65 @@
-# Telegram bot — natural-language commands
+# Telegram bot — interactive, button-driven
 
-The bot used to require a slash command for every action (`/addexpense 50 Water`,
-`/overdue`, …). It now understands plain chat, so you can talk to it the way you'd
-text a person — **no slash commands needed**. The classic slash commands still
-work and are advertised in Telegram's "/" menu.
+The bot is now **button-first**. After linking, it shows a menu and you tap your
+way through everything — you never need to type a slash command or know an
+internal id. Free-text typing still works as a shortcut, and the classic slash
+commands remain for power users.
 
-![Enhanced HomeVault Telegram bot](./enhanced-bot.png)
+![Interactive HomeVault Telegram bot](./enhanced-bot.png)
 
-## What you can just type
+## The menu
 
-| You say | The bot does |
+Every action is one tap away:
+
+| Button | What it does |
 | --- | --- |
-| `spent 50 on groceries` | Logs a 50 expense named "groceries" (asks to confirm) |
-| `100 water bill` | Logs a 100 expense named "water bill" |
-| `bought coffee $4.50` | Handles currency symbols & decimals |
-| `paid 30 for gas` | Treated as an expense (amount → log), not a payment |
-| `what's overdue?` | Items needing attention |
-| `how's this month?` | Dashboard at a glance |
-| `what's coming up?` | Upcoming events & due dates |
-| `mark exp-7 paid` | Marks expense `exp-7` paid (non-numeric id → payment) |
-| `help` / `what can you do` | Shows the help card |
+| 💸 **Add expense** | Prompts you to type the amount + name (e.g. `50 groceries`), then a **Confirm** button |
+| ✅ **Pay a bill** | Lists your **unpaid bills as buttons** — tap the one you paid; no id needed |
+| ⚠️ **Overdue** | Items needing attention |
+| 📊 **This month** | Dashboard at a glance |
+| 📅 **Upcoming** | Events & due dates |
+| ⬅️ **Menu** | Appears on every screen to go back |
 
-Write expenses still confirm before committing (Confirm / Cancel buttons).
+## Paying a bill — the important part
 
-## Multilingual
+Previously you had to know the expense's id (`/paid exp-7`). That made no sense —
+you'd never know the id. Now:
 
-Natural language is recognized in the bot's three supported languages — English,
-Russian and Hebrew — and replies in the user's chosen language:
+1. Tap **✅ Pay a bill** (or just type "pay a bill").
+2. The bot lists your unpaid bills as buttons: `Electricity — 320`, `Internet — 120`, …
+3. **Tap the bill you paid** → it's marked paid instantly, and the bot offers to
+   pay another or go back to the menu.
 
-- `потратил 50 на продукты`, `что просрочено?`, `сколько я потратил`
-- `שילמתי 80 על חשמל`, `מה קרוב?`, `מה באיחור?`
-
-| Expenses | Ask anything | Multilingual |
+| Menu → pick a bill | Tap it → done + reads | Add expense by typing |
 | --- | --- | --- |
-| ![](./enhanced-bot-expenses.png) | ![](./enhanced-bot-ask-anything.png) | ![](./enhanced-bot-multilingual.png) |
+| ![](./enhanced-bot-menu-pay.png) | ![](./enhanced-bot-paid-reads.png) | ![](./enhanced-bot-add-expense.png) |
+
+## You can also just type (optional shortcut)
+
+Buttons are the main path, but plain chat works too, in English, Russian and
+Hebrew — handy if you already know what you want:
+
+- `50 groceries`, `spent 50 on groceries`, `bought coffee $4.50` → log an expense
+- `pay a bill`, `оплатить`, `לשלם` → opens the tap-to-pay list
+- `what's overdue?`, `how's this month?`, `what's upcoming?` → reads
+- `menu` → back to the menu
+
+The bot always replies with the relevant buttons, so you can keep tapping from there.
 
 ## How it works
 
-- Parsing is pure and unit-tested in [`server/bot/commands.ts`](../../server/bot/commands.ts)
-  (see `commands.test.ts`). Slash commands are parsed first; free text falls
-  through to `parseNaturalLanguage`.
-- Resolution order avoids collisions: **mark-paid** (id-carrying phrasings) →
-  **expense** (any money amount) → **read intent** keyword (overdue / dashboard /
-  upcoming / help) → unknown (replies with a help hint).
+- **Buttons** carry a short `callback_data` string built/parsed by pure helpers
+  in [`server/bot/commands.ts`](../../server/bot/commands.ts) (`menuCallback`,
+  `payCallback`, `addExpenseCallback`, `parseCallback`) — unit-tested in
+  `commands.test.ts`. The expense id rides inside the button's data, so it's
+  never shown to or typed by the user.
+- **Pay flow** lists `getExpenses(...)` filtered to unpaid (oldest/overdue first,
+  capped at 10) as one button per bill.
+- **Text** is parsed by the same pure layer (`parseCommand` /
+  `parseNaturalLanguage`); writes (add expense) always confirm before committing.
 - The Telegram "/" command menu is published via `setMyCommands` on connect.
+- The whole interaction is **stateless** (everything needed is encoded in the
+  callback data), so it works identically under webhook and long-polling.
 
 ## Regenerating the screenshots
 

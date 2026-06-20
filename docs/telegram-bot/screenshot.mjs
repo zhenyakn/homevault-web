@@ -17,8 +17,8 @@ await page.waitForTimeout(300);
 await page.screenshot({ path: join(here, "enhanced-bot.png") });
 
 // Individual phones for embedding side by side.
-const cols = await page.locator(".col").all();
-const names = ["expenses", "ask-anything", "multilingual"];
+const cols = await page.locator(".col-wrap").all();
+const names = ["menu-pay", "paid-reads", "add-expense"];
 for (let i = 0; i < cols.length; i++) {
   await cols[i].screenshot({ path: join(here, `enhanced-bot-${names[i]}.png`) });
 }

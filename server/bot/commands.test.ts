@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { parseCommand } from "./commands";
+import {
+  parseCommand,
+  parseCallback,
+  menuCallback,
+  payCallback,
+  addExpenseCallback,
+} from "./commands";
 
 describe("parseCommand — simple commands", () => {
   it("parses bare read commands case-insensitively", () => {
@@ -211,11 +217,72 @@ describe("natural language — read intents", () => {
   });
 });
 
+describe("natural language — pay a bill (no id needed)", () => {
+  it.each(["pay", "pay a bill", "I want to pay a bill", "mark paid", "/pay"])(
+    "maps %j to the pay list",
+    input => {
+      expect(parseCommand(input).type).toBe("paylist");
+    }
+  );
+  it("maps Russian/Hebrew pay phrasings to the pay list", () => {
+    expect(parseCommand("оплатить").type).toBe("paylist");
+    expect(parseCommand("לשלם").type).toBe("paylist");
+  });
+  it("still treats a paid amount as an expense, not a pay-list request", () => {
+    expect(parseCommand("paid 30 for gas").type).toBe("addexpense");
+  });
+});
+
+describe("natural language — menu", () => {
+  it.each(["menu", "/menu", "main menu", "меню"])(
+    "maps %j to the menu",
+    input => {
+      expect(parseCommand(input).type).toBe("menu");
+    }
+  );
+});
+
 describe("natural language — fallback", () => {
   it("returns unknown (carrying the text) for unrecognized chatter", () => {
     expect(parseCommand("hello there")).toEqual({
       type: "unknown",
       command: "hello there",
     });
+  });
+});
+
+describe("inline-button callbacks", () => {
+  it("round-trips menu callbacks", () => {
+    expect(parseCallback(menuCallback("home"))).toEqual({
+      kind: "menu",
+      action: "home",
+    });
+    expect(parseCallback(menuCallback("pay"))).toEqual({
+      kind: "menu",
+      action: "pay",
+    });
+  });
+
+  it("round-trips a pay callback carrying the expense id", () => {
+    expect(parseCallback(payCallback("abc123xyz"))).toEqual({
+      kind: "pay",
+      id: "abc123xyz",
+    });
+  });
+
+  it("round-trips an add-expense callback", () => {
+    expect(parseCallback(addExpenseCallback(50, "water bill"))).toEqual({
+      kind: "addexpense",
+      amount: 50,
+      name: "water bill",
+    });
+  });
+
+  it("parses cancel and rejects junk", () => {
+    expect(parseCallback("cancel")).toEqual({ kind: "cancel" });
+    expect(parseCallback("menu:bogus").kind).toBe("unknown");
+    expect(parseCallback("pay:").kind).toBe("unknown");
+    expect(parseCallback("ax|0|x").kind).toBe("unknown");
+    expect(parseCallback("garbage").kind).toBe("unknown");
   });
 });

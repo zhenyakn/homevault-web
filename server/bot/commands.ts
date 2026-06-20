@@ -20,6 +20,8 @@ export type ParsedCommand =
   | { type: "overdue" }
   | { type: "dashboard" }
   | { type: "upcoming" }
+  | { type: "menu" }
+  | { type: "paylist" }
   | { type: "addexpense"; amount: number; name: string }
   | { type: "paid"; id: string }
   | { type: "invalid"; command: string; reasonKey: string }
@@ -56,6 +58,10 @@ export function parseCommand(raw: string): ParsedCommand {
         : { type: "start" };
     case "help":
       return { type: "help" };
+    case "menu":
+      return { type: "menu" };
+    case "pay":
+      return { type: "paylist" };
     case "overdue":
       return { type: "overdue" };
     case "dashboard":
@@ -262,6 +268,34 @@ const EXPENSE_FILLER = new Set([
   "על",
 ]);
 
+/** "I want to pay a bill" phrasings (no id) → open the tappable bill list. */
+const PAY_WORDS = [
+  "pay a bill",
+  "pay bill",
+  "pay bills",
+  "mark paid",
+  "mark as paid",
+  "pay",
+  "оплатить",
+  "оплата",
+  "заплатить",
+  "שלם",
+  "לשלם",
+  "תשלום",
+];
+
+/** "Show me the menu / start over" phrasings → render the main menu. */
+const MENU_WORDS = [
+  "menu",
+  "main menu",
+  "start over",
+  "options",
+  "what can i do",
+  "меню",
+  "начать",
+  "תפריט",
+];
+
 /**
  * Normalize for keyword matching: lowercase, replace ASCII punctuation with
  * spaces (so "what's overdue?" → "what s overdue"), collapse whitespace.
@@ -385,14 +419,105 @@ export function parseNaturalLanguage(text: string): ParsedCommand {
     }
   }
 
-  // 3. Read-only intents by keyword.
   const padded = ` ${norm} `;
+  const hasWord = (words: string[]) =>
+    words.some(w => padded.includes(` ${w} `));
+
+  // 3. "Pay a bill" with no specific id → show the tappable list of bills so the
+  //    user never has to know an id.
+  if (hasWord(PAY_WORDS)) return { type: "paylist" };
+
+  // 4. Show the main menu.
+  if (hasWord(MENU_WORDS)) return { type: "menu" };
+
+  // 5. Read-only intents by keyword.
   for (const intent of READ_INTENTS) {
-    if (intent.words.some(w => padded.includes(` ${w} `))) {
-      return { type: intent.type };
-    }
+    if (hasWord(intent.words)) return { type: intent.type };
   }
 
-  // 4. Give up — surface the original text so the handler can hint with help.
+  // 6. Give up — surface the original text so the handler can hint with help.
   return { type: "unknown", command: text };
 }
+
+// ---------------------------------------------------------------------------
+// Inline-button callbacks
+// ---------------------------------------------------------------------------
+
+/**
+ * The bot's primary interface is tappable inline buttons, so every action can be
+ * driven without typing a command or knowing an id. Buttons carry a short
+ * `callback_data` string (Telegram caps it at 64 bytes); these helpers build and
+ * parse those strings so the encoding is in one place and unit-testable.
+ *
+ * Encodings:
+ *   "cancel"                 — dismiss a pending confirm
+ *   "menu:<action>"          — navigate the menu (home/add/pay/overdue/…)
+ *   "pay:<id>"               — mark expense <id> paid (id comes from a button,
+ *                              never typed, so the user never sees it)
+ *   "ax|<amount>|<name>"     — confirm an add-expense write
+ */
+export type MenuAction =
+  | "home"
+  | "add"
+  | "pay"
+  | "overdue"
+  | "dashboard"
+  | "upcoming";
+
+export type Callback =
+  | { kind: "cancel" }
+  | { kind: "menu"; action: MenuAction }
+  | { kind: "pay"; id: string }
+  | { kind: "addexpense"; amount: number; name: string }
+  | { kind: "unknown" };
+
+const MENU_ACTIONS: MenuAction[] = [
+  "home",
+  "add",
+  "pay",
+  "overdue",
+  "dashboard",
+  "upcoming",
+];
+
+export function menuCallback(action: MenuAction): string {
+  return `menu:${action}`;
+}
+
+export function payCallback(id: string): string {
+  return `pay:${id}`;
+}
+
+export function addExpenseCallback(amount: number, name: string): string {
+  return `ax|${amount}|${name}`;
+}
+
+export function parseCallback(data: string): Callback {
+  if (data === "cancel") return { kind: "cancel" };
+
+  if (data.startsWith("menu:")) {
+    const action = data.slice("menu:".length);
+    if ((MENU_ACTIONS as string[]).includes(action)) {
+      return { kind: "menu", action: action as MenuAction };
+    }
+    return { kind: "unknown" };
+  }
+
+  if (data.startsWith("pay:")) {
+    const id = data.slice("pay:".length);
+    return id ? { kind: "pay", id } : { kind: "unknown" };
+  }
+
+  if (data.startsWith("ax|")) {
+    const [, amountStr, ...nameParts] = data.split("|");
+    const amount = Number(amountStr);
+    const name = nameParts.join("|");
+    if (Number.isFinite(amount) && amount > 0 && name) {
+      return { kind: "addexpense", amount, name };
+    }
+    return { kind: "unknown" };
+  }
+
+  return { kind: "unknown" };
+}
+

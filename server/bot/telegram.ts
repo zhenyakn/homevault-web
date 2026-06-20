@@ -5,7 +5,7 @@
  * command parsing lives in commands.ts (unit-tested); this module is the I/O.
  */
 
-import { Bot, InlineKeyboard, webhookCallback } from "grammy";
+import { Bot, InlineKeyboard, webhookCallback, type Context } from "grammy";
 import type { RequestHandler } from "express";
 import { nanoid } from "nanoid";
 import { logger } from "../_core/logger";
@@ -14,7 +14,14 @@ import {
   getPublicBaseUrl,
   getTelegramWebhookSecret,
 } from "../_core/integrationsConfig";
-import { parseCommand } from "./commands";
+import {
+  parseCommand,
+  parseCallback,
+  menuCallback,
+  payCallback,
+  addExpenseCallback,
+  type MenuAction,
+} from "./commands";
 import { t, normalizeLanguage } from "./i18n";
 import { todayInTz } from "../notifications/time";
 import {
@@ -32,19 +39,170 @@ import {
 import { getDashboardStats, getOverdueExpenses } from "../db/dashboard";
 import { getCalendarEvents } from "../db/calendar";
 
-async function resolveContext(chatId: string) {
+type Session = {
+  user: Awaited<ReturnType<typeof getUserByTelegramChatId>> & object;
+  property: Awaited<ReturnType<typeof getPropertiesByUser>>[number];
+  tenantId: number;
+  lang: string;
+};
+
+/**
+ * Resolve everything a handler needs for a chat: the linked user, their first
+ * property, the tenant scope and the reply language. Returns null when the chat
+ * isn't linked to a user with a usable property — callers then show the
+ * "link your account" / "unlinked" message.
+ */
+async function resolveSession(chatId: string): Promise<Session | null> {
   const user = await getUserByTelegramChatId(chatId);
   if (!user) return null;
   const props = await getPropertiesByUser(user.id);
   const property = props[0];
-  if (!property) return null;
-  return { user, property };
+  if (!property || property.tenantId == null) return null;
+  return {
+    user,
+    property,
+    tenantId: property.tenantId,
+    lang: normalizeLanguage(user.language),
+  };
 }
 
 /** The linked user's preferred language for this chat (defaults to en). */
 async function resolveLang(chatId: string): Promise<string> {
   const user = await getUserByTelegramChatId(chatId);
   return normalizeLanguage(user?.language);
+}
+
+// ── Inline keyboards & rendered messages ─────────────────────────────────────
+
+/** The main menu: every action a tap away, no typing or ids required. */
+function mainMenu(lang: string): InlineKeyboard {
+  return new InlineKeyboard()
+    .text(t(lang, "btnAddExpense"), menuCallback("add"))
+    .text(t(lang, "btnPayBill"), menuCallback("pay"))
+    .row()
+    .text(t(lang, "btnOverdue"), menuCallback("overdue"))
+    .text(t(lang, "btnDashboard"), menuCallback("dashboard"))
+    .row()
+    .text(t(lang, "btnUpcoming"), menuCallback("upcoming"));
+}
+
+/** A single "⬅️ Menu" button to return to the main menu. */
+function backToMenu(lang: string): InlineKeyboard {
+  return new InlineKeyboard().text(t(lang, "btnMenu"), menuCallback("home"));
+}
+
+/** "Needs attention" text — overdue bills + repairs that need looking at. */
+async function overdueText(s: Session): Promise<string> {
+  const today = todayInTz(s.property.timezone);
+  const [expenses, stats] = await Promise.all([
+    getExpenses(s.tenantId, s.property.id),
+    getDashboardStats(s.tenantId, s.property.id),
+  ]);
+  const overdue = getOverdueExpenses(expenses, today);
+  const lines: string[] = [];
+  for (const o of overdue)
+    lines.push(
+      t(s.lang, "overdueLine", { label: o.label, amount: o.amount, date: o.date })
+    );
+  for (const r of stats.staleRepairs)
+    lines.push(t(s.lang, "repairAttentionLine", { label: r.label }));
+  return lines.length
+    ? `${t(s.lang, "needsAttention")}\n${lines.join("\n")}`
+    : t(s.lang, "nothingOverdue");
+}
+
+/** This-month dashboard snapshot. */
+async function dashboardText(s: Session): Promise<string> {
+  const stats = await getDashboardStats(s.tenantId, s.property.id);
+  return [
+    `🏠 ${s.property.houseNickname || s.property.houseName || t(s.lang, "home")}`,
+    t(s.lang, "dashboardSpent", { amount: stats.monthSpent }),
+    t(s.lang, "dashboardOpenRepairs", { count: stats.openRepairsCount }),
+  ].join("\n");
+}
+
+/** Next calendar events & due dates. */
+async function upcomingText(s: Session): Promise<string> {
+  const today = todayInTz(s.property.timezone);
+  const events = await getCalendarEvents(s.property.id, today);
+  const soon = events
+    .filter(e => e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 10);
+  return soon.length
+    ? `${t(s.lang, "upcomingHeader")}\n${soon
+        .map(e => t(s.lang, "upcomingLine", { date: e.date, title: e.title }))
+        .join("\n")}`
+    : t(s.lang, "nothingUpcoming");
+}
+
+/**
+ * Build the "Pay a bill" picker: every unpaid expense as its own tappable button
+ * (oldest/overdue first), so the user marks a bill paid without ever seeing or
+ * typing an id. Capped at 10 buttons to stay readable.
+ */
+async function payListMessage(
+  s: Session
+): Promise<{ text: string; keyboard: InlineKeyboard }> {
+  const all = await getExpenses(s.tenantId, s.property.id);
+  const unpaid = all
+    .filter(e => !e.isPaid)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 10);
+  if (!unpaid.length) {
+    return { text: t(s.lang, "nothingToPay"), keyboard: backToMenu(s.lang) };
+  }
+  const kb = new InlineKeyboard();
+  for (const e of unpaid) {
+    kb.text(`${e.name} — ${e.amount}`, payCallback(e.id)).row();
+  }
+  kb.text(t(s.lang, "btnMenu"), menuCallback("home"));
+  return { text: t(s.lang, "payPickTitle"), keyboard: kb };
+}
+
+/**
+ * Render a tapped menu action by editing the message in place (so the chat
+ * doesn't fill up with menus). "add" only prompts the user to type the amount +
+ * name — there's no native numeric keypad, so the amount must be typed — and the
+ * next free-text message is parsed as the expense.
+ */
+async function renderMenuAction(
+  ctx: Context,
+  s: Session,
+  action: MenuAction
+): Promise<void> {
+  switch (action) {
+    case "home":
+      await ctx.editMessageText(t(s.lang, "menuTitle"), {
+        reply_markup: mainMenu(s.lang),
+      });
+      return;
+    case "add":
+      await ctx.editMessageText(t(s.lang, "addExpensePrompt"), {
+        reply_markup: backToMenu(s.lang),
+      });
+      return;
+    case "pay": {
+      const { text, keyboard } = await payListMessage(s);
+      await ctx.editMessageText(text, { reply_markup: keyboard });
+      return;
+    }
+    case "overdue":
+      await ctx.editMessageText(await overdueText(s), {
+        reply_markup: backToMenu(s.lang),
+      });
+      return;
+    case "dashboard":
+      await ctx.editMessageText(await dashboardText(s), {
+        reply_markup: backToMenu(s.lang),
+      });
+      return;
+    case "upcoming":
+      await ctx.editMessageText(await upcomingText(s), {
+        reply_markup: backToMenu(s.lang),
+      });
+      return;
+  }
 }
 
 let bot: Bot | null = null;
@@ -378,11 +536,11 @@ export async function getTelegramDiagnostics(): Promise<TelegramDiagnostics> {
 async function setBotCommands(b: Bot): Promise<void> {
   try {
     await b.api.setMyCommands([
+      { command: "menu", description: "Open the menu (buttons for everything)" },
+      { command: "pay", description: "Pay a bill — pick from your bills" },
       { command: "overdue", description: "Items needing attention" },
       { command: "dashboard", description: "This month at a glance" },
       { command: "upcoming", description: "Events & due dates" },
-      { command: "addexpense", description: "Log an expense: <amount> <name>" },
-      { command: "paid", description: "Mark an expense paid: <id>" },
       { command: "help", description: "What I can do" },
     ]);
   } catch (err) {
@@ -391,47 +549,77 @@ async function setBotCommands(b: Bot): Promise<void> {
 }
 
 function registerHandlers(b: Bot) {
-  // Confirm callback for /addexpense → "ax|<amount>|<name>"
+  // ── Inline-button taps ─────────────────────────────────────────────────────
+  // The bot is button-first: menu navigation, paying a bill (by tapping it, no
+  // id), and confirming an add-expense all arrive here as callback queries.
   b.on("callback_query:data", async ctx => {
-    const data = ctx.callbackQuery.data;
     const chatId = String(ctx.chat?.id ?? "");
-    if (data === "cancel") {
-      const lang = await resolveLang(chatId);
-      await ctx.answerCallbackQuery();
-      await ctx.editMessageText(t(lang, "cancelled"));
+    const cb = parseCallback(ctx.callbackQuery.data);
+
+    // Always ack the tap first so Telegram stops the button's loading spinner.
+    await ctx.answerCallbackQuery();
+
+    if (cb.kind === "cancel") {
+      await ctx.editMessageText(t(await resolveLang(chatId), "cancelled"));
       return;
     }
-    if (data.startsWith("ax|")) {
-      const [, amountStr, ...nameParts] = data.split("|");
-      const amount = Number(amountStr);
-      const name = nameParts.join("|");
-      const context = await resolveContext(chatId);
-      await ctx.answerCallbackQuery();
-      if (!context) {
-        await ctx.editMessageText(
-          t(await resolveLang(chatId), "accountUnlinked")
-        );
+
+    const s = await resolveSession(chatId);
+    if (!s) {
+      await ctx.editMessageText(t(await resolveLang(chatId), "accountUnlinked"));
+      return;
+    }
+
+    if (cb.kind === "menu") {
+      await renderMenuAction(ctx, s, cb.action);
+      return;
+    }
+
+    if (cb.kind === "pay") {
+      const expense = await getExpenseById(cb.id, s.tenantId);
+      if (!expense) {
+        await ctx.editMessageText(t(s.lang, "noExpenseId"), {
+          reply_markup: backToMenu(s.lang),
+        });
         return;
       }
+      await updateExpense(cb.id, s.tenantId, {
+        isPaid: true,
+        paidDate: todayInTz(s.property.timezone),
+      });
+      // Offer to pay another bill or return to the menu — keeps it interactive.
+      const kb = new InlineKeyboard()
+        .text(t(s.lang, "btnPayBill"), menuCallback("pay"))
+        .text(t(s.lang, "btnMenu"), menuCallback("home"));
+      await ctx.editMessageText(t(s.lang, "markedPaid", { name: expense.name }), {
+        reply_markup: kb,
+      });
+      return;
+    }
+
+    if (cb.kind === "addexpense") {
       await createExpense({
         id: nanoid(),
-        propertyId: context.property.id,
-        ownerId: context.user.id,
-        tenantId: context.property.tenantId,
-        name,
-        amount: Math.round(amount),
+        propertyId: s.property.id,
+        ownerId: s.user.id,
+        tenantId: s.tenantId,
+        name: cb.name,
+        amount: Math.round(cb.amount),
         category: "Other",
-        date: todayInTz(context.property.timezone),
+        date: todayInTz(s.property.timezone),
       } as any);
       await ctx.editMessageText(
-        t(normalizeLanguage(context.user.language), "expenseAdded", {
-          name,
-          amount: Math.round(amount),
-        })
+        t(s.lang, "expenseAdded", {
+          name: cb.name,
+          amount: Math.round(cb.amount),
+        }),
+        { reply_markup: backToMenu(s.lang) }
       );
+      return;
     }
   });
 
+  // ── Free-text messages ─────────────────────────────────────────────────────
   b.on("message:text", async ctx => {
     const chatId = String(ctx.chat.id);
     const parsed = parseCommand(ctx.message.text);
@@ -439,27 +627,31 @@ function registerHandlers(b: Bot) {
     const linkedUser = await getUserByTelegramChatId(chatId);
     const lang = normalizeLanguage(linkedUser?.language);
 
-    // Consume a link code and bind this chat to its user. The linking user may
-    // differ from the previously-unlinked chat, so the success reply re-resolves
-    // the language from the now-linked account.
+    // Consume a link code and bind this chat to its user, then drop the user
+    // straight into the menu. The linking user may differ from the previously-
+    // unlinked chat, so the reply re-resolves language from the now-linked row.
     const tryLink = async (code: string): Promise<boolean> => {
       const userId = await consumeTelegramLinkCode(code);
       if (!userId) return false;
       await setTelegramChatId(userId, chatId);
-      await ctx.reply(t(await resolveLang(chatId), "linkSuccess"));
+      const newLang = await resolveLang(chatId);
+      await ctx.reply(t(newLang, "linkSuccess"), {
+        reply_markup: mainMenu(newLang),
+      });
       return true;
     };
 
     switch (parsed.type) {
       case "start":
-        // Deep link (t.me/<bot>?start=<code>) → link in one tap; bare /start is
-        // just a greeting. An invalid/expired code falls through to help.
+        // Deep link (t.me/<bot>?start=<code>) → link in one tap; bare /start
+        // just opens the menu. An invalid/expired code falls through to it too.
         if (parsed.code && (await tryLink(parsed.code))) return;
-        await ctx.reply(t(lang, "help"));
+        await ctx.reply(t(lang, "menuTitle"), { reply_markup: mainMenu(lang) });
         return;
 
       case "help":
-        await ctx.reply(t(lang, "help"));
+      case "menu":
+        await ctx.reply(t(lang, "menuTitle"), { reply_markup: mainMenu(lang) });
         return;
 
       case "link": {
@@ -475,109 +667,73 @@ function registerHandlers(b: Bot) {
     }
 
     // Everything below requires a linked account with a property.
-    if (!linkedUser) {
+    const s = await resolveSession(chatId);
+    if (!s) {
       await ctx.reply(t(lang, "notLinked"));
       return;
     }
-    const props = await getPropertiesByUser(linkedUser.id);
-    const property = props[0];
-    if (!property || property.tenantId == null) {
-      await ctx.reply(t(lang, "notLinked"));
-      return;
-    }
-    const user = linkedUser;
-    const tenantId = property.tenantId;
 
     switch (parsed.type) {
-      case "overdue": {
-        const today = todayInTz(property.timezone);
-        const [expenses, stats] = await Promise.all([
-          getExpenses(tenantId, property.id),
-          getDashboardStats(tenantId, property.id),
-        ]);
-        const overdue = getOverdueExpenses(expenses, today);
-        const lines: string[] = [];
-        for (const o of overdue)
-          lines.push(
-            t(lang, "overdueLine", {
-              label: o.label,
-              amount: o.amount,
-              date: o.date,
-            })
-          );
-        for (const r of stats.staleRepairs)
-          lines.push(t(lang, "repairAttentionLine", { label: r.label }));
-        await ctx.reply(
-          lines.length
-            ? `${t(lang, "needsAttention")}\n${lines.join("\n")}`
-            : t(lang, "nothingOverdue")
-        );
+      case "overdue":
+        await ctx.reply(await overdueText(s), {
+          reply_markup: backToMenu(s.lang),
+        });
         return;
-      }
 
-      case "dashboard": {
-        const s = await getDashboardStats(tenantId, property.id);
-        await ctx.reply(
-          [
-            `🏠 ${property.houseNickname || property.houseName || t(lang, "home")}`,
-            t(lang, "dashboardSpent", { amount: s.monthSpent }),
-            t(lang, "dashboardOpenRepairs", { count: s.openRepairsCount }),
-          ].join("\n")
-        );
+      case "dashboard":
+        await ctx.reply(await dashboardText(s), {
+          reply_markup: backToMenu(s.lang),
+        });
         return;
-      }
 
-      case "upcoming": {
-        const today = todayInTz(property.timezone);
-        const events = await getCalendarEvents(property.id, today);
-        const soon = events
-          .filter(e => e.date >= today)
-          .sort((a, b) => a.date.localeCompare(b.date))
-          .slice(0, 10);
-        await ctx.reply(
-          soon.length
-            ? `${t(lang, "upcomingHeader")}\n${soon
-                .map(e =>
-                  t(lang, "upcomingLine", { date: e.date, title: e.title })
-                )
-                .join("\n")}`
-            : t(lang, "nothingUpcoming")
-        );
+      case "upcoming":
+        await ctx.reply(await upcomingText(s), {
+          reply_markup: backToMenu(s.lang),
+        });
+        return;
+
+      case "paylist": {
+        const { text, keyboard } = await payListMessage(s);
+        await ctx.reply(text, { reply_markup: keyboard });
         return;
       }
 
       case "addexpense": {
         const name = parsed.name.slice(0, 40);
         const kb = new InlineKeyboard()
-          .text(t(lang, "btnConfirm"), `ax|${parsed.amount}|${name}`)
-          .text(t(lang, "btnCancel"), "cancel");
-        await ctx.reply(
-          t(lang, "confirmAdd", { name, amount: parsed.amount }),
-          { reply_markup: kb }
-        );
+          .text(t(s.lang, "btnConfirm"), addExpenseCallback(parsed.amount, name))
+          .text(t(s.lang, "btnCancel"), "cancel");
+        await ctx.reply(t(s.lang, "confirmAdd", { name, amount: parsed.amount }), {
+          reply_markup: kb,
+        });
         return;
       }
 
       case "paid": {
-        const expense = await getExpenseById(parsed.id, tenantId);
+        // A typed "mark <id> paid" still works, but most users tap the bill in
+        // the pay list instead.
+        const expense = await getExpenseById(parsed.id, s.tenantId);
         if (!expense) {
-          await ctx.reply(t(lang, "noExpenseId"));
+          await ctx.reply(t(s.lang, "noExpenseId"), {
+            reply_markup: backToMenu(s.lang),
+          });
           return;
         }
-        await updateExpense(parsed.id, tenantId, {
+        await updateExpense(parsed.id, s.tenantId, {
           isPaid: true,
-          paidDate: todayInTz(property.timezone),
+          paidDate: todayInTz(s.property.timezone),
         });
-        await ctx.reply(t(lang, "markedPaid", { name: expense.name }));
+        await ctx.reply(t(s.lang, "markedPaid", { name: expense.name }), {
+          reply_markup: backToMenu(s.lang),
+        });
         return;
       }
 
       case "unknown":
-        await ctx.reply(`${t(lang, "unknownCommand")} ${t(lang, "help")}`);
-        return;
-
       default:
-        await ctx.reply(t(lang, "help"));
+        await ctx.reply(t(s.lang, "notUnderstood"), {
+          reply_markup: mainMenu(s.lang),
+        });
     }
   });
 
