@@ -37,8 +37,14 @@ function buildChain(n: number): ChainRow[] {
 
 describe("audit hash chain", () => {
   it("is deterministic regardless of metadata key order", () => {
-    const a = computeEntryHash(AUDIT_GENESIS, entry({ metadata: { x: 1, y: 2 } }));
-    const b = computeEntryHash(AUDIT_GENESIS, entry({ metadata: { y: 2, x: 1 } }));
+    const a = computeEntryHash(
+      AUDIT_GENESIS,
+      entry({ metadata: { x: 1, y: 2 } })
+    );
+    const b = computeEntryHash(
+      AUDIT_GENESIS,
+      entry({ metadata: { y: 2, x: 1 } })
+    );
     expect(a).toBe(b);
   });
 

@@ -74,18 +74,18 @@ metrics. View them in-app: super-admin console → **Observability** (logs /
 traces / metrics, runtime level control, log-file download); tenant admins get
 a tenant-scoped log view.
 
-| Var                       | Default      | Notes                                                          |
-| ------------------------- | ------------ | -------------------------------------------------------------- |
-| `LOG_LEVEL`               | env-derived  | `trace…fatal\|silent`; runtime-adjustable in the UI            |
-| `LOG_FORMAT`              | env-derived  | `pretty` (dev) / `json` (prod)                                 |
-| `LOG_DIR`                 | `logs`       | rotating NDJSON files; gzip + size/age retention               |
-| `LOG_FILE_ENABLED`        | `true`       | auto-off under `NODE_ENV=test`                                 |
-| `LOG_RETENTION_DAYS`      | `30`         | daily prune of rotated files; `0` disables                     |
-| `LOG_BUFFER_SIZE`         | `2000`       | in-memory entries backing the viewer                           |
-| `LOG_SAMPLE_RATE`         | `1`          | sample successful access logs; errors always kept              |
-| `TRACE_ENABLED`           | `true`       | in-process OTel-shaped spans                                   |
-| `METRICS_ENDPOINT_ENABLED`| `false`      | serve Prometheus `GET /metrics` (guard with `METRICS_TOKEN`)   |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | _empty_  | reserved seam for remote export (disabled today)               |
+| Var                           | Default     | Notes                                                        |
+| ----------------------------- | ----------- | ------------------------------------------------------------ |
+| `LOG_LEVEL`                   | env-derived | `trace…fatal\|silent`; runtime-adjustable in the UI          |
+| `LOG_FORMAT`                  | env-derived | `pretty` (dev) / `json` (prod)                               |
+| `LOG_DIR`                     | `logs`      | rotating NDJSON files; gzip + size/age retention             |
+| `LOG_FILE_ENABLED`            | `true`      | auto-off under `NODE_ENV=test`                               |
+| `LOG_RETENTION_DAYS`          | `30`        | daily prune of rotated files; `0` disables                   |
+| `LOG_BUFFER_SIZE`             | `2000`      | in-memory entries backing the viewer                         |
+| `LOG_SAMPLE_RATE`             | `1`         | sample successful access logs; errors always kept            |
+| `TRACE_ENABLED`               | `true`      | in-process OTel-shaped spans                                 |
+| `METRICS_ENDPOINT_ENABLED`    | `false`     | serve Prometheus `GET /metrics` (guard with `METRICS_TOKEN`) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | _empty_     | reserved seam for remote export (disabled today)             |
 
 Log files are written under `LOG_DIR` (relative to cwd unless absolute); for the
 Home Assistant add-on point this at the persistent `/data` volume.

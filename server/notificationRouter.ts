@@ -270,7 +270,9 @@ export const notificationRouter = router({
       // live (webhook or polling) so it works without a restart. Reset the
       // cached bot first so a new token takes effect. Best-effort — never fails
       // the save.
-      let telegram: Awaited<ReturnType<typeof syncTelegramDelivery>> | undefined;
+      let telegram:
+        | Awaited<ReturnType<typeof syncTelegramDelivery>>
+        | undefined;
       if (input.telegram || input.general) {
         resetBot();
         telegram = await syncTelegramDelivery();

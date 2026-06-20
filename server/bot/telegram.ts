@@ -230,9 +230,20 @@ export type DeliveryStatus = {
  */
 export async function getTelegramDeliveryStatus(): Promise<DeliveryStatus> {
   const b = getBot();
-  if (!b) return { mode: "none", url: null, pendingUpdateCount: 0, lastErrorMessage: null };
+  if (!b)
+    return {
+      mode: "none",
+      url: null,
+      pendingUpdateCount: 0,
+      lastErrorMessage: null,
+    };
   if (pollingBot === b)
-    return { mode: "polling", url: null, pendingUpdateCount: 0, lastErrorMessage: null };
+    return {
+      mode: "polling",
+      url: null,
+      pendingUpdateCount: 0,
+      lastErrorMessage: null,
+    };
   try {
     const info = await b.api.getWebhookInfo();
     return {
@@ -243,7 +254,12 @@ export async function getTelegramDeliveryStatus(): Promise<DeliveryStatus> {
     };
   } catch (err) {
     logger.warn({ err }, "[telegram] failed to read delivery status");
-    return { mode: "none", url: null, pendingUpdateCount: 0, lastErrorMessage: null };
+    return {
+      mode: "none",
+      url: null,
+      pendingUpdateCount: 0,
+      lastErrorMessage: null,
+    };
   }
 }
 

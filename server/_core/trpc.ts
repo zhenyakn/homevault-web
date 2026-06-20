@@ -39,56 +39,58 @@ const rpcLog = createLogger("rpc");
  * request context so every nested log inherits them. Applied to the base
  * procedure below so every query/mutation in the app is instrumented.
  */
-const observabilityMiddleware = t.middleware(async ({ ctx, path, type, next }) => {
-  const route = `rpc:${path}`;
-  updateContext({
-    route,
-    userId: ctx.user?.id,
-    tenantId: ctx.tenantId ?? undefined,
-  });
-  const span = startSpan(route, {
-    kind: "server",
-    attributes: {
-      "rpc.method": path,
-      "rpc.type": type,
+const observabilityMiddleware = t.middleware(
+  async ({ ctx, path, type, next }) => {
+    const route = `rpc:${path}`;
+    updateContext({
       route,
-      user_id: ctx.user?.id,
-      tenant_id: ctx.tenantId ?? undefined,
-    },
-  });
-  const start = performance.now();
-  const result = await next();
-  const durationMs = performance.now() - start;
-  const fields = {
-    path,
-    type,
-    duration_ms: Math.round(durationMs),
-  };
+      userId: ctx.user?.id,
+      tenantId: ctx.tenantId ?? undefined,
+    });
+    const span = startSpan(route, {
+      kind: "server",
+      attributes: {
+        "rpc.method": path,
+        "rpc.type": type,
+        route,
+        user_id: ctx.user?.id,
+        tenant_id: ctx.tenantId ?? undefined,
+      },
+    });
+    const start = performance.now();
+    const result = await next();
+    const durationMs = performance.now() - start;
+    const fields = {
+      path,
+      type,
+      duration_ms: Math.round(durationMs),
+    };
 
-  if (result.ok) {
-    span.setStatus("ok");
-    if (shouldSampleAccessLog()) rpcLog.info(fields, "rpc call");
-  } else {
-    const code = result.error.code;
-    span.setStatus("error", result.error.message);
-    span.setAttribute("rpc.error_code", code);
-    rpcLog.warn({ ...fields, code, err: result.error }, "rpc call failed");
+    if (result.ok) {
+      span.setStatus("ok");
+      if (shouldSampleAccessLog()) rpcLog.info(fields, "rpc call");
+    } else {
+      const code = result.error.code;
+      span.setStatus("error", result.error.message);
+      span.setAttribute("rpc.error_code", code);
+      rpcLog.warn({ ...fields, code, err: result.error }, "rpc call failed");
+    }
+    span.setAttribute("rpc.ok", result.ok);
+    span.end();
+
+    recordRequest({
+      transport: "rpc",
+      route: path,
+      method: type.toUpperCase(),
+      statusCode: result.ok ? 200 : 500,
+      durationMs,
+      errored: !result.ok,
+      tenantId: ctx.tenantId ?? undefined,
+    });
+
+    return result;
   }
-  span.setAttribute("rpc.ok", result.ok);
-  span.end();
-
-  recordRequest({
-    transport: "rpc",
-    route: path,
-    method: type.toUpperCase(),
-    statusCode: result.ok ? 200 : 500,
-    durationMs,
-    errored: !result.ok,
-    tenantId: ctx.tenantId ?? undefined,
-  });
-
-  return result;
-});
+);
 
 /** Base procedure: every public/protected/admin procedure derives from this. */
 const baseProcedure = t.procedure.use(observabilityMiddleware);
