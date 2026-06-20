@@ -9,7 +9,7 @@ import { Bot, InlineKeyboard, webhookCallback } from "grammy";
 import type { RequestHandler } from "express";
 import { nanoid } from "nanoid";
 import { logger } from "../_core/logger";
-import { getNotificationConfig } from "../notifications/config";
+import { getNotificationConfig, isFromEnv } from "../notifications/config";
 import {
   getPublicBaseUrl,
   getTelegramWebhookSecret,
@@ -281,6 +281,90 @@ export async function getTelegramDeliveryStatus(): Promise<DeliveryStatus> {
 
 function errText(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
+}
+
+export type TelegramDiagnostics = {
+  tokenConfigured: boolean;
+  tokenFromEnv: boolean;
+  mode: DeliveryMode | "none";
+  /** getMe result — the bot's identity, or the raw error from Telegram. */
+  bot: { id: number; username: string | null; name: string | null } | null;
+  botError: string | null;
+  /** getWebhookInfo — registration + the last delivery error Telegram saw. */
+  webhook: {
+    url: string | null;
+    pendingUpdateCount: number;
+    lastErrorMessage: string | null;
+    lastErrorDate: string | null;
+    ipAddress: string | null;
+  } | null;
+  webhookError: string | null;
+};
+
+/**
+ * One-shot live diagnostics for the Settings UI: probes getMe + getWebhookInfo
+ * and returns everything as plain, JSON-safe data (errors as strings). Lets an
+ * admin see the bot's real identity, the active transport, and — crucially — the
+ * last error Telegram itself recorded, without digging through server logs.
+ */
+export async function getTelegramDiagnostics(): Promise<TelegramDiagnostics> {
+  const tokenConfigured = Boolean(getNotificationConfig().telegramBotToken);
+  const tokenFromEnv = isFromEnv("telegramBotToken");
+  const b = getBot();
+  if (!b) {
+    return {
+      tokenConfigured,
+      tokenFromEnv,
+      mode: "none",
+      bot: null,
+      botError: null,
+      webhook: null,
+      webhookError: null,
+    };
+  }
+
+  let bot: TelegramDiagnostics["bot"] = null;
+  let botError: string | null = null;
+  try {
+    const me = await b.api.getMe();
+    bot = {
+      id: me.id,
+      username: me.username ?? null,
+      name: me.first_name ?? null,
+    };
+  } catch (err) {
+    botError = errText(err);
+  }
+
+  let webhook: TelegramDiagnostics["webhook"] = null;
+  let webhookError: string | null = null;
+  try {
+    const info = await b.api.getWebhookInfo();
+    webhook = {
+      url: info.url || null,
+      pendingUpdateCount: info.pending_update_count ?? 0,
+      lastErrorMessage: info.last_error_message || null,
+      lastErrorDate: info.last_error_date
+        ? new Date(info.last_error_date * 1000).toISOString()
+        : null,
+      ipAddress: info.ip_address || null,
+    };
+  } catch (err) {
+    webhookError = errText(err);
+  }
+
+  const mode: DeliveryMode | "none" =
+    pollingBot === b ? "polling" : webhook?.url ? "webhook" : "none";
+
+  return {
+    tokenConfigured,
+    tokenFromEnv,
+    mode,
+    bot,
+    botError,
+    webhook,
+    webhookError,
+  };
 }
 
 function registerHandlers(b: Bot) {

@@ -86,6 +86,7 @@ import {
   Cloud,
   CheckCircle2,
   AlertCircle,
+  Stethoscope,
   ShieldCheck,
   ExternalLink,
   Eye,
@@ -2417,6 +2418,13 @@ function TelegramDeliveryForm({
     onError: e => toast.error(e.message),
   });
 
+  // On-demand live diagnostics (getMe + getWebhookInfo). Disabled until the
+  // admin asks for it, so opening Settings doesn't hit the Telegram API.
+  const [showDiag, setShowDiag] = useState(false);
+  const diag = trpc.notification.getTelegramDiagnostics.useQuery(undefined, {
+    enabled: showDiag,
+  });
+
   return (
     <IntegrationCard
       icon={<Send className="h-4 w-4" />}
@@ -2465,6 +2473,30 @@ function TelegramDeliveryForm({
               </Button>
             </div>
           )}
+          {status.configured && (
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-fit px-2 text-xs text-muted-foreground"
+                onClick={() => {
+                  if (showDiag) void diag.refetch();
+                  else setShowDiag(true);
+                }}
+                disabled={diag.isFetching}
+              >
+                {diag.isFetching ? (
+                  <Loader2 className="me-1.5 h-3 w-3 animate-spin" />
+                ) : (
+                  <Stethoscope className="me-1.5 h-3 w-3" />
+                )}
+                {t("settings.delivery.telegram.runDiagnostics")}
+              </Button>
+              {showDiag && diag.data && (
+                <TelegramDiagnosticsPanel data={diag.data} />
+              )}
+            </div>
+          )}
           <TestConnectionRow
             configured={Boolean(status.configured)}
             lastTest={lastTest}
@@ -2474,6 +2506,105 @@ function TelegramDeliveryForm({
         </div>
       }
     />
+  );
+}
+
+/** Inline raw readout of getMe + getWebhookInfo, including Telegram's own last error. */
+function TelegramDiagnosticsPanel({
+  data,
+}: {
+  data: {
+    tokenConfigured: boolean;
+    tokenFromEnv: boolean;
+    mode: "webhook" | "polling" | "none";
+    bot: { id: number; username: string | null; name: string | null } | null;
+    botError: string | null;
+    webhook: {
+      url: string | null;
+      pendingUpdateCount: number;
+      lastErrorMessage: string | null;
+      lastErrorDate: string | null;
+      ipAddress: string | null;
+    } | null;
+    webhookError: string | null;
+  };
+}) {
+  const { t } = useTranslation();
+  const Row = ({
+    label,
+    value,
+    danger,
+  }: {
+    label: string;
+    value: string;
+    danger?: boolean;
+  }) => (
+    <div className="flex justify-between gap-3">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span
+        className={cn(
+          "truncate text-end font-mono",
+          danger && "text-destructive"
+        )}
+        title={value}
+      >
+        {value}
+      </span>
+    </div>
+  );
+  return (
+    <div className="flex flex-col gap-1 rounded-md border border-border bg-muted/30 px-3 py-2 text-[11px]">
+      <Row
+        label={t("settings.delivery.telegram.diagToken")}
+        value={
+          data.tokenConfigured
+            ? data.tokenFromEnv
+              ? t("settings.delivery.telegram.diagFromEnv")
+              : t("settings.delivery.telegram.diagSaved")
+            : "—"
+        }
+      />
+      <Row label={t("settings.delivery.telegram.diagMode")} value={data.mode} />
+      {data.bot && (
+        <Row
+          label={t("settings.delivery.telegram.diagBot")}
+          value={`${data.bot.username ? "@" + data.bot.username : (data.bot.name ?? "?")} (${data.bot.id})`}
+        />
+      )}
+      {data.botError && (
+        <Row
+          label={t("settings.delivery.telegram.diagBot")}
+          value={data.botError}
+          danger
+        />
+      )}
+      <Row
+        label={t("settings.delivery.telegram.diagWebhookUrl")}
+        value={data.webhook?.url || "—"}
+      />
+      <Row
+        label={t("settings.delivery.telegram.diagPending")}
+        value={String(data.webhook?.pendingUpdateCount ?? 0)}
+      />
+      {data.webhook?.lastErrorMessage && (
+        <Row
+          label={t("settings.delivery.telegram.diagLastError")}
+          value={`${data.webhook.lastErrorMessage}${
+            data.webhook.lastErrorDate
+              ? ` (${new Date(data.webhook.lastErrorDate).toLocaleString()})`
+              : ""
+          }`}
+          danger
+        />
+      )}
+      {data.webhookError && (
+        <Row
+          label={t("settings.delivery.telegram.diagWebhookUrl")}
+          value={data.webhookError}
+          danger
+        />
+      )}
+    </div>
   );
 }
 
