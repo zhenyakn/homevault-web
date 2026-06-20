@@ -35,6 +35,7 @@ import {
   resetBot,
   syncTelegramDelivery,
   getTelegramDeliveryStatus,
+  getTelegramDiagnostics,
 } from "./bot/telegram";
 
 const integrationSectionEnum = z.enum(
@@ -286,6 +287,12 @@ export const notificationRouter = router({
   getTelegramDeliveryStatus: adminProcedure.query(() =>
     getTelegramDeliveryStatus()
   ),
+
+  /**
+   * On-demand live diagnostics (getMe + getWebhookInfo) so an admin can see the
+   * bot's real identity and the last error Telegram recorded, inline in Settings.
+   */
+  getTelegramDiagnostics: adminProcedure.query(() => getTelegramDiagnostics()),
 
   /**
    * Manually reconnect the bot — for when a token came from env or the public
