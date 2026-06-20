@@ -1397,8 +1397,15 @@ function ChannelStatusBadge({ configured }: { configured: boolean }) {
 function TelegramConnectCard() {
   const { t } = useTranslation();
   const u = trpc.useUtils();
+  const [, setLocation] = useLocation();
+  const { has } = useCapabilities();
   const { data: status } = trpc.notification.getStatus.useQuery();
   const connected = Boolean(status?.telegramLinked);
+  // Telegram is a plan-gated channel (SAAS). When the tenant's plan doesn't
+  // include it the server rejects createTelegramLinkCode, so surface the locked
+  // state up front instead of offering a Generate button that fails with a
+  // transient toast. Standalone installs aren't gated (has() returns true).
+  const locked = !has(CHANNEL_CAPABILITY.telegram!);
   const [code, setCode] = useState<string | null>(null);
   // The real bot resolved from the configured token; fall back to a generic
   // label when it can't be resolved (no token yet / unreachable).
@@ -1449,6 +1456,23 @@ function TelegramConnectCard() {
                 onClick={() => unlink.mutate()}
               >
                 {t("settings.ch.disconnect")}
+              </Button>
+            </div>
+          ) : locked ? (
+            <div className="space-y-3">
+              <div className="flex items-start gap-2">
+                <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground leading-snug">
+                  {t("settings.ch.telegramLocked")}
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-8 w-full text-xs"
+                onClick={() => setLocation("/plan")}
+              >
+                {t("settings.ch.upgrade")}
               </Button>
             </div>
           ) : (

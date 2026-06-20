@@ -530,6 +530,7 @@
       "testFailed": "Тест в {{channel}} не удался: {{reason}}",
       "loading": "Загрузка каналов…",
       "upgrade": "Обновить",
+      "telegramLocked": "Уведомления в Telegram не включены в ваш текущий тариф. Перейдите на другой тариф, чтобы подключить бота и привязать чат.",
       "webpushNeedsSecure": "Push-уведомления в браузере требуют защищённого (HTTPS) соединения и поддерживаемого браузера. По адресу LAN/HTTP они недоступны; на iOS сначала добавьте HomeVault на главный экран.",
       "webpushNeedsKeys": "Push-уведомления в браузере требуют ключей VAPID на сервере. Выполните `npx web-push generate-vapid-keys` и задайте VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY."
     },
