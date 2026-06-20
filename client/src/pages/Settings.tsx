@@ -2409,21 +2409,45 @@ function TelegramDeliveryForm({
     trpc.notification.getTelegramDeliveryStatus.useQuery(undefined, {
       enabled: Boolean(status.configured),
     });
+  // On-demand live diagnostics (getMe + getWebhookInfo). Disabled until the
+  // admin asks for it (or a connect happens), so opening Settings doesn't hit
+  // the Telegram API.
+  const [showDiag, setShowDiag] = useState(false);
+  const diag = trpc.notification.getTelegramDiagnostics.useQuery(undefined, {
+    enabled: showDiag,
+  });
+  // Reveal + refresh the readout. Enabling the query fetches it; if it's already
+  // shown, invalidate forces a re-probe so the panel reflects the new state.
+  const revealDiagnostics = () => {
+    setShowDiag(true);
+    void u.notification.getTelegramDiagnostics.invalidate();
+  };
+
   const reconnect = trpc.notification.reconnectTelegram.useMutation({
     onSuccess: async r => {
       await u.notification.getTelegramDeliveryStatus.invalidate();
       if (r.ok) toast.success(t("settings.delivery.telegram.reconnected"));
       else toast.error(telegramConnectError(t, r));
+      // Show the live result of the (re)connect without a second click.
+      revealDiagnostics();
     },
     onError: e => toast.error(e.message),
   });
 
-  // On-demand live diagnostics (getMe + getWebhookInfo). Disabled until the
-  // admin asks for it, so opening Settings doesn't hit the Telegram API.
-  const [showDiag, setShowDiag] = useState(false);
-  const diag = trpc.notification.getTelegramDiagnostics.useQuery(undefined, {
-    enabled: showDiag,
-  });
+  // After the admin saves the token here, auto-show diagnostics once the shared
+  // save mutation settles (pending true→false). Scoped by `awaitingSave` so a
+  // save from another delivery card doesn't trigger it.
+  const [awaitingSave, setAwaitingSave] = useState(false);
+  const prevPending = useRef(pending);
+  useEffect(() => {
+    if (awaitingSave && prevPending.current && !pending) {
+      setAwaitingSave(false);
+      revealDiagnostics();
+    }
+    prevPending.current = pending;
+    // revealDiagnostics is stable enough for this transition check.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, awaitingSave]);
 
   return (
     <IntegrationCard
@@ -2452,7 +2476,10 @@ function TelegramDeliveryForm({
               />
               <SaveDeliveryButton
                 pending={pending}
-                onClick={() => onSave({ telegramBotToken: token })}
+                onClick={() => {
+                  onSave({ telegramBotToken: token });
+                  setAwaitingSave(true);
+                }}
               />
             </div>
           )}
