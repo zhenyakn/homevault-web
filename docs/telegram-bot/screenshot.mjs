@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const exe = process.env.CHROME_BIN ||
+const exe =
+  process.env.CHROME_BIN ||
   "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
 const browser = await chromium.launch({ executablePath: exe });
@@ -20,7 +21,9 @@ await page.screenshot({ path: join(here, "enhanced-bot.png") });
 const cols = await page.locator(".col-wrap").all();
 const names = ["menu-pay", "paid-reads", "add-expense"];
 for (let i = 0; i < cols.length; i++) {
-  await cols[i].screenshot({ path: join(here, `enhanced-bot-${names[i]}.png`) });
+  await cols[i].screenshot({
+    path: join(here, `enhanced-bot-${names[i]}.png`),
+  });
 }
 
 await browser.close();

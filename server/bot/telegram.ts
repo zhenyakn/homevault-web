@@ -102,7 +102,11 @@ async function overdueText(s: Session): Promise<string> {
   const lines: string[] = [];
   for (const o of overdue)
     lines.push(
-      t(s.lang, "overdueLine", { label: o.label, amount: o.amount, date: o.date })
+      t(s.lang, "overdueLine", {
+        label: o.label,
+        amount: o.amount,
+        date: o.date,
+      })
     );
   for (const r of stats.staleRepairs)
     lines.push(t(s.lang, "repairAttentionLine", { label: r.label }));
@@ -536,7 +540,10 @@ export async function getTelegramDiagnostics(): Promise<TelegramDiagnostics> {
 async function setBotCommands(b: Bot): Promise<void> {
   try {
     await b.api.setMyCommands([
-      { command: "menu", description: "Open the menu (buttons for everything)" },
+      {
+        command: "menu",
+        description: "Open the menu (buttons for everything)",
+      },
       { command: "pay", description: "Pay a bill — pick from your bills" },
       { command: "overdue", description: "Items needing attention" },
       { command: "dashboard", description: "This month at a glance" },
@@ -566,7 +573,9 @@ function registerHandlers(b: Bot) {
 
     const s = await resolveSession(chatId);
     if (!s) {
-      await ctx.editMessageText(t(await resolveLang(chatId), "accountUnlinked"));
+      await ctx.editMessageText(
+        t(await resolveLang(chatId), "accountUnlinked")
+      );
       return;
     }
 
@@ -591,9 +600,12 @@ function registerHandlers(b: Bot) {
       const kb = new InlineKeyboard()
         .text(t(s.lang, "btnPayBill"), menuCallback("pay"))
         .text(t(s.lang, "btnMenu"), menuCallback("home"));
-      await ctx.editMessageText(t(s.lang, "markedPaid", { name: expense.name }), {
-        reply_markup: kb,
-      });
+      await ctx.editMessageText(
+        t(s.lang, "markedPaid", { name: expense.name }),
+        {
+          reply_markup: kb,
+        }
+      );
       return;
     }
 
@@ -701,11 +713,17 @@ function registerHandlers(b: Bot) {
       case "addexpense": {
         const name = parsed.name.slice(0, 40);
         const kb = new InlineKeyboard()
-          .text(t(s.lang, "btnConfirm"), addExpenseCallback(parsed.amount, name))
+          .text(
+            t(s.lang, "btnConfirm"),
+            addExpenseCallback(parsed.amount, name)
+          )
           .text(t(s.lang, "btnCancel"), "cancel");
-        await ctx.reply(t(s.lang, "confirmAdd", { name, amount: parsed.amount }), {
-          reply_markup: kb,
-        });
+        await ctx.reply(
+          t(s.lang, "confirmAdd", { name, amount: parsed.amount }),
+          {
+            reply_markup: kb,
+          }
+        );
         return;
       }
 

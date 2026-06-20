@@ -125,93 +125,95 @@ function parseAddExpenseArgs(rest: string): ParsedCommand {
  * punctuation-stripped) copy of the message. Order matters: the first intent
  * whose keyword is present wins, so list more specific intents first.
  */
-const READ_INTENTS: { type: "help" | "overdue" | "upcoming" | "dashboard"; words: string[] }[] =
-  [
-    {
-      type: "help",
-      words: [
-        "help",
-        "commands",
-        "command",
-        "what can you do",
-        "what can you",
-        "menu",
-        "помощь",
-        "команды",
-        "команда",
-        "что ты умеешь",
-        "עזרה",
-        "פקודות",
-      ],
-    },
-    {
-      type: "overdue",
-      words: [
-        "overdue",
-        "needs attention",
-        "attention",
-        "whats due",
-        "what is due",
-        "due",
-        "unpaid",
-        "owe",
-        "late",
-        "outstanding",
-        "просрочено",
-        "просрочка",
-        "просроченные",
-        "долг",
-        "долги",
-        "что надо оплатить",
-        "איחור",
-        "פיגור",
-        "לתשלום",
-      ],
-    },
-    {
-      type: "upcoming",
-      words: [
-        "upcoming",
-        "calendar",
-        "events",
-        "event",
-        "schedule",
-        "agenda",
-        "whats next",
-        "what is next",
-        "soon",
-        "предстоящее",
-        "предстоящие",
-        "календарь",
-        "события",
-        "расписание",
-        "скоро",
-        "קרוב",
-        "יומן",
-        "אירועים",
-      ],
-    },
-    {
-      type: "dashboard",
-      words: [
-        "dashboard",
-        "summary",
-        "overview",
-        "this month",
-        "how much",
-        "stats",
-        "status",
-        "сводка",
-        "обзор",
-        "итоги",
-        "сколько",
-        "за месяц",
-        "סיכום",
-        "סקירה",
-        "החודש",
-      ],
-    },
-  ];
+const READ_INTENTS: {
+  type: "help" | "overdue" | "upcoming" | "dashboard";
+  words: string[];
+}[] = [
+  {
+    type: "help",
+    words: [
+      "help",
+      "commands",
+      "command",
+      "what can you do",
+      "what can you",
+      "menu",
+      "помощь",
+      "команды",
+      "команда",
+      "что ты умеешь",
+      "עזרה",
+      "פקודות",
+    ],
+  },
+  {
+    type: "overdue",
+    words: [
+      "overdue",
+      "needs attention",
+      "attention",
+      "whats due",
+      "what is due",
+      "due",
+      "unpaid",
+      "owe",
+      "late",
+      "outstanding",
+      "просрочено",
+      "просрочка",
+      "просроченные",
+      "долг",
+      "долги",
+      "что надо оплатить",
+      "איחור",
+      "פיגור",
+      "לתשלום",
+    ],
+  },
+  {
+    type: "upcoming",
+    words: [
+      "upcoming",
+      "calendar",
+      "events",
+      "event",
+      "schedule",
+      "agenda",
+      "whats next",
+      "what is next",
+      "soon",
+      "предстоящее",
+      "предстоящие",
+      "календарь",
+      "события",
+      "расписание",
+      "скоро",
+      "קרוב",
+      "יומן",
+      "אירועים",
+    ],
+  },
+  {
+    type: "dashboard",
+    words: [
+      "dashboard",
+      "summary",
+      "overview",
+      "this month",
+      "how much",
+      "stats",
+      "status",
+      "сводка",
+      "обзор",
+      "итоги",
+      "сколько",
+      "за месяц",
+      "סיכום",
+      "סקירה",
+      "החודש",
+    ],
+  },
+];
 
 /**
  * Verbs that signal "log an expense" even when the trailing name is otherwise
@@ -315,7 +317,10 @@ function normalize(text: string): string {
  * Returns null when the token isn't a usable positive number.
  */
 function parseAmountToken(token: string): number | null {
-  const cleaned = token.replace(/[$€£₪₽]/g, "").replace(",", ".").trim();
+  const cleaned = token
+    .replace(/[$€£₪₽]/g, "")
+    .replace(",", ".")
+    .trim();
   if (!/^\d+(\.\d+)?$/.test(cleaned)) return null;
   const n = Number(cleaned);
   return Number.isFinite(n) && n > 0 ? n : null;
@@ -333,7 +338,11 @@ function extractAmount(text: string): { amount: number; rest: string } | null {
   if (!match) return null;
   const amount = parseAmountToken(match[0]);
   if (amount === null) return null;
-  const rest = (text.slice(0, match.index) + " " + text.slice(match.index + match[0].length))
+  const rest = (
+    text.slice(0, match.index) +
+    " " +
+    text.slice(match.index + match[0].length)
+  )
     .replace(/\s+/g, " ")
     .trim();
   return { amount, rest };
@@ -360,7 +369,10 @@ function matchMarkPaid(text: string): ParsedCommand | null {
   // a nanoid). Requiring a digit/hyphen keeps plain words ("paid water",
   // "what is paid") from being mistaken for an id.
   const isId = (tok: string | undefined): tok is string =>
-    !!tok && /[a-z]/i.test(tok) && /[0-9-]/.test(tok) && parseAmountToken(tok) === null;
+    !!tok &&
+    /[a-z]/i.test(tok) &&
+    /[0-9-]/.test(tok) &&
+    parseAmountToken(tok) === null;
 
   // "paid <id>" / "pay <id>"
   let m = /^(?:paid|pay|оплати(?:ть|л|ла)?|оплачен[оаы]?)\s+(\S+)/i.exec(text);
@@ -520,4 +532,3 @@ export function parseCallback(data: string): Callback {
 
   return { kind: "unknown" };
 }
-
