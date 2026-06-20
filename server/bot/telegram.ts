@@ -191,6 +191,9 @@ export async function syncTelegramDelivery(
     stopPolling();
     return { ok: false, reason: "no-token" };
   }
+  // Publish the slash-command menu so Telegram shows suggestions when the user
+  // taps "/". Best-effort: a failure here must not block connecting the bot.
+  void setBotCommands(b);
   const base = getPublicBaseUrl().replace(/\/+$/, "");
   try {
     if (chooseDeliveryMode(base) === "webhook") {
@@ -365,6 +368,26 @@ export async function getTelegramDiagnostics(): Promise<TelegramDiagnostics> {
     webhook,
     webhookError,
   };
+}
+
+/**
+ * Publish the slash-command menu shown when a user taps "/" in Telegram. Natural
+ * language is the primary interface now, but advertising the classic commands
+ * keeps them discoverable. Best-effort and never throws.
+ */
+async function setBotCommands(b: Bot): Promise<void> {
+  try {
+    await b.api.setMyCommands([
+      { command: "overdue", description: "Items needing attention" },
+      { command: "dashboard", description: "This month at a glance" },
+      { command: "upcoming", description: "Events & due dates" },
+      { command: "addexpense", description: "Log an expense: <amount> <name>" },
+      { command: "paid", description: "Mark an expense paid: <id>" },
+      { command: "help", description: "What I can do" },
+    ]);
+  } catch (err) {
+    logger.warn({ err: errText(err) }, "[telegram] failed to set command menu");
+  }
 }
 
 function registerHandlers(b: Bot) {

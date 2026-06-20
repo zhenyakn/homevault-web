@@ -72,17 +72,150 @@ describe("parseCommand — addexpense", () => {
   });
 });
 
+describe("parseCommand — addexpense currency", () => {
+  it("accepts a currency-prefixed amount", () => {
+    expect(parseCommand("/addexpense $100 Water bill")).toEqual({
+      type: "addexpense",
+      amount: 100,
+      name: "Water bill",
+    });
+  });
+  it("accepts the /expense alias", () => {
+    expect(parseCommand("/expense 40 Gas")).toEqual({
+      type: "addexpense",
+      amount: 40,
+      name: "Gas",
+    });
+  });
+});
+
 describe("parseCommand — fallbacks", () => {
   it("returns unknown for unrecognized commands", () => {
     expect(parseCommand("/wat")).toEqual({ type: "unknown", command: "wat" });
   });
-  it("returns text for non-command input", () => {
-    expect(parseCommand("hello there")).toEqual({
-      type: "text",
-      text: "hello there",
-    });
-  });
   it("returns unknown for empty input", () => {
     expect(parseCommand("   ").type).toBe("unknown");
+  });
+});
+
+describe("natural language — log an expense without a slash", () => {
+  it("parses 'spent <amount> on <name>'", () => {
+    expect(parseCommand("spent 50 on groceries")).toEqual({
+      type: "addexpense",
+      amount: 50,
+      name: "groceries",
+    });
+  });
+
+  it("parses 'add expense <amount> <name>'", () => {
+    expect(parseCommand("add expense 100 water bill")).toEqual({
+      type: "addexpense",
+      amount: 100,
+      name: "water bill",
+    });
+  });
+
+  it("parses a bare '<amount> <name>'", () => {
+    expect(parseCommand("100 water bill")).toEqual({
+      type: "addexpense",
+      amount: 100,
+      name: "water bill",
+    });
+  });
+
+  it("parses 'paid <amount> for <name>' as an expense (amount, not an id)", () => {
+    expect(parseCommand("paid 30 for gas")).toEqual({
+      type: "addexpense",
+      amount: 30,
+      name: "gas",
+    });
+  });
+
+  it("handles currency symbols and decimals", () => {
+    expect(parseCommand("bought coffee $4.50")).toEqual({
+      type: "addexpense",
+      amount: 4.5,
+      name: "coffee",
+    });
+    expect(parseCommand("12,5 gas")).toEqual({
+      type: "addexpense",
+      amount: 12.5,
+      name: "gas",
+    });
+  });
+
+  it("parses Russian phrasing", () => {
+    expect(parseCommand("потратил 50 на продукты")).toEqual({
+      type: "addexpense",
+      amount: 50,
+      name: "продукты",
+    });
+  });
+
+  it("parses Hebrew phrasing", () => {
+    expect(parseCommand("שילמתי 80 על חשמל")).toEqual({
+      type: "addexpense",
+      amount: 80,
+      name: "חשמל",
+    });
+  });
+
+  it("is invalid when a verb signals an expense but no name is given", () => {
+    expect(parseCommand("spent 50").type).toBe("invalid");
+  });
+});
+
+describe("natural language — mark an expense paid", () => {
+  it("parses 'paid <id>' with a non-numeric id", () => {
+    expect(parseCommand("paid exp-7")).toEqual({ type: "paid", id: "exp-7" });
+  });
+  it("parses 'mark <id> as paid'", () => {
+    expect(parseCommand("mark exp-12 as paid")).toEqual({
+      type: "paid",
+      id: "exp-12",
+    });
+  });
+  it("parses '<id> is paid'", () => {
+    expect(parseCommand("exp-9 is paid")).toEqual({
+      type: "paid",
+      id: "exp-9",
+    });
+  });
+  it("does not treat plain words as an id", () => {
+    // "what is paid" must not be mistaken for marking an id paid.
+    expect(parseCommand("what is paid").type).not.toBe("paid");
+  });
+});
+
+describe("natural language — read intents", () => {
+  it.each([
+    ["what's overdue?", "overdue"],
+    ["anything that needs attention", "overdue"],
+    ["что просрочено?", "overdue"],
+    ["how's this month going", "dashboard"],
+    ["give me a summary", "dashboard"],
+    ["сколько я потратил", "dashboard"],
+    ["what's upcoming", "upcoming"],
+    ["show me the calendar", "upcoming"],
+    ["what can you do", "help"],
+    ["help", "help"],
+  ])("maps %j to %s", (input, expected) => {
+    expect(parseCommand(input).type).toBe(expected);
+  });
+
+  it("prefers an expense when an amount is present", () => {
+    // Even with words around it, a money amount means 'log an expense'.
+    expect(parseCommand("add 25 for the calendar wall planner").type).toBe(
+      "addexpense"
+    );
+  });
+});
+
+describe("natural language — fallback", () => {
+  it("returns unknown (carrying the text) for unrecognized chatter", () => {
+    expect(parseCommand("hello there")).toEqual({
+      type: "unknown",
+      command: "hello there",
+    });
   });
 });
