@@ -31,16 +31,28 @@ const cfg = obsConfig;
  * Error serializer that preserves the full `cause` chain (Node 16+ Error
  * `cause`), so a wrapped error logs every layer's type/message/stack instead of
  * just the outermost one. Depth-capped to avoid pathological cycles.
+ *
+ * The shape is built EXPLICITLY rather than spreading the error's own
+ * properties: thrown library errors (e.g. grammy's `BotError`) carry a deeply
+ * self-referential payload like the update `Context`, and embedding that would
+ * make the log line impossible to JSON-serialize ("cannot serialize cyclic
+ * structures"). We keep only safe scalars + a bounded cause chain.
  */
-function serializeError(err: unknown, depth = 0): unknown {
-  if (depth > 5 || !(err instanceof Error)) return err;
-  const base = pino.stdSerializers.err(err as Error) as Record<string, unknown>;
-  const cause = (err as Error).cause;
-  if (cause) base.cause = serializeError(cause, depth + 1);
-  // Surface a domain error code if present (TRPCError, HTTP errors, etc.).
+export function serializeError(err: unknown, depth = 0): unknown {
+  if (!(err instanceof Error)) {
+    // Never embed a possibly-cyclic object graph; stringify it instead.
+    return err != null && typeof err === "object" ? String(err) : err;
+  }
+  const out: Record<string, unknown> = {
+    type: err.name,
+    message: err.message,
+    stack: err.stack,
+  };
   const code = (err as { code?: unknown }).code;
-  if (code != null) base.code = code;
-  return base;
+  if (code != null) out.code = code;
+  const cause = (err as Error).cause;
+  if (cause != null && depth < 5) out.cause = serializeError(cause, depth + 1);
+  return out;
 }
 
 // ── In-memory buffer for the viewer ──────────────────────────────────────────

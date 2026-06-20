@@ -176,8 +176,16 @@ export function chooseDeliveryMode(publicBaseUrl: string): DeliveryMode {
  * mode is a no-op; switching modes tears down the old one first. Best-effort —
  * returns a typed result instead of throwing so callers (boot, the Settings
  * mutation) can log or surface it without failing the surrounding operation.
+ *
+ * `dropPending` discards the backlog Telegram queued before we connected, so the
+ * bot doesn't replay old messages and answer them (e.g. "not linked") right
+ * after setup. Pass it on a deliberate connect (token saved / Reconnect) — NOT
+ * on boot, where a routine restart shouldn't silently drop real messages.
  */
-export async function syncTelegramDelivery(): Promise<DeliverySyncResult> {
+export async function syncTelegramDelivery(
+  opts: { dropPending?: boolean } = {}
+): Promise<DeliverySyncResult> {
+  const dropPending = opts.dropPending ?? false;
   const b = getBot();
   if (!b) {
     stopPolling();
@@ -192,21 +200,19 @@ export async function syncTelegramDelivery(): Promise<DeliverySyncResult> {
       const url = `${base}/api/bot/telegram`;
       await b.api.setWebhook(url, {
         secret_token: getTelegramWebhookSecret() || undefined,
+        drop_pending_updates: dropPending,
       });
       return { ok: true, mode: "webhook", url };
     }
     // Polling mode: drop any webhook (else getUpdates returns 409), then start
-    // the loop unless this exact bot is already polling. drop_pending_updates
-    // skips the backlog Telegram queued while we were offline / on a webhook —
-    // without it, starting polling replays old messages and the bot answers
-    // them (e.g. "not linked"), which looks like spam right after setup.
+    // the loop unless this exact bot is already polling.
     if (pollingBot !== b) {
       stopPolling();
-      await b.api.deleteWebhook({ drop_pending_updates: true });
+      await b.api.deleteWebhook({ drop_pending_updates: dropPending });
       pollingBot = b;
       void b
         .start({
-          drop_pending_updates: true,
+          drop_pending_updates: dropPending,
           onStart: () => logger.info("[telegram] long-polling started"),
         })
         .catch(err => {
