@@ -48,7 +48,7 @@ jobs:
       should_run: ${{ steps.decide.outputs.should_run }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # Tip commit is enough to read its timestamp; shallow is fine.
           fetch-depth: 1
@@ -100,13 +100,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -123,7 +123,7 @@ jobs:
 
       - name: Upload QA report & artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: qa-nightly-artifacts
           path: |
@@ -136,7 +136,7 @@ jobs:
 
       - name: Publish JUnit test summary
         if: always()
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: qa/artifacts/results/junit.xml
           fail_on_failure: false
@@ -148,7 +148,7 @@ jobs:
       # green/red so the issues list reflects current main health at a glance.
       - name: Post nightly report
         if: always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           QA_OUTCOME: ${{ steps.qa.outcome }}
         with:
